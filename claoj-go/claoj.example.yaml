@@ -1,0 +1,28 @@
+# CLAOJ Go — Example Config File
+# Copy this to claoj.yaml and fill in your values.
+# All values can also be set as environment variables with the CLAOJ_ prefix,
+# e.g. CLAOJ_DATABASE_DSN=...
+#
+# SECURITY NOTE: Generate a secure secret key using:
+#   openssl rand -base64 64
+# Never commit your actual secret key to version control!
+
+server:
+  port: "8081"
+  mode: "debug"   # "release" for production
+
+database:
+  dsn: "claoj_user:claoj_pass@tcp(127.0.0.1:3306)/claoj?charset=utf8mb4&parseTime=True&loc=UTC"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+app:
+  # IMPORTANT: Replace with a secure random key in production!
+  # Generate with: openssl rand -base64 64
+  secret_key: "<GENERATE_SECURE_KEY_ON_DEPLOY>"
+  site_full_url: "https://claoj.example.com"
+  event_daemon_subm_key: ""
+  event_daemon_cont_key: ""

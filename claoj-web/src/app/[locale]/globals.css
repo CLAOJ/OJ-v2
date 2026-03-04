@@ -1,0 +1,222 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* CLAOJ Original Theme Colors - Dark Theme */
+/* Based on vars.scss from the original Django project */
+
+@layer base {
+  :root {
+    /* Primary colors from original dark theme */
+    --color-primary-0: 200 13% 13%;    /* #1c2429 */
+    --color-primary-5: 195 19% 19%;    /* #263238 - navbar, light background */
+    --color-primary-10: 195 19% 23%;   /* #304047 - background */
+    --color-primary-25: 195 19% 28%;   /* #3b4d56 - border */
+    --color-primary-33: 0 0% 33%;      /* #555 - widget */
+    --color-primary-50: 197 24% 43%;   /* #546e7a */
+    --color-primary-60: 198 23% 54%;   /* #78909c */
+    --color-primary-75: 200 23% 63%;   /* #90a4ae - widget */
+    --color-primary-90: 198 25% 73%;   /* #b0bec5 */
+    --color-primary-100: 200 26% 83%;  /* #cfd8dc */
+
+    /* Link colors */
+    --color-link-50: 174 100% 29%;     /* #009688 - default title */
+    --color-link-75: 199 89% 48%;      /* #039be5 - default */
+    --color-link-100: 198 86% 64%;     /* #4fc3f7 - hover */
+    --color-link-200: 34 100% 50%;     /* #ff8f00 - active */
+
+    /* Rating colors */
+    --color-rating-none: #aaa;
+    --color-rating-newbie: #988f81;
+    --color-rating-pupil: #72ff72;
+    --color-rating-specialist: #57fcf2;
+    --color-rating-expert: #337dff;
+    --color-rating-candidate-master: #ff55ff;
+    --color-rating-master: #ff981a;
+    --color-rating-grandmaster: #ff1a1a;
+
+    /* Problem status colors */
+    --color-solved: #69f0ae;
+    --color-attempted: #ffd54f;
+    --color-unsolved: #90a4ae;
+    --color-first-solve: #004d40;
+
+    /* UI colors - Dark theme based on #263238 */
+    --background: 195 19% 13%;         /* #1c2429 - main page bg */
+    --foreground: 200 23% 83%;         /* #cfd8dc - text */
+
+    --card: 195 19% 19%;               /* #263238 - card bg */
+    --card-foreground: 200 23% 83%;
+
+    --popover: 195 19% 19%;
+    --popover-foreground: 200 23% 83%;
+
+    --primary: 174 100% 29%;           /* #009688 - teal from original */
+    --primary-foreground: 195 19% 13%;
+
+    --secondary: 195 19% 23%;
+    --secondary-foreground: 200 23% 83%;
+
+    --muted: 195 19% 23%;
+    --muted-foreground: 200 23% 63%;
+
+    --accent: 199 89% 48%;             /* #039be5 - accent blue */
+    --accent-foreground: 195 19% 13%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 195 19% 28%;             /* #3b4d56 */
+    --input: 195 19% 23%;
+    --ring: 174 100% 29%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar/sidebox colors */
+    --sidebox-bg: #304047;
+    --sidebox-header-bg: #3b4d56;
+    --sidebox-shadow: 0 6px 10px 0 rgb(0 0 0 / 30%);
+  }
+
+  /* Light theme (optional - for future) */
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 174 100% 29%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 174 100% 29%;
+  }
+}
+
+@theme inline {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Original CLAOJ specific colors */
+  --color-solved: #69f0ae;
+  --color-attempted: #ffd54f;
+  --color-unsolved: #90a4ae;
+  --color-rating-none: #aaa;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Original CLAOJ styling utilities */
+@layer utilities {
+  .problem-points {
+    background: #777;
+    color: white;
+    padding: 3px 6px;
+    font-weight: 700;
+    border-radius: 10px;
+    font-size: 12px;
+    vertical-align: middle;
+    text-align: center;
+    line-height: 1;
+    white-space: nowrap;
+    min-width: 10px;
+    display: inline-block;
+  }
+
+  .contest-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+
+  .contest-tag a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .sidebox {
+    background: var(--sidebox-bg);
+    border-radius: 4px;
+    box-shadow: var(--sidebox-shadow);
+    margin-bottom: 1em;
+  }
+
+  .sidebox h3 {
+    background: var(--sidebox-header-bg);
+    padding: 8px 12px;
+    margin: 0;
+    border-radius: 4px 4px 0 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .sidebox-content {
+    padding: 12px;
+  }
+
+  .table.striped tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .table.striped tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .info-float {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1em;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "Navbar": {
+    "home": "Trang chủ",
+    "problems": "Bài toán",
+    "contests": "Thi đấu",
+    "submissions": "Bài nộp",
+    "organizations": "Tổ chức",
+    "login": "Đăng nhập",
+    "signup": "Đăng ký",
+    "report": "Báo cáo lỗi"
+  },
+  "Footer": {
+    "description": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao.",
+    "platform": "Nền tảng",
+    "support": "Hỗ trợ",
+    "builtBy": "IT-CLA Productions"
+  },
+  "Home": {
+    "welcome": "Chào mừng đến với CLAOJ",
+    "subtitle": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao",
+    "blogTab": "Blog",
+    "eventsTab": "Sự kiện",
+    "latestPosts": "Bài viết mới nhất",
+    "viewAll": "Xem tất cả",
+    "ongoingContests": "Cuộc thi đang diễn ra",
+    "upcomingContests": "Cuộc thi sắp tới",
+    "topRatingUsers": "Top rating users",
+    "topScorers": "Top scorers",
+    "newProblems": "Bài toán mới",
+    "commentStream": "Bình luận gần đây",
+    "organizations": "Tổ chức",
+    "noPosts": "Không có bài viết nào",
+    "continueReading": "Đọc tiếp...",
+    "postedOn": "đăng vào {time}",
+    "posted": "đăng {time}",
+    "logInToVote": "Vui lòng đăng nhập để bình chọn",
+    "endsIn": "Kết thúc trong {countdown}",
+    "startingIn": "Bắt đầu trong {countdown}"
+  },
+  "Problems": {
+    "title": "Bài toán",
+    "search": "Tìm kiếm",
+    "category": "Thể loại",
+    "points": "Điểm",
+    "acRate": "Tỉ lệ AC",
+    "solved": "Đã giải",
+    "attempted": "Đã thử",
+    "unsolved": "Chưa giải",
+    "editorial": "Lời giải",
+    "submit": "Nộp bài",
+    "random": "Ngẫu nhiên"
+  },
+  "Contest": {
+    "title": "Thi đấu",
+    "active": "Cuộc thi đang tham gia",
+    "ongoing": "Cuộc thi đang diễn ra",
+    "upcoming": "Cuộc thi sắp tới",
+    "past": "Cuộc thi đã qua",
+    "pastContests": "Cuộc thi đã qua",
+    "join": "Tham gia",
+    "enter": "Vào thi đấu",
+    "details": "Chi tiết",
+    "virtualJoin": "Tham gia ảo",
+    "spectate": "Dự khán",
+    "rated": "Tính rating",
+    "unrated": "Không tính rating",
+    "duration": "Thời lượng",
+    "users": "Người dùng",
+    "score": "Điểm",
+    "startTime": "Thời gian bắt đầu",
+    "endTime": "Thời gian kết thúc",
+    "noScheduled": "Không có cuộc thi nào được lên lịch vào lúc này.",
+    "noPast": "Không có cuộc thi đã qua."
+  },
+  "Submissions": {
+    "title": "Bài nộp"
+  },
+  "Auth": {
+    "loginTitle": "Chào mừng trở lại",
+    "loginDesc": "Đăng nhập vào tài khoản CLAOJ của bạn",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "signIn": "Đăng nhập",
+    "noAccount": "Chưa có tài khoản?",
+    "signUp": "Đăng ký",
+    "invalidCredentials": "Tên đăng nhập hoặc mật khẩu không đúng",
+    "registerTitle": "Tạo tài khoản",
+    "registerDesc": "Tham gia CLAOJ ngay hôm nay",
+    "email": "Email",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "createAccount": "Tạo tài khoản",
+    "hasAccount": "Đã có tài khoản?",
+    "logIn": "Đăng nhập"
+  },
+  "Comments": {
+    "title": "Bình luận",
+    "count": "{count} bình luận",
+    "placeholder": "Viết bình luận...",
+    "post": "Đăng",
+    "reply": "Trả lời",
+    "signInToComment": "Vui lòng đăng nhập để bình luận",
+    "noComments": "Chưa có bình luận. Hãy là người đầu tiên bình luận!",
+    "cancel": "Hủy"
+  },
+  "Blog": {
+    "title": "Blog",
+    "noPosts": "Không có bài viết nào",
+    "readMore": "Đọc tiếp"
+  },
+  "Users": {
+    "title": "Người dùng"
+  },
+  "Common": {
+    "loading": "Đang tải...",
+    "error": "Đã xảy ra lỗi",
+    "success": "Thành công",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "view": "Xem",
+    "close": "Đóng",
+    "next": "Tiếp",
+    "previous": "Lùi",
+    "yes": "Có",
+    "no": "Không"
+  }
+}
