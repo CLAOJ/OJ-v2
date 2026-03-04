@@ -154,6 +154,9 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/languages", v2.LanguageList)
 		apiv2.GET("/judges", v2.JudgeList)
 
+		// Public config
+		apiv2.GET("/config/public", v2.ConfigPublic)
+
 		// Stats
 		apiv2.GET("/stats/languages", v2.LanguageStats)
 		apiv2.GET("/stats/submissions/daily", v2.DailySubmissionStats)

@@ -91,6 +91,11 @@ func apiList(data interface{}) gin.H {
 	return gin.H{"data": data}
 }
 
+// apiData is a helper for consistent data responses
+func apiData(data interface{}) gin.H {
+	return gin.H{"data": data}
+}
+
 // parseUint parses a string to uint
 func parseUint(s string, result *uint) error {
 	val, err := strconv.ParseUint(s, 10, 64)

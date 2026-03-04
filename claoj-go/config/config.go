@@ -2,9 +2,11 @@ package config
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/subosito/gotenv"
 )
 
 // Config holds all application configuration.
@@ -66,13 +68,34 @@ type OAuthProviderConfig struct {
 var C Config
 
 // Load reads configuration from environment variables and/or a config file.
-// Environment variables take precedence. Prefix: CLAOJ_
+// Environment variables take precedence. Supports both CLAOJ_* prefix and plain names.
+//
+// Priority (highest to lowest):
+//  1. Direct environment variables (DATABASE_URL, SECRET_KEY, etc.)
+//  2. CLAOJ_* prefixed environment variables (CLAOJ_DATABASE_DSN, CLAOJ_APP_SECRET_KEY)
+//  3. .env file (loaded via godotenv)
+//  4. claoj.yaml config file
+//  5. Default values
+//
 // Example:
 //
-//	CLAOJ_DATABASE_DSN=user:pass@tcp(127.0.0.1:3306)/claoj?parseTime=True
-//	CLAOJ_REDIS_ADDR=127.0.0.1:6379
-//	CLAOJ_SERVER_PORT=8081
+//	DATABASE_URL=user:pass@tcp(127.0.0.1:3306)/claoj?parseTime=True
+//	REDIS_URL=127.0.0.1:6379
+//	SECRET_KEY=your-secret-key
+//	SITE_URL=http://localhost:3000
 func Load() {
+	// Load .env file if it exists (optional)
+	if _, err := os.Stat(".env"); err == nil {
+		if err := gotenv.Load(".env"); err != nil {
+			log.Printf("config: warning: failed to load .env file: %v", err)
+		}
+	} else if _, err := os.Stat("../.env"); err == nil {
+		// Support loading from parent directory (for Docker)
+		if err := gotenv.Load("../.env"); err != nil {
+			log.Printf("config: warning: failed to load ../.env file: %v", err)
+		}
+	}
+
 	v := viper.New()
 
 	// defaults
@@ -113,12 +136,44 @@ func Load() {
 	_ = v.ReadInConfig() // no-error if not found
 
 	// bind environment variables (env takes precedence over config file)
+	// Support both plain names and CLAOJ_* prefix
 	v.SetEnvPrefix("CLAOJ")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.BindEnv("app.secret_key", "CLAOJ_APP_SECRET_KEY")
-	v.BindEnv("database.dsn", "CLAOJ_DATABASE_DSN")
-	v.BindEnv("redis.addr", "CLAOJ_REDIS_ADDR")
-	v.BindEnv("server.port", "CLAOJ_SERVER_PORT")
+
+	// Plain environment variable names (no prefix) - these are checked first
+	v.BindEnv("database.dsn", "DATABASE_DSN", "DATABASE_URL", "CLAOJ_DATABASE_DSN")
+	v.BindEnv("redis.addr", "REDIS_ADDR", "REDIS_URL", "CLAOJ_REDIS_ADDR")
+	v.BindEnv("redis.password", "REDIS_PASSWORD", "CLAOJ_REDIS_PASSWORD")
+	v.BindEnv("redis.db", "REDIS_DB", "CLAOJ_REDIS_DB")
+	v.BindEnv("server.port", "SERVER_PORT", "CLAOJ_SERVER_PORT")
+	v.BindEnv("server.mode", "SERVER_MODE", "CLAOJ_SERVER_MODE")
+	v.BindEnv("app.secret_key", "SECRET_KEY", "CLAOJ_APP_SECRET_KEY")
+	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
+	v.BindEnv("app.event_daemon_subm_key", "EVENT_DAEMON_SUBM_KEY", "CLAOJ_EVENT_DAEMON_SUBM_KEY")
+	v.BindEnv("app.event_daemon_cont_key", "EVENT_DAEMON_CONT_KEY", "CLAOJ_EVENT_DAEMON_CONT_KEY")
+	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
+
+	// Email
+	v.BindEnv("email.smtp_host", "SMTP_HOST", "CLAOJ_SMTP_HOST")
+	v.BindEnv("email.smtp_port", "SMTP_PORT", "CLAOJ_SMTP_PORT")
+	v.BindEnv("email.smtp_user", "SMTP_USER", "CLAOJ_SMTP_USER")
+	v.BindEnv("email.smtp_password", "SMTP_PASSWORD", "CLAOJ_SMTP_PASSWORD")
+	v.BindEnv("email.from_email", "FROM_EMAIL", "CLAOJ_FROM_EMAIL")
+	v.BindEnv("email.from_name", "FROM_NAME", "CLAOJ_FROM_NAME")
+	v.BindEnv("email.no_reply", "EMAIL_NO_REPLY", "CLAOJ_EMAIL_NO_REPLY")
+
+	// OAuth - Google
+	v.BindEnv("oauth.google.client_id", "OAUTH_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID", "CLAOJ_OAUTH_GOOGLE_CLIENT_ID")
+	v.BindEnv("oauth.google.client_secret", "OAUTH_GOOGLE_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET", "CLAOJ_OAUTH_GOOGLE_CLIENT_SECRET")
+	v.BindEnv("oauth.google.redirect_url", "OAUTH_GOOGLE_REDIRECT_URL", "GOOGLE_REDIRECT_URL", "CLAOJ_OAUTH_GOOGLE_REDIRECT_URL")
+	v.BindEnv("oauth.google.enabled", "OAUTH_GOOGLE_ENABLED", "CLAOJ_OAUTH_GOOGLE_ENABLED")
+
+	// OAuth - GitHub
+	v.BindEnv("oauth.github.client_id", "OAUTH_GITHUB_CLIENT_ID", "GITHUB_CLIENT_ID", "CLAOJ_OAUTH_GITHUB_CLIENT_ID")
+	v.BindEnv("oauth.github.client_secret", "OAUTH_GITHUB_CLIENT_SECRET", "GITHUB_CLIENT_SECRET", "CLAOJ_OAUTH_GITHUB_CLIENT_SECRET")
+	v.BindEnv("oauth.github.redirect_url", "OAUTH_GITHUB_REDIRECT_URL", "GITHUB_REDIRECT_URL", "CLAOJ_OAUTH_GITHUB_REDIRECT_URL")
+	v.BindEnv("oauth.github.enabled", "OAUTH_GITHUB_ENABLED", "CLAOJ_OAUTH_GITHUB_ENABLED")
+
 	v.AutomaticEnv()
 
 	if err := v.Unmarshal(&C); err != nil {
@@ -131,6 +186,33 @@ func Load() {
 	}
 
 	if C.Database.DSN == "" {
-		log.Println("config: WARNING — CLAOJ_DATABASE_DSN is not set; DB will not connect")
+		log.Println("config: WARNING — DATABASE_DSN is not set; DB will not connect")
+	}
+}
+
+// PublicConfig holds non-sensitive configuration that can be exposed to the frontend.
+type PublicConfig struct {
+	SiteURL         string        `json:"siteUrl"`
+	APIURL          string        `json:"apiUrl"`
+	DefaultLanguage string        `json:"defaultLanguage"`
+	OAuth           OAuthPublicConfig `json:"oauth"`
+}
+
+// OAuthPublicConfig holds public OAuth configuration.
+type OAuthPublicConfig struct {
+	GoogleEnabled bool `json:"googleEnabled"`
+	GitHubEnabled bool `json:"githubEnabled"`
+}
+
+// GetPublicConfig returns non-sensitive configuration that can be safely exposed to clients.
+func GetPublicConfig() PublicConfig {
+	return PublicConfig{
+		SiteURL:         C.App.SiteFullURL,
+		APIURL:          strings.TrimSuffix(C.App.SiteFullURL, "/") + "/api/v2",
+		DefaultLanguage: C.App.DefaultLanguage,
+		OAuth: OAuthPublicConfig{
+			GoogleEnabled: C.OAuth.Google.Enabled,
+			GitHubEnabled: C.OAuth.GitHub.Enabled,
+		},
 	}
 }

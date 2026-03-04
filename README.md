@@ -128,37 +128,89 @@ The frontend will be available at `http://localhost:3000`
 
 ## Configuration
 
-### Backend Configuration
+### Unified Configuration with `.env`
 
-Copy `claoj.example.yaml` to `claoj.yaml` and configure:
+CLAOJ v2 uses a unified `.env` file for configuration that both backend and frontend can share.
+This eliminates duplication and ensures consistency across services.
 
-```yaml
-server:
-  port: "8080"
-  mode: "release"  # "debug" for development
+#### Shared Configuration (.env)
 
-database:
-  dsn: "user:password@tcp(host:port)/database?charset=utf8mb4&parseTime=True&loc=UTC"
-
-redis:
-  addr: "localhost:6379"
-  password: ""
-  db: 0
-
-app:
-  secret_key: "<generate with: openssl rand -base64 64>"
-  site_full_url: "https://your-domain.com"
+1. Copy the example file at the repository root:
+```bash
+cp .env.example .env
 ```
 
-### Frontend Environment
-
-Copy `.env.example` to `.env`:
-
+2. Edit `.env` with your values:
 ```env
+# Site Configuration
+SITE_URL=http://localhost:3000
+API_URL=http://localhost:8080/api/v2
+DEFAULT_LANG=en
+
+# Database
+DATABASE_URL=user:password@tcp(127.0.0.1:3306)/claoj?charset=utf8mb4&parseTime=True&loc=UTC
+
+# Redis
+REDIS_ADDR=127.0.0.1:6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# Server
+SERVER_PORT=8080
+SERVER_MODE=debug
+
+# Secrets (IMPORTANT: Change in production!)
+SECRET_KEY=<generate with: openssl rand -base64 64>
+
+# OAuth (Optional)
+OAUTH_GOOGLE_ENABLED=false
+OAUTH_GOOGLE_CLIENT_ID=
+OAUTH_GOOGLE_CLIENT_SECRET=
+```
+
+3. For Docker deployment, place `.env` in the `repo-v2/` directory
+
+#### Environment Variable Priority
+
+The backend loads configuration in this order (highest to lowest priority):
+
+1. Direct environment variables (`DATABASE_URL`, `SECRET_KEY`, etc.)
+2. Prefixed environment variables (`CLAOJ_DATABASE_DSN`, `CLAOJ_APP_SECRET_KEY`)
+3. `.env` file (loaded automatically via godotenv)
+4. `claoj.yaml` config file (for backward compatibility)
+5. Default values
+
+#### Frontend Configuration
+
+The frontend automatically uses `window.location.origin` for API and WebSocket URLs.
+No environment variables are required for local development.
+
+Optional overrides in `claoj-web/.env`:
+```env
+# Only if you need to override defaults
 NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2
 NEXT_PUBLIC_SITE_NAME=CLAOJ
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+#### Public Configuration API
+
+The backend exposes shared configuration via `GET /api/v2/config/public`:
+
+```json
+{
+  "data": {
+    "siteUrl": "https://claoj.edu.vn",
+    "apiUrl": "https://claoj.edu.vn/api/v2",
+    "defaultLanguage": "en",
+    "oauth": {
+      "googleEnabled": false,
+      "githubEnabled": false
+    }
+  }
+}
+```
+
+This allows the frontend to automatically sync with backend configuration.
 
 ## Features
 

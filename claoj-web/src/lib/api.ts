@@ -63,4 +63,50 @@ api.interceptors.response.use(
     }
 );
 
+/**
+ * Shared configuration fetched from backend API
+ */
+export interface SharedConfig {
+    siteUrl: string;
+    apiUrl: string;
+    defaultLanguage: string;
+    oauth: {
+        googleEnabled: boolean;
+        githubEnabled: boolean;
+    };
+}
+
+let _sharedConfig: SharedConfig | null = null;
+
+/**
+ * Fetch shared configuration from backend
+ * Falls back to environment variables if the fetch fails
+ */
+export async function getSharedConfig(): Promise<SharedConfig> {
+    // Return cached config if available
+    if (_sharedConfig) {
+        return _sharedConfig;
+    }
+
+    try {
+        const baseURL = process.env.NEXT_PUBLIC_API_URL || getApiBaseUrl();
+        const res = await axios.get(`${baseURL}/config/public`);
+        _sharedConfig = res.data.data;
+        return _sharedConfig;
+    } catch (error) {
+        // Fallback to environment variables
+        console.warn('Failed to fetch shared config from backend, using environment variables');
+        _sharedConfig = {
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+            apiUrl: process.env.NEXT_PUBLIC_API_URL || getApiBaseUrl(),
+            defaultLanguage: 'en',
+            oauth: {
+                googleEnabled: false,
+                githubEnabled: false,
+            },
+        };
+        return _sharedConfig;
+    }
+}
+
 export default api;

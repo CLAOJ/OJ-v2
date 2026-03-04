@@ -3,6 +3,7 @@ package v2
 import (
 	"net/http"
 
+	"github.com/CLAOJ/claoj-go/config"
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/gin-gonic/gin"
@@ -57,4 +58,11 @@ func JudgeList(c *gin.Context) {
 		items[i] = Item{j.Name, j.Online, j.Ping, j.Load, j.StartTime}
 	}
 	c.JSON(http.StatusOK, apiList(items))
+}
+
+// ConfigPublic – GET /api/v2/config/public
+// Returns non-sensitive configuration that clients can use.
+func ConfigPublic(c *gin.Context) {
+	publicConfig := config.GetPublicConfig()
+	c.JSON(http.StatusOK, apiData(publicConfig))
 }
