@@ -15,10 +15,6 @@ build/
 .env.*.local
 
 # Configuration (with secrets)
-claoj.yaml
-claoj.production.yaml
-*.local.yaml
-*.local.yml
 *.key
 *.pem
 *.crt

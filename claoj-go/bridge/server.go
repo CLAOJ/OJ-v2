@@ -3,8 +3,6 @@ package bridge
 import (
 	"log"
 	"net"
-
-	"github.com/CLAOJ/claoj-go/config"
 )
 
 // Server accepts incoming TCP connections from judge workers.
@@ -21,11 +19,6 @@ func NewServer() *Server {
 }
 
 func (s *Server) Start() error {
-	// If configured in env, override port.
-	if port := config.C.App.EventDaemonContKey; port != "" {
-		// Just hardcode 9999 for now, we can add bridge.port to config later
-	}
-
 	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err

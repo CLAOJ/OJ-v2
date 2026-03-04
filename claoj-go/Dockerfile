@@ -26,7 +26,6 @@ RUN apk --no-cache add ca-certificates tzdata wget
 
 # Copy binary from builder
 COPY --from=builder /app/main .
-COPY --from=builder /app/claoj.yaml ./claoj.yaml
 
 # Copy static files if needed
 # COPY --from=builder /app/static ./static

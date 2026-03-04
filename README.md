@@ -84,10 +84,10 @@ Use the quickstart script:
 cd claoj-go
 ```
 
-2. Copy the example config and configure:
+2. Copy the root `.env.example` to `.env` and configure:
 ```bash
-cp claoj.example.yaml claoj.yaml
-# Edit claoj.yaml with your database credentials
+cp ../../.env.example .env
+# Edit .env with your database credentials
 ```
 
 3. Install dependencies:
@@ -177,40 +177,21 @@ The backend loads configuration in this order (highest to lowest priority):
 1. Direct environment variables (`DATABASE_URL`, `SECRET_KEY`, etc.)
 2. Prefixed environment variables (`CLAOJ_DATABASE_DSN`, `CLAOJ_APP_SECRET_KEY`)
 3. `.env` file (loaded automatically via godotenv)
-4. `claoj.yaml` config file (for backward compatibility)
-5. Default values
+4. Default values
 
 #### Frontend Configuration
 
-The frontend automatically uses `window.location.origin` for API and WebSocket URLs.
+The frontend uses `window.location.origin` for API and WebSocket URLs by default.
 No environment variables are required for local development.
 
-Optional overrides in `claoj-web/.env`:
+Optional overrides in `claoj-web/.env` or via Docker Compose environment:
 ```env
 # Only if you need to override defaults
 NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2
 NEXT_PUBLIC_SITE_NAME=CLAOJ
 ```
 
-#### Public Configuration API
-
-The backend exposes shared configuration via `GET /api/v2/config/public`:
-
-```json
-{
-  "data": {
-    "siteUrl": "https://claoj.edu.vn",
-    "apiUrl": "https://claoj.edu.vn/api/v2",
-    "defaultLanguage": "en",
-    "oauth": {
-      "googleEnabled": false,
-      "githubEnabled": false
-    }
-  }
-}
-```
-
-This allows the frontend to automatically sync with backend configuration.
+For Docker deployment, set `NEXT_PUBLIC_*` variables in the `.env` file or pass them as build args.
 
 ## Features
 

@@ -35,11 +35,9 @@ type RedisConfig struct {
 }
 
 type AppConfig struct {
-	SecretKey          string `mapstructure:"secret_key"`
-	SiteFullURL        string `mapstructure:"site_full_url"`
-	EventDaemonSubmKey string `mapstructure:"event_daemon_subm_key"`
-	EventDaemonContKey string `mapstructure:"event_daemon_cont_key"`
-	DefaultLanguage    string `mapstructure:"default_language"`
+	SecretKey       string `mapstructure:"secret_key"`
+	SiteFullURL     string `mapstructure:"site_full_url"`
+	DefaultLanguage string `mapstructure:"default_language"`
 }
 
 type EmailConfig struct {
@@ -67,15 +65,13 @@ type OAuthProviderConfig struct {
 
 var C Config
 
-// Load reads configuration from environment variables and/or a config file.
-// Environment variables take precedence. Supports both CLAOJ_* prefix and plain names.
+// Load reads configuration from environment variables.
 //
 // Priority (highest to lowest):
 //  1. Direct environment variables (DATABASE_URL, SECRET_KEY, etc.)
-//  2. CLAOJ_* prefixed environment variables (CLAOJ_DATABASE_DSN, CLAOJ_APP_SECRET_KEY)
+//  2. Prefixed environment variables (CLAOJ_DATABASE_DSN, CLAOJ_APP_SECRET_KEY)
 //  3. .env file (loaded via godotenv)
-//  4. claoj.yaml config file
-//  5. Default values
+//  4. Default values
 //
 // Example:
 //
@@ -107,8 +103,6 @@ func Load() {
 	v.SetDefault("redis.db", 0)
 	v.SetDefault("app.secret_key", "changeme")
 	v.SetDefault("app.site_full_url", "http://localhost:8081")
-	v.SetDefault("app.event_daemon_subm_key", "")
-	v.SetDefault("app.event_daemon_cont_key", "")
 	v.SetDefault("app.default_language", "py3")
 	v.SetDefault("email.smtp_host", "")
 	v.SetDefault("email.smtp_port", 587)
@@ -128,15 +122,7 @@ func Load() {
 	v.SetDefault("oauth.github.redirect_url", "")
 	v.SetDefault("oauth.github.enabled", false)
 
-	// config file (optional)
-	v.SetConfigName("claoj")
-	v.SetConfigType("yaml")
-	v.AddConfigPath(".")
-	v.AddConfigPath("./config")
-	_ = v.ReadInConfig() // no-error if not found
-
-	// bind environment variables (env takes precedence over config file)
-	// Support both plain names and CLAOJ_* prefix
+	// bind environment variables - support both plain names and CLAOJ_* prefix
 	v.SetEnvPrefix("CLAOJ")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
@@ -149,8 +135,6 @@ func Load() {
 	v.BindEnv("server.mode", "SERVER_MODE", "CLAOJ_SERVER_MODE")
 	v.BindEnv("app.secret_key", "SECRET_KEY", "CLAOJ_APP_SECRET_KEY")
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
-	v.BindEnv("app.event_daemon_subm_key", "EVENT_DAEMON_SUBM_KEY", "CLAOJ_EVENT_DAEMON_SUBM_KEY")
-	v.BindEnv("app.event_daemon_cont_key", "EVENT_DAEMON_CONT_KEY", "CLAOJ_EVENT_DAEMON_CONT_KEY")
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
 
 	// Email
@@ -187,32 +171,5 @@ func Load() {
 
 	if C.Database.DSN == "" {
 		log.Println("config: WARNING — DATABASE_DSN is not set; DB will not connect")
-	}
-}
-
-// PublicConfig holds non-sensitive configuration that can be exposed to the frontend.
-type PublicConfig struct {
-	SiteURL         string        `json:"siteUrl"`
-	APIURL          string        `json:"apiUrl"`
-	DefaultLanguage string        `json:"defaultLanguage"`
-	OAuth           OAuthPublicConfig `json:"oauth"`
-}
-
-// OAuthPublicConfig holds public OAuth configuration.
-type OAuthPublicConfig struct {
-	GoogleEnabled bool `json:"googleEnabled"`
-	GitHubEnabled bool `json:"githubEnabled"`
-}
-
-// GetPublicConfig returns non-sensitive configuration that can be safely exposed to clients.
-func GetPublicConfig() PublicConfig {
-	return PublicConfig{
-		SiteURL:         C.App.SiteFullURL,
-		APIURL:          strings.TrimSuffix(C.App.SiteFullURL, "/") + "/api/v2",
-		DefaultLanguage: C.App.DefaultLanguage,
-		OAuth: OAuthPublicConfig{
-			GoogleEnabled: C.OAuth.Google.Enabled,
-			GitHubEnabled: C.OAuth.GitHub.Enabled,
-		},
 	}
 }

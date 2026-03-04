@@ -8,8 +8,8 @@ RUN npm install
 
 COPY . .
 
-# Build argument for API URL
-ARG NEXT_PUBLIC_API_URL=http://localhost/api/v2
+# Build argument for API URL (optional - defaults to window.location.origin/api/v2 at runtime)
+ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 RUN npm run build

@@ -28,20 +28,12 @@ echo ""
 mkdir -p nginx/ssl
 mkdir -p claoj-go/data
 
-# Copy example config if not exists
-if [ ! -f claoj-go/claoj.yaml ]; then
-    echo "Creating claoj-go/claoj.yaml from example..."
-    cp claoj-go/claoj.example.yaml claoj-go/claoj.yaml
-    echo "✓ Created claoj-go/claoj.yaml"
-    echo "  Please edit this file to configure your database and other settings."
-    echo ""
-fi
-
 # Copy example env if not exists
-if [ ! -f claoj-web/.env.local ]; then
-    echo "Creating claoj-web/.env.local from example..."
-    cp claoj-web/.env.example claoj-web/.env.local
-    echo "✓ Created claoj-web/.env.local"
+if [ ! -f .env ]; then
+    echo "Creating .env from example..."
+    cp .env.example .env
+    echo "✓ Created .env"
+    echo "  Please edit this file to configure your database and other settings."
     echo ""
 fi
 
@@ -118,7 +110,7 @@ echo "  Setup Complete!"
 echo "========================================"
 echo ""
 echo "Next steps:"
-echo "1. Edit claoj-go/claoj.yaml to configure your settings"
+echo "1. Edit .env to configure your settings"
 echo "2. Set up your database (MySQL 8.0+)"
 echo "3. Set up Redis for caching"
 echo "4. Run migrations (if applicable)"
