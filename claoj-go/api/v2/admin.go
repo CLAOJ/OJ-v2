@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,6 +12,18 @@ import (
 	"github.com/CLAOJ/claoj-go/sanitization"
 	"github.com/gin-gonic/gin"
 )
+
+// bridgeServerRef is set by main.go to allow API handlers to access bridge functions
+var bridgeServerRef interface {
+	Abort(subID uint) error
+}
+
+// SetBridgeServer sets the bridge server reference for API handlers
+func SetBridgeServer(server interface {
+	Abort(subID uint) error
+}) {
+	bridgeServerRef = server
+}
 
 // ============================================================
 // ADMIN USER MANAGEMENT
@@ -993,6 +1006,166 @@ func AdminJudgeUnblock(c *gin.Context) {
 	})
 }
 
+// AdminJudgeDetail - GET /api/v2/admin/judge/:id
+func AdminJudgeDetail(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid judge ID"))
+		return
+	}
+
+	var judge models.Judge
+	if err := db.DB.Preload("Problems").Preload("Runtimes").First(&judge, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		return
+	}
+
+	// Get runtime versions for this judge
+	var runtimeVersions []models.RuntimeVersion
+	db.DB.Where("judge_id = ?", id).Preload("Language").Find(&runtimeVersions)
+
+	type ProblemInfo struct {
+		Code string `json:"code"`
+		Name string `json:"name"`
+	}
+
+	type RuntimeInfo struct {
+		Key     string `json:"key"`
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+
+	problems := make([]ProblemInfo, len(judge.Problems))
+	for i, p := range judge.Problems {
+		problems[i] = ProblemInfo{Code: p.Code, Name: p.Name}
+	}
+
+	runtimes := make([]RuntimeInfo, len(runtimeVersions))
+	for i, r := range runtimeVersions {
+		runtimes[i] = RuntimeInfo{
+			Key:     r.Language.Key,
+			Name:    r.Language.Name,
+			Version: r.Version,
+		}
+	}
+
+	lastIP := ""
+	if judge.LastIP != nil {
+		lastIP = *judge.LastIP
+	}
+
+	startTime := ""
+	if judge.StartTime != nil {
+		startTime = judge.StartTime.Format(time.RFC3339)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":          judge.ID,
+		"name":        judge.Name,
+		"online":      judge.Online,
+		"is_blocked":  judge.IsBlocked,
+		"is_disabled": judge.IsDisabled,
+		"start_time":  startTime,
+		"ping":        judge.Ping,
+		"load":        judge.Load,
+		"description": judge.Description,
+		"last_ip":     lastIP,
+		"problems":    problems,
+		"runtimes":    runtimes,
+	})
+}
+
+// AdminJudgeEnable - POST /api/v2/admin/judge/:id/enable
+func AdminJudgeEnable(c *gin.Context) {
+	id := c.Param("id")
+
+	var judge models.Judge
+	if err := db.DB.First(&judge, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		return
+	}
+
+	db.DB.Model(&judge).Update("is_disabled", false)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Judge enabled",
+	})
+}
+
+// AdminJudgeDisable - POST /api/v2/admin/judge/:id/disable
+func AdminJudgeDisable(c *gin.Context) {
+	id := c.Param("id")
+
+	var judge models.Judge
+	if err := db.DB.First(&judge, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		return
+	}
+
+	db.DB.Model(&judge).Update("is_disabled", true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Judge disabled",
+	})
+}
+
+// AdminJudgeUpdate - PATCH /api/v2/admin/judge/:id
+func AdminJudgeUpdate(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid judge ID"))
+		return
+	}
+
+	var judge models.Judge
+	if err := db.DB.First(&judge, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		return
+	}
+
+	var input struct {
+		Description *string `json:"description"`
+		ProblemIDs  []uint  `json:"problem_ids"`
+		RuntimeIDs  []uint  `json:"runtime_ids"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	updates := make(map[string]interface{})
+	if input.Description != nil {
+		updates["description"] = *input.Description
+	}
+
+	if len(updates) > 0 {
+		db.DB.Model(&judge).Updates(updates)
+	}
+
+	// Update problem assignments
+	if input.ProblemIDs != nil {
+		var problems []models.Problem
+		db.DB.Where("id IN ?", input.ProblemIDs).Find(&problems)
+		db.DB.Model(&judge).Association("Problems").Replace(&problems)
+	}
+
+	// Update runtime assignments
+	if input.RuntimeIDs != nil {
+		var runtimes []models.Language
+		db.DB.Where("id IN ?", input.RuntimeIDs).Find(&runtimes)
+		db.DB.Model(&judge).Association("Runtimes").Replace(&runtimes)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+	})
+}
+
 // ============================================================
 // ADMIN ORGANIZATION MANAGEMENT
 // ============================================================
@@ -1258,16 +1431,22 @@ func AdminSubmissionRejudge(c *gin.Context) {
 		return
 	}
 
+	// Check if submission is locked
+	if sub.LockedAfter != nil {
+		c.JSON(http.StatusBadRequest, apiError("submission is locked and cannot be rejudged"))
+		return
+	}
+
 	// Reset submission state for rejudge
 	db.DB.Model(&sub).Updates(map[string]interface{}{
-		"status":      "QU",
-		"result":      nil,
-		"points":      nil,
-		"time":        nil,
-		"memory":      nil,
+		"status":           "QU",
+		"result":           nil,
+		"points":           nil,
+		"time":             nil,
+		"memory":           nil,
 		"current_testcase": 0,
-		"case_points": 0,
-		"case_total":  0,
+		"case_points":      0,
+		"case_total":       0,
 	})
 
 	// Clear test cases
@@ -1286,6 +1465,189 @@ func AdminSubmissionRejudge(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Submission queued for rejudge",
+	})
+}
+
+// AdminSubmissionAbort - POST /api/v2/admin/submission/:id/abort
+func AdminSubmissionAbort(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		return
+	}
+
+	var sub models.Submission
+	if err := db.DB.First(&sub, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+
+	// Only allow aborting submissions that are being processed
+	if sub.Status != "P" && sub.Status != "G" {
+		c.JSON(http.StatusBadRequest, apiError("submission is not being processed"))
+		return
+	}
+
+	// Get the bridge server from global state
+	if bridgeServerRef == nil {
+		c.JSON(http.StatusInternalServerError, apiError("bridge server not available"))
+		return
+	}
+
+	// Send abort command to judge
+	if err := bridgeServerRef.Abort(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(fmt.Sprintf("failed to abort: %v", err)))
+		return
+	}
+
+	// Update submission status to aborted
+	db.DB.Model(&sub).Updates(map[string]interface{}{
+		"status": "AB",
+		"result": "AB",
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Submission abort signal sent",
+	})
+}
+
+// AdminSubmissionBatchRejudge - POST /api/v2/admin/submissions/batch-rejudge
+func AdminSubmissionBatchRejudge(c *gin.Context) {
+	var req struct {
+		SubmissionIDs []uint `json:"submission_ids"`
+		Filters       *struct {
+			UserID      *uint   `json:"user_id"`
+			Username    string  `json:"username"`
+			ProblemID   *uint   `json:"problem_id"`
+			ProblemCode string  `json:"problem_code"`
+			LanguageID  *uint   `json:"language_id"`
+			Language    string  `json:"language"`
+			Status      string  `json:"status"`
+			Result      string  `json:"result"`
+			FromDate    string  `json:"from_date"`
+			ToDate      string  `json:"to_date"`
+		} `json:"filters"`
+		DryRun bool `json:"dry_run"`
+	}
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid request body"))
+		return
+	}
+
+	// Build query for matching submissions
+	query := db.DB.Model(&models.Submission{})
+
+	// Apply filters if provided
+	if req.Filters != nil {
+		if req.Filters.UserID != nil && *req.Filters.UserID > 0 {
+			query = query.Where("user_id = ?", *req.Filters.UserID)
+		}
+		if req.Filters.Username != "" {
+			var profile models.Profile
+			if err := db.DB.Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+				Where("auth_user.username = ?", req.Filters.Username).
+				First(&profile).Error; err == nil {
+				query = query.Where("user_id = ?", profile.UserID)
+			}
+		}
+		if req.Filters.ProblemID != nil && *req.Filters.ProblemID > 0 {
+			query = query.Where("problem_id = ?", *req.Filters.ProblemID)
+		}
+		if req.Filters.ProblemCode != "" {
+			var problem models.Problem
+			if err := db.DB.Where("code = ?", req.Filters.ProblemCode).First(&problem).Error; err == nil {
+				query = query.Where("problem_id = ?", problem.ID)
+			}
+		}
+		if req.Filters.LanguageID != nil && *req.Filters.LanguageID > 0 {
+			query = query.Where("language_id = ?", *req.Filters.LanguageID)
+		}
+		if req.Filters.Language != "" {
+			var lang models.Language
+			if err := db.DB.Where("name LIKE ?", "%"+req.Filters.Language+"%").First(&lang).Error; err == nil {
+				query = query.Where("language_id = ?", lang.ID)
+			}
+		}
+		if req.Filters.Status != "" {
+			query = query.Where("status = ?", req.Filters.Status)
+		}
+		if req.Filters.Result != "" {
+			query = query.Where("result = ?", req.Filters.Result)
+		}
+		if req.Filters.FromDate != "" {
+			query = query.Where("date >= ?", req.Filters.FromDate)
+		}
+		if req.Filters.ToDate != "" {
+			query = query.Where("date <= ?", req.Filters.ToDate)
+		}
+	}
+
+	// If specific submission IDs provided, filter by them
+	if len(req.SubmissionIDs) > 0 {
+		query = query.Where("id IN ?", req.SubmissionIDs)
+	}
+
+	// Count matching submissions
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// If dry run, just return the count
+	if req.DryRun {
+		c.JSON(http.StatusOK, gin.H{
+			"count": count,
+			"message": fmt.Sprintf("%d submissions would be rejudged", count),
+		})
+		return
+	}
+
+	// Get all matching submission IDs
+	var submissionIDs []uint
+	if err := query.Pluck("id", &submissionIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Reset all matching submissions
+	for _, subID := range submissionIDs {
+		var sub models.Submission
+		if err := db.DB.First(&sub, subID).Error; err != nil {
+			continue // Skip if not found
+		}
+
+		// Skip locked submissions
+		if sub.LockedAfter != nil {
+			continue
+		}
+
+		// Reset submission state
+		db.DB.Model(&sub).Updates(map[string]interface{}{
+			"status":           "QU",
+			"result":           nil,
+			"points":           nil,
+			"time":             nil,
+			"memory":           nil,
+			"current_testcase": 0,
+			"case_points":      0,
+			"case_total":       0,
+		})
+
+		// Clear test cases
+		db.DB.Where("submission_id = ?", subID).Delete(&models.SubmissionTestCase{})
+
+		// Enqueue for rejudging
+		jobs.EnqueueJudgeSubmission(subID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"count":   len(submissionIDs),
+		"message": fmt.Sprintf("%d submissions queued for rejudge", len(submissionIDs)),
 	})
 }
 

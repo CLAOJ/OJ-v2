@@ -7,10 +7,22 @@ import type {
     AdminProblem,
     AdminProblemCreateRequest,
     AdminJudge,
+    AdminJudgeDetail,
+    AdminJudgeUpdateRequest,
     AdminOrganization,
     AdminSubmission,
     Role,
     Permission,
+    ProblemData,
+    ProblemDataFile,
+    ProblemDataUpdateRequest,
+    TestCaseContent,
+    TestCaseUpdateRequest,
+    TestCaseReorderRequest,
+    AdminSolution,
+    AdminSolutionDetail,
+    SolutionCreateRequest,
+    SolutionUpdateRequest,
 } from '@/types';
 
 // ============================================================
@@ -26,7 +38,7 @@ export interface ProblemTestCase {
 
 export const adminProblemDataApi = {
     detail: (code: string) =>
-        api.get<{ test_cases: ProblemTestCase[] }>(`/admin/problem/${code}/data`),
+        api.get<ProblemData>(`/admin/problem/${code}/data`),
 
     upload: (code: string, formData: FormData) =>
         api.post<{ success: boolean; test_cases: ProblemTestCase[] }>(`/admin/problem/${code}/data`, formData, {
@@ -35,6 +47,24 @@ export const adminProblemDataApi = {
 
     deleteTestCase: (code: string, testCaseId: number) =>
         api.delete(`/admin/problem/${code}/data/testcase/${testCaseId}`),
+
+    reorder: (code: string, data: TestCaseReorderRequest) =>
+        api.patch<{ success: boolean; test_cases: ProblemTestCase[] }>(`/admin/problem/${code}/data/reorder`, data),
+
+    files: (code: string) =>
+        api.get<{ files: ProblemDataFile[] }>(`/admin/problem/${code}/data/files`),
+
+    getFileContent: (code: string, path: string) =>
+        api.get<{ content: string; filename: string }>(`/admin/problem/${code}/data/file/${encodeURIComponent(path)}`),
+
+    deleteFile: (code: string, path: string) =>
+        api.delete(`/admin/problem/${code}/data/file/${encodeURIComponent(path)}`),
+
+    getTestCaseContent: (code: string, testCaseId: number) =>
+        api.get<TestCaseContent>(`/admin/problem/${code}/data/testcase/${testCaseId}/content`),
+
+    updateTestCase: (code: string, testCaseId: number, data: TestCaseUpdateRequest) =>
+        api.patch<{ success: boolean }>(`/admin/problem/${code}/data/testcase/${testCaseId}`, data),
 };
 
 // ============================================================
@@ -139,11 +169,23 @@ export const adminJudgeApi = {
     list: (page: number = 1, pageSize: number = 50) =>
         api.get<AdminJudgeListResponse>(`/admin/judges?page=${page}&page_size=${pageSize}`),
 
+    detail: (id: number) =>
+        api.get<AdminJudgeDetail>(`/admin/judge/${id}`),
+
     block: (id: number) =>
         api.post(`/admin/judge/${id}/block`),
 
     unblock: (id: number) =>
         api.post(`/admin/judge/${id}/unblock`),
+
+    enable: (id: number) =>
+        api.post(`/admin/judge/${id}/enable`),
+
+    disable: (id: number) =>
+        api.post(`/admin/judge/${id}/disable`),
+
+    update: (id: number, data: AdminJudgeUpdateRequest) =>
+        api.patch(`/admin/judge/${id}`, data),
 };
 
 // ============================================================
@@ -202,6 +244,27 @@ export interface AdminSubmissionListResponse {
     page_size: number;
 }
 
+export interface BatchRejudgeRequest {
+    submission_ids?: number[];
+    filters?: {
+        user_id?: number;
+        problem_id?: number;
+        problem_code?: string;
+        language_id?: number;
+        status?: string;
+        result?: string;
+        from_date?: string;
+        to_date?: string;
+    };
+    dry_run?: boolean;
+}
+
+export interface BatchRejudgeResponse {
+    success?: boolean;
+    count: number;
+    message: string;
+}
+
 export interface MossAnalysisResult {
     id: number;
     submission_id: number;
@@ -223,6 +286,12 @@ export const adminSubmissionApi = {
 
     rejudge: (id: number) =>
         api.post(`/admin/submission/${id}/rejudge`),
+
+    abort: (id: number) =>
+        api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/abort`),
+
+    batchRejudge: (data: BatchRejudgeRequest) =>
+        api.post<BatchRejudgeResponse>('/admin/submissions/batch-rejudge', data),
 
     mossAnalyze: (id: number, language: string) =>
         api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/moss`, { language }),
@@ -281,4 +350,32 @@ export const adminRolesApi = {
 
     removeRole: (profileId: number, roleId: number) =>
         api.delete(`/admin/profile/${profileId}/roles/${roleId}`),
+};
+
+// ============================================================
+// ADMIN SOLUTION API
+// ============================================================
+
+export interface AdminSolutionListResponse {
+    data: AdminSolution[];
+    total: number;
+    page: number;
+    page_size: number;
+}
+
+export const adminSolutionApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminSolutionListResponse>(`/admin/solutions?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminSolutionDetail>(`/admin/solution/${id}`),
+
+    create: (data: SolutionCreateRequest) =>
+        api.post<{ success: boolean; solution: { id: number } }>('/admin/solutions', data),
+
+    update: (id: number, data: SolutionUpdateRequest) =>
+        api.patch<{ success: boolean }>(`/admin/solution/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete(`/admin/solution/${id}`),
 };

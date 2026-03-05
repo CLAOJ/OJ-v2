@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { adminSubmissionApi } from '@/lib/adminApi';
 import { AdminSubmission } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -16,9 +17,12 @@ import {
     Filter,
     RefreshCw,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    StopCircle,
+    CheckCircle,
+    AlertTriangle
 } from 'lucide-react';
-import { getStatusColor, getStatusVariant } from '@/lib/utils';
+import { getStatusColor, getStatusVariant, cn } from '@/lib/utils';
 
 export default function AdminSubmissionPage() {
     const [page, setPage] = useState(1);
@@ -26,6 +30,10 @@ export default function AdminSubmissionPage() {
     const [problemFilter, setProblemFilter] = useState('');
     const [resultFilter, setResultFilter] = useState('');
     const [langFilter, setLangFilter] = useState('');
+    const [showBatchModal, setShowBatchModal] = useState(false);
+    const [batchPreview, setBatchPreview] = useState<{ count: number; message: string } | null>(null);
+    const [isExecutingBatch, setIsExecutingBatch] = useState(false);
+    const queryClient = useQueryClient();
 
     const { data, isLoading, refetch } = useQuery({
         queryKey: ['admin-submissions', page, userFilter, problemFilter, resultFilter, langFilter],
@@ -40,9 +48,74 @@ export default function AdminSubmissionPage() {
         }
     });
 
+    const rejudgeMutation = useMutation({
+        mutationFn: (id: number) => adminSubmissionApi.rejudge(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
+        }
+    });
+
+    const abortMutation = useMutation({
+        mutationFn: (id: number) => adminSubmissionApi.abort(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
+        }
+    });
+
     const submissions = data?.data || [];
 
-    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'RE', 'IE', 'CE', 'AB'];
+    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'RE', 'IE', 'CE', 'AB', 'QU', 'P', 'G'];
+
+    // Batch rejudge preview
+    const handleBatchPreview = async () => {
+        setIsExecutingBatch(false);
+        const filters: any = {};
+
+        // For text-based filters (username, problem code), we need to resolve to IDs first
+        // For now, pass them as string filters and let backend handle resolution
+        if (userFilter) filters.username = userFilter;
+        if (problemFilter) filters.problem_code = problemFilter;
+        if (resultFilter) filters.result = resultFilter;
+        if (langFilter) filters.language = langFilter;
+
+        try {
+            const res = await adminSubmissionApi.batchRejudge({
+                filters,
+                dry_run: true
+            });
+            setBatchPreview({ count: res.data.count, message: res.data.message });
+        } catch (err: any) {
+            setBatchPreview({ count: 0, message: err.response?.data?.error || 'Failed to get preview' });
+        }
+    };
+
+    // Execute batch rejudge
+    const handleBatchExecute = async () => {
+        if (!batchPreview || batchPreview.count === 0) return;
+        if (!confirm(`Are you sure you want to rejudge ${batchPreview.count} submissions?`)) return;
+
+        setIsExecutingBatch(true);
+        const filters: any = {};
+        if (userFilter) filters.username = userFilter;
+        if (problemFilter) filters.problem_code = problemFilter;
+        if (resultFilter) filters.result = resultFilter;
+        if (langFilter) filters.language = langFilter;
+
+        try {
+            await adminSubmissionApi.batchRejudge({
+                filters,
+                dry_run: false
+            });
+            alert(`Successfully queued ${batchPreview.count} submissions for rejudge`);
+            setShowBatchModal(false);
+            setBatchPreview(null);
+            refetch();
+        } catch (err: any) {
+            alert(`Error: ${err.response?.data?.error || 'Failed to execute batch rejudge'}`);
+        } finally {
+            setIsExecutingBatch(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -56,6 +129,12 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowBatchModal(true)}
+                        className="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-bold flex items-center gap-2"
+                    >
+                        <RefreshCw size={18} /> Batch Rejudge
+                    </button>
                     <button
                         onClick={() => {
                             setUserFilter('');
@@ -71,6 +150,62 @@ export default function AdminSubmissionPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Batch Rejudge Modal */}
+            {showBatchModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-card rounded-2xl p-6 w-full max-w-md border shadow-2xl">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <RefreshCw className={cn(isExecutingBatch ? 'animate-spin' : '')} size={24} />
+                            Batch Rejudge
+                        </h2>
+                        <p className="text-muted-foreground text-sm mb-4">
+                            Rejudge all submissions matching current filters
+                        </p>
+
+                        {batchPreview && (
+                            <div className={cn(
+                                "p-4 rounded-xl mb-4 flex items-center gap-3",
+                                batchPreview.count > 0 ? "bg-amber-500/10 text-amber-600" : "bg-muted"
+                            )}>
+                                <AlertTriangle size={20} />
+                                <div>
+                                    <div className="font-bold">{batchPreview.count} submissions</div>
+                                    <div className="text-sm opacity-75">{batchPreview.message}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={handleBatchPreview}
+                                disabled={isExecutingBatch}
+                                className="flex-1 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-50"
+                            >
+                                {batchPreview ? 'Refresh Preview' : 'Preview'}
+                            </button>
+                            {batchPreview && batchPreview.count > 0 && (
+                                <button
+                                    onClick={handleBatchExecute}
+                                    disabled={isExecutingBatch}
+                                    className="flex-1 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground font-bold disabled:opacity-50"
+                                >
+                                    {isExecutingBatch ? 'Executing...' : 'Execute'}
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setShowBatchModal(false);
+                                    setBatchPreview(null);
+                                }}
+                                className="px-4 py-2 rounded-xl bg-muted font-bold"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-2xl bg-card border">
@@ -182,17 +317,34 @@ export default function AdminSubmissionPage() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => {
-                                                    if (confirm('Are you sure you want to rejudge this submission?')) {
-                                                        api.post(`/admin/submission/${s.id}/rejudge`);
-                                                        refetch();
-                                                    }
-                                                }}
-                                                className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold"
-                                            >
-                                                Rejudge
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm('Are you sure you want to rejudge this submission?')) {
+                                                            rejudgeMutation.mutate(s.id);
+                                                        }
+                                                    }}
+                                                    disabled={rejudgeMutation.isPending}
+                                                    className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold flex items-center gap-1"
+                                                >
+                                                    <RefreshCw size={14} className={rejudgeMutation.isPending ? 'animate-spin' : ''} />
+                                                    Rejudge
+                                                </button>
+                                                {(s.status === 'P' || s.status === 'G') && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('Are you sure you want to abort this submission?')) {
+                                                                abortMutation.mutate(s.id);
+                                                            }
+                                                        }}
+                                                        disabled={abortMutation.isPending}
+                                                        className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-bold flex items-center gap-1"
+                                                    >
+                                                        <StopCircle size={14} className={abortMutation.isPending ? 'animate-spin' : ''} />
+                                                        Abort
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
