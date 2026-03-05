@@ -23,27 +23,16 @@ export function getApiUrl(): string {
     return api.defaults.baseURL as string;
 }
 
-// Interceptor to add access token from cookie or localStorage
+// Interceptor to add access token from httpOnly cookie
+// NOTE: Tokens are stored in httpOnly cookies only - never in localStorage for security
 api.interceptors.request.use((config) => {
-    // Try to get token from cookie first, fallback to localStorage for backwards compatibility
-    const getCookie = (name: string): string | null => {
-        if (typeof window === 'undefined') return null;
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) {
-            return parts.pop()?.split(';').shift() || null;
-        }
-        return null;
-    };
-
-    const token = getCookie('access_token') || (typeof window !== 'undefined' ? localStorage.getItem('access_token') : null);
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Token is automatically sent via httpOnly cookie
+    // No need to manually add Authorization header - backend reads from cookie
     return config;
 });
 
-// Interceptor to handle periodic refresh
+// Interceptor to handle token refresh using httpOnly cookies
+// NOTE: Refresh token is read from httpOnly cookie only - never from localStorage
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -51,44 +40,21 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
-            // Try to get refresh token from cookie first, then localStorage
-            const getCookie = (name: string): string | null => {
-                if (typeof window === 'undefined') return null;
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) {
-                    return parts.pop()?.split(';').shift() || null;
+            // Refresh using httpOnly cookie - no need to send refresh_token
+            // Backend reads it from the cookie automatically
+            try {
+                const res = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {}, {
+                    withCredentials: true,
+                });
+
+                if (res.status === 200) {
+                    // New tokens are set via httpOnly cookies by the server
+                    return api(originalRequest);
                 }
-                return null;
-            };
-
-            const refreshToken = getCookie('refresh_token') || (typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null);
-
-            if (refreshToken) {
-                try {
-                    const res = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
-                        refresh_token: refreshToken,
-                    }, {
-                        withCredentials: true,
-                    });
-
-                    if (res.status === 200) {
-                        // Tokens are now set via httpOnly cookies by the server
-                        // Also update localStorage for backwards compatibility
-                        if (typeof window !== 'undefined') {
-                            localStorage.setItem('access_token', res.data.access_token);
-                            localStorage.setItem('refresh_token', res.data.refresh_token);
-                        }
-                        api.defaults.headers.common['Authorization'] = `Bearer ${res.data.access_token}`;
-                        return api(originalRequest);
-                    }
-                } catch (refreshError) {
-                    // Refresh failed, logout user
-                    if (typeof window !== 'undefined') {
-                        localStorage.removeItem('access_token');
-                        localStorage.removeItem('refresh_token');
-                        window.location.href = '/login';
-                    }
+            } catch (refreshError) {
+                // Refresh failed, redirect to login
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/login';
                 }
             }
         }

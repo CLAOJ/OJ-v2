@@ -182,27 +182,24 @@ func Login(c *gin.Context) {
 	})
 }
 
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-// Refresh generates a new access token given a valid refresh token.
+// Refresh generates a new access token given a valid refresh token from cookie
 func Refresh(c *gin.Context) {
-	var req RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// Get refresh token from httpOnly cookie
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token not found in cookie"})
 		return
 	}
 
-	claims, err := auth.VerifyToken(req.RefreshToken, "refresh")
+	claims, err := auth.VerifyToken(refreshToken, "refresh")
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired refresh token"})
 		return
 	}
 
 	// Check if token has been revoked
-	var refreshToken models.RefreshToken
-	if err := db.DB.Where("token = ? AND user_id = ?", req.RefreshToken, claims.UserID).First(&refreshToken).Error; err != nil {
+	var refreshTokenModel models.RefreshToken
+	if err := db.DB.Where("token = ? AND user_id = ?", refreshToken, claims.UserID).First(&refreshTokenModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token not found"})
 			return
@@ -211,18 +208,18 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	if refreshToken.RevokedAt != nil {
+	if refreshTokenModel.RevokedAt != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token has been revoked"})
 		return
 	}
 
-	if refreshToken.ExpiresAt.Before(time.Now()) {
+	if refreshTokenModel.ExpiresAt.Before(time.Now()) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token has expired"})
 		return
 	}
 
 	// Generate new token pair with same family ID
-	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, refreshToken.FamilyID)
+	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, refreshTokenModel.FamilyID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
@@ -230,7 +227,7 @@ func Refresh(c *gin.Context) {
 
 	// Revoke old token and store new one
 	tx := db.DB.Begin()
-	if err := tx.Model(&refreshToken).Update("revoked_at", time.Now()).Error; err != nil {
+	if err := tx.Model(&refreshTokenModel).Update("revoked_at", time.Now()).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token"})
 		return

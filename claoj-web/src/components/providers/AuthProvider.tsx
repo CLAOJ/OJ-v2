@@ -25,31 +25,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (username: string, password: string): Promise<LoginResponse> => {
         const res = await api.post('/auth/login', { username, password });
-        const { access_token, refresh_token, user: userData, requires_totp, requiresTotp } = res.data;
+        const { requires_totp, requiresTotp } = res.data;
 
         // Check if TOTP is required
         if (requires_totp || requiresTotp) {
             return { requiresTotp: true, username: res.data.username };
         }
 
-        // Tokens are now set via httpOnly cookies by the server
-        // Also update localStorage for backwards compatibility
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('access_token', access_token);
-            localStorage.setItem('refresh_token', refresh_token);
-        }
-        setUser(userData);
+        // Tokens are set via httpOnly cookies by the server - no localStorage storage
+        setUser(res.data.user);
         return {};
     };
 
     const loginTotp = async (username: string, code: string) => {
         const res = await api.post('/auth/totp/verify', { username, code });
-        const { access_token, refresh_token, user: userData } = res.data;
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('access_token', access_token);
-            localStorage.setItem('refresh_token', refresh_token);
-        }
-        setUser(userData);
+        // Tokens are set via httpOnly cookies by the server - no localStorage storage
+        setUser(res.data.user);
     };
 
     const logout = async () => {
@@ -58,10 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await api.post('/auth/logout');
         } catch (err) {
             console.error('Logout error', err);
-        }
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
         }
         setUser(null);
     };
@@ -72,27 +59,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setLoading(false);
                 return;
             }
-            // Try cookie first, fallback to localStorage
-            const getCookie = (name: string): string | null => {
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) {
-                    return parts.pop()?.split(';').shift() || null;
-                }
-                return null;
-            };
 
-            const token = getCookie('access_token') || localStorage.getItem('access_token');
-            if (token) {
-                try {
-                    const res = await api.get('/user/me');
-                    if (res.status === 200) {
-                        setUser(res.data.user);
-                    }
-                } catch (err) {
-                    console.error('Initial auth check failed', err);
-                    logout();
+            // Auth is handled entirely via httpOnly cookies
+            // No need to check localStorage - tokens are automatically sent with requests
+            try {
+                const res = await api.get('/user/me');
+                if (res.status === 200) {
+                    setUser(res.data.user);
                 }
+            } catch (err) {
+                // Not logged in or token expired
+                console.log('Not authenticated');
             }
             setLoading(false);
         };
