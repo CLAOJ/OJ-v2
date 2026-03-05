@@ -126,7 +126,9 @@
     "next": "Next",
     "previous": "Previous",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "error_loading_data": "Error loading data",
+    "back_to_problem": "Back to problem"
   },
   "Ratings": {
     "title": "Rating Leaderboard",
@@ -141,5 +143,37 @@
     "noResults": "No users found",
     "previous": "Previous",
     "next": "Next"
+  },
+  "problem": {
+    "editorial": "Editorial",
+    "editorial_not_found": "No editorial available for this problem",
+    "editorial_not_public": "This editorial is not yet public",
+    "authors": "Authors",
+    "official_solution": "Official Solution",
+    "published_on": "Published on"
+  },
+  "admin": {
+    "back_to_problems": "Back to problems",
+    "edit_solution": "Edit Solution",
+    "create_solution": "Create Solution",
+    "problem": "Problem",
+    "summary": "Summary",
+    "solution_summary_placeholder": "Brief summary of the solution approach...",
+    "content": "Content",
+    "solution_content_help": "Write your solution in Markdown format. LaTeX math is supported using $...$ for inline math and $$...$$ for display math.",
+    "is_public": "Public (visible to all users)",
+    "is_official": "Official (marked as official solution)",
+    "publish_on": "Publish On",
+    "valid_until": "Valid Until",
+    "language": "Language",
+    "save": "Save Changes",
+    "create": "Create Solution",
+    "delete": "Delete Solution",
+    "confirm_delete": "Are you sure you want to delete this solution? This action cannot be undone.",
+    "problem_required": "Problem is required",
+    "solution_created": "Solution created successfully",
+    "solution_updated": "Solution updated successfully",
+    "error_creating_solution": "Error creating solution",
+    "error_updating_solution": "Error updating solution"
   }
 }

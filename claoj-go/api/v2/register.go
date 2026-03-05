@@ -39,7 +39,13 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 2. Hash Password
+	// 2. Validate Password Strength
+	if err := validatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// 3. Hash Password
 	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to hash password"))
@@ -62,13 +68,13 @@ func Register(c *gin.Context) {
 			return errors.New("email already taken")
 		}
 
-		// 4. Create AuthUser
+		// 4. Create AuthUser - set IsActive=false until email is verified
 		user := models.AuthUser{
 			Username:   req.Username,
 			Email:      req.Email,
 			Password:   hashedPassword,
 			FirstName:  req.FullName,
-			IsActive:   true,
+			IsActive:   false, // Require email verification before activation
 			DateJoined: time.Now(),
 		}
 		if err := tx.Create(&user).Error; err != nil {
@@ -122,4 +128,50 @@ func Register(c *gin.Context) {
 		"message": "account created successfully. Please check your email to verify your account.",
 		"requires_verification": true,
 	})
+}
+
+// validatePasswordStrength checks password meets minimum security requirements
+func validatePasswordStrength(password string) error {
+	// Minimum length: 8 characters
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters long")
+	}
+
+	// Require at least one uppercase letter
+	hasUpper := false
+	for _, r := range password {
+		if r >= 'A' && r <= 'Z' {
+			hasUpper = true
+			break
+		}
+	}
+	if !hasUpper {
+		return errors.New("password must contain at least one uppercase letter")
+	}
+
+	// Require at least one lowercase letter
+	hasLower := false
+	for _, r := range password {
+		if r >= 'a' && r <= 'z' {
+			hasLower = true
+			break
+		}
+	}
+	if !hasLower {
+		return errors.New("password must contain at least one lowercase letter")
+	}
+
+	// Require at least one number
+	hasNumber := false
+	for _, r := range password {
+		if r >= '0' && r <= '9' {
+			hasNumber = true
+			break
+		}
+	}
+	if !hasNumber {
+		return errors.New("password must contain at least one number")
+	}
+
+	return nil
 }

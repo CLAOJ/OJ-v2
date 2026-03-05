@@ -298,8 +298,24 @@ export interface AdminJudge {
     name: string;
     online: boolean;
     is_blocked: boolean;
+    is_disabled: boolean;
     auth_key: string;
     last_ip: string;
+    ping?: number;
+    load?: number;
+}
+
+export interface AdminJudgeDetail extends AdminJudge {
+    start_time?: string;
+    description: string;
+    problems: { code: string; name: string }[];
+    runtimes: { key: string; name: string; version: string }[];
+}
+
+export interface AdminJudgeUpdateRequest {
+    description?: string;
+    problem_ids?: number[];
+    runtime_ids?: number[];
 }
 
 export interface AdminOrganization {
@@ -488,4 +504,130 @@ export interface Role {
 
 export interface RoleWithUserCount extends Role {
     user_count: number;
+}
+
+// ============================================================
+// PROBLEM DATA MANAGEMENT TYPES
+// ============================================================
+
+export interface ProblemTestCase {
+    id: number;
+    order: number;
+    input_file: string;
+    output_file: string;
+    points?: number;
+    is_pretest?: boolean;
+}
+
+export interface ProblemData {
+    code: string;
+    test_cases: ProblemTestCase[];
+    checker: string;
+    grader: string;
+    generator: string;
+    feedback: string;
+    checker_args?: string;
+    grader_args?: string;
+    has_custom_checker: boolean;
+    has_custom_grader: boolean;
+    has_custom_header: boolean;
+    has_generator_yml: boolean;
+    has_init_yml: boolean;
+}
+
+export interface ProblemDataFile {
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+    size?: number;
+    is_testcase?: boolean;
+}
+
+export interface ProblemDataUpdateRequest {
+    checker_data?: string;
+    grader_data?: string;
+    header_data?: string;
+    generator_data?: string;
+    generator_yml_data?: string;
+    feedback?: string;
+    checker_args?: string;
+    grader_args?: string;
+}
+
+export interface TestCaseContent {
+    id: number;
+    order: number;
+    input_data: string;
+    output_data: string;
+    encoding: string;
+}
+
+export interface TestCaseUpdateRequest {
+    input_data?: string;
+    output_data?: string;
+    order?: number;
+    points?: number;
+    is_pretest?: boolean;
+    type?: string;
+}
+
+export interface TestCaseReorderRequest {
+    test_cases: { id: number; order: number }[];
+}
+
+// ============================================================
+// SOLUTION/EDITORIAL TYPES
+// ============================================================
+
+export interface Solution {
+    id: number;
+    problem_id: number;
+    content: string;
+    summary: string;
+    authors: { id: number; username: string }[];
+    is_official: boolean;
+    publish_on?: string;
+    language: string;
+}
+
+export interface AdminSolution {
+    id: number;
+    problem_id: number;
+    problem_code: string;
+    problem_name: string;
+    summary: string;
+    is_public: boolean;
+    is_official: boolean;
+    publish_on?: string;
+    language: string;
+}
+
+export interface AdminSolutionDetail extends Solution {
+    problem_code: string;
+    problem_name: string;
+    is_public: boolean;
+    valid_until?: string;
+}
+
+export interface SolutionCreateRequest {
+    problem_id: number;
+    content: string;
+    summary?: string;
+    author_ids?: number[];
+    is_public?: boolean;
+    is_official?: boolean;
+    publish_on?: string;
+    valid_until?: string;
+    language?: string;
+}
+
+export interface SolutionUpdateRequest {
+    content?: string;
+    summary?: string;
+    author_ids?: number[];
+    is_public?: boolean;
+    is_official?: boolean;
+    publish_on?: string;
+    valid_until?: string;
+    language?: string;
 }

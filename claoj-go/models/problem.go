@@ -123,14 +123,18 @@ func (LanguageLimit) TableName() string { return "judge_languagelimit" }
 
 // Solution mirrors judge_solution.
 type Solution struct {
-	ID        uint      `gorm:"primaryKey;column:id"`
-	ProblemID uint      `gorm:"column:problem_id;not null;uniqueIndex"`
-	PdfURL    string    `gorm:"column:pdf_url;size:200;not null;default:''"`
-	IsPublic  bool      `gorm:"column:is_public;not null;default:0"`
-	PublishOn time.Time `gorm:"column:publish_on;not null"`
-	Content   string    `gorm:"column:content;type:longtext;not null"`
-	Problem   Problem   `gorm:"foreignKey:ProblemID"`
-	Authors   []Profile `gorm:"many2many:judge_solution_authors;joinForeignKey:solution_id;joinReferences:profile_id"`
+	ID         uint       `gorm:"primaryKey;column:id"`
+	ProblemID  uint       `gorm:"column:problem_id;not null;uniqueIndex"`
+	Problem    Problem    `gorm:"foreignKey:ProblemID"`
+	PdfURL     string     `gorm:"column:pdf_url;size:200;not null;default:''"`
+	Content    string     `gorm:"column:content;type:longtext;not null"`
+	Authors    []Profile  `gorm:"many2many:judge_solution_authors;joinForeignKey:solution_id;joinReferences:profile_id"`
+	IsPublic   bool       `gorm:"column:is_public;not null;default:0;index"`
+	IsOfficial bool       `gorm:"column:is_official;not null;default:0"`
+	PublishOn  *time.Time `gorm:"column:publish_on;index"`
+	ValidUntil *time.Time `gorm:"column:valid_until"`
+	Summary    string     `gorm:"column:summary;type:longtext"`
+	Language   string     `gorm:"column:language;size:7;not null;default:'en'"`
 }
 
 func (Solution) TableName() string { return "judge_solution" }

@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -11,14 +12,24 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj-go/auth"
+	"github.com/CLAOJ/claoj-go/cache"
 	"github.com/CLAOJ/claoj-go/config"
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/email"
+	"github.com/CLAOJ/claoj-go/lockout"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/CLAOJ/claoj-go/oauth"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// getLockoutRepo returns the lockout repository (nil if Redis not available)
+func getLockoutRepo() *lockout.Repository {
+	if cache.Client != nil {
+		return lockout.NewRepository(cache.Client)
+	}
+	return nil
+}
 
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
@@ -33,14 +44,51 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	ctx := context.Background()
+	lockoutRepo := getLockoutRepo()
+
+	// Check if account is locked due to failed attempts
+	if lockoutRepo != nil {
+		locked, ttl, err := lockoutRepo.IsLocked(ctx, "user:"+req.Username)
+		if err != nil {
+			log.Printf("Lockout check error: %v", err)
+		}
+		if locked {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":         "account_locked",
+				"message":       "Account temporarily locked due to too many failed login attempts.",
+				"retry_after":   int(ttl.Seconds()),
+				"retry_after_text": lockout.FormatLockoutMessage(0, ttl),
+			})
+			return
+		}
+	}
+
 	var user models.AuthUser
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
+		// Record failed attempt even for non-existent usernames (prevents enumeration)
+		if lockoutRepo != nil {
+			lockoutRepo.RecordFailedAttempt(ctx, "ip:"+c.ClientIP())
+		}
 		// Generic error to prevent username enumeration
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return
 	}
 
 	if !user.IsActive {
+		// Check if user has pending email verification
+		var verificationToken models.EmailVerificationToken
+		err := db.DB.Where("user_id = ? AND expires_at > ?", user.ID, time.Now()).First(&verificationToken).Error
+		if err == nil {
+			// Token exists, user needs to verify email
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "email not verified",
+				"message": "Please verify your email address before logging in. Check your inbox for the verification link.",
+				"requires_email_verification": true,
+			})
+			return
+		}
+		// Account is inactive for other reasons (banned, etc.)
 		c.JSON(http.StatusForbidden, gin.H{"error": "account is inactive"})
 		return
 	}
@@ -48,11 +96,40 @@ func Login(c *gin.Context) {
 	// Verify Django pbkdf2_sha256 password hash
 	match, err := auth.CheckPassword(req.Password, user.Password)
 	if err != nil || !match {
+		// Record failed attempt
+		if lockoutRepo != nil {
+			count, _ := lockoutRepo.RecordFailedAttempt(ctx, "user:"+req.Username)
+			remaining, _ := lockoutRepo.GetRemainingAttempts(ctx, "user:"+req.Username)
+
+			// Return warning if attempts are running low
+			if count >= 5 && remaining > 0 {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "invalid username or password",
+					"warning": lockout.FormatLockoutMessage(remaining, 0),
+					"attempts_remaining": remaining,
+				})
+				return
+			}
+		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return
 	}
 
-	// Check if TOTP is required
+	// Successful login - reset lockout counter
+	if lockoutRepo != nil {
+		lockoutRepo.Reset(ctx, "user:"+req.Username)
+	}
+
+	// Check if TOTP is required for admins
+	if config.C.App.RequireTotpForAdmins && user.IsStaff && !CheckTOTPRequired(user.ID) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "TOTP required for admin accounts",
+			"message": "Administrator accounts must enable two-factor authentication. Please contact the system administrator.",
+		})
+		return
+	}
+
+	// Check if TOTP is required (for all users who have it enabled)
 	if CheckTOTPRequired(user.ID) {
 		// Return TOTP challenge
 		c.JSON(http.StatusOK, gin.H{
@@ -64,15 +141,38 @@ func Login(c *gin.Context) {
 	}
 
 	// Generate JWTs
-	accessToken, refreshToken, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser)
+	var familyID string
+	accessToken, refreshToken, familyID, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
 	}
 
+	// Store refresh token in database for revocation tracking
+	userAgent := c.Request.UserAgent()
+	clientIP := c.ClientIP()
+	refreshTokenModel := models.RefreshToken{
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		UserAgent: &userAgent,
+		ClientIP:  &clientIP,
+		FamilyID:  familyID,
+	}
+	if err := db.DB.Create(&refreshTokenModel).Error; err != nil {
+		log.Printf("Failed to store refresh token: %v", err)
+		// Don't fail the login, just log the error
+	}
+
+	// Set httpOnly cookies for tokens
+	// Access token cookie (15 minutes)
+	c.SetCookie("access_token", accessToken, 900, "/", "", true, true) // Secure=true, HttpOnly=true
+	// Refresh token cookie (7 days)
+	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", true, true) // Secure=true, HttpOnly=true
+
 	// In a real app we might update last_login here
 	c.JSON(http.StatusOK, gin.H{
-		"access_token":  accessToken,
+		"access_token":  accessToken,  // Also return in body for backwards compatibility
 		"refresh_token": refreshToken,
 		"user": gin.H{
 			"id":       user.ID,
@@ -100,16 +200,67 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	// Just generate a new token pair
-	accessToken, refreshToken, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin)
+	// Check if token has been revoked
+	var refreshToken models.RefreshToken
+	if err := db.DB.Where("token = ? AND user_id = ?", req.RefreshToken, claims.UserID).First(&refreshToken).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate token"})
+		return
+	}
+
+	if refreshToken.RevokedAt != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token has been revoked"})
+		return
+	}
+
+	if refreshToken.ExpiresAt.Before(time.Now()) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token has expired"})
+		return
+	}
+
+	// Generate new token pair with same family ID
+	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, refreshToken.FamilyID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
 	}
 
+	// Revoke old token and store new one
+	tx := db.DB.Begin()
+	if err := tx.Model(&refreshToken).Update("revoked_at", time.Now()).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token"})
+		return
+	}
+
+	// Store new refresh token
+	userAgent := c.Request.UserAgent()
+	clientIP := c.ClientIP()
+	newRefreshTokenModel := models.RefreshToken{
+		UserID:    claims.UserID,
+		Token:     newRefreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		UserAgent: &userAgent,
+		ClientIP:  &clientIP,
+		FamilyID:  familyID,
+	}
+	if err := tx.Create(&newRefreshTokenModel).Error; err != nil {
+		tx.Rollback()
+		log.Printf("Failed to store refresh token: %v", err)
+		// Don't fail the request, just log the error
+	}
+	tx.Commit()
+
+	// Set httpOnly cookies for tokens
+	c.SetCookie("access_token", accessToken, 900, "/", "", true, true)
+	c.SetCookie("refresh_token", newRefreshToken, 7*24*60*60, "/", "", true, true)
+
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
-		"refresh_token": refreshToken,
+		"refresh_token": newRefreshToken,
 	})
 }
 
@@ -233,7 +384,7 @@ func OAuthStart(c *gin.Context) {
 	}
 
 	// Store state in cookie with SameSite attribute for CSRF protection
-	// Using http.Cookie directly to set SameSite
+	// Using http.Cookie directly to set SameSite=Strict for maximum protection
 	cookie := &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
@@ -242,7 +393,7 @@ func OAuthStart(c *gin.Context) {
 		Domain:   "",
 		Secure:   true,
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	}
 	http.SetCookie(c.Writer, cookie)
 
@@ -258,8 +409,9 @@ func OAuthStart(c *gin.Context) {
 
 // OAuthCallbackRequest - POST /api/v2/auth/oauth/:provider/callback
 type OAuthCallbackRequest struct {
-	Code  string `json:"code" binding:"required"`
-	State string `json:"state" binding:"required"`
+	Code     string `json:"code" binding:"required"`
+	State    string `json:"state" binding:"required"`
+	Password string `json:"password,omitempty"` // For linking to existing account
 }
 
 // OAuthCallback - POST /api/v2/auth/oauth/:provider/callback
@@ -293,7 +445,7 @@ func OAuthCallback(c *gin.Context) {
 		Domain:   "",
 		Secure:   true,
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	}
 	http.SetCookie(c.Writer, cookie)
 
@@ -313,19 +465,38 @@ func OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// Find or create user
-	userID, err := findOrCreateOAuthUser(userInfo)
+	// Find or create user - may require password confirmation
+	userID, requiresLinking, err := findOrCreateOAuthUser(userInfo, req.Password)
 	if err != nil {
+		if err.Error() == "password_required_for_linking" {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "account_linking_required",
+				"message": "An account with this email already exists. Please provide your password to link accounts.",
+				"email": userInfo.Email,
+			})
+			return
+		}
+		if err.Error() == "invalid_password_for_linking" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid_password",
+				"message": "Invalid password. Please try again or use a different email.",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Generate JWT tokens
-	accessToken, refreshToken, err := auth.GenerateTokens(userID, userInfo.Email, false)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(userID, userInfo.Email, false, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
 	}
+
+	// Set httpOnly cookies
+	c.SetCookie("access_token", accessToken, 900, "/", "", true, true)
+	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
@@ -337,6 +508,7 @@ func OAuthCallback(c *gin.Context) {
 			"name":     userInfo.Name,
 			"avatar":   userInfo.AvatarURL,
 			"provider": userInfo.Provider,
+			"linked":   !requiresLinking,
 		},
 	})
 }
@@ -357,18 +529,20 @@ type OAuthUserLink struct {
 func (OAuthUserLink) TableName() string { return "oauth_user_link" }
 
 // findOrCreateOAuthUser finds existing user or creates new one from OAuth info
-func findOrCreateOAuthUser(userInfo *oauth.UserInfo) (uint, error) {
+// Returns: userID, requiresLinking (false if new account was created), error
+// Special errors: "password_required_for_linking", "invalid_password_for_linking"
+func findOrCreateOAuthUser(userInfo *oauth.UserInfo, password string) (uint, bool, error) {
 	// Check if OAuth account is already linked
 	var link OAuthUserLink
 	err := db.DB.Where("provider = ? AND provider_id = ?", userInfo.Provider, userInfo.ID).First(&link).Error
 
 	if err == nil {
 		// OAuth account linked, return user ID
-		return link.UserID, nil
+		return link.UserID, false, nil
 	}
 
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, err
+		return 0, false, err
 	}
 
 	// Check if user with this email exists
@@ -376,7 +550,19 @@ func findOrCreateOAuthUser(userInfo *oauth.UserInfo) (uint, error) {
 	err = db.DB.Where("email = ?", userInfo.Email).First(&user).Error
 
 	if err == nil {
-		// User exists, link OAuth account
+		// User exists - require password confirmation to link accounts
+		// Skip password check if user has no password (OAuth-only account)
+		if user.Password != "" {
+			if password == "" {
+				return 0, true, errors.New("password_required_for_linking")
+			}
+			// Verify password
+			match, pwdErr := auth.CheckPassword(password, user.Password)
+			if pwdErr != nil || !match {
+				return 0, true, errors.New("invalid_password_for_linking")
+			}
+		}
+		// Password verified, link OAuth account
 		link = OAuthUserLink{
 			UserID:     user.ID,
 			Provider:   userInfo.Provider,
@@ -384,13 +570,15 @@ func findOrCreateOAuthUser(userInfo *oauth.UserInfo) (uint, error) {
 			Email:      userInfo.Email,
 			CreatedAt:  time.Now(),
 		}
-		db.DB.Create(&link)
-		return user.ID, nil
+		if err := db.DB.Create(&link).Error; err != nil {
+			return 0, false, err
+		}
+		return user.ID, false, nil
 	}
 
 	// Create new user
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, err
+		return 0, false, err
 	}
 
 	// Generate unique username from email
@@ -444,10 +632,11 @@ func findOrCreateOAuthUser(userInfo *oauth.UserInfo) (uint, error) {
 	})
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
-	return user.ID, nil
+	// New user created, no prior account linking was needed
+	return user.ID, true, nil
 }
 
 func generateUsernameFromEmail(email string) string {
@@ -477,4 +666,85 @@ func generateUsernameFromEmail(email string) string {
 	}
 
 	return username
+}
+
+// Logout - POST /api/v2/auth/logout
+// Revokes refresh token and invalidates session
+func Logout(c *gin.Context) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	// Get refresh token from request body or fallback to cookie
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Try to get from cookie
+		cookieToken, err := c.Cookie("refresh_token")
+		if err != nil {
+			// Try Authorization header
+			authHeader := c.GetHeader("Authorization")
+			if authHeader == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
+				return
+			}
+			parts := strings.Split(authHeader, " ")
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid authorization header"})
+				return
+			}
+			req.RefreshToken = parts[1]
+		} else {
+			req.RefreshToken = cookieToken
+		}
+	}
+
+	if req.RefreshToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
+		return
+	}
+
+	// Verify the token first
+	claims, err := auth.VerifyToken(req.RefreshToken, "refresh")
+	if err != nil {
+		// Token is invalid, but still try to revoke it
+		revokedNow := time.Now()
+		db.DB.Model(&models.RefreshToken{}).
+			Where("token = ?", req.RefreshToken).
+			Update("revoked_at", &revokedNow)
+	} else {
+		// Revoke the refresh token in database
+		revokedNow := time.Now()
+		result := db.DB.Model(&models.RefreshToken{}).
+			Where("token = ? AND user_id = ?", req.RefreshToken, claims.UserID).
+			Update("revoked_at", &revokedNow)
+
+		if result.RowsAffected == 0 {
+			// Token not found in database, but still return success
+		}
+	}
+
+	// Clear cookies
+	c.SetCookie("access_token", "", -1, "/", "", true, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+}
+
+// RevocateAllSessions - POST /api/v2/auth/revoke-all-sessions
+// Revokes all refresh tokens for the current user (force logout all devices)
+func RevokeAllSessions(c *gin.Context) {
+	userID := c.GetUint("userID")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	revokedNow := time.Now()
+	result := db.DB.Model(&models.RefreshToken{}).
+		Where("user_id = ? AND revoked_at IS NULL", userID).
+		Update("revoked_at", &revokedNow)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":          "all sessions revoked",
+		"sessions_revoked": result.RowsAffected,
+	})
 }

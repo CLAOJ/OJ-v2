@@ -271,9 +271,38 @@ func getLimit(path string) Limit {
 			Rate:   30,
 			Window: 60,
 		}
+	case path == "/api/v2/auth/login":
+		// Strict limit for login (prevent brute force)
+		return Limit{
+			Rate:   10,
+			Window: 60,
+		}
+	case path == "/api/v2/auth/password/reset":
+		// Very strict limit for password reset (3 per hour)
+		return Limit{
+			Rate:   3,
+			Window: 3600,
+		}
+	case strings.HasPrefix(path, "/api/v2/auth/totp/"):
+		// Strict limit for TOTP operations (prevent brute force)
+		return Limit{
+			Rate:   10,
+			Window: 60,
+		}
+	case path == "/api/v2/auth/verify-email" || path == "/api/v2/auth/resend-verification":
+		// Limit email verification endpoints
+		return Limit{
+			Rate:   5,
+			Window: 60,
+		}
+	case path == "/api/v2/auth/register":
+		// Limit registration to prevent spam
+		return Limit{
+			Rate:   10,
+			Window: 60,
+		}
 	case strings.HasPrefix(path, "/api/v2/auth/"):
-		// Strict limit for auth endpoints (prevent brute force)
-		// Increased from 10 to 30 to allow legitimate login attempts
+		// Other auth endpoints
 		return Limit{
 			Rate:   30,
 			Window: 60,

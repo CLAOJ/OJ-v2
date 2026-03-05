@@ -102,3 +102,19 @@ type BackupCode struct {
 }
 
 func (BackupCode) TableName() string { return "backup_code" }
+
+// RefreshToken stores refresh tokens for revocation
+type RefreshToken struct {
+	ID           uint      `gorm:"primaryKey;column:id"`
+	UserID       uint      `gorm:"column:user_id;not null;index"`
+	Token        string    `gorm:"column:token;size:512;not null;uniqueIndex"`
+	Revoked      bool      `gorm:"column:revoked;not null;default:0"`
+	RevokedAt    *time.Time `gorm:"column:revoked_at"`
+	CreatedAt    time.Time `gorm:"column:created_at;not null;index"`
+	ExpiresAt    time.Time `gorm:"column:expires_at;not null;index"`
+	UserAgent    *string   `gorm:"column:user_agent;size:512"`
+	ClientIP     *string   `gorm:"column:client_ip;size:39"`
+	FamilyID     string    `gorm:"column:family_id;size:64;not null;index"` // Token family for rotation
+}
+
+func (RefreshToken) TableName() string { return "refresh_token" }

@@ -25,7 +25,8 @@ import {
     ArrowUpRight,
     Trophy,
     Monitor,
-    Code2
+    Code2,
+    BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -47,6 +48,15 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
             const res = await api.get<ProblemDetail>(url);
             return res.data;
         }
+    });
+
+    const { data: editorialData } = useQuery({
+        queryKey: ['editorial', code],
+        queryFn: async () => {
+            const res = await api.get<{ exists: boolean }>(`/problem/${code}/solution/exists`);
+            return res.data;
+        },
+        enabled: !!problem
     });
 
     const { mutate: submitCode, isPending: isSubmitting } = useMutation({
@@ -144,6 +154,20 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                         <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                     </Link>
                 </div>
+
+                {/* Editorial Link */}
+                {editorialData?.exists && (
+                    <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                        <Link
+                            href={`/problems/${code}/editorial`}
+                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none"
+                        >
+                            <BookOpen size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-bold">Editorial</span>
+                            <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
+                        </Link>
+                    </div>
+                )}
 
                 {/* Technical Details */}
                 <div className="bg-card border rounded-3xl p-6 shadow-sm space-y-6">

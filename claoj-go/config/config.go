@@ -35,9 +35,11 @@ type RedisConfig struct {
 }
 
 type AppConfig struct {
-	SecretKey       string `mapstructure:"secret_key"`
-	SiteFullURL     string `mapstructure:"site_full_url"`
-	DefaultLanguage string `mapstructure:"default_language"`
+	SecretKey            string `mapstructure:"secret_key"`
+	JwtSecretKey         string `mapstructure:"jwt_secret_key"`
+	RequireTotpForAdmins bool   `mapstructure:"require_totp_for_admins"`
+	SiteFullURL          string `mapstructure:"site_full_url"`
+	DefaultLanguage      string `mapstructure:"default_language"`
 }
 
 type EmailConfig struct {
@@ -102,6 +104,8 @@ func Load() {
 	v.SetDefault("redis.password", "")
 	v.SetDefault("redis.db", 0)
 	v.SetDefault("app.secret_key", "changeme")
+	v.SetDefault("app.jwt_secret_key", "") // Defaults to secret_key if not set
+	v.SetDefault("app.require_totp_for_admins", false)
 	v.SetDefault("app.site_full_url", "http://localhost:8081")
 	v.SetDefault("app.default_language", "py3")
 	v.SetDefault("email.smtp_host", "")
@@ -134,6 +138,8 @@ func Load() {
 	v.BindEnv("server.port", "SERVER_PORT", "CLAOJ_SERVER_PORT")
 	v.BindEnv("server.mode", "SERVER_MODE", "CLAOJ_SERVER_MODE")
 	v.BindEnv("app.secret_key", "SECRET_KEY", "CLAOJ_APP_SECRET_KEY")
+	v.BindEnv("app.jwt_secret_key", "JWT_SECRET_KEY", "CLAOJ_JWT_SECRET_KEY")
+	v.BindEnv("app.require_totp_for_admins", "REQUIRE_TOTP_FOR_ADMINS", "CLAOJ_REQUIRE_TOTP_FOR_ADMINS")
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
 
@@ -167,6 +173,12 @@ func Load() {
 	// Security validation
 	if C.App.SecretKey == "" || C.App.SecretKey == "changeme" || C.App.SecretKey == "<GENERATE_SECURE_KEY_ON_DEPLOY>" {
 		log.Fatal("config: FATAL - app.secret_key is not set or using default value. Generate a secure key using: openssl rand -base64 64")
+	}
+
+	// JWT secret key validation - use SecretKey as fallback if JWT secret is not set
+	if C.App.JwtSecretKey == "" {
+		log.Println("config: WARNING - JWT_SECRET_KEY is not set, using SECRET_KEY instead. For better security, set a dedicated JWT_SECRET_KEY.")
+		C.App.JwtSecretKey = C.App.SecretKey
 	}
 
 	if C.Database.DSN == "" {

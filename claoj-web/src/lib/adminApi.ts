@@ -55,7 +55,7 @@ export const adminProblemDataApi = {
         api.get<{ files: ProblemDataFile[] }>(`/admin/problem/${code}/data/files`),
 
     getFileContent: (code: string, path: string) =>
-        api.get<{ content: string; filename: string }>(`/admin/problem/${code}/data/file/${encodeURIComponent(path)}`),
+        api.get<{ content: string; encoding?: string }>(`/admin/problem/${code}/data/file/${encodeURIComponent(path)}`),
 
     deleteFile: (code: string, path: string) =>
         api.delete(`/admin/problem/${code}/data/file/${encodeURIComponent(path)}`),

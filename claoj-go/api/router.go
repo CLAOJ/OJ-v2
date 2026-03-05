@@ -6,6 +6,7 @@ import (
 	"github.com/CLAOJ/claoj-go/auth"
 	"github.com/CLAOJ/claoj-go/cache"
 	"github.com/CLAOJ/claoj-go/config"
+	"github.com/CLAOJ/claoj-go/csrf"
 	"github.com/CLAOJ/claoj-go/events"
 	"github.com/CLAOJ/claoj-go/ratelimit"
 	"github.com/gin-contrib/cors"
@@ -40,6 +41,7 @@ func NewRouter() *gin.Engine {
 	{
 		// Public Auth
 		apiv2.POST("/auth/login", v2.Login)
+		apiv2.POST("/auth/logout", v2.Logout)
 		apiv2.POST("/auth/refresh", v2.Refresh)
 		apiv2.POST("/auth/register", v2.Register)
 		apiv2.POST("/auth/password/reset", v2.PasswordResetRequest)
@@ -94,11 +96,29 @@ func NewRouter() *gin.Engine {
 			admin.GET("/admin/problem/:code/data", v2.AdminProblemData)
 			admin.POST("/admin/problem/:code/data", v2.AdminProblemDataUpload)
 			admin.DELETE("/admin/problem/:code/data/testcase/:id", v2.AdminProblemDataDeleteTestCase)
+			// Problem Data - Reorder & File Operations
+			admin.PATCH("/admin/problem/:code/data/reorder", v2.AdminProblemDataReorder)
+			admin.GET("/admin/problem/:code/data/files", v2.AdminProblemDataFiles)
+			admin.GET("/admin/problem/:code/data/file/*path", v2.AdminProblemDataFileContent)
+			admin.DELETE("/admin/problem/:code/data/file/*path", v2.AdminProblemDataFileDelete)
+			admin.GET("/admin/problem/:code/data/testcase/:id/content", v2.AdminProblemDataTestCaseContent)
+			admin.PATCH("/admin/problem/:code/data/testcase/:id", v2.AdminProblemDataTestCaseUpdate)
+
+			// Solutions
+			admin.GET("/admin/solutions", v2.AdminSolutionList)
+			admin.GET("/admin/solution/:id", v2.AdminSolutionDetail)
+			admin.POST("/admin/solutions", v2.AdminSolutionCreate)
+			admin.PATCH("/admin/solution/:id", v2.AdminSolutionUpdate)
+			admin.DELETE("/admin/solution/:id", v2.AdminSolutionDelete)
 
 			// Judges
 			admin.GET("/admin/judges", v2.AdminJudgeList)
+			admin.GET("/admin/judge/:id", v2.AdminJudgeDetail)
 			admin.POST("/admin/judge/:id/block", v2.AdminJudgeBlock)
 			admin.POST("/admin/judge/:id/unblock", v2.AdminJudgeUnblock)
+			admin.POST("/admin/judge/:id/enable", v2.AdminJudgeEnable)
+			admin.POST("/admin/judge/:id/disable", v2.AdminJudgeDisable)
+			admin.PATCH("/admin/judge/:id", v2.AdminJudgeUpdate)
 
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)
@@ -109,6 +129,8 @@ func NewRouter() *gin.Engine {
 			// Submissions
 			admin.GET("/admin/submissions", v2.AdminSubmissionList)
 			admin.POST("/admin/submission/:id/rejudge", v2.AdminSubmissionRejudge)
+			admin.POST("/admin/submission/:id/abort", v2.AdminSubmissionAbort)
+			admin.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
 			admin.POST("/admin/submission/:id/moss", v2.AdminSubmissionMossAnalysis)
 			admin.GET("/admin/submission/:id/moss", v2.AdminSubmissionMossResults)
 
@@ -127,6 +149,8 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/problems/random", v2.RandomProblem)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
+		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
+		apiv2.GET("/problem/:code/solution/exists", v2.ProblemSolutionExists)
 
 		apiv2.GET("/events", events.ServeWS)
 
@@ -168,10 +192,12 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/blogs", v2.BlogList)
 		apiv2.GET("/blog/:id", v2.BlogDetail)
 
-		// Protected endpoints
+		// Protected endpoints with CSRF protection
 		protected := apiv2.Group("")
 		protected.Use(auth.RequiredMiddleware())
+		protected.Use(csrf.Middleware(csrf.DefaultConfig()))
 		{
+			protected.POST("/auth/revoke-all-sessions", v2.RevokeAllSessions)
 			protected.POST("/problem/:code/submit", v2.Submit)
 			protected.GET("/user/me", v2.CurrentUser)
 			protected.PATCH("/user/me", v2.UpdateProfile)

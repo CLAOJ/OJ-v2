@@ -10,6 +10,7 @@ import (
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/events"
 	"github.com/CLAOJ/claoj-go/jobs"
+	v2 "github.com/CLAOJ/claoj-go/api/v2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,7 +41,10 @@ func main() {
 	// 6. Initialize Websocket Event Hub
 	events.InitHub()
 
-	// 7. Build router and run
+	// 7. Set bridge server reference for API handlers
+	v2.SetBridgeServer(judgeBridge)
+
+	// 8. Build router and run
 	r := api.NewRouter()
 	addr := ":" + config.C.Server.Port
 	log.Printf("claoj-go HTTP API starting on %s", addr)

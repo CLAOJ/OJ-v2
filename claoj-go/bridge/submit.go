@@ -92,3 +92,36 @@ func (s *Server) Submit(subID uint) error {
 func (s *Server) GetManager() *Manager {
 	return s.manager
 }
+
+// Abort attempts to abort a submission by finding the judge handling it
+func (s *Server) Abort(subID uint) error {
+	s.manager.RLock()
+	defer s.manager.RUnlock()
+
+	// Find the judge currently working on this submission
+	for _, handler := range s.manager.judges {
+		if handler.working && handler.workingSub == subID {
+			return handler.Abort(subID)
+		}
+	}
+
+	// Submission not being processed, just mark as aborted in DB
+	db.DB.Model(&models.Submission{}).Where("id = ?", subID).Updates(map[string]interface{}{
+		"status": "AB",
+		"result": "AB",
+	})
+	return nil
+}
+
+// FindAvailableJudge finds a judge that can handle a specific problem/language combination
+func (s *Server) FindAvailableJudge(problemCode string, languageKey string) *Handler {
+	s.manager.RLock()
+	defer s.manager.RUnlock()
+
+	for _, handler := range s.manager.judges {
+		if handler.problems[problemCode] && handler.executors[languageKey] != nil && !handler.working {
+			return handler
+		}
+	}
+	return nil
+}

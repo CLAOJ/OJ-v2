@@ -392,3 +392,12 @@ func (h *Handler) onInternalError(pkt Packet) error {
 	PostGlobalSubmissionUpdate(subID, "internal-error", true)
 	return nil
 }
+
+// Abort sends an abort request to the judge for a specific submission
+func (h *Handler) Abort(subID uint) error {
+	pkt := Packet{
+		"name":          "submission-abort",
+		"submission-id": subID,
+	}
+	return h.conn.WritePacket(pkt)
+}

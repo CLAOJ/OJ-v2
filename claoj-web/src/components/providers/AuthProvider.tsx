@@ -8,7 +8,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (username: string, password: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +20,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = async (username: string, password: string) => {
         const res = await api.post('/auth/login', { username, password });
         const { access_token, refresh_token, user: userData } = res.data;
+        // Tokens are now set via httpOnly cookies by the server
+        // Also update localStorage for backwards compatibility
         if (typeof window !== 'undefined') {
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
@@ -27,7 +29,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(userData);
     };
 
-    const logout = () => {
+    const logout = async () => {
+        // Call logout endpoint to revoke tokens and clear cookies
+        try {
+            await api.post('/auth/logout');
+        } catch (err) {
+            console.error('Logout error', err);
+        }
         if (typeof window !== 'undefined') {
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
@@ -41,7 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setLoading(false);
                 return;
             }
-            const token = localStorage.getItem('access_token');
+            // Try cookie first, fallback to localStorage
+            const getCookie = (name: string): string | null => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) {
+                    return parts.pop()?.split(';').shift() || null;
+                }
+                return null;
+            };
+
+            const token = getCookie('access_token') || localStorage.getItem('access_token');
             if (token) {
                 try {
                     const res = await api.get('/user/me');

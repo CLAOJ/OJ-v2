@@ -347,7 +347,7 @@ func TotpVerify(c *gin.Context) {
 	}
 
 	// Generate tokens
-	accessToken, refreshToken, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return
@@ -469,7 +469,7 @@ func TotpBackupVerify(c *gin.Context) {
 	}
 
 	// Generate tokens
-	accessToken, refreshToken, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return

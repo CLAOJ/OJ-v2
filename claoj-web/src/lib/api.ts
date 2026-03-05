@@ -15,6 +15,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true, // Enable sending cookies with requests
 });
 
 // Get API URL - uses env var if set, otherwise derives from window.location.origin
@@ -22,9 +23,20 @@ export function getApiUrl(): string {
     return api.defaults.baseURL as string;
 }
 
-// Interceptor to add access token
+// Interceptor to add access token from cookie or localStorage
 api.interceptors.request.use((config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    // Try to get token from cookie first, fallback to localStorage for backwards compatibility
+    const getCookie = (name: string): string | null => {
+        if (typeof window === 'undefined') return null;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) {
+            return parts.pop()?.split(';').shift() || null;
+        }
+        return null;
+    };
+
+    const token = getCookie('access_token') || (typeof window !== 'undefined' ? localStorage.getItem('access_token') : null);
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -38,15 +50,31 @@ api.interceptors.response.use(
         const originalRequest = error.config as AxiosRequestConfigWithRetry;
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
-            const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+
+            // Try to get refresh token from cookie first, then localStorage
+            const getCookie = (name: string): string | null => {
+                if (typeof window === 'undefined') return null;
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) {
+                    return parts.pop()?.split(';').shift() || null;
+                }
+                return null;
+            };
+
+            const refreshToken = getCookie('refresh_token') || (typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null);
 
             if (refreshToken) {
                 try {
                     const res = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
                         refresh_token: refreshToken,
+                    }, {
+                        withCredentials: true,
                     });
 
                     if (res.status === 200) {
+                        // Tokens are now set via httpOnly cookies by the server
+                        // Also update localStorage for backwards compatibility
                         if (typeof window !== 'undefined') {
                             localStorage.setItem('access_token', res.data.access_token);
                             localStorage.setItem('refresh_token', res.data.refresh_token);
@@ -69,3 +97,21 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// ============================================================
+// PUBLIC SOLUTION API
+// ============================================================
+
+import type { Solution } from '@/types';
+
+export interface SolutionExistsResponse {
+    exists: boolean;
+}
+
+export const solutionApi = {
+    getSolution: (problemCode: string) =>
+        api.get<Solution>(`/problem/${problemCode}/solution`),
+
+    solutionExists: (problemCode: string) =>
+        api.get<SolutionExistsResponse>(`/problem/${problemCode}/solution/exists`),
+};
