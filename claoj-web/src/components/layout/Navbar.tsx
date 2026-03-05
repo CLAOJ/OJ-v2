@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes';
 import { Moon, Sun, User, LogOut, Menu, X, Settings as SettingsIcon, Flag, Ticket, ChevronDown } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import WebSocketStatusIndicator from '@/components/common/WebSocketStatus';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,9 +31,54 @@ export default function Navbar() {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [currentTime, setCurrentTime] = useState<Date | null>(null);
     const [contestEndTime, setContestEndTime] = useState<Date | null>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
 
     // Simulate contest participation (in real app, this would come from auth context)
     const [inContest, setInContest] = useState(false);
+
+    // Focus trap for mobile menu
+    useEffect(() => {
+        if (!mobileMenuOpen) return;
+
+        const menu = mobileMenuRef.current;
+        if (!menu) return;
+
+        const focusableElements = menu.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"]), [role="button"]'
+        );
+
+        if (focusableElements.length === 0) return;
+
+        const firstEl = focusableElements[0];
+        const lastEl = focusableElements[focusableElements.length - 1];
+
+        // Focus first element when menu opens
+        firstEl.focus();
+
+        const handleTabKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab') return;
+
+            if (e.shiftKey && document.activeElement === firstEl) {
+                e.preventDefault();
+                lastEl.focus();
+            } else if (!e.shiftKey && document.activeElement === lastEl) {
+                e.preventDefault();
+                firstEl.focus();
+            }
+        };
+
+        const handleEscape = () => setMobileMenuOpen(false);
+
+        document.addEventListener('keydown', handleTabKey);
+        document.addEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', handleTabKey);
+            document.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = 'unset';
+        };
+    }, [mobileMenuOpen]);
 
     useEffect(() => {
         setMounted(true);
@@ -147,8 +192,10 @@ export default function Navbar() {
                                             ? "bg-[#009688] text-white"
                                             : "text-gray-400 hover:text-white hover:bg-white/10"
                                     )}
+                                    aria-label="Switch to English"
+                                    aria-pressed={pathname.includes('/en')}
                                 >
-                                    <img src="/static/icons/gb_flag.svg" alt="EN" className="w-4 h-3 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16" fill="blue"><rect width="24" height="16" fill="white"/><path d="M0 0h8v16H0z" fill="blue"/><path d="M16 0h8v16h-8z" fill="red"/></svg>'} />
+                                    <img src="/static/icons/gb_flag.svg" alt="" className="w-4 h-3 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16" fill="blue"><rect width="24" height="16" fill="white"/><path d="M0 0h8v16H0z" fill="blue"/><path d="M16 0h8v16h-8z" fill="red"/></svg>'} />
                                     EN
                                 </button>
                                 <button
@@ -159,8 +206,10 @@ export default function Navbar() {
                                             ? "bg-[#009688] text-white"
                                             : "text-gray-400 hover:text-white hover:bg-white/10"
                                     )}
+                                    aria-label="Switch to Vietnamese"
+                                    aria-pressed={pathname.includes('/vi')}
                                 >
-                                    <img src="/static/icons/vi_flag.svg" alt="VI" className="w-4 h-3 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16" fill="red"><rect width="24" height="16" fill="red"/><text x="12" y="12" text-anchor="middle" font-size="10" fill="yellow">★</text></svg>'} />
+                                    <img src="/static/icons/vi_flag.svg" alt="" className="w-4 h-3 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16" fill="red"><rect width="24" height="16" fill="red"/><text x="12" y="12" text-anchor="middle" font-size="10" fill="yellow">★</text></svg>'} />
                                     VI
                                 </button>
                             </div>
@@ -169,6 +218,7 @@ export default function Navbar() {
                             <button
                                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white hidden md:block"
+                                aria-label={mounted && theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                                 title="Toggle Theme"
                             >
                                 {mounted && (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />)}
@@ -186,6 +236,8 @@ export default function Navbar() {
                                     <button
                                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                                         className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#009688]/10 text-[#009688] hover:bg-[#009688]/20 transition-all text-sm font-bold"
+                                        aria-expanded={userMenuOpen}
+                                        aria-haspopup="true"
                                     >
                                         <User size={16} />
                                         <span className="hidden md:inline">{user.username}</span>
@@ -199,11 +251,14 @@ export default function Navbar() {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 10 }}
                                                 className="absolute right-0 mt-2 w-48 bg-card border rounded-lg shadow-xl py-1 z-50"
+                                                role="menu"
+                                                aria-orientation="vertical"
                                             >
                                                 <Link
                                                     href={`/user/${user.username}`}
                                                     className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5 transition-colors"
                                                     onClick={() => setUserMenuOpen(false)}
+                                                    role="menuitem"
                                                 >
                                                     <User size={16} />
                                                     <span>Profile</span>
@@ -213,6 +268,7 @@ export default function Navbar() {
                                                         href="/admin"
                                                         className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5 transition-colors"
                                                         onClick={() => setUserMenuOpen(false)}
+                                                        role="menuitem"
                                                     >
                                                         <SettingsIcon size={16} />
                                                         <span>Admin</span>
@@ -222,6 +278,7 @@ export default function Navbar() {
                                                     href="/settings"
                                                     className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5 transition-colors"
                                                     onClick={() => setUserMenuOpen(false)}
+                                                    role="menuitem"
                                                 >
                                                     <SettingsIcon size={16} />
                                                     <span>Edit profile</span>
@@ -230,6 +287,7 @@ export default function Navbar() {
                                                 <button
                                                     onClick={() => { logout(); setUserMenuOpen(false); }}
                                                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                                    role="menuitem"
                                                 >
                                                     <LogOut size={16} />
                                                     <span>Log out</span>
@@ -259,6 +317,9 @@ export default function Navbar() {
                             <button
                                 className="md:hidden p-2 text-gray-400 hover:text-white"
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                aria-expanded={mobileMenuOpen}
+                                aria-controls="mobile-menu"
+                                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
                             >
                                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                             </button>
@@ -283,9 +344,14 @@ export default function Navbar() {
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <motion.div
+                        ref={mobileMenuRef}
+                        id="mobile-menu"
+                        role="navigation"
+                        aria-label="Mobile navigation menu"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
                         className="md:hidden border-t bg-[#263238] px-4 py-6 flex flex-col gap-6"
                     >
                         {/* Nav Links */}
@@ -323,13 +389,17 @@ export default function Navbar() {
                                     <button
                                         onClick={() => handleLanguageChange('en')}
                                         className={cn("text-xs font-black", pathname.includes('/en') ? "text-[#009688]" : "text-gray-400")}
+                                        aria-label="Switch to English"
+                                        aria-pressed={pathname.includes('/en')}
                                     >
                                         EN
                                     </button>
-                                    <span className="text-gray-500">|</span>
+                                    <span className="text-gray-500" aria-hidden="true">|</span>
                                     <button
                                         onClick={() => handleLanguageChange('vi')}
                                         className={cn("text-xs font-black", pathname.includes('/vi') ? "text-[#009688]" : "text-gray-400")}
+                                        aria-label="Switch to Vietnamese"
+                                        aria-pressed={pathname.includes('/vi')}
                                     >
                                         VI
                                     </button>
@@ -340,6 +410,7 @@ export default function Navbar() {
                             <button
                                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="flex items-center gap-2 p-3 rounded bg-white/10 text-sm font-bold"
+                                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                             >
                                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                                 <span>Theme ({theme === 'dark' ? 'Dark' : 'Light'})</span>

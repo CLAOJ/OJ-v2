@@ -7,6 +7,7 @@ import { Bell, Check, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { formatRelativeTime } from '@/lib/date';
 
 interface Notification {
     id: number;
@@ -104,27 +105,14 @@ export default function NotificationBell() {
         }
     };
 
-    const formatTime = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-
-        if (minutes < 1) return 'just now';
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        if (days < 7) return `${days}d ago`;
-        return date.toLocaleDateString();
-    };
-
     return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                aria-label="Notifications"
+                aria-expanded={isOpen}
+                aria-haspopup="true"
                 title="Notifications"
             >
                 <Bell size={20} />
@@ -212,7 +200,7 @@ export default function NotificationBell() {
                                                     {notification.message}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground/60 mt-1">
-                                                    {formatTime(notification.created_at)}
+                                                    {formatRelativeTime(notification.created_at)}
                                                 </p>
                                             </Link>
                                         </div>

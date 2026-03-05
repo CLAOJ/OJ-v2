@@ -204,10 +204,15 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                             <span className="text-muted-foreground font-medium">AC Rate</span>
                             <span className="font-black text-primary">{Math.round(problem.ac_rate)}%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden" role="presentation">
                             <div
-                                className="h-full bg-primary"
-                                style={{ width: `${problem.ac_rate}%` }}
+                                className="h-full bg-primary transition-all duration-500"
+                                style={{ width: `${Math.min(100, Math.max(0, problem.ac_rate))}%` }}
+                                role="progressbar"
+                                aria-valuenow={Math.round(problem.ac_rate)}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-label="Accepted submission rate"
                             />
                         </div>
                     </div>

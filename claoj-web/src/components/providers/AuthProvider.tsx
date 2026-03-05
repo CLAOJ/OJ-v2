@@ -7,8 +7,14 @@ import { User } from '@/types';
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (username: string, password: string) => Promise<void>;
+    login: (username: string, password: string) => Promise<LoginResponse>;
+    loginTotp: (username: string, code: string) => Promise<void>;
     logout: () => Promise<void>;
+}
+
+interface LoginResponse {
+    requiresTotp?: boolean;
+    username?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,11 +23,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const login = async (username: string, password: string) => {
+    const login = async (username: string, password: string): Promise<LoginResponse> => {
         const res = await api.post('/auth/login', { username, password });
-        const { access_token, refresh_token, user: userData } = res.data;
+        const { access_token, refresh_token, user: userData, requires_totp, requiresTotp } = res.data;
+
+        // Check if TOTP is required
+        if (requires_totp || requiresTotp) {
+            return { requiresTotp: true, username: res.data.username };
+        }
+
         // Tokens are now set via httpOnly cookies by the server
         // Also update localStorage for backwards compatibility
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('access_token', access_token);
+            localStorage.setItem('refresh_token', refresh_token);
+        }
+        setUser(userData);
+        return {};
+    };
+
+    const loginTotp = async (username: string, code: string) => {
+        const res = await api.post('/auth/totp/verify', { username, code });
+        const { access_token, refresh_token, user: userData } = res.data;
         if (typeof window !== 'undefined') {
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
