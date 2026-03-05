@@ -12,6 +12,20 @@ import (
 	"gorm.io/gorm"
 )
 
+// CommentRevision mirrors judge_commentrevision for tracking edits
+type CommentRevision struct {
+	ID        uint      `gorm:"primaryKey;column:id"`
+	CommentID uint      `gorm:"column:comment_id;not null;index"`
+	EditorID  uint      `gorm:"column:editor_id;not null;index"`
+	Time      time.Time `gorm:"column:time;not null"`
+	Body      string    `gorm:"column:body;type:longtext;not null"`
+	Reason    string    `gorm:"column:reason;size:200"`
+	Comment   models.Comment   `gorm:"foreignKey:CommentID"`
+	Editor    models.Profile   `gorm:"foreignKey:EditorID"`
+}
+
+func (CommentRevision) TableName() string { return "judge_commentrevision" }
+
 // CommentList - GET /api/v2/comments
 // Fetches comments for a specific page (e.g. ?page=p/aplusb)
 func CommentList(c *gin.Context) {
@@ -234,5 +248,231 @@ func CommentVote(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "vote recorded",
 		"score":   updatedComment.Score,
+	})
+}
+
+// CommentUpdateRequest - PATCH /api/v2/comment/:id
+type CommentUpdateRequest struct {
+	Body   string `json:"body" binding:"required"`
+	Reason string `json:"reason"` // Optional edit reason
+}
+
+
+// CommentUpdateRequest - PATCH /api/v2/comment/:id
+
+// CommentUpdate - PATCH /api/v2/comment/:id
+// Update a comment (author or admin only). Creates revision history entry.
+func CommentUpdate(c *gin.Context) {
+	user, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	var commentID uint
+	if err := parseUint(commentIDStr, &commentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid comment id"})
+		return
+	}
+
+	var comment models.Comment
+	if err := db.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	// Check permission: author or admin
+	isAuthor := comment.AuthorID == profile.ID
+	isAdmin := user.IsStaff || user.IsSuperuser
+
+	if !isAuthor && !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	var req CommentUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create revision entry before updating
+	revision := models.CommentRevision{
+		CommentID: comment.ID,
+		EditorID:  profile.ID,
+		Time:      time.Now(),
+		Body:      comment.Body, // Save old body
+		Reason:    req.Reason,
+	}
+	db.DB.Create(&revision)
+
+	// Update comment
+	comment.Body = sanitization.SanitizeComment(req.Body)
+	if err := db.DB.Save(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update comment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "comment updated",
+		"revision_id": revision.ID,
+	})
+}
+
+// CommentRevisionList - GET /api/v2/comment/:id/revisions
+// Get revision history for a comment
+func CommentRevisionList(c *gin.Context) {
+	commentIDStr := c.Param("id")
+	var commentID uint
+	if err := parseUint(commentIDStr, &commentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid comment id"})
+		return
+	}
+
+	// Check comment exists
+	var comment models.Comment
+	if err := db.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	// Get revisions
+	var revisions []models.CommentRevision
+	if err := db.DB.Where("comment_id = ?", commentID).
+		Preload("Editor.User").
+		Order("time DESC").
+		Find(&revisions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	type RevisionItem struct {
+		ID     uint      `json:"id"`
+		Editor string    `json:"editor"`
+		Time   time.Time `json:"time"`
+		Body   string    `json:"body"`
+		Reason string    `json:"reason,omitempty"`
+	}
+
+	items := make([]RevisionItem, len(revisions))
+	for i, rev := range revisions {
+		items[i] = RevisionItem{
+			ID:     rev.ID,
+			Editor: rev.Editor.User.Username,
+			Time:   rev.Time,
+			Body:   rev.Body,
+			Reason: rev.Reason,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiList(items))
+}
+
+// CommentHideRequest - POST /api/v2/admin/comment/:id/hide
+type CommentHideRequest struct {
+	Hidden bool `json:"hidden"`
+}
+
+// CommentHide - POST /api/v2/admin/comment/:id/hide
+// Admin-only: Hide or unhide a comment
+func CommentHide(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	// Check admin permission
+	if !user.IsStaff && !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	var commentID uint
+	if err := parseUint(commentIDStr, &commentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid comment id"})
+		return
+	}
+
+	var req CommentHideRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var comment models.Comment
+	if err := db.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	comment.Hidden = req.Hidden
+	if err := db.DB.Save(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update comment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "comment updated",
+		"hidden":  comment.Hidden,
+	})
+}
+
+// CommentDelete - DELETE /api/v2/comment/:id
+// Soft delete a comment (author or admin only)
+func CommentDelete(c *gin.Context) {
+	user, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	var commentID uint
+	if err := parseUint(commentIDStr, &commentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid comment id"})
+		return
+	}
+
+	var comment models.Comment
+	if err := db.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	// Check permission: author or admin
+	isAuthor := comment.AuthorID == profile.ID
+	isAdmin := user.IsStaff || user.IsSuperuser
+
+	if !isAuthor && !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	// Soft delete: clear body and mark hidden
+	comment.Body = "[deleted]"
+	comment.Hidden = true
+	if err := db.DB.Save(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete comment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "comment deleted",
 	})
 }

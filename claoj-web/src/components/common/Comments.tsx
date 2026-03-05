@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { Comment, PaginatedList } from '@/types';
+import { Comment, CommentRevision, CommentUpdateRequest, PaginatedList } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useState } from 'react';
 import {
@@ -16,13 +16,29 @@ import {
     ChevronUp,
     MoreVertical,
     ThumbsUp,
-    Loader2
+    Loader2,
+    Edit2,
+    Trash2,
+    History,
+    Eye,
+    Shield,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/components/providers/AuthProvider';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 dayjs.extend(relativeTime);
 
@@ -32,10 +48,13 @@ interface CommentsProps {
 
 export default function Comments({ page }: CommentsProps) {
     const t = useTranslations('Comments');
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const queryClient = useQueryClient();
     const [commentBody, setCommentBody] = useState('');
     const [replyTo, setReplyTo] = useState<number | null>(null);
+    const [editingComment, setEditingComment] = useState<Comment | null>(null);
+    const [revisionHistory, setRevisionHistory] = useState<CommentRevision[] | null>(null);
+    const [deletingComment, setDeletingComment] = useState<number | null>(null);
 
     const { data: comments, isLoading } = useQuery({
         queryKey: ['comments', page],
@@ -59,6 +78,64 @@ export default function Comments({ page }: CommentsProps) {
             queryClient.invalidateQueries({ queryKey: ['comments', page] });
         }
     });
+
+    // Vote mutation
+    const { mutate: voteComment } = useMutation({
+        mutationFn: async ({ id, score }: { id: number; score: number }) => {
+            await api.post(`/comment/${id}/vote`, { score });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['comments', page] });
+        }
+    });
+
+    // Edit mutation
+    const { mutate: editComment, isPending: isEditing } = useMutation({
+        mutationFn: async ({ id, body, reason }: { id: number; body: string; reason?: string }) => {
+            await api.patch(`/comment/${id}`, { body, reason });
+        },
+        onSuccess: () => {
+            setEditingComment(null);
+            queryClient.invalidateQueries({ queryKey: ['comments', page] });
+        }
+    });
+
+    // Delete mutation
+    const { mutate: deleteComment } = useMutation({
+        mutationFn: async (id: number) => {
+            await api.delete(`/comment/${id}`);
+        },
+        onSuccess: () => {
+            setDeletingComment(null);
+            queryClient.invalidateQueries({ queryKey: ['comments', page] });
+        }
+    });
+
+    // Hide mutation (admin only)
+    const { mutate: hideComment } = useMutation({
+        mutationFn: async ({ id, hidden }: { id: number; hidden: boolean }) => {
+            await api.post(`/admin/comment/${id}/hide`, { hidden });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['comments', page] });
+        }
+    });
+
+    // Revision history query
+    const { data: revisions } = useQuery({
+        queryKey: ['comment-revisions', revisionHistory?.[0]?.id],
+        queryFn: async () => {
+            if (!revisionHistory?.[0]?.id) return [];
+            const res = await api.get<{ data: CommentRevision[] }>(`/comment/${revisionHistory[0].id}/revisions`);
+            return res.data.data;
+        },
+        enabled: !!revisionHistory
+    });
+
+    const handlePost = (body: string) => {
+        if (!body.trim()) return;
+        postComment(body);
+    };
 
     if (isLoading) return (
         <div className="space-y-6">
@@ -91,11 +168,6 @@ export default function Comments({ page }: CommentsProps) {
     };
 
     const tree = buildTree(comments || []);
-
-    const handlePost = (body: string) => {
-        if (!body.trim()) return;
-        postComment(body);
-    };
 
     return (
         <div className="space-y-10">
@@ -147,16 +219,127 @@ export default function Comments({ page }: CommentsProps) {
                         <CommentNode
                             key={node.id}
                             node={node}
-                            isPosting={isPosting}
-                            onReply={(id: number | null) => setReplyTo(id)}
+                            user={user}
+                            isAdmin={isAdmin}
+                            t={t}
+                            onReply={setReplyTo}
                             replyTo={replyTo}
                             onPost={handlePost}
-                            user={user}
-                            t={t}
+                            isPosting={isPosting}
+                            onEdit={setEditingComment}
+                            onDelete={setDeletingComment}
+                            onShowRevisions={setRevisionHistory}
+                            onHide={hideComment}
+                            onVote={voteComment}
                         />
                     ))
                 )}
             </div>
+
+            {/* Edit Comment Dialog */}
+            <Dialog open={!!editingComment} onOpenChange={() => setEditingComment(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('edit')}</DialogTitle>
+                        <DialogDescription>
+                            Edit your comment. A revision history entry will be created.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <textarea
+                        value={editingComment?.body || ''}
+                        onChange={(e) => setEditingComment(editingComment ? { ...editingComment, body: e.target.value } : null)}
+                        className="w-full h-40 p-4 rounded-lg border outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Edit reason (optional)"
+                        className="w-full p-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary/20"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && editingComment) {
+                                editComment({ id: editingComment.id, body: editingComment.body, reason: e.currentTarget.value });
+                            }
+                        }}
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingComment(null)}>
+                            {t('cancel')}
+                        </Button>
+                        <Button 
+                            onClick={() => editingComment && editComment({ id: editingComment.id, body: editingComment.body })}
+                            disabled={isEditing}
+                        >
+                            {isEditing ? <Loader2 className="animate-spin mr-2" size={16} /> : <Edit2 className="mr-2" size={16} />}
+                            {t('edit')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={!!deletingComment} onOpenChange={() => setDeletingComment(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Comment</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this comment? This action will soft delete the comment.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeletingComment(null)}>
+                            {t('cancel')}
+                        </Button>
+                        <Button 
+                            variant="destructive"
+                            onClick={() => deletingComment && deleteComment(deletingComment)}
+                        >
+                            <Trash2 className="mr-2" size={16} />
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Revision History Dialog */}
+            <Dialog open={!!revisionHistory} onOpenChange={() => setRevisionHistory(null)}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <History className="text-primary" size={20} />
+                            Comment Revision History
+                        </DialogTitle>
+                        <DialogDescription>
+                            View all edits made to this comment
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {revisions?.map((rev, idx) => (
+                            <div key={rev.id} className="border rounded-lg p-4 bg-muted/30">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <User size={16} className="text-muted-foreground" />
+                                        <span className="font-medium text-sm">{rev.editor}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Clock size={14} className="text-muted-foreground" />
+                                        <span className="text-xs text-muted-foreground">{dayjs(rev.time).fromNow()}</span>
+                                    </div>
+                                </div>
+                                {rev.reason && (
+                                    <Badge variant="outline" className="mb-2">
+                                        Reason: {rev.reason}
+                                    </Badge>
+                                )}
+                                <pre className="whitespace-pre-wrap text-sm font-medium bg-card p-3 rounded border">
+                                    {rev.body}
+                                </pre>
+                            </div>
+                        ))}
+                        {!revisions?.length && (
+                            <p className="text-center text-muted-foreground py-8">No revision history available</p>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -169,15 +352,26 @@ interface CommentNodeProps {
     onPost: (body: string) => void;
     isPosting: boolean;
     user: any;
+    isAdmin: boolean;
     t: (key: string) => string;
+    onEdit: (comment: Comment | null) => void;
+    onDelete: (id: number | null) => void;
+    onShowRevisions: (comment: Comment[] | null) => void;
+    onHide: (params: { id: number; hidden: boolean }) => void;
+    onVote: (params: { id: number; score: number }) => void;
 }
 
-function CommentNode({ node, level = 0, onReply, replyTo, onPost, isPosting, user, t }: CommentNodeProps) {
+function CommentNode({ node, level = 0, onReply, replyTo, onPost, isPosting, user, isAdmin, t, onEdit, onDelete, onShowRevisions, onHide, onVote }: CommentNodeProps) {
     const [isExpanded, setIsExpanded] = useState(true);
     const [replyBody, setReplyBody] = useState('');
+    const [showMenu, setShowMenu] = useState(false);
+    const [voteDirection, setVoteDirection] = useState<number>(0);
+
+    const isEditable = user && (node.author === user.username);
+    const canModerate = isAdmin;
 
     return (
-        <div className={cn("space-y-6", level > 0 && "ml-4 md:ml-12 border-l-2 border-primary/5 pl-4 md:pl-12")}>
+        <div className={cn("space-y-6", level > 0 && "ml-4 md:ml-12 border-l-2 border-primary/5 pl-4 md:ml-12 pl-4")}>
             <div className="group space-y-4 bg-card/50 p-6 rounded-[2rem] border border-transparent hover:border-muted hover:shadow-xl hover:shadow-primary/5 transition-all">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
@@ -192,20 +386,83 @@ function CommentNode({ node, level = 0, onReply, replyTo, onPost, isPosting, use
                             </div>
                         </div>
                     </div>
-                    <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreVertical size={18} className="text-muted-foreground" />
-                    </button>
+                    <div className="relative">
+                        <button 
+                            onClick={() => setShowMenu(!showMenu)}
+                            className="p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted rounded-lg"
+                        >
+                            <MoreVertical size={18} className="text-muted-foreground" />
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-0 top-full mt-1 bg-card border rounded-lg shadow-lg z-10 min-w-[160px] overflow-hidden">
+                                {isEditable && (
+                                    <>
+                                        <button
+                                            onClick={() => { onEdit(node); setShowMenu(false); }}
+                                            className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors"
+                                        >
+                                            <Edit2 size={16} />
+                                            {t('edit')}
+                                        </button>
+                                        <button
+                                            onClick={() => { onDelete(node.id); setShowMenu(false); }}
+                                            className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-destructive/10 text-destructive transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                            Delete
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    onClick={() => { onShowRevisions([node]); setShowMenu(false); }}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors"
+                                >
+                                    <History size={16} />
+                                    View history
+                                </button>
+                                {canModerate && (
+                                    <>
+                                        <div className="border-t my-1" />
+                                        <button
+                                            onClick={() => { onHide({ id: node.id, hidden: !node.hidden }); setShowMenu(false); }}
+                                            className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors"
+                                        >
+                                            <Shield size={16} />
+                                            {node.hidden ? 'Unhide' : 'Hide'} comment
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="pl-1 text-[15px] font-medium leading-relaxed text-muted-foreground/90 whitespace-pre-wrap">
-                    {node.body}
-                </div>
+                {node.hidden ? (
+                    <div className="pl-1 text-[15px] font-medium leading-relaxed text-muted-foreground/60 italic flex items-center gap-2">
+                        <Eye size={16} />
+                        This comment has been hidden
+                    </div>
+                ) : (
+                    <div className="pl-1 text-[15px] font-medium leading-relaxed text-muted-foreground/90 whitespace-pre-wrap">
+                        {node.body}
+                    </div>
+                )}
 
                 <div className="flex items-center gap-8 pt-2">
-                    <button className="flex items-center gap-2 text-xs font-black text-muted-foreground hover:text-primary transition-colors">
-                        <ThumbsUp size={16} />
-                        {node.score || 0}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => { setVoteDirection(voteDirection === 1 ? 0 : 1); onVote({ id: node.id, score: voteDirection === 1 ? -1 : 1 }); }}
+                            className={cn(
+                                "flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full transition-colors",
+                                voteDirection === 1 
+                                    ? "bg-green-500/10 text-green-500" 
+                                    : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                            )}
+                        >
+                            <ThumbsUp size={14} />
+                            {node.score + voteDirection}
+                        </button>
+                    </div>
                     <button
                         onClick={() => onReply(replyTo === node.id ? null : node.id)}
                         className="flex items-center gap-2 text-xs font-black text-muted-foreground hover:text-primary transition-colors"
@@ -274,7 +531,13 @@ function CommentNode({ node, level = 0, onReply, replyTo, onPost, isPosting, use
                             onPost={onPost}
                             isPosting={isPosting}
                             user={user}
+                            isAdmin={isAdmin}
                             t={t}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onShowRevisions={onShowRevisions}
+                            onHide={onHide}
+                            onVote={onVote}
                         />
                     ))}
                 </div>

@@ -143,6 +143,7 @@ func NewRouter() *gin.Engine {
 			admin.GET("/admin/permissions", v2.AdminPermissionList)
 			admin.POST("/admin/profile/:id/roles", v2.AdminProfileAssignRole)
 			admin.DELETE("/admin/profile/:id/roles/:roleId", v2.AdminProfileRemoveRole)
+			admin.POST("/admin/comment/:id/hide", v2.CommentHide)
 		}
 
 		apiv2.GET("/problems", v2.ProblemList)
@@ -213,6 +214,9 @@ func NewRouter() *gin.Engine {
 			// Comments
 			protected.POST("/comments", v2.CommentCreate)
 			protected.POST("/comment/:id/vote", v2.CommentVote)
+			protected.PATCH("/comment/:id", v2.CommentUpdate)
+			protected.DELETE("/comment/:id", v2.CommentDelete)
+			protected.GET("/comment/:id/revisions", v2.CommentRevisionList)
 
 			// Contest clarifications (protected write)
 			protected.POST("/contest/:key/clarifications", v2.ContestClarificationCreate)

@@ -44,3 +44,17 @@ type CommentLock struct {
 }
 
 func (CommentLock) TableName() string { return "judge_commentlock" }
+
+// CommentRevision mirrors judge_commentrevision for tracking comment edits
+type CommentRevision struct {
+	ID        uint      `gorm:"primaryKey;column:id"`
+	CommentID uint      `gorm:"column:comment_id;not null;index"`
+	EditorID  uint      `gorm:"column:editor_id;not null;index"`
+	Time      time.Time `gorm:"column:time;not null"`
+	Body      string    `gorm:"column:body;type:longtext;not null"`
+	Reason    string    `gorm:"column:reason;size:200"`
+	Comment   Comment   `gorm:"foreignKey:CommentID"`
+	Editor    Profile   `gorm:"foreignKey:EditorID"`
+}
+
+func (CommentRevision) TableName() string { return "judge_commentrevision" }

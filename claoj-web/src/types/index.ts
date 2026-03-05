@@ -631,3 +631,16 @@ export interface SolutionUpdateRequest {
     valid_until?: string;
     language?: string;
 }
+
+export interface CommentRevision {
+    id: number;
+    editor: string;
+    time: string;
+    body: string;
+    reason?: string;
+}
+
+export interface CommentUpdateRequest {
+    body: string;
+    reason?: string;
+}
