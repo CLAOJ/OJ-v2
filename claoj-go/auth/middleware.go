@@ -3,28 +3,22 @@ package auth
 import (
 	"net/http"
 	"strings"
-
+	
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/gin-gonic/gin"
 )
 
-// RequiredMiddleware ensures a valid access token is present
+// RequiredMiddleware ensures a valid access token is present in httpOnly cookie
 func RequiredMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header required"})
+		// Read access token from httpOnly cookie
+		tokenString, err := c.Cookie("access_token")
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "access token required"})
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header must be Bearer token"})
-			return
-		}
-
-		tokenString := parts[1]
 		claims, err := VerifyToken(tokenString, "access")
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -40,20 +34,18 @@ func RequiredMiddleware() gin.HandlerFunc {
 	}
 }
 
-// OptionalMiddleware parses the token if present, but doesn't abort if missing or invalid.
+// OptionalMiddleware parses the token from httpOnly cookie if present, but doesn't abort if missing or invalid.
 // Useful for endpoints that return different data depending on auth state (like problem list).
 func OptionalMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader != "" {
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
-				claims, err := VerifyToken(parts[1], "access")
-				if err == nil {
-					c.Set("user_id", claims.UserID)
-					c.Set("username", claims.Username)
-					c.Set("is_admin", claims.IsAdmin)
-				}
+		// Read access token from httpOnly cookie
+		tokenString, err := c.Cookie("access_token")
+		if err == nil && tokenString != "" {
+			claims, err := VerifyToken(tokenString, "access")
+			if err == nil {
+				c.Set("user_id", claims.UserID)
+				c.Set("username", claims.Username)
+				c.Set("is_admin", claims.IsAdmin)
 			}
 		}
 		c.Next()

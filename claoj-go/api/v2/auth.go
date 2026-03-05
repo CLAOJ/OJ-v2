@@ -668,50 +668,39 @@ func generateUsernameFromEmail(email string) string {
 // Logout - POST /api/v2/auth/logout
 // Revokes refresh token and invalidates session
 func Logout(c *gin.Context) {
-	var req struct {
-		RefreshToken string `json:"refresh_token"`
+	// Get refresh token from httpOnly cookie
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		// No refresh token in cookie, user might already be logged out
+		// Still clear any access token cookie and return success
+		c.SetCookie("access_token", "", -1, "/", "", true, true)
+		c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+		return
 	}
 
-	// Get refresh token from request body or fallback to cookie
-	if err := c.ShouldBindJSON(&req); err != nil {
-		// Try to get from cookie
-		cookieToken, err := c.Cookie("refresh_token")
-		if err != nil {
-			// Try Authorization header
-			authHeader := c.GetHeader("Authorization")
-			if authHeader == "" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
-				return
-			}
-			parts := strings.Split(authHeader, " ")
-			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid authorization header"})
-				return
-			}
-			req.RefreshToken = parts[1]
-		} else {
-			req.RefreshToken = cookieToken
-		}
-	}
-
-	if req.RefreshToken == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
+	// Get user ID from context (set by auth middleware from access token)
+	userID := c.GetUint("user_id")
+	if userID == 0 {
+		// No valid access token, but still clear cookies
+		c.SetCookie("access_token", "", -1, "/", "", true, true)
+		c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+		c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 		return
 	}
 
 	// Verify the token first
-	claims, err := auth.VerifyToken(req.RefreshToken, "refresh")
+	claims, err := auth.VerifyToken(refreshToken, "refresh")
 	if err != nil {
-		// Token is invalid, but still try to revoke it
+		// Token is invalid/expired, but still try to revoke it
 		revokedNow := time.Now()
 		db.DB.Model(&models.RefreshToken{}).
-			Where("token = ?", req.RefreshToken).
+			Where("token = ?", refreshToken).
 			Update("revoked_at", &revokedNow)
 	} else {
 		// Revoke the refresh token in database
 		revokedNow := time.Now()
 		result := db.DB.Model(&models.RefreshToken{}).
-			Where("token = ? AND user_id = ?", req.RefreshToken, claims.UserID).
+			Where("token = ? AND user_id = ?", refreshToken, claims.UserID).
 			Update("revoked_at", &revokedNow)
 
 		if result.RowsAffected == 0 {
