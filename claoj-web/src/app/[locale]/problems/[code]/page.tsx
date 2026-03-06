@@ -27,7 +27,9 @@ import {
     Monitor,
     Code2,
     BookOpen,
-    MessageSquare
+    MessageSquare,
+    FileText,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -41,6 +43,7 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
     const t = useTranslations('Problems');
     const [codeValue, setCodeValue] = useState('// Your code here\n#include <iostream>\n\nint main() {\n    return 0;\n}');
     const [language, setLanguage] = useState('cpp');
+    const [showPdfViewer, setShowPdfViewer] = useState(false);
 
     const { data: problem, isLoading } = useQuery({
         queryKey: ['problem', code, contestKey],
@@ -176,6 +179,20 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                             <span className="text-sm font-bold">Editorial</span>
                             <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
                         </Link>
+                    </div>
+                )}
+
+                {/* PDF Statement Link */}
+                {problem.pdf_url && (
+                    <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                        <button
+                            onClick={() => setShowPdfViewer(true)}
+                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none w-full"
+                        >
+                            <FileText size={18} className="text-red-500 group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-bold">PDF Statement</span>
+                            <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
+                        </button>
                     </div>
                 )}
 
@@ -352,6 +369,42 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                     </div>
                 </div>
             </div>
+
+            {/* PDF Viewer Modal */}
+            {showPdfViewer && problem.pdf_url && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
+                    <div className="relative w-full h-full max-w-7xl mx-auto p-4">
+                        {/* Modal header */}
+                        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                            <a
+                                href={`/api/v2/problem/${code}/pdf`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:scale-105 transition-all font-bold shadow-lg"
+                            >
+                                <ArrowUpRight size={16} />
+                                Open in New Tab
+                            </a>
+                            <button
+                                onClick={() => setShowPdfViewer(false)}
+                                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-white"
+                                aria-label="Close PDF viewer"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* PDF iframe */}
+                        <div className="w-full h-full bg-white rounded-lg overflow-hidden shadow-2xl">
+                            <iframe
+                                src={`/api/v2/problem/${code}/pdf`}
+                                className="w-full h-full"
+                                title="PDF Statement"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

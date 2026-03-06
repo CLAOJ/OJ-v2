@@ -306,3 +306,15 @@ export const blogFeedApi = {
     // Get Atom feed URL
     getAtomUrl: () => `${api.defaults.baseURL}/blogs/feed/atom`,
 };
+
+// ============================================================
+// PROBLEM PDF STATEMENT API (Task #29)
+// ============================================================
+
+export const problemPdfApi = {
+    // Get PDF statement URL
+    getPdfUrl: (problemCode: string) => `${api.defaults.baseURL}/problem/${problemCode}/pdf`,
+
+    // Check if PDF exists (by checking if pdf_url is non-empty in problem detail)
+    hasPdf: (problem: { pdf_url?: string }) => !!problem.pdf_url,
+};

@@ -2,6 +2,9 @@ package v2
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
@@ -195,5 +198,89 @@ func ProblemDetail(c *gin.Context) {
 		"date":           p.Date,
 		"is_solved":      isSolved,
 		"is_attempted":   isAttempted,
+		"pdf_url":        p.PdfURL,
 	})
+}
+
+// ProblemStatementPDF - GET /api/v2/problem/:code/pdf
+// Serves the PDF statement file for a problem
+func ProblemStatementPDF(c *gin.Context) {
+	code := c.Param("code")
+
+	var problem models.Problem
+	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
+		return
+	}
+
+	// Check if problem has a PDF URL configured
+	if problem.PdfURL == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no PDF statement available"})
+		return
+	}
+
+	// Check if problem is public or user has access
+	if !problem.IsPublic {
+		userID := uint(0)
+		if uid, exists := c.Get("user_id"); exists {
+			userID = uid.(uint)
+		}
+		// Check if user is author, curator, or staff
+		var count int64
+		db.DB.Table("judge_problem_authors").Where("problem_id = ? AND profile_id IN (SELECT id FROM judge_profile WHERE user_id = ?)", problem.ID, userID).Count(&count)
+		if count == 0 {
+			db.DB.Table("judge_problem_curators").Where("problem_id = ? AND profile_id IN (SELECT id FROM judge_profile WHERE user_id = ?)", problem.ID, userID).Count(&count)
+		}
+		if count == 0 {
+			var user models.Profile
+			if err := db.DB.Preload("User").Where("user_id = ?", userID).First(&user).Error; err != nil || !user.User.IsStaff {
+				c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+				return
+			}
+		}
+	}
+
+	// Determine PDF file path
+	// pdf_url can be either an absolute path or relative to problem data directory
+	pdfPath := problem.PdfURL
+	if !filepath.IsAbs(pdfPath) {
+		pdfPath = filepath.Join("data", "problems", code, pdfPath)
+	}
+
+	// Security: ensure path is within data directory
+	cleanPath := filepath.Clean(pdfPath)
+	dataPrefix := filepath.Clean("data")
+	if !strings.HasPrefix(cleanPath, dataPrefix) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid PDF path"})
+		return
+	}
+
+	// Check if file exists
+	fileInfo, err := os.Stat(cleanPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "PDF file not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to access PDF file"})
+		}
+		return
+	}
+
+	// Check file size (limit to 10MB)
+	if fileInfo.Size() > 10*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "PDF file too large"})
+		return
+	}
+
+	// Read and serve file
+	content, err := os.ReadFile(cleanPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read PDF file"})
+		return
+	}
+
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "inline; filename=\""+filepath.Base(cleanPath)+"\"")
+	c.Header("Content-Length", string(len(content)))
+	c.Data(http.StatusOK, "application/pdf", content)
 }

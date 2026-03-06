@@ -117,6 +117,18 @@ export const adminProblemDataApi = {
 
     updateTestCase: (code: string, testCaseId: number, data: TestCaseUpdateRequest) =>
         api.patch<{ success: boolean }>(`/admin/problem/${code}/data/testcase/${testCaseId}`, data),
+
+    // PDF Statement endpoints
+    uploadPdf: (code: string, file: File) => {
+        const formData = new FormData();
+        formData.append('pdf_file', file);
+        return api.post<{ message: string; pdf_url: string; pdf_path: string }>(`/admin/problem/${code}/pdf`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
+
+    deletePdf: (code: string) =>
+        api.delete<{ message: string }>(`/admin/problem/${code}/pdf`),
 };
 
 // ============================================================

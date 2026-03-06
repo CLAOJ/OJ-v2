@@ -31,6 +31,7 @@ export interface ProblemDetail extends Problem {
     authors: { username: string }[];
     is_solved: boolean;
     is_attempted: boolean;
+    pdf_url?: string;
 }
 
 export interface Submission {

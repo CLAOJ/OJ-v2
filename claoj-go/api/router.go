@@ -122,6 +122,9 @@ func NewRouter() *gin.Engine {
 			admin.GET("/admin/problem/:code/data", v2.AdminProblemData)
 			admin.POST("/admin/problem/:code/data", v2.AdminProblemDataUpload)
 			admin.DELETE("/admin/problem/:code/data/testcase/:id", v2.AdminProblemDataDeleteTestCase)
+		// Problem PDF
+		admin.POST("/admin/problem/:code/pdf", v2.AdminProblemPdfUpload)
+		admin.DELETE("/admin/problem/:code/pdf", v2.AdminProblemPdfDelete)
 			// Problem Data - Reorder & File Operations
 			admin.PATCH("/admin/problem/:code/data/reorder", v2.AdminProblemDataReorder)
 			admin.GET("/admin/problem/:code/data/files", v2.AdminProblemDataFiles)
@@ -255,6 +258,8 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
 		apiv2.GET("/problem/:code/solution/exists", v2.ProblemSolutionExists)
+		// Problem PDF Statement
+		apiv2.GET("/problem/:code/pdf", v2.ProblemStatementPDF)
 		// Problem Language Limits
 		apiv2.GET("/problem/:code/language-limits", v2.ProblemLanguageLimits)
 		// Problem Clarifications (public read)
