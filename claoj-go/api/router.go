@@ -94,6 +94,9 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/contest/:key", v2.AdminContestDelete)
 			admin.POST("/admin/contest/:key/lock", v2.AdminContestLock)
 			admin.POST("/admin/contest/:key/clone", v2.AdminContestClone)
+			// Contest Participation Disqualify
+			admin.POST("/admin/contest/:key/participation/:id/disqualify", v2.AdminContestParticipationDisqualify)
+			admin.POST("/admin/contest/:key/participation/:id/undisqualify", v2.AdminContestParticipationUndisqualify)
 
 			// Contest Tags
 			admin.GET("/admin/contest-tags", v2.AdminContestTagList)
@@ -110,6 +113,11 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/problems", v2.AdminProblemCreate)
 			admin.PATCH("/admin/problem/:code", v2.AdminProblemUpdate)
 			admin.DELETE("/admin/problem/:code", v2.AdminProblemDelete)
+			// Problem Clone
+			admin.POST("/admin/problem/:code/clone", v2.AdminProblemClone)
+			// Problem Clarifications
+			admin.POST("/admin/problem/:code/clarification", v2.ProblemClarificationCreate)
+			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
 			// Problem Data
 			admin.GET("/admin/problem/:code/data", v2.AdminProblemData)
 			admin.POST("/admin/problem/:code/data", v2.AdminProblemDataUpload)
@@ -178,6 +186,13 @@ func NewRouter() *gin.Engine {
 			admin.PATCH("/admin/language/:id", v2.AdminLanguageUpdate)
 			admin.DELETE("/admin/language/:id", v2.AdminLanguageDelete)
 
+			// Language Limits Admin
+			admin.GET("/admin/language-limits", v2.AdminLanguageLimitList)
+			admin.GET("/admin/language-limit/:id", v2.AdminLanguageLimitDetail)
+			admin.POST("/admin/language-limits", v2.AdminLanguageLimitCreate)
+			admin.PATCH("/admin/language-limit/:id", v2.AdminLanguageLimitUpdate)
+			admin.DELETE("/admin/language-limit/:id", v2.AdminLanguageLimitDelete)
+
 			// Blog Posts Admin
 			admin.GET("/admin/blog-posts", v2.AdminBlogPostList)
 			admin.GET("/admin/blog-post/:id", v2.AdminBlogPostDetail)
@@ -218,6 +233,20 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/problem-suggestion/:id/approve", v2.AdminProblemSuggestionApprove)
 			admin.POST("/admin/problem-suggestion/:id/reject", v2.AdminProblemSuggestionReject)
 			admin.DELETE("/admin/problem-suggestion/:id", v2.AdminProblemSuggestionDelete)
+
+		// Navigation Bars
+		admin.GET("/admin/navigation-bars", v2.AdminNavigationBarList)
+		admin.GET("/admin/navigation-bar/:id", v2.AdminNavigationBarDetail)
+		admin.POST("/admin/navigation-bars", v2.AdminNavigationBarCreate)
+		admin.PATCH("/admin/navigation-bar/:id", v2.AdminNavigationBarUpdate)
+		admin.DELETE("/admin/navigation-bar/:id", v2.AdminNavigationBarDelete)
+
+		// Misc Configs
+		admin.GET("/admin/misc-configs", v2.AdminMiscConfigList)
+		admin.GET("/admin/misc-config/:id", v2.AdminMiscConfigDetail)
+		admin.POST("/admin/misc-configs", v2.AdminMiscConfigCreate)
+		admin.PATCH("/admin/misc-config/:id", v2.AdminMiscConfigUpdate)
+		admin.DELETE("/admin/misc-config/:id", v2.AdminMiscConfigDelete)
 		}
 
 		apiv2.GET("/problems", v2.ProblemList)
@@ -226,6 +255,10 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
 		apiv2.GET("/problem/:code/solution/exists", v2.ProblemSolutionExists)
+		// Problem Language Limits
+		apiv2.GET("/problem/:code/language-limits", v2.ProblemLanguageLimits)
+		// Problem Clarifications (public read)
+		apiv2.GET("/problem/:code/clarifications", v2.ProblemClarificationList)
 
 		apiv2.GET("/events", events.ServeWS)
 

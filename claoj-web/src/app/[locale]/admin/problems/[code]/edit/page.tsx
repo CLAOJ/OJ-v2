@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { adminProblemApi } from '@/lib/adminApi';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
-import { Code2, ArrowLeft, Database } from 'lucide-react';
+import { Code2, ArrowLeft, Database, MessageSquare } from 'lucide-react';
 import { Link } from '@/navigation';
 
 export default function EditProblemPage() {
@@ -79,10 +79,17 @@ export default function EditProblemPage() {
                 </div>
                 <Link
                     href={`/admin/problems/${code}/data`}
-                    className="ml-auto px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                 >
                     <Database size={18} />
                     Manage Data
+                </Link>
+                <Link
+                    href={`/admin/problems/${code}/clarifications`}
+                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                >
+                    <MessageSquare size={18} />
+                    Clarifications
                 </Link>
             </div>
 

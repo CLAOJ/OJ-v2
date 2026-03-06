@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter, Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { ProblemDetail } from '@/types';
+import { ProblemDetail, ProblemClarification } from '@/types';
 import MathRenderer from '@/components/ui/MathRenderer';
 import CodeEditor from '@/components/ui/CodeEditor';
 import { Badge } from '@/components/ui/Badge';
@@ -26,7 +26,8 @@ import {
     Trophy,
     Monitor,
     Code2,
-    BookOpen
+    BookOpen,
+    MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -55,6 +56,15 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
         queryFn: async () => {
             const res = await api.get<{ exists: boolean }>(`/problem/${code}/solution/exists`);
             return res.data;
+        },
+        enabled: !!problem
+    });
+
+    const { data: clarificationsData } = useQuery({
+        queryKey: ['problem-clarifications', code],
+        queryFn: async () => {
+            const res = await problemClarificationApi.getClarifications(code);
+            return res.data.data;
         },
         enabled: !!problem
     });
@@ -169,6 +179,20 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                     </div>
                 )}
 
+                {/* Problem Clarifications Link */}
+                {clarificationsData && clarificationsData.length > 0 && (
+                    <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                        <Link
+                            href={`#clarifications`}
+                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none"
+                        >
+                            <MessageSquare size={18} className="text-amber-500 group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-bold">Clarifications ({clarificationsData.length})</span>
+                            <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
+                        </Link>
+                    </div>
+                )}
+
                 {/* Technical Details */}
                 <div className="bg-card border rounded-3xl p-6 shadow-sm space-y-6">
                     <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Details</h3>
@@ -265,6 +289,27 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                                 <span className="text-sm font-bold truncate">{problem.group}</span>
                             </div>
                         </div>
+
+                        {/* Problem Clarifications */}
+                        {clarificationsData && clarificationsData.length > 0 && (
+                            <section id="clarifications" className="space-y-4">
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <MessageSquare className="w-6 h-6" />
+                                    Problem Clarifications
+                                </h2>
+                                <div className="space-y-3">
+                                    {clarificationsData.map((clar) => (
+                                        <div key={clar.id} className="bg-card border rounded-2xl p-6">
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                                                <Clock className="w-4 h-4" />
+                                                {new Date(clar.date).toLocaleString()}
+                                            </div>
+                                            <p className="text-sm whitespace-pre-wrap">{clar.description}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
                         <section className="pt-10 border-t">
                             <Comments page={`p/${problem.code}`} />

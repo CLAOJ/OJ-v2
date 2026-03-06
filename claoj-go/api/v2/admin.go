@@ -3910,3 +3910,622 @@ func AdminProblemTypeDelete(c *gin.Context) {
 		"message": "problem type deleted",
 	})
 }
+
+// AdminProblemClone - POST /api/v2/admin/problem/:code/clone
+// Clone an existing problem with a new code
+func AdminProblemClone(c *gin.Context) {
+	code := c.Param("code")
+	
+	// Get source problem
+	var sourceProblem models.Problem
+	if err := db.DB.Where("code = ?", code).First(&sourceProblem).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Parse input
+	var input struct {
+		NewCode        string `json:"new_code" binding:"required"`
+		NewName        string `json:"new_name" binding:"required"`
+		CopyData       bool   `json:"copy_data"`        // Copy test cases and data files
+		CopyAuthors    bool   `json:"copy_authors"`     // Copy authors, curators, testers
+		CopySettings   bool   `json:"copy_settings"`    // Copy allowed languages, types, organizations
+		NewDescription string `json:"new_description"`  // Optional new description
+		NewSummary     string `json:"new_summary"`      // Optional new summary
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if new code already exists
+	var existing models.Problem
+	if err := db.DB.Where("code = ?", input.NewCode).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("problem code already exists"))
+		return
+	}
+
+	// Use provided description/summary or copy from source
+	description := sourceProblem.Description
+	if input.NewDescription != "" {
+		description = input.NewDescription
+	}
+	summary := sourceProblem.Summary
+	if input.NewSummary != "" {
+		summary = input.NewSummary
+	}
+
+	// Create new problem
+	newProblem := models.Problem{
+		Code:                           input.NewCode,
+		Name:                           sanitization.SanitizeTitle(input.NewName),
+		Source:                         sourceProblem.Source,
+		Description:                    description,
+		PdfURL:                         sourceProblem.PdfURL,
+		GroupID:                        sourceProblem.GroupID,
+		TimeLimit:                      sourceProblem.TimeLimit,
+		MemoryLimit:                    sourceProblem.MemoryLimit,
+		ShortCircuit:                   sourceProblem.ShortCircuit,
+		Points:                         sourceProblem.Points,
+		Partial:                        sourceProblem.Partial,
+		IsPublic:                       false, // Start as not public
+		IsManuallyManaged:              sourceProblem.IsManuallyManaged,
+		LicenseID:                      sourceProblem.LicenseID,
+		OgImage:                        sourceProblem.OgImage,
+		Summary:                        summary,
+		IsFullMarkup:                   sourceProblem.IsFullMarkup,
+		SubmissionSourceVisibilityMode: sourceProblem.SubmissionSourceVisibilityMode,
+		TestcaseVisibilityMode:         sourceProblem.TestcaseVisibilityMode,
+		IsOrganizationPrivate:          sourceProblem.IsOrganizationPrivate,
+		// Don't copy: UserCount, AcRate, Date, SuggesterID, SuggestionStatus, etc.
+	}
+
+	if err := db.DB.Create(&newProblem).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Copy authors, curators, testers
+	if input.CopyAuthors {
+		var authors []models.Profile
+		db.DB.Model(&sourceProblem).Association("Authors").Find(&authors)
+		if len(authors) > 0 {
+			db.DB.Model(&newProblem).Association("Authors").Append(&authors)
+		}
+
+		var curators []models.Profile
+		db.DB.Model(&sourceProblem).Association("Curators").Find(&curators)
+		if len(curators) > 0 {
+			db.DB.Model(&newProblem).Association("Curators").Append(&curators)
+		}
+
+		var testers []models.Profile
+		db.DB.Model(&sourceProblem).Association("Testers").Find(&testers)
+		if len(testers) > 0 {
+			db.DB.Model(&newProblem).Association("Testers").Append(&testers)
+		}
+	}
+
+	// Copy types, allowed languages, organizations
+	if input.CopySettings {
+		var types []models.ProblemType
+		db.DB.Model(&sourceProblem).Association("Types").Find(&types)
+		if len(types) > 0 {
+			db.DB.Model(&newProblem).Association("Types").Append(&types)
+		}
+
+		var allowedLangs []models.Language
+		db.DB.Model(&sourceProblem).Association("AllowedLangs").Find(&allowedLangs)
+		if len(allowedLangs) > 0 {
+			db.DB.Model(&newProblem).Association("AllowedLangs").Append(&allowedLangs)
+		}
+
+		var organizations []models.Organization
+		db.DB.Model(&sourceProblem).Association("Organizations").Find(&organizations)
+		if len(organizations) > 0 {
+			db.DB.Model(&newProblem).Association("Organizations").Append(&organizations)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "problem cloned successfully",
+		"new_problem": gin.H{
+			"id":   newProblem.ID,
+			"code": newProblem.Code,
+			"name": newProblem.Name,
+		},
+	})
+}
+
+// AdminContestParticipationDisqualify - POST /api/v2/admin/contest/:key/participation/:id/disqualify
+// Disqualify a contest participation
+func AdminContestParticipationDisqualify(c *gin.Context) {
+	key := c.Param("key")
+	participationIDStr := c.Param("id")
+	
+	var participationID uint
+	if err := parseUint(participationIDStr, &participationID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid participation id"))
+		return
+	}
+
+	// Get contest to verify it exists
+	var contest models.Contest
+	if err := db.DB.Where("key = ?", key).First(&contest).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Get participation
+	var participation models.ContestParticipation
+	if err := db.DB.Where("id = ? AND contest_id = ?", participationID, contest.ID).First(&participation).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, apiError("participation not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Update participation to disqualified
+	if err := db.DB.Model(&participation).Update("is_disqualified", true).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "participation disqualified",
+		"participation": gin.H{
+			"id":             participation.ID,
+			"is_disqualified": true,
+		},
+	})
+}
+
+// AdminContestParticipationUndisqualify - POST /api/v2/admin/contest/:key/participation/:id/undisqualify
+// Undisqualify a contest participation
+func AdminContestParticipationUndisqualify(c *gin.Context) {
+	key := c.Param("key")
+	participationIDStr := c.Param("id")
+	
+	var participationID uint
+	if err := parseUint(participationIDStr, &participationID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid participation id"))
+		return
+	}
+
+	// Get contest to verify it exists
+	var contest models.Contest
+	if err := db.DB.Where("key = ?", key).First(&contest).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Get participation
+	var participation models.ContestParticipation
+	if err := db.DB.Where("id = ? AND contest_id = ?", participationID, contest.ID).First(&participation).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, apiError("participation not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Update participation to not disqualified
+	if err := db.DB.Model(&participation).Update("is_disqualified", false).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "participation undisqualified",
+		"participation": gin.H{
+			"id":             participation.ID,
+			"is_disqualified": false,
+		},
+	})
+}
+
+// ============================================================
+// NAVIGATION BAR ADMIN ENDPOINTS
+// ============================================================
+
+// AdminNavigationBarList - GET /api/v2/admin/navigation-bars
+func AdminNavigationBarList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+
+	var navBars []models.NavigationBar
+	if err := db.DB.Preload("Parent").
+		Order("tree_id, lft").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&navBars).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type Item struct {
+		ID     uint   `json:"id"`
+		Key    string `json:"key"`
+		Label  string `json:"label"`
+		Path   string `json:"path"`
+		Order  int    `json:"order"`
+		Level  int    `json:"level"`
+		Parent *struct {
+			ID    uint   `json:"id"`
+			Label string `json:"label"`
+		} `json:"parent"`
+	}
+
+	items := make([]Item, len(navBars))
+	for i, nb := range navBars {
+		items[i] = Item{
+			ID:    nb.ID,
+			Key:   nb.Key,
+			Label: nb.Label,
+			Path:  nb.Path,
+			Order: nb.Order,
+			Level: nb.Level,
+		}
+		if nb.Parent != nil {
+			items[i].Parent = &struct {
+				ID    uint   `json:"id"`
+				Label string `json:"label"`
+			}{ID: nb.Parent.ID, Label: nb.Parent.Label}
+		}
+	}
+
+	var total int64
+	db.DB.Model(&models.NavigationBar{}).Count(&total)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  items,
+		"total": total,
+	})
+}
+
+// AdminNavigationBarDetail - GET /api/v2/admin/navigation-bar/:id
+func AdminNavigationBarDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid navigation bar id"))
+		return
+	}
+
+	var navBar models.NavigationBar
+	if err := db.DB.Preload("Parent").First(&navBar, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("navigation bar not found"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":        navBar.ID,
+		"key":       navBar.Key,
+		"label":     navBar.Label,
+		"path":      navBar.Path,
+		"parent_id": navBar.ParentID,
+		"order":     navBar.Order,
+		"level":     navBar.Level,
+		"lft":       navBar.Lft,
+		"rght":      navBar.Rght,
+		"tree_id":   navBar.TreeID,
+	})
+}
+
+// AdminNavigationBarCreate - POST /api/v2/admin/navigation-bars
+func AdminNavigationBarCreate(c *gin.Context) {
+	var req struct {
+		Key      string `json:"key" binding:"required"`
+		Label    string `json:"label" binding:"required"`
+		Path     string `json:"path" binding:"required"`
+		ParentID *uint  `json:"parent_id"`
+		Order    int    `json:"order"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if key already exists
+	var existing models.NavigationBar
+	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("navigation bar key already exists"))
+		return
+	}
+
+	// Validate parent if provided
+	if req.ParentID != nil {
+		var parent models.NavigationBar
+		if err := db.DB.First(&parent, *req.ParentID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, apiError("parent navigation bar not found"))
+			return
+		}
+	}
+
+	navBar := models.NavigationBar{
+		Key:      req.Key,
+		Label:    req.Label,
+		Path:     req.Path,
+		ParentID: req.ParentID,
+		Order:    req.Order,
+		Lft:      1,
+		Rght:     2,
+		TreeID:   1,
+		Level:    0,
+	}
+
+	if req.ParentID != nil {
+		var parent models.NavigationBar
+		db.DB.First(&parent, *req.ParentID)
+		navBar.Level = parent.Level + 1
+		navBar.TreeID = parent.TreeID
+		navBar.Lft = parent.Rght
+		navBar.Rght = parent.Rght + 1
+		db.DB.Model(&models.NavigationBar{}).Where("tree_id = ? AND rght > ?", parent.TreeID, parent.Rght).Update("rght", gorm.Expr("rght + 2"))
+	}
+
+	if err := db.DB.Create(&navBar).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":        "navigation bar created",
+		"navigation_bar": gin.H{"id": navBar.ID, "key": navBar.Key},
+	})
+}
+
+// AdminNavigationBarUpdate - PATCH /api/v2/admin/navigation-bar/:id
+func AdminNavigationBarUpdate(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid navigation bar id"))
+		return
+	}
+
+	var req struct {
+		Label string `json:"label"`
+		Path  string `json:"path"`
+		Order int    `json:"order"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	var navBar models.NavigationBar
+	if err := db.DB.First(&navBar, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("navigation bar not found"))
+		return
+	}
+
+	updates := make(map[string]interface{})
+	if req.Label != "" {
+		updates["label"] = req.Label
+	}
+	if req.Path != "" {
+		updates["path"] = req.Path
+	}
+	if req.Order != 0 {
+		updates["order"] = req.Order
+	}
+
+	if len(updates) > 0 {
+		if err := db.DB.Model(&navBar).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "navigation bar updated",
+	})
+}
+
+// AdminNavigationBarDelete - DELETE /api/v2/admin/navigation-bar/:id
+func AdminNavigationBarDelete(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid navigation bar id"))
+		return
+	}
+
+	var navBar models.NavigationBar
+	if err := db.DB.First(&navBar, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("navigation bar not found"))
+		return
+	}
+
+	treeID := navBar.TreeID
+	rght := navBar.Rght
+	lft := navBar.Lft
+	width := rght - lft + 1
+
+	db.DB.Delete(&navBar)
+	db.DB.Model(&models.NavigationBar{}).Where("tree_id = ? AND lft > ?", treeID, lft).Update("lft", gorm.Expr("lft - ?", width))
+	db.DB.Model(&models.NavigationBar{}).Where("tree_id = ? AND rght > ?", treeID, rght).Update("rght", gorm.Expr("rght - ?", width))
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "navigation bar deleted",
+	})
+}
+
+// ============================================================
+// ADMIN MISC CONFIG API
+// ============================================================
+
+// AdminMiscConfigList - GET /api/v2/admin/misc-configs
+func AdminMiscConfigList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+	search := c.Query("search")
+
+	var query *gorm.DB
+	if search != "" {
+		query = db.DB.Where("key LIKE ?", "%"+search+"%")
+	} else {
+		query = db.DB
+	}
+
+	var miscConfigs []models.MiscConfig
+	if err := query.
+		Order("key ASC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&miscConfigs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type Item struct {
+		ID    uint   `json:"id"`
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+
+	items := make([]Item, len(miscConfigs))
+	for i, mc := range miscConfigs {
+		items[i] = Item{
+			ID:    mc.ID,
+			Key:   mc.Key,
+			Value: mc.Value,
+		}
+	}
+
+	var total int64
+	if search != "" {
+		db.DB.Model(&models.MiscConfig{}).Where("key LIKE ?", "%"+search+"%").Count(&total)
+	} else {
+		db.DB.Model(&models.MiscConfig{}).Count(&total)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  items,
+		"total": total,
+	})
+}
+
+// AdminMiscConfigDetail - GET /api/v2/admin/misc-config/:id
+func AdminMiscConfigDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid config id"))
+		return
+	}
+
+	var mc models.MiscConfig
+	if err := db.DB.First(&mc, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("config not found"))
+		return
+	}
+
+	c.JSON(http.StatusOK, mc)
+}
+
+// AdminMiscConfigCreate - POST /api/v2/admin/misc-configs
+func AdminMiscConfigCreate(c *gin.Context) {
+	var req struct {
+		Key   string `json:"key" binding:"required"`
+		Value string `json:"value"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if key already exists
+	var existing models.MiscConfig
+	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "config key already exists"})
+		return
+	}
+
+	mc := models.MiscConfig{
+		Key:   req.Key,
+		Value: req.Value,
+	}
+
+	if err := db.DB.Create(&mc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, mc)
+}
+
+// AdminMiscConfigUpdate - PATCH /api/v2/admin/misc-config/:id
+func AdminMiscConfigUpdate(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid config id"))
+		return
+	}
+
+	var mc models.MiscConfig
+	if err := db.DB.First(&mc, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("config not found"))
+		return
+	}
+
+	var req struct {
+		Value string `json:"value"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	mc.Value = req.Value
+	if err := db.DB.Save(&mc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, mc)
+}
+
+// AdminMiscConfigDelete - DELETE /api/v2/admin/misc-config/:id
+func AdminMiscConfigDelete(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid config id"))
+		return
+	}
+
+	var mc models.MiscConfig
+	if err := db.DB.First(&mc, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("config not found"))
+		return
+	}
+
+	if err := db.DB.Delete(&mc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "config deleted",
+	})
+}

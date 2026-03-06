@@ -81,14 +81,16 @@ func ContestRanking(c *gin.Context) {
 	cf := contest_format.GetFormat(ct.FormatName, &ct, ct.FormatConfig)
 
 	type RankingRow struct {
-		Username     string        `json:"username"`
-		Score        float64       `json:"score"`
-		Cumtime      uint          `json:"cumtime"`
-		Rank         int           `json:"rank"`
-		Rating       *int          `json:"rating,omitempty"`
-		RatingChange *int          `json:"rating_change,omitempty"`
-		Performance  *float64      `json:"performance,omitempty"`
-		Breakdown    []interface{} `json:"breakdown"`
+		Username        string        `json:"username"`
+		Score           float64       `json:"score"`
+		Cumtime         uint          `json:"cumtime"`
+		Rank            int           `json:"rank"`
+		Rating          *int          `json:"rating,omitempty"`
+		RatingChange    *int          `json:"rating_change,omitempty"`
+		Performance     *float64      `json:"performance,omitempty"`
+		Breakdown       []interface{} `json:"breakdown"`
+		IsDisqualified  bool          `json:"is_disqualified"`
+		ParticipationID uint          `json:"participation_id"`
 	}
 
 	var rankings []RankingRow
@@ -101,11 +103,13 @@ func ContestRanking(c *gin.Context) {
 		}
 
 		row := RankingRow{
-			Username:  p.User.User.Username,
-			Score:     p.Score,
-			Cumtime:   p.Cumtime,
-			Rank:      rankNum,
-			Breakdown: cf.GetProblemBreakdown(&p, contestProblems),
+			Username:        p.User.User.Username,
+			Score:           p.Score,
+			Cumtime:         p.Cumtime,
+			Rank:            rankNum,
+			Breakdown:       cf.GetProblemBreakdown(&p, contestProblems),
+			IsDisqualified:  p.IsDisqualified,
+			ParticipationID: p.ID,
 		}
 
 		// Add rating info

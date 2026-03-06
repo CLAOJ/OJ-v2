@@ -237,3 +237,38 @@ export const problemSuggestionApi = {
     deleteSuggestion: (id: number) =>
         api.delete<{ success: boolean; message: string }>(`/admin/problem-suggestion/${id}`),
 };
+
+// ============================================================
+// PROBLEM CLARIFICATION API (Task #33)
+// ============================================================
+
+import type { ProblemClarification } from '@/types';
+
+export const problemClarificationApi = {
+    // Public: List clarifications for a problem
+    getClarifications: (problemCode: string) =>
+        api.get<{ data: ProblemClarification[]; total: number }>(`/problem/${problemCode}/clarifications`),
+
+    // Admin: Create a new clarification
+    createClarification: (problemCode: string, description: string) =>
+        api.post<{ id: number; problem_id: number; description: string; date: string; problem_code: string }>(
+            `/admin/problem/${problemCode}/clarification`,
+            { description }
+        ),
+
+    // Admin: Delete a clarification
+    deleteClarification: (id: number) =>
+        api.delete<{ message: string }>(`/admin/problem/clarification/${id}`),
+};
+
+// ============================================================
+// BLOG VOTING API (Task #37)
+// ============================================================
+
+import type { BlogVoteRequest } from '@/types';
+
+export const blogVoteApi = {
+    // Vote on a blog post (delta: 1 for upvote, -1 for downvote)
+    vote: (blogId: number, delta: 1 | -1) =>
+        api.post<{ message: string }>(`/blog/${blogId}/vote`, { delta } as BlogVoteRequest),
+};

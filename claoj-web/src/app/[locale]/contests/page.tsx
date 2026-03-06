@@ -115,9 +115,19 @@ export default function ContestListPage() {
                                                     <Link href={`/contests/${c.key}`} className="font-bold text-base hover:text-primary transition-colors">
                                                         {c.name}
                                                     </Link>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         {c.is_rated && <Badge variant="warning" className="text-[10px] h-4 uppercase">{t('rated')}</Badge>}
                                                         {c.format && <Badge variant="outline" className="text-[10px] h-4 uppercase">{c.format}</Badge>}
+                                                        {c.tags && c.tags.map(tag => (
+                                                            <Badge
+                                                                key={tag.id}
+                                                                variant="secondary"
+                                                                className="text-[10px] h-4 uppercase"
+                                                                style={{ backgroundColor: tag.color + '20', color: tag.color, border: `1px solid ${tag.color}40` }}
+                                                            >
+                                                                #{tag.name}
+                                                            </Badge>
+                                                        ))}
                                                         <span className="text-[10px] text-muted-foreground font-mono">{c.key}</span>
                                                     </div>
                                                 </div>

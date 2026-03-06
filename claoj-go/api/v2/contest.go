@@ -32,6 +32,27 @@ func ContestList(c *gin.Context) {
 		return
 	}
 
+	// Load tags for all contests
+	contestIDs := make([]uint, len(contests))
+	for i, ct := range contests {
+		contestIDs[i] = ct.ID
+	}
+	contestTagsMap := make(map[uint][]models.ContestTag)
+	if len(contestIDs) > 0 {
+		var contestTags []struct {
+			ContestID uint `gorm:"column:contest_id"`
+			Tag       models.ContestTag `gorm:"embedded"`
+		}
+		db.DB.Table("judge_contest_tags").
+			Joins("JOIN judge_contesttag ON judge_contesttag.id = judge_contest_tags.contesttag_id").
+			Where("judge_contest_tags.contest_id IN ?", contestIDs).
+			Select("judge_contest_tags.contest_id, judge_contesttag.*").
+			Scan(&contestTags)
+		for _, ct := range contestTags {
+			contestTagsMap[ct.ContestID] = append(contestTagsMap[ct.ContestID], ct.Tag)
+		}
+	}
+
 	// Get joined contests for the current user
 	joinedKeys := make(map[string]bool)
 	if uid, exists := c.Get("user_id"); exists {
@@ -46,6 +67,12 @@ func ContestList(c *gin.Context) {
 		}
 	}
 
+	type Tag struct {
+		ID    uint   `json:"id"`
+		Name  string `json:"name"`
+		Color string `json:"color"`
+	}
+
 	type Item struct {
 		Key       string    `json:"key"`
 		Name      string    `json:"name"`
@@ -55,9 +82,14 @@ func ContestList(c *gin.Context) {
 		Format    string    `json:"format"`
 		UserCount int       `json:"user_count"`
 		IsJoined  bool      `json:"is_joined"`
+		Tags      []Tag     `json:"tags"`
 	}
 	items := make([]Item, len(contests))
 	for i, ct := range contests {
+		tags := make([]Tag, len(contestTagsMap[ct.ID]))
+		for j, tag := range contestTagsMap[ct.ID] {
+			tags[j] = Tag{ID: tag.ID, Name: tag.Name, Color: tag.Color}
+		}
 		items[i] = Item{
 			ct.Key,
 			ct.Name,
@@ -67,6 +99,7 @@ func ContestList(c *gin.Context) {
 			ct.FormatName,
 			ct.UserCount,
 			joinedKeys[ct.Key],
+			tags,
 		}
 	}
 	c.JSON(http.StatusOK, apiList(items))

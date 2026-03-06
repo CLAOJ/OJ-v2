@@ -16,12 +16,16 @@ import {
     Trash2,
     Database,
     Clock,
-    Plus
+    Plus,
+    Copy
 } from 'lucide-react';
+import { Dialog } from '@/components/ui/Dialog';
 
 export default function AdminProblemPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
+    const [cloneModalOpen, setCloneModalOpen] = useState(false);
+    const [problemToClone, setProblemToClone] = useState<{code: string; name: string} | null>(null);
 
     const queryClient = useQueryClient();
 
@@ -161,6 +165,23 @@ export default function AdminProblemPage() {
                                                     >
                                                         <Edit size={18} />
                                                     </Link>
+                                                    <Link
+                                                        href={`/admin/problems/${problem.code}/data`}
+                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        title="Manage data"
+                                                    >
+                                                        <Database size={18} />
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => {
+                                                            setProblemToClone({ code: problem.code, name: problem.name });
+                                                            setCloneModalOpen(true);
+                                                        }}
+                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        title="Clone problem"
+                                                    >
+                                                        <Copy size={18} />
+                                                    </button>
                                                     <button
                                                         onClick={() => deleteMutation.mutate(problem.code)}
                                                         disabled={deleteMutation.isPending}
@@ -208,5 +229,139 @@ export default function AdminProblemPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+
+// Clone Problem Modal Component
+function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuccess }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    problemCode: string;
+    problemName: string;
+    onSuccess: () => void;
+}) {
+    const [newCode, setNewCode] = useState('');
+    const [newName, setNewName] = useState('');
+    const [copyData, setCopyData] = useState(false);
+    const [copyAuthors, setCopyAuthors] = useState(true);
+    const [copySettings, setCopySettings] = useState(true);
+
+    const cloneMutation = useMutation({
+        mutationFn: () => adminProblemApi.clone(problemCode, {
+            new_code: newCode,
+            new_name: newName,
+            copy_data: copyData,
+            copy_authors: copyAuthors,
+            copy_settings: copySettings,
+        }),
+        onSuccess: (data) => {
+            onSuccess();
+            onOpenChange(false);
+            setNewCode('');
+            setNewName('');
+            alert(`Problem cloned successfully! New problem: ${data.data.new_problem.name} (${data.data.new_problem.code})`);
+        },
+        onError: (err: any) => {
+            alert(err.response?.data?.error || 'Failed to clone problem');
+        },
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        cloneMutation.mutate();
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                <div className="bg-card rounded-2xl border shadow-2xl w-full max-w-md pointer-events-auto">
+                    <form onSubmit={handleSubmit} className="space-y-6 p-6">
+                        <div>
+                            <h2 className="text-xl font-bold">Clone Problem</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Creating a copy of &quot;{problemName}&quot;
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-2">New Problem Code</label>
+                                <input
+                                    type="text"
+                                    value={newCode}
+                                    onChange={(e) => setNewCode(e.target.value)}
+                                    placeholder="e.g., APLUSB2"
+                                    className="w-full px-4 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-2">New Problem Name</label>
+                                <input
+                                    type="text"
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                    placeholder="e.g., A + B (Clone)"
+                                    className="w-full px-4 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={copyAuthors}
+                                        onChange={(e) => setCopyAuthors(e.target.checked)}
+                                        className="rounded"
+                                    />
+                                    <span className="text-sm">Copy authors, curators, and testers</span>
+                                </label>
+
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={copySettings}
+                                        onChange={(e) => setCopySettings(e.target.checked)}
+                                        className="rounded"
+                                    />
+                                    <span className="text-sm">Copy allowed languages, types, and organizations</span>
+                                </label>
+
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={copyData}
+                                        onChange={(e) => setCopyData(e.target.checked)}
+                                        className="rounded"
+                                    />
+                                    <span className="text-sm">Copy test cases and data files (requires manual verification)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => onOpenChange(false)}
+                                className="flex-1 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={cloneMutation.isPending}
+                                className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
+                            >
+                                {cloneMutation.isPending ? 'Cloning...' : 'Clone Problem'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Dialog>
     );
 }

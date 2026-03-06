@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { BlogPostDetail } from '@/types';
@@ -12,7 +12,9 @@ import {
     User,
     TrendingUp,
     ArrowLeft,
-    Share2
+    Share2,
+    ArrowBigUp,
+    ArrowBigDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -20,11 +22,14 @@ import { motion } from 'framer-motion';
 import { Link, useRouter } from '@/navigation';
 import MathRenderer from '@/components/ui/MathRenderer';
 import Comments from '@/components/common/Comments';
+import { toast } from 'sonner';
+import { blogVoteApi } from '@/lib/api';
 
 export default function BlogDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const t = useTranslations('Blog');
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const { data: post, isLoading } = useQuery({
         queryKey: ['blog', id],
@@ -33,6 +38,20 @@ export default function BlogDetailPage({ params }: { params: Promise<{ id: strin
             return res.data;
         }
     });
+
+    const voteMutation = useMutation({
+        mutationFn: (delta: 1 | -1) => blogVoteApi.vote(Number(id), delta),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['blog', id] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.error || 'Failed to vote');
+        },
+    });
+
+    const handleVote = (delta: 1 | -1) => {
+        voteMutation.mutate(delta);
+    };
 
     if (isLoading) return <div className="p-8"><Skeleton className="h-[70vh] w-full rounded-[2.5rem]" /></div>;
     if (!post) return <div className="p-8 text-center">Blog post not found.</div>;
@@ -55,8 +74,32 @@ export default function BlogDetailPage({ params }: { params: Promise<{ id: strin
                             {dayjs(post.publish_on).format('DD MMMM YYYY')}
                         </span>
                         <span className="flex items-center gap-2">
-                            <TrendingUp size={14} className="text-primary" />
-                            {post.score} Points
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => handleVote(1)}
+                                    disabled={voteMutation.isPending}
+                                    className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors disabled:opacity-50"
+                                    title="Upvote"
+                                >
+                                    <ArrowBigUp size={20} />
+                                </button>
+                                <span className={cn(
+                                    "font-bold min-w-[3ch] text-center transition-colors",
+                                    post.score > 0 ? "text-emerald-500" :
+                                    post.score < 0 ? "text-red-500" : "text-muted-foreground"
+                                )}>
+                                    {post.score > 0 ? '+' : ''}{post.score}
+                                </span>
+                                <button
+                                    onClick={() => handleVote(-1)}
+                                    disabled={voteMutation.isPending}
+                                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
+                                    title="Downvote"
+                                >
+                                    <ArrowBigDown size={20} />
+                                </button>
+                            </div>
+                            <span className="text-[10px] uppercase tracking-widest">Points</span>
                         </span>
                     </div>
 

@@ -115,6 +115,7 @@ export interface Contest {
     time_limit?: number;
     user_count: number;
     is_joined: boolean;
+    tags?: { id: number; name: string; color: string }[];
 }
 
 export interface ContestCalendarItem {
@@ -159,6 +160,8 @@ export interface RankingRow {
     rating_change?: number | null;
     performance?: number | null;
     breakdown: any[];
+    is_disqualified?: boolean;
+    participation_id?: number;
 }
 
 export interface RankingResponse {
@@ -198,6 +201,10 @@ export interface BlogPost {
 
 export interface BlogPostDetail extends BlogPost {
     content: string;
+}
+
+export interface BlogVoteRequest {
+    delta: 1 | -1;
 }
 
 export interface SolvedProblem {
@@ -882,6 +889,16 @@ export interface RejectSuggestionRequest {
 }
 
 // ============================================================
+// PROBLEM CLARIFICATION TYPES (Task #33)
+// ============================================================
+
+export interface ProblemClarification {
+    id: number;
+    description: string;
+    date: string;
+}
+
+// ============================================================
 // ADMIN COMMENT TYPES
 // ============================================================
 
@@ -1119,3 +1136,108 @@ export type AdminSubmissionListResponse = AdminListResponse<AdminSubmission>;
 export type RoleListResponse = AdminListResponse<Role>;
 export type AdminSolutionListResponse = AdminListResponse<AdminSolution>;
 export type AdminTicketListResponse = AdminListResponse<AdminTicket>;
+
+// ============================================================
+// NAVIGATION BAR TYPES (Task #51)
+// ============================================================
+
+export interface AdminNavigationBar {
+    id: number;
+    key: string;
+    label: string;
+    path: string;
+    parent_id?: number;
+    order: number;
+    level: number;
+    parent?: {
+        id: number;
+        label: string;
+    };
+}
+
+export interface AdminNavigationBarDetail {
+    id: number;
+    key: string;
+    label: string;
+    path: string;
+    parent_id?: number;
+    order: number;
+    level: number;
+    lft: number;
+    rght: number;
+    tree_id: number;
+}
+
+export interface AdminNavigationBarCreateRequest {
+    key: string;
+    label: string;
+    path: string;
+    parent_id?: number;
+    order?: number;
+}
+
+export interface AdminNavigationBarUpdateRequest {
+    label?: string;
+    path?: string;
+    order?: number;
+}
+
+export type AdminNavigationBarListResponse = AdminListResponse<AdminNavigationBar>;
+
+// ============================================================
+// ADMIN MISC CONFIG TYPES (Task #52)
+// ============================================================
+
+export interface AdminMiscConfig {
+    id: number;
+    key: string;
+    value: string;
+}
+
+export interface AdminMiscConfigDetail {
+    id: number;
+    key: string;
+    value: string;
+}
+
+export interface AdminMiscConfigCreateRequest {
+    key: string;
+    value?: string;
+}
+
+
+export interface AdminMiscConfigUpdateRequest {
+    value: string;
+}
+
+export type AdminMiscConfigListResponse = AdminListResponse<AdminMiscConfig>;
+
+// ============================================================
+// ADMIN LANGUAGE LIMIT TYPES (Task #35)
+// ============================================================
+
+export interface LanguageLimit {
+    id: number;
+    problem_id: number;
+    language_id: number;
+    time_limit: number;
+    memory_limit: number;
+    problem?: { id: number; code: string; name: string };
+    language?: { id: number; key: string; name: string };
+}
+
+export interface AdminLanguageLimit extends LanguageLimit {}
+
+export interface AdminLanguageLimitCreateRequest {
+    problem_id: number;
+    language_id: number;
+    time_limit: number;
+    memory_limit: number;
+}
+
+export interface AdminLanguageLimitUpdateRequest {
+    time_limit?: number;
+    memory_limit?: number;
+}
+
+export type AdminLanguageLimitListResponse = AdminListResponse<AdminLanguageLimit>;

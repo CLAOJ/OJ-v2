@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminContestApi } from '@/lib/adminApi';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
-import { Trophy, ArrowLeft, Lock, Unlock } from 'lucide-react';
+import { Trophy, ArrowLeft, Lock, Unlock, Users } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/Button';
 import { useState } from 'react';
@@ -118,6 +118,13 @@ export default function EditContestPage() {
                         {contest?.name} ({key})
                     </p>
                 </div>
+                <Link
+                    href={`/admin/contests/${key}/participations`}
+                    className="ml-auto px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                >
+                    <Users size={18} />
+                    Participations
+                </Link>
             </div>
 
             {/* Submission Lock Section */}

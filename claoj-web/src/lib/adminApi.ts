@@ -60,6 +60,21 @@ import type {
     RoleListResponse,
     AdminSolutionListResponse,
     AdminTicketListResponse,
+    AdminNavigationBar,
+    AdminNavigationBarDetail,
+    AdminNavigationBarCreateRequest,
+    AdminNavigationBarUpdateRequest,
+    AdminNavigationBarListResponse,
+    AdminMiscConfig,
+    AdminMiscConfigDetail,
+    AdminMiscConfigCreateRequest,
+    AdminMiscConfigUpdateRequest,
+    AdminMiscConfigListResponse,
+    LanguageLimit,
+    AdminLanguageLimit,
+    AdminLanguageLimitCreateRequest,
+    AdminLanguageLimitUpdateRequest,
+    AdminLanguageLimitListResponse,
 } from '@/types';
 
 // ============================================================
@@ -161,6 +176,16 @@ export const adminContestApi = {
         new_end_time?: string;
     }) =>
         api.post<{ success: boolean; message: string; new_contest: any }>(`/admin/contest/${key}/clone`, data),
+
+    disqualifyParticipation: (key: string, participationId: number) =>
+        api.post<{ message: string; participation: { id: number; is_disqualified: boolean } }>(
+            `/admin/contest/${key}/participation/${participationId}/disqualify`
+        ),
+
+    undisqualifyParticipation: (key: string, participationId: number) =>
+        api.post<{ message: string; participation: { id: number; is_disqualified: boolean } }>(
+            `/admin/contest/${key}/participation/${participationId}/undisqualify`
+        ),
 };
 
 // ============================================================
@@ -183,6 +208,20 @@ export const adminProblemApi = {
 
     delete: (code: string) =>
         api.delete(`/admin/problem/${code}`),
+
+    clone: (code: string, data: {
+        new_code: string;
+        new_name: string;
+        copy_data?: boolean;
+        copy_authors?: boolean;
+        copy_settings?: boolean;
+        new_description?: string;
+        new_summary?: string;
+    }) =>
+        api.post<{ success: boolean; new_problem: { id: number; code: string; name: string } }>(
+            `/admin/problem/${code}/clone`,
+            data
+        ),
 };
 
 // ============================================================
@@ -574,4 +613,79 @@ export const adminProblemTypeApi = {
 
     delete: (id: number) =>
         api.delete<{ message: string }>(`/admin/problem-type/${id}`),
+};
+
+// ============================================================
+// ADMIN NAVIGATION BAR API (Task #51)
+// ============================================================
+
+export const adminNavigationBarApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminNavigationBarListResponse>(`/admin/navigation-bars?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminNavigationBarDetail>(`/admin/navigation-bar/${id}`),
+
+    create: (data: AdminNavigationBarCreateRequest) =>
+        api.post<{ message: string; navigation_bar: { id: number; key: string } }>('/admin/navigation-bars', data),
+
+    update: (id: number, data: AdminNavigationBarUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/navigation-bar/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/navigation-bar/${id}`),
+};
+
+// ============================================================
+// ADMIN MISC CONFIG API (Task #52)
+// ============================================================
+
+export const adminMiscConfigApi = {
+    list: (page: number = 1, pageSize: number = 50, search?: string) => {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: pageSize.toString(),
+            ...(search ? { search } : {}),
+        });
+        return api.get<AdminMiscConfigListResponse>(`/admin/misc-configs?${params.toString()}`);
+    },
+
+    detail: (id: number) =>
+        api.get<AdminMiscConfigDetail>(`/admin/misc-config/${id}`),
+
+    create: (data: AdminMiscConfigCreateRequest) =>
+        api.post<AdminMiscConfigDetail>('/admin/misc-configs', data),
+
+    update: (id: number, data: AdminMiscConfigUpdateRequest) =>
+        api.patch<AdminMiscConfigDetail>(`/admin/misc-config/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/misc-config/${id}`),
+};
+
+// ============================================================
+// ADMIN LANGUAGE LIMIT API (Task #35)
+// ============================================================
+
+export const adminLanguageLimitApi = {
+    list: (page: number = 1, pageSize: number = 50, problemId?: number) => {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: pageSize.toString(),
+            ...(problemId ? { problem_id: problemId.toString() } : {}),
+        });
+        return api.get<AdminLanguageLimitListResponse>(`/admin/language-limits?${params.toString()}`);
+    },
+
+    detail: (id: number) =>
+        api.get<AdminLanguageLimit>(`/admin/language-limit/${id}`),
+
+    create: (data: AdminLanguageLimitCreateRequest) =>
+        api.post<{ data: AdminLanguageLimit; success: boolean; message: string }>(`/admin/language-limits`, data),
+
+    update: (id: number, data: AdminLanguageLimitUpdateRequest) =>
+        api.patch<{ data: AdminLanguageLimit; success: boolean; message: string }>(`/admin/language-limit/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ success: boolean; message: string }>(`/admin/language-limit/${id}`),
 };

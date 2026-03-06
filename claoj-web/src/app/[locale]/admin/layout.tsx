@@ -13,6 +13,7 @@ import {
     Code2,
     FileText,
     Settings,
+    Settings2,
     LogOut,
     Menu,
     X,
@@ -80,6 +81,11 @@ const adminLinks = [
         icon: Terminal
     },
     {
+        href: '/admin/language-limits',
+        label: 'Language Limits',
+        icon: Settings2
+    },
+    {
         href: '/admin/licenses',
         label: 'Licenses',
         icon: Scale
@@ -98,6 +104,16 @@ const adminLinks = [
         href: '/admin/roles',
         label: 'Roles',
         icon: Shield
+    },
+    {
+        href: '/admin/navigation-bars',
+        label: 'Navigation',
+        icon: Menu
+    },
+    {
+        href: '/admin/misc-configs',
+        label: 'Misc Config',
+        icon: Settings
     }
 ];
 
