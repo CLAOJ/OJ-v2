@@ -278,6 +278,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/user/:user/rating", v2.UserRatingHistory)
 		apiv2.GET("/user/:user/rating-detail", v2.UserRatingDetail)
 		apiv2.GET("/user/:user/analytics", v2.UserAnalytics)
+		apiv2.GET("/user/:user/pp-breakdown", v2.UserPPBreakdown)
 
 		// Ratings leaderboard
 		apiv2.GET("/ratings/leaderboard", v2.RatingLeaderboard)

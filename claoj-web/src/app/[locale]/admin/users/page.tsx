@@ -29,6 +29,7 @@ export default function AdminUserPage() {
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editForm, setEditForm] = useState<AdminUserUpdateRequest>({});
+    const [banDays, setBanDays] = useState(7);
 
     const queryClient = useQueryClient();
     const router = useRouter();
@@ -218,6 +219,7 @@ export default function AdminUserPage() {
                                                             onClick={() => {
                                                                 setSelectedUser(user);
                                                                 setEditForm({ ban_reason: '' });
+                                                                setBanDays(7);
                                                                 setShowEditModal(true);
                                                             }}
                                                             className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
@@ -299,7 +301,8 @@ export default function AdminUserPage() {
                                     <input
                                         type="number"
                                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                                        defaultValue={7}
+                                        value={banDays}
+                                        onChange={(e) => setBanDays(Number(e.target.value))}
                                         min={1}
                                         max={365}
                                     />
@@ -331,9 +334,7 @@ export default function AdminUserPage() {
                             {editForm.ban_reason ? (
                                 <button
                                     onClick={() => {
-                                        // We'll get the days from the DOM element in a real app
-                                        // For now, use a simple value
-                                        banMutation.mutate({ id: selectedUser.id, reason: editForm.ban_reason || '', days: 7 });
+                                        banMutation.mutate({ id: selectedUser.id, reason: editForm.ban_reason || '', days: banDays });
                                     }}
                                     disabled={banMutation.isPending}
                                     className="px-4 py-2 rounded-xl bg-destructive text-white hover:bg-destructive/90 transition-colors"

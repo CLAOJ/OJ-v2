@@ -1241,3 +1241,26 @@ export interface AdminLanguageLimitUpdateRequest {
 }
 
 export type AdminLanguageLimitListResponse = AdminListResponse<AdminLanguageLimit>;
+
+// ============================================================
+// PERFORMANCE POINTS BREAKDOWN TYPES (Task #42)
+// ============================================================
+
+export interface PPBreakdownProblem {
+    code: string;
+    name: string;
+    points: number;
+    weight: number;
+    contribution: number;
+}
+
+export interface PPBreakdown {
+    performance_points: number;
+    problems: PPBreakdownProblem[];
+    bonus: {
+        solved_count: number;
+        bonus_points: number;
+    };
+    weighted_sum: number;
+    total: number;
+}

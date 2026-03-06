@@ -2,8 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
-import { UserDetail, SolvedProblem, RatingHistoryEntry, APIResponse } from '@/types';
+import api, { ppBreakdownApi } from '@/lib/api';
+import { UserDetail, SolvedProblem, RatingHistoryEntry, APIResponse, PPBreakdown } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { use, useState } from 'react';
@@ -22,7 +22,10 @@ import {
     Hash,
     TrendingUp,
     Info,
-    CheckCircle2
+    CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    BarChart3
 } from 'lucide-react';
 import { cn, getRankColor, getRankBadgeColor, getRankTitle } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -49,6 +52,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
     const pt = useTranslations('Problems');
     const [activeTab, setActiveTab] = useState<'solved' | 'rating' | 'about' | 'organizations'>('solved');
     const [ratingView, setRatingView] = useState<'chart' | 'table'>('chart');
+    const [ppBreakdownOpen, setPpBreakdownOpen] = useState(false);
 
     const { data: user, isLoading: userLoading } = useQuery({
         queryKey: ['user', username],
@@ -72,6 +76,15 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
             const res = await api.get<APIResponse<RatingHistoryEntry[]>>(`/user/${username}/rating`);
             return res.data.data;
         }
+    });
+
+    const { data: ppBreakdown, isLoading: ppBreakdownLoading } = useQuery({
+        queryKey: ['user', username, 'pp-breakdown'],
+        queryFn: async () => {
+            const res = await ppBreakdownApi.getPPBreakdown(username);
+            return res.data;
+        },
+        enabled: ppBreakdownOpen,
     });
 
     if (userLoading) return (
@@ -207,6 +220,116 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
                             {tab.label}
                         </button>
                     ))}
+                </div>
+
+                {/* PP Breakdown Section */}
+                <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                    <button
+                        onClick={() => setPpBreakdownOpen(!ppBreakdownOpen)}
+                        className="w-full flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary/10">
+                                <BarChart3 size={20} className="text-primary" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-lg font-black tracking-tight">Performance Points Breakdown</h3>
+                                <p className="text-xs text-muted-foreground">See how your PP is calculated</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-primary">{Math.round(user.performance_points)}</span>
+                            {ppBreakdownOpen ? <ChevronUp size={20} className="text-muted-foreground" /> : <ChevronDown size={20} className="text-muted-foreground" />}
+                        </div>
+                    </button>
+
+                    <AnimatePresence>
+                        {ppBreakdownOpen && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="pt-6 space-y-6">
+                                    {ppBreakdownLoading ? (
+                                        <div className="space-y-4">
+                                            <Skeleton className="h-24 w-full rounded-2xl" />
+                                            <Skeleton className="h-64 w-full rounded-2xl" />
+                                        </div>
+                                    ) : ppBreakdown ? (
+                                        <>
+                                            {/* Summary Cards */}
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="bg-muted/30 rounded-2xl p-4 border text-center">
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Weighted Sum</p>
+                                                    <p className="text-2xl font-black text-primary">{ppBreakdown.weighted_sum.toFixed(2)}</p>
+                                                </div>
+                                                <div className="bg-muted/30 rounded-2xl p-4 border text-center">
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bonus Points</p>
+                                                    <p className="text-2xl font-black text-emerald-500">{ppBreakdown.bonus.bonus_points.toFixed(2)}</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">{ppBreakdown.bonus.solved_count} problems solved</p>
+                                                </div>
+                                                <div className="bg-primary/10 rounded-2xl p-4 border border-primary/20 text-center">
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total PP</p>
+                                                    <p className="text-2xl font-black text-primary">{ppBreakdown.total.toFixed(2)}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Problems Table */}
+                                            <div className="overflow-x-auto custom-scrollbar">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-muted/30 border-b">
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">#</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Problem</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Points</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Weight</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Contribution</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-muted/50">
+                                                        {ppBreakdown.problems.slice(0, 100).map((p, idx) => (
+                                                            <tr key={p.code} className="hover:bg-muted/5 transition-colors">
+                                                                <td className="px-4 py-3 text-sm font-bold text-muted-foreground">{idx + 1}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <Link
+                                                                        href={`/problems/${p.code}`}
+                                                                        className="text-sm font-black hover:text-primary transition-colors"
+                                                                    >
+                                                                        {p.code}
+                                                                    </Link>
+                                                                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">{p.name}</p>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right text-sm font-black">{p.points.toFixed(2)}</td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <span className="text-xs font-bold text-muted-foreground">{p.weight.toFixed(4)}</span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <span className="text-sm font-black text-primary">{p.contribution.toFixed(2)}</span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Formula Info */}
+                                            <div className="bg-muted/20 rounded-xl p-4 border border-dashed">
+                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">PP Formula</p>
+                                                <code className="text-xs font-mono text-muted-foreground block">
+                                                    PP = sum(0.95^i * points[i]) for top 100 problems + 300 * (1 - 0.997^solved_count)
+                                                </code>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-center text-muted-foreground italic py-12">No PP breakdown available</p>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Tab Content */}

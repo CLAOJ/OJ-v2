@@ -189,13 +189,13 @@ export const webauthnApi = {
 // PROBLEM SUGGESTION API (Task #31)
 // ============================================================
 
-import type { 
-    ProblemSuggestion, 
-    ProblemSuggestionAdmin, 
+import type {
+    ProblemSuggestion,
+    ProblemSuggestionAdmin,
     ProblemSuggestionDetail,
     ProblemSuggestRequest,
     ApproveSuggestionRequest,
-    RejectSuggestionRequest 
+    RejectSuggestionRequest
 } from '@/types';
 
 export const problemSuggestionApi = {
@@ -271,4 +271,15 @@ export const blogVoteApi = {
     // Vote on a blog post (delta: 1 for upvote, -1 for downvote)
     vote: (blogId: number, delta: 1 | -1) =>
         api.post<{ message: string }>(`/blog/${blogId}/vote`, { delta } as BlogVoteRequest),
+};
+
+// ============================================================
+// PERFORMANCE POINTS BREAKDOWN API (Task #42)
+// ============================================================
+
+import type { PPBreakdown } from '@/types';
+
+export const ppBreakdownApi = {
+    getPPBreakdown: (username: string) =>
+        api.get<PPBreakdown>(`/user/${username}/pp-breakdown`),
 };

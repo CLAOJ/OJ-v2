@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/jobs"
 	"github.com/CLAOJ/claoj-go/models"
+	"github.com/CLAOJ/claoj-go/scoring"
 	"github.com/gin-gonic/gin"
 )
 
@@ -158,6 +160,92 @@ func UserRatingHistory(c *gin.Context) {
 		Scan(&history)
 
 	c.JSON(http.StatusOK, apiList(history))
+}
+
+// UserPPBreakdown – GET /api/v2/user/:user/pp-breakdown
+func UserPPBreakdown(c *gin.Context) {
+	username := c.Param("user")
+	var profile models.Profile
+
+	if err := db.DB.Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
+		Where("au.username = ?", username).First(&profile).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("user not found"))
+		return
+	}
+
+	// Get max points per public problem, ordered by points DESC
+	type ProblemResult struct {
+		Code        string  `json:"code"`
+		Name        string  `json:"name"`
+		MaxPoints   float64 `json:"points"`
+		Weight      float64 `json:"weight"`
+		Contribution float64 `json:"contribution"`
+	}
+	var problems []ProblemResult
+
+	// First get the raw max points data
+	type RawResult struct {
+		Code        string  `gorm:"column:code"`
+		Name        string  `gorm:"column:name"`
+		MaxPoints   float64 `gorm:"column:max_points"`
+	}
+	var rawData []RawResult
+
+	if err := db.DB.Raw(`
+		SELECT pr.code, pr.name, MAX(s.points) as max_points
+		FROM judge_submission s
+		JOIN judge_problem pr ON s.problem_id = pr.id
+		WHERE s.user_id = ? AND pr.is_public = 1 AND s.points IS NOT NULL
+		GROUP BY pr.id, pr.code, pr.name
+		HAVING max_points > 0
+		ORDER BY max_points DESC
+		LIMIT 100
+	`, profile.ID).Scan(&rawData).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Calculate weighted contributions
+	problems = make([]ProblemResult, len(rawData))
+	weightedSum := 0.0
+	for i, res := range rawData {
+		weight := math.Pow(0.95, float64(i))
+		contribution := weight * res.MaxPoints
+		weightedSum += contribution
+		problems[i] = ProblemResult{
+			Code:         res.Code,
+			Name:         res.Name,
+			MaxPoints:    res.MaxPoints,
+			Weight:       weight,
+			Contribution: contribution,
+		}
+	}
+
+	// Calculate bonus from solved count
+	var solvedCount int64
+	if err := db.DB.Raw(`
+		SELECT COUNT(DISTINCT s.problem_id)
+		FROM judge_submission s
+		JOIN judge_problem p ON s.problem_id = p.id
+		WHERE s.user_id = ? AND p.is_public = 1 AND s.result = 'AC' AND s.case_points >= s.case_total
+	`, profile.ID).Scan(&solvedCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	bonusPoints := scoring.PpBonusFunction(int(solvedCount))
+	totalPP := weightedSum + bonusPoints
+
+	c.JSON(http.StatusOK, gin.H{
+		"performance_points": totalPP,
+		"problems":           problems,
+		"bonus": gin.H{
+			"solved_count":   solvedCount,
+			"bonus_points":   bonusPoints,
+		},
+		"weighted_sum": weightedSum,
+		"total":        totalPP,
+	})
 }
 
 // UserAnalytics – GET /api/v2/user/:user/analytics
