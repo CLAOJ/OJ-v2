@@ -73,7 +73,17 @@
     "startTime": "Start Time",
     "endTime": "End Time",
     "noScheduled": "There are no scheduled contests at this time.",
-    "noPast": "There are no past contests."
+    "noPast": "There are no past contests.",
+    "dashboard": "Dashboard",
+    "problems": "Problems",
+    "scoreboard": "Scoreboard",
+    "statistics": "Statistics",
+    "rank": "Rank",
+    "solved": "Solved",
+    "startIn": "Starts in",
+    "endsIn": "Ends in",
+    "ended": "Ended",
+    "joinContest": "Join Contest"
   },
   "Submissions": {
     "title": "Submissions"
@@ -118,7 +128,10 @@
   "Blog": {
     "title": "Blog",
     "noPosts": "No blog posts available",
-    "readMore": "Read More"
+    "readMore": "Read More",
+    "subscribeToFeed": "Subscribe to Feed",
+    "rssFeed": "RSS 2.0 Feed",
+    "atomFeed": "Atom 1.0 Feed"
   },
   "Users": {
     "title": "Users"

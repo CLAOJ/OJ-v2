@@ -203,6 +203,15 @@ export interface BlogPostDetail extends BlogPost {
     content: string;
 }
 
+export interface BlogFeedItem {
+    id: number;
+    title: string;
+    link: string;
+    description: string;
+    pubDate: string;
+    author: string;
+}
+
 export interface BlogVoteRequest {
     delta: 1 | -1;
 }
@@ -1263,4 +1272,38 @@ export interface PPBreakdown {
     };
     weighted_sum: number;
     total: number;
+}
+
+// ============================================================
+// CONTEST STATISTICS TYPES (Task #24)
+// ============================================================
+
+export interface ContestProblemStats {
+    problem_code: string;
+    problem_label: string;
+    points: number;
+    max_score: number;
+    is_solved: boolean;
+    attempt_count: number;
+    first_submit_time: string | null;
+    solve_time: number | null;
+    time_in_seconds: number;
+}
+
+export interface ContestStats {
+    contest_key: string;
+    contest_name: string;
+    participation_id: number;
+    score: number;
+    cumtime: number;
+    rank: number;
+    total_participants: number;
+    percentile: number;
+    average_score: number;
+    solved_count: number;
+    total_problems: number;
+    total_attempts: number;
+    average_solve_time: number;
+    problems: ContestProblemStats[];
+    average_solve_times_by_problem: Record<string, number>;
 }

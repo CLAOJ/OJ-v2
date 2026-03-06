@@ -16,11 +16,13 @@ import {
     Trophy,
     Clock,
     Flame,
-    Hash
+    Hash,
+    Rss
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
+import { blogFeedApi } from '@/lib/api';
 
 export default function BlogListPage() {
     const t = useTranslations('Blog');
@@ -139,6 +141,34 @@ export default function BlogListPage() {
 
                 {/* Sidebar Widgets */}
                 <aside className="w-full lg:w-80 flex flex-col gap-8 shrink-0">
+                    {/* RSS/Atom Feed Links */}
+                    <div className="p-8 rounded-[2.5rem] border bg-card shadow-sm space-y-6">
+                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-3">
+                            <Rss size={16} />
+                            {t('subscribeToFeed')}
+                        </h3>
+                        <div className="space-y-3">
+                            <a
+                                href={blogFeedApi.getRssUrl()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 p-4 rounded-2xl bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:border-orange-300 transition-all group"
+                            >
+                                <Rss size={20} className="text-orange-500 group-hover:scale-110 transition-transform" />
+                                <span className="text-sm font-black text-orange-700">{t('rssFeed')}</span>
+                            </a>
+                            <a
+                                href={blogFeedApi.getAtomUrl()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all group"
+                            >
+                                <Rss size={20} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                <span className="text-sm font-black text-blue-700">{t('atomFeed')}</span>
+                            </a>
+                        </div>
+                    </div>
+
                     {/* Contests Widget */}
                     <div className="p-8 rounded-[2.5rem] border bg-card shadow-sm space-y-8">
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-3">

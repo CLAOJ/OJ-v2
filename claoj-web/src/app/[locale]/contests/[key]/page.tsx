@@ -183,21 +183,22 @@ export default function ContestDetailPage({ params }: { params: Promise<{ key: s
                 <div className="px-10 md:px-14 border-t bg-muted/10">
                     <div className="flex gap-10 overflow-x-auto no-scrollbar whitespace-nowrap">
                         {[
-                            { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
-                            { id: 'problems', label: t('problems'), icon: ListOrdered },
-                            { id: 'scoreboard', label: t('scoreboard'), icon: BarChart3 }
+                            { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, href: null },
+                            { id: 'problems', label: t('problems'), icon: ListOrdered, href: null },
+                            { id: 'scoreboard', label: t('scoreboard'), icon: BarChart3, href: null },
+                            { id: 'stats', label: t('statistics'), icon: Activity, href: `/contests/${key}/stats`, external: true }
                         ].map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
+                                onClick={() => tab.href ? window.location.href = tab.href : setActiveTab(tab.id as any)}
                                 className={cn(
-                                    "relative py-6 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-all",
+                                    "relative py-6 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-all cursor-pointer",
                                     activeTab === tab.id ? "text-primary scale-105" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <tab.icon size={16} />
                                 {tab.label}
-                                {activeTab === tab.id && (
+                                {activeTab === tab.id && !tab.href && (
                                     <motion.div layoutId="tab-underline-contest" className="absolute bottom-0 left-0 right-0 h-1.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.3)]" />
                                 )}
                             </button>

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj-go/contest_format"
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/gin-gonic/gin"
@@ -444,4 +445,179 @@ func ContestClarificationAnswer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "clarification answered",
 	})
+}
+
+// ContestStats - GET /api/v2/contest/:key/stats
+// Returns statistics for the current user's contest performance
+func ContestStats(c *gin.Context) {
+	key := c.Param("key")
+
+	var ct models.Contest
+	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
+		return
+	}
+
+	// Get user's participation
+	var participation models.ContestParticipation
+	if err := db.DB.Where("contest_id = ? AND user_id = ?", ct.ID, userID).First(&participation).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("you have not participated in this contest"))
+		return
+	}
+
+	// Get contest problems
+	var contestProblems []models.ContestProblem
+	if err := db.DB.Where("contest_id = ?", ct.ID).Order("`order` ASC").Find(&contestProblems).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to load contest problems"))
+		return
+	}
+
+	// Get user's submissions in this contest
+	type SubmissionStats struct {
+		ProblemCode      string     `json:"problem_code"`
+		ProblemLabel     string     `json:"problem_label"`
+		Points           int        `json:"points"`
+		MaxScore         float64    `json:"max_score"`
+		IsSolved         bool       `json:"is_solved"`
+		AttemptCount     int        `json:"attempt_count"`
+		FirstSubmitTime  *time.Time `json:"first_submit_time"`
+		SolveTime        *uint      `json:"solve_time,omitempty"` // seconds from contest start to AC
+		TimeInSeconds    uint       `json:"time_in_seconds"`
+	}
+
+	var stats []SubmissionStats
+	for _, cp := range contestProblems {
+		stat := SubmissionStats{
+			ProblemCode:  cp.Problem.Code,
+			Points:       cp.Points,
+			MaxScore:     0,
+			IsSolved:     false,
+			AttemptCount: 0,
+		}
+
+		// Get all submissions for this problem in the contest
+		var submissions []struct {
+			SubmissionID uint       `gorm:"column:submission_id"`
+			Points       float64    `gorm:"column:points"`
+			Date         time.Time  `gorm:"column:date"`
+		}
+		db.DB.Table("judge_contestsubmission").
+			Joins("JOIN judge_submission ON judge_submission.id = judge_contestsubmission.submission_id").
+			Where("judge_contestsubmission.participation_id = ? AND judge_contestsubmission.problem_id = ?", participation.ID, cp.ID).
+			Order("judge_submission.date ASC").
+			Select("judge_contestsubmission.submission_id, judge_contestsubmission.points, judge_submission.date").
+			Scan(&submissions)
+
+		stat.AttemptCount = len(submissions)
+		if stat.AttemptCount > 0 {
+			stat.FirstSubmitTime = &submissions[0].Date
+			for _, sub := range submissions {
+				if sub.Points > stat.MaxScore {
+					stat.MaxScore = sub.Points
+				}
+				// Check if solved (full points or AC)
+				if sub.Points >= float64(cp.Points) {
+					stat.IsSolved = true
+					solveTime := uint(sub.Date.Sub(ct.StartTime).Seconds())
+					stat.SolveTime = &solveTime
+					stat.TimeInSeconds = solveTime
+				}
+			}
+		}
+
+		// Get problem label
+		cf := contest_format.GetFormat(ct.FormatName, &ct, ct.FormatConfig)
+		for i, prob := range contestProblems {
+			if prob.ID == cp.ID {
+				stat.ProblemLabel = cf.GetLabelForProblem(i)
+				break
+			}
+		}
+
+		stats = append(stats, stat)
+	}
+
+	// Calculate summary statistics
+	totalProblems := len(contestProblems)
+	solvedProblems := 0
+	totalAttempts := 0
+	var totalSolveTime uint = 0
+	for _, s := range stats {
+		if s.IsSolved {
+			solvedProblems++
+			totalSolveTime += s.TimeInSeconds
+		}
+		totalAttempts += s.AttemptCount
+	}
+
+	// Get ranking info
+	var totalParticipants int64
+	db.DB.Model(&models.ContestParticipation{}).
+		Where("contest_id = ? AND virtual = 0 AND is_disqualified = 0", ct.ID).
+		Count(&totalParticipants)
+
+	var userRank int64
+	db.DB.Model(&models.ContestParticipation{}).
+		Where("contest_id = ? AND virtual = 0 AND is_disqualified = 0 AND (score > ? OR (score = ? AND cumtime < ?))",
+			ct.ID, participation.Score, participation.Score, participation.Cumtime).
+		Count(&userRank)
+	userRank++ // 1-based rank
+
+	// Calculate percentile
+	var percentile float64 = 0
+	if totalParticipants > 1 {
+		percentile = float64(totalParticipants-userRank) / float64(totalParticipants-1) * 100
+	}
+
+	// Get average stats for comparison
+	var avgScore float64
+	db.DB.Model(&models.ContestParticipation{}).
+		Where("contest_id = ? AND virtual = 0 AND is_disqualified = 0", ct.ID).
+		Select("AVG(score)").Scan(&avgScore)
+
+	// Get average solve time per problem
+	avgSolveTimes := make(map[string]float64)
+	for _, cp := range contestProblems {
+		var avgTime float64
+		db.DB.Table("judge_contestsubmission").
+			Joins("JOIN judge_submission ON judge_submission.id = judge_contestsubmission.submission_id").
+			Joins("JOIN judge_contestparticipation ON judge_contestparticipation.id = judge_contestsubmission.participation_id").
+			Where("judge_contestsubmission.problem_id = ? AND judge_contestparticipation.contest_id = ? AND judge_contestparticipation.virtual = 0 AND judge_contestparticipation.is_disqualified = 0 AND judge_contestsubmission.points >= ?", cp.ID, ct.ID, cp.Points).
+			Select("AVG(TIMESTAMPDIFF(SECOND, judge_contest.start_time, judge_submission.date))").
+			Scan(&avgTime)
+		if avgTime > 0 {
+			avgSolveTimes[cp.Problem.Code] = avgTime
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"contest_key": ct.Key,
+		"contest_name": ct.Name,
+		"participation_id": participation.ID,
+		"score": participation.Score,
+		"cumtime": participation.Cumtime,
+		"rank": userRank,
+		"total_participants": totalParticipants,
+		"percentile": percentile,
+		"average_score": avgScore,
+		"solved_count": solvedProblems,
+		"total_problems": totalProblems,
+		"total_attempts": totalAttempts,
+		"average_solve_time": totalSolveTime / uint(max(solvedProblems, 1)),
+		"problems": stats,
+		"average_solve_times_by_problem": avgSolveTimes,
+	})
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

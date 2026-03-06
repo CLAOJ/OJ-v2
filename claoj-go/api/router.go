@@ -267,6 +267,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/contest/:key", v2.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
 		apiv2.GET("/contest/:key/ranking/pdf", v2.ContestRankingPDF)
+		apiv2.GET("/contest/:key/stats", v2.ContestStats)
 		apiv2.GET("/contest/:key/participations", v2.ParticipationList)
 
 		apiv2.GET("/submissions", v2.SubmissionList)
@@ -301,6 +302,8 @@ func NewRouter() *gin.Engine {
 		// Blogs
 		apiv2.GET("/blogs", v2.BlogList)
 		apiv2.GET("/blog/:id", v2.BlogDetail)
+		apiv2.GET("/blogs/feed/rss", v2.BlogFeedRSS)
+		apiv2.GET("/blogs/feed/atom", v2.BlogFeedAtom)
 
 		// Protected endpoints with CSRF protection
 		protected := apiv2.Group("")

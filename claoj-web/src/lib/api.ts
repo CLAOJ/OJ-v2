@@ -283,3 +283,26 @@ export const ppBreakdownApi = {
     getPPBreakdown: (username: string) =>
         api.get<PPBreakdown>(`/user/${username}/pp-breakdown`),
 };
+
+// ============================================================
+// CONTEST STATISTICS API (Task #24)
+// ============================================================
+
+import type { ContestStats } from '@/types';
+
+export const contestStatsApi = {
+    getContestStats: (contestKey: string) =>
+        api.get<ContestStats>(`/contest/${contestKey}/stats`),
+};
+
+// ============================================================
+// BLOG RSS/ATOM FEEDS API (Task #40)
+// ============================================================
+
+export const blogFeedApi = {
+    // Get RSS feed URL
+    getRssUrl: () => `${api.defaults.baseURL}/blogs/feed/rss`,
+
+    // Get Atom feed URL
+    getAtomUrl: () => `${api.defaults.baseURL}/blogs/feed/atom`,
+};

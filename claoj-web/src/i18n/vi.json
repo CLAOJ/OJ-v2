@@ -52,6 +52,7 @@
   },
   "Contest": {
     "title": "Thi đấu",
+    "calendar": "Lịch thi đấu",
     "active": "Cuộc thi đang tham gia",
     "ongoing": "Cuộc thi đang diễn ra",
     "upcoming": "Cuộc thi sắp tới",
@@ -70,7 +71,17 @@
     "startTime": "Thời gian bắt đầu",
     "endTime": "Thời gian kết thúc",
     "noScheduled": "Không có cuộc thi nào được lên lịch vào lúc này.",
-    "noPast": "Không có cuộc thi đã qua."
+    "noPast": "Không có cuộc thi đã qua.",
+    "dashboard": "Tổng quan",
+    "problems": "Bài toán",
+    "scoreboard": "Bảng xếp hạng",
+    "statistics": "Thống kê",
+    "rank": "Hạng",
+    "solved": "Đã giải",
+    "startIn": "Bắt đầu trong",
+    "endsIn": "Kết thúc trong",
+    "ended": "Đã kết thúc",
+    "joinContest": "Tham gia thi đấu"
   },
   "Submissions": {
     "title": "Bài nộp"
@@ -105,7 +116,10 @@
   "Blog": {
     "title": "Blog",
     "noPosts": "Không có bài viết nào",
-    "readMore": "Đọc tiếp"
+    "readMore": "Đọc tiếp",
+    "subscribeToFeed": "Đăng ký nhận bài",
+    "rssFeed": "RSS 2.0 Feed",
+    "atomFeed": "Atom 1.0 Feed"
   },
   "Users": {
     "title": "Người dùng"
