@@ -105,18 +105,41 @@ func Submit(c *gin.Context) {
 		// 4b. If this is a contest submission, link it
 		if req.ContestKey != "" {
 			var ct models.Contest
-			if err := tx.Where("key = ? AND is_visible = ?", req.ContestKey, true).First(&ct).Error; err != nil {
+			if err := tx.Where("key = ?", req.ContestKey).First(&ct).Error; err != nil {
 				return errors.New("invalid contest")
+			}
+
+			if !ct.IsVisible {
+				return errors.New("contest is not visible")
 			}
 
 			if now.Before(ct.StartTime) || now.After(ct.EndTime) {
 				return errors.New("contest is not active")
 			}
 
+			// Check if contest is locked
+			if ct.LockedAfter != nil && now.After(*ct.LockedAfter) {
+				return errors.New("contest submissions are locked")
+			}
+
 			// We need the user's Profile ID to link to ContestParticipation
 			var profile models.Profile
 			if err := tx.Where("user_id = ?", userID).First(&profile).Error; err != nil {
 				return errors.New("user profile not found")
+			}
+
+			// Check contest-level submission limit
+			if ct.MaxSubmissions != nil {
+				var submissionCount int64
+				if err := tx.Table("judge_contestsubmission").
+					Joins("JOIN judge_contestparticipation ON judge_contestsubmission.participation_id = judge_contestparticipation.id").
+					Where("judge_contestparticipation.contest_id = ? AND judge_contestparticipation.user_id = ?", ct.ID, profile.ID).
+					Count(&submissionCount).Error; err != nil {
+					return err
+				}
+				if submissionCount >= int64(*ct.MaxSubmissions) {
+					return errors.New("contest submission limit reached")
+				}
 			}
 
 			var part models.ContestParticipation
@@ -128,6 +151,20 @@ func Submit(c *gin.Context) {
 			var cprob models.ContestProblem
 			if err := tx.Where("contest_id = ? AND problem_id = ?", ct.ID, problem.ID).First(&cprob).Error; err != nil {
 				return errors.New("problem is not in this contest")
+			}
+
+			// Check per-problem submission limit
+			if cprob.MaxSubmissions != nil {
+				var problemSubmissionCount int64
+				if err := tx.Table("judge_contestsubmission").
+					Joins("JOIN judge_contestparticipation ON judge_contestsubmission.participation_id = judge_contestparticipation.id").
+					Where("judge_contestparticipation.contest_id = ? AND judge_contestparticipation.user_id = ? AND judge_contestsubmission.problem_id = ?", ct.ID, profile.ID, cprob.ID).
+					Count(&problemSubmissionCount).Error; err != nil {
+					return err
+				}
+				if problemSubmissionCount >= int64(*cprob.MaxSubmissions) {
+					return errors.New("problem submission limit reached")
+				}
 			}
 
 			csub := models.ContestSubmission{

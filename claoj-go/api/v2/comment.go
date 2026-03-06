@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj-go/contribution"
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/CLAOJ/claoj-go/sanitization"
@@ -225,16 +226,20 @@ func CommentVote(c *gin.Context) {
 		}
 		// Update comment score
 		db.DB.Model(&comment).UpdateColumn("score", gorm.Expr("score + ?", req.Score))
+		// Update author\'s contribution points
+		contribution.UpdateProfileContributionPoints(comment.AuthorID)
 	} else if err == nil {
 		// Existing vote found - update or remove
 		if existingVote.Score == req.Score {
 			// Same vote - remove it (toggle off)
 			db.DB.Delete(&existingVote)
 			db.DB.Model(&comment).UpdateColumn("score", gorm.Expr("score - ?", req.Score))
+			contribution.UpdateProfileContributionPoints(comment.AuthorID)
 		} else {
 			// Different vote - update it (score changes by 2: -1 to 1 or 1 to -1)
 			db.DB.Model(&existingVote).Update("score", req.Score)
 			db.DB.Model(&comment).UpdateColumn("score", gorm.Expr("score + ?", req.Score*2))
+			contribution.UpdateProfileContributionPoints(comment.AuthorID)
 		}
 	} else {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})

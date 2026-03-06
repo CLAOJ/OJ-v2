@@ -64,6 +64,16 @@ export function formatTime(date: string | Date | null | undefined): string {
 }
 
 /**
+ * Format a date as a datetime string (e.g., "Jan 15, 2024 14:30")
+ * @param date - The date to format
+ * @returns DateTime string
+ */
+export function formatDateTime(date: string | Date | null | undefined): string {
+    if (!date) return '';
+    return dayjs(date).format('MMM D, YYYY HH:mm');
+}
+
+/**
  * Check if a date is today
  * @param date - The date to check
  * @returns true if the date is today

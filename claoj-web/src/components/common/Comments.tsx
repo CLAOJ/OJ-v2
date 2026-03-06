@@ -48,12 +48,13 @@ interface CommentsProps {
 
 export default function Comments({ page }: CommentsProps) {
     const t = useTranslations('Comments');
-    const { user, isAdmin } = useAuth();
+    const { user } = useAuth()
+    const isAdmin = user?.is_admin || false;
     const queryClient = useQueryClient();
     const [commentBody, setCommentBody] = useState('');
     const [replyTo, setReplyTo] = useState<number | null>(null);
     const [editingComment, setEditingComment] = useState<Comment | null>(null);
-    const [revisionHistory, setRevisionHistory] = useState<CommentRevision[] | null>(null);
+    const [revisionHistory, setRevisionHistory] = useState<Comment | null>(null);
     const [deletingComment, setDeletingComment] = useState<number | null>(null);
 
     const { data: comments, isLoading } = useQuery({
@@ -123,10 +124,10 @@ export default function Comments({ page }: CommentsProps) {
 
     // Revision history query
     const { data: revisions } = useQuery({
-        queryKey: ['comment-revisions', revisionHistory?.[0]?.id],
+        queryKey: ['comment-revisions', revisionHistory?.id],
         queryFn: async () => {
-            if (!revisionHistory?.[0]?.id) return [];
-            const res = await api.get<{ data: CommentRevision[] }>(`/comment/${revisionHistory[0].id}/revisions`);
+            if (!revisionHistory?.id) return [];
+            const res = await api.get<{ data: CommentRevision[] }>(`/comment/${revisionHistory.id}/revisions`);
             return res.data.data;
         },
         enabled: !!revisionHistory
@@ -356,7 +357,7 @@ interface CommentNodeProps {
     t: (key: string) => string;
     onEdit: (comment: Comment | null) => void;
     onDelete: (id: number | null) => void;
-    onShowRevisions: (comment: Comment[] | null) => void;
+    onShowRevisions: (comment: Comment | null) => void;
     onHide: (params: { id: number; hidden: boolean }) => void;
     onVote: (params: { id: number; score: number }) => void;
 }
@@ -414,7 +415,7 @@ function CommentNode({ node, level = 0, onReply, replyTo, onPost, isPosting, use
                                     </>
                                 )}
                                 <button
-                                    onClick={() => { onShowRevisions([node]); setShowMenu(false); }}
+                                    onClick={() => { onShowRevisions(node); setShowMenu(false); }}
                                     className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors"
                                 >
                                     <History size={16} />

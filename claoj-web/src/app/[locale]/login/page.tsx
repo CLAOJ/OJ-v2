@@ -8,8 +8,10 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { Link, useRouter } from '@/navigation';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Mail, Lock, User as UserIcon, AlertCircle, Shield } from 'lucide-react';
+import { Loader2, Mail, Lock, User as UserIcon, AlertCircle, Shield, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 const loginSchema = z.object({
     username: z.string().min(1, 'Username is required'),
@@ -20,12 +22,14 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
     const t = useTranslations('Auth');
-    const { login, loginTotp } = useAuth();
+    const { login, loginTotp, loginWebAuthn } = useAuth();
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [requiresTotp, setRequiresTotp] = useState(false);
     const [totpUsername, setTotpUsername] = useState('');
+    const [webAuthnUsername, setWebAuthnUsername] = useState('');
+    const [showWebAuthnForm, setShowWebAuthnForm] = useState(false);
 
     const {
         register,
@@ -47,7 +51,7 @@ export default function LoginPage() {
                 router.push('/');
             }
         } catch (err: any) {
-            setError(t('invalidCredentials'));
+            setError(err.response?.data?.error || t('invalidCredentials'));
         } finally {
             setIsLoading(false);
         }
@@ -61,6 +65,23 @@ export default function LoginPage() {
             router.push('/');
         } catch (err: any) {
             setError(err.response?.data?.error || 'Invalid TOTP code');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleWebAuthnSubmit = async () => {
+        if (!webAuthnUsername) {
+            setError('Please enter your username');
+            return;
+        }
+        setIsLoading(true);
+        setError(null);
+        try {
+            await loginWebAuthn(webAuthnUsername);
+            router.push('/');
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'WebAuthn login failed');
         } finally {
             setIsLoading(false);
         }
@@ -84,6 +105,11 @@ export default function LoginPage() {
                             <h2 className="text-2xl font-bold">Two-Factor Authentication</h2>
                             <p className="text-muted-foreground">Enter your TOTP code to continue</p>
                         </>
+                    ) : showWebAuthnForm ? (
+                        <>
+                            <h2 className="text-2xl font-bold">Passkey Login</h2>
+                            <p className="text-muted-foreground">Use your passkey to sign in</p>
+                        </>
                     ) : (
                         <>
                             <h2 className="text-2xl font-bold">{t('loginTitle')}</h2>
@@ -104,6 +130,53 @@ export default function LoginPage() {
                         error={error}
                         isLoading={isLoading}
                     />
+                ) : showWebAuthnForm ? (
+                    <div className="space-y-6">
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-3"
+                            >
+                                <AlertCircle size={18} />
+                                {error}
+                            </motion.div>
+                        )}
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none">Username</label>
+                                <div className="relative">
+                                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                                    <Input
+                                        value={webAuthnUsername}
+                                        onChange={(e) => setWebAuthnUsername(e.target.value)}
+                                        placeholder="Enter your username"
+                                        className="pl-10"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowWebAuthnForm(false)}
+                                className="flex-1"
+                            >
+                                Back
+                            </Button>
+                            <Button
+                                onClick={handleWebAuthnSubmit}
+                                disabled={isLoading || !webAuthnUsername}
+                                className="flex-1"
+                            >
+                                {isLoading && <Loader2 size={18} className="animate-spin" />}
+                                <Key size={18} className="mr-2" />
+                                Sign in with Passkey
+                            </Button>
+                        </div>
+                    </div>
                 ) : (
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                         {error && (
@@ -180,7 +253,7 @@ export default function LoginPage() {
                     </form>
                 )}
 
-                {!requiresTotp && (
+                {!requiresTotp && !showWebAuthnForm && (
                     <>
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
@@ -213,6 +286,22 @@ export default function LoginPage() {
                                 </svg>
                                 GitHub
                             </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-muted-foreground/20"></div>
+                                </div>
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowWebAuthnForm(true)}
+                                className="w-full h-12"
+                            >
+                                <Key className="h-5 w-5 mr-2" />
+                                Sign in with Passkey
+                            </Button>
                         </div>
 
                         <div className="text-center text-sm text-muted-foreground">

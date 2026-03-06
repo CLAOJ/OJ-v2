@@ -143,6 +143,12 @@ const (
 
 	// PermManageAnnouncements - Create/edit announcements
 	PermManageAnnouncements = "system.manage_announcements"
+
+	// PermSuggestProblem - Suggest new problems
+	PermSuggestProblem = "problems.suggest"
+
+	// PermManageProblemSuggestions - Manage problem suggestions (approve/reject)
+	PermManageProblemSuggestions = "problems.manage_suggestions"
 )
 
 // DefaultPermissionSets defines which permissions each default role has
@@ -205,5 +211,6 @@ var DefaultPermissionSets = map[string][]string{
 		PermManageJudges,
 		PermManageLanguages,
 		PermManageAnnouncements,
+		PermManageProblemSuggestions,
 	},
 }

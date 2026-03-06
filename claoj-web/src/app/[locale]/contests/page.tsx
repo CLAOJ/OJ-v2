@@ -45,7 +45,7 @@ export default function ContestListPage() {
         queryKey: ['contests'],
         queryFn: async () => {
             const res = await api.get<APIResponse<Contest[]>>('/contests', {
-                params: { page_size: 1000 } // Get all for categorization
+                params: { page_size: 1000 }
             });
             return res.data;
         }
@@ -65,7 +65,6 @@ export default function ContestListPage() {
         c.key.toLowerCase().includes(search.toLowerCase())
     );
 
-    // Categorize
     const active = filtered.filter(c => c.is_joined && now.isBefore(dayjs(c.end_time)));
     const ongoing = filtered.filter(c => !c.is_joined && now.isAfter(dayjs(c.start_time)) && now.isBefore(dayjs(c.end_time)));
     const upcoming = filtered.filter(c => now.isBefore(dayjs(c.start_time)));
@@ -108,7 +107,6 @@ export default function ContestListPage() {
                             <tbody className="divide-y">
                                 {contests.map((c) => {
                                     const isRunning = now.isAfter(dayjs(c.start_time)) && now.isBefore(dayjs(c.end_time));
-                                    const isStartingSoon = now.isBefore(dayjs(c.start_time)) && dayjs(c.start_time).diff(now, 'hour') < 24;
 
                                     return (
                                         <tr key={c.key} className="hover:bg-muted/30 transition-colors group">
@@ -203,15 +201,24 @@ export default function ContestListPage() {
                         <p className="text-muted-foreground mt-1">Participate in challenges, win recognition, and grow your rating.</p>
                     </div>
 
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search contests..."
-                            className="w-full h-12 bg-card border rounded-[1.5rem] pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/contests/calendar"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-bold transition-all border border-primary/20"
+                        >
+                            <Calendar size={18} />
+                            <span>View Calendar</span>
+                        </Link>
+                        <div className="relative w-full md:w-64">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search contests..."
+                                className="w-full h-12 bg-card border rounded-[1.5rem] pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
             </header>

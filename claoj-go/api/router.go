@@ -21,7 +21,7 @@ func NewRouter() *gin.Engine {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{config.C.App.SiteFullURL}
 	corsConfig.AllowCredentials = true
-	corsConfig.AllowHeaders = []string{"Authorization", "Content-Type", "X-Requested-With"}
+	corsConfig.AllowHeaders = []string{"Authorization", "Content-Type", "X-Requested-With", "X-CSRFToken"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	r.Use(cors.New(corsConfig))
 
@@ -57,6 +57,13 @@ func NewRouter() *gin.Engine {
 		apiv2.POST("/auth/totp/verify", v2.TotpVerify)
 		apiv2.POST("/auth/totp/backup-codes", v2.TotpBackupCodesGenerate)
 		apiv2.POST("/auth/totp/verify-backup", v2.TotpBackupVerify)
+		// WebAuthn/2FA
+		apiv2.GET("/auth/webauthn/status", v2.WebAuthnStatus)
+		apiv2.POST("/auth/webauthn/register/begin", v2.WebAuthnBeginRegistration)
+		apiv2.POST("/auth/webauthn/register/finish", v2.WebAuthnFinishRegistration)
+		apiv2.POST("/auth/webauthn/login/begin", v2.WebAuthnBeginLogin)
+		apiv2.POST("/auth/webauthn/login/finish", v2.WebAuthnFinishLogin)
+		// WebAuthn Credentials (Protected)
 		// OAuth
 		apiv2.GET("/auth/oauth/:provider", v2.OAuthStart)
 		apiv2.POST("/auth/oauth/:provider/callback", v2.OAuthCallback)
@@ -85,6 +92,17 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/contests", v2.AdminContestCreate)
 			admin.PATCH("/admin/contest/:key", v2.AdminContestUpdate)
 			admin.DELETE("/admin/contest/:key", v2.AdminContestDelete)
+			admin.POST("/admin/contest/:key/lock", v2.AdminContestLock)
+			admin.POST("/admin/contest/:key/clone", v2.AdminContestClone)
+
+			// Contest Tags
+			admin.GET("/admin/contest-tags", v2.AdminContestTagList)
+			admin.GET("/admin/contest-tag/:id", v2.AdminContestTagDetail)
+			admin.POST("/admin/contest-tags", v2.AdminContestTagCreate)
+			admin.PATCH("/admin/contest-tag/:id", v2.AdminContestTagUpdate)
+			admin.DELETE("/admin/contest-tag/:id", v2.AdminContestTagDelete)
+			admin.POST("/admin/contest/:key/tags/:tagId", v2.AdminContestAddTag)
+			admin.DELETE("/admin/contest/:key/tags/:tagId", v2.AdminContestRemoveTag)
 
 			// Problems
 			admin.GET("/admin/problems", v2.AdminProblemList)
@@ -133,6 +151,9 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
 			admin.POST("/admin/submission/:id/moss", v2.AdminSubmissionMossAnalysis)
 			admin.GET("/admin/submission/:id/moss", v2.AdminSubmissionMossResults)
+			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
+			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
+			admin.POST("/admin/problem/:code/rescore-all", v2.AdminProblemRescoreAll)
 
 			// Roles & Permissions
 			admin.GET("/admin/roles", v2.AdminRoleList)
@@ -144,6 +165,59 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/profile/:id/roles", v2.AdminProfileAssignRole)
 			admin.DELETE("/admin/profile/:id/roles/:roleId", v2.AdminProfileRemoveRole)
 			admin.POST("/admin/comment/:id/hide", v2.CommentHide)
+
+			// Comments Admin
+			admin.GET("/admin/comments", v2.AdminCommentList)
+			admin.PATCH("/admin/comment/:id", v2.AdminCommentUpdate)
+			admin.DELETE("/admin/comment/:id", v2.AdminCommentDelete)
+
+			// Languages Admin
+			admin.GET("/admin/languages", v2.AdminLanguageList)
+			admin.GET("/admin/language/:id", v2.AdminLanguageDetail)
+			admin.POST("/admin/languages", v2.AdminLanguageCreate)
+			admin.PATCH("/admin/language/:id", v2.AdminLanguageUpdate)
+			admin.DELETE("/admin/language/:id", v2.AdminLanguageDelete)
+
+			// Blog Posts Admin
+			admin.GET("/admin/blog-posts", v2.AdminBlogPostList)
+			admin.GET("/admin/blog-post/:id", v2.AdminBlogPostDetail)
+			admin.POST("/admin/blog-posts", v2.AdminBlogPostCreate)
+			admin.PATCH("/admin/blog-post/:id", v2.AdminBlogPostUpdate)
+			admin.DELETE("/admin/blog-post/:id", v2.AdminBlogPostDelete)
+
+			// Licenses Admin
+			admin.GET("/admin/licenses", v2.AdminLicenseList)
+			admin.GET("/admin/license/:id", v2.AdminLicenseDetail)
+			admin.POST("/admin/licenses", v2.AdminLicenseCreate)
+			admin.PATCH("/admin/license/:id", v2.AdminLicenseUpdate)
+			admin.DELETE("/admin/license/:id", v2.AdminLicenseDelete)
+
+			// Problem Taxonomy Admin
+			admin.GET("/admin/problem-groups", v2.AdminProblemGroupList)
+			admin.GET("/admin/problem-group/:id", v2.AdminProblemGroupDetail)
+			admin.POST("/admin/problem-groups", v2.AdminProblemGroupCreate)
+			admin.PATCH("/admin/problem-group/:id", v2.AdminProblemGroupUpdate)
+			admin.DELETE("/admin/problem-group/:id", v2.AdminProblemGroupDelete)
+			admin.GET("/admin/problem-types", v2.AdminProblemTypeList)
+			admin.GET("/admin/problem-type/:id", v2.AdminProblemTypeDetail)
+			admin.POST("/admin/problem-types", v2.AdminProblemTypeCreate)
+			admin.PATCH("/admin/problem-type/:id", v2.AdminProblemTypeUpdate)
+			admin.DELETE("/admin/problem-type/:id", v2.AdminProblemTypeDelete)
+
+			// Tickets (Admin)
+			admin.GET("/admin/tickets", v2.AdminTicketList)
+			admin.GET("/admin/ticket/:id", v2.AdminTicketDetail)
+			admin.POST("/admin/ticket/:id/assign", v2.AdminTicketAssign)
+			admin.POST("/admin/ticket/:id/toggle", v2.AdminTicketToggleOpen)
+			admin.POST("/admin/ticket/:id/set-contributive", v2.AdminTicketSetContributive)
+			admin.PATCH("/admin/ticket/:id/notes", v2.AdminTicketUpdateNotes)
+
+			// Problem Suggestions (Admin)
+			admin.GET("/admin/problem-suggestions", v2.AdminProblemSuggestionList)
+			admin.GET("/admin/problem-suggestion/:id", v2.AdminProblemSuggestionDetail)
+			admin.POST("/admin/problem-suggestion/:id/approve", v2.AdminProblemSuggestionApprove)
+			admin.POST("/admin/problem-suggestion/:id/reject", v2.AdminProblemSuggestionReject)
+			admin.DELETE("/admin/problem-suggestion/:id", v2.AdminProblemSuggestionDelete)
 		}
 
 		apiv2.GET("/problems", v2.ProblemList)
@@ -156,6 +230,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/events", events.ServeWS)
 
 		apiv2.GET("/contests", v2.ContestList)
+		apiv2.GET("/contests/calendar", v2.ContestCalendar)
 		apiv2.GET("/contest/:key", v2.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
 		apiv2.GET("/contest/:key/ranking/pdf", v2.ContestRankingPDF)
@@ -199,9 +274,24 @@ func NewRouter() *gin.Engine {
 		protected.Use(csrf.Middleware(csrf.DefaultConfig()))
 		{
 			protected.POST("/auth/revoke-all-sessions", v2.RevokeAllSessions)
+			// WebAuthn Credential Management
+			protected.GET("/auth/webauthn/credentials", v2.WebAuthnCredentialsList)
+			protected.PATCH("/auth/webauthn/credentials/:id", v2.WebAuthnCredentialUpdate)
+			protected.DELETE("/auth/webauthn/credentials/:id", v2.WebAuthnCredentialDelete)
 			protected.POST("/problem/:code/submit", v2.Submit)
 			protected.GET("/user/me", v2.CurrentUser)
 			protected.PATCH("/user/me", v2.UpdateProfile)
+
+			// API Token Management
+			protected.GET("/user/api-token", v2.GetAPIToken)
+			protected.POST("/user/api-token", v2.GenerateAPIToken)
+			protected.DELETE("/user/api-token", v2.RevokeAPIToken)
+
+		// User Data Export
+		protected.POST("/user/export/request", v2.UserExportRequest)
+		protected.GET("/user/export/status", v2.UserExportStatus)
+		protected.GET("/user/export/download/:export_id", v2.UserExportDownload)
+
 			protected.POST("/contest/:key/join", v2.ContestJoin)
 			protected.GET("/user/contests", v2.UserParticipationList)
 
@@ -232,6 +322,10 @@ func NewRouter() *gin.Engine {
 			protected.GET("/organization/:id/requests", v2.OrganizationRequestList)
 			protected.POST("/organization/request/:rid/handle", v2.HandleOrganizationRequest)
 			protected.POST("/organization/:id/kick", v2.KickUser)
+
+			// Problem Suggestions (Protected - users can submit and view their own)
+			protected.POST("/problems/suggest", v2.SuggestProblem)
+			protected.GET("/my-suggestions", v2.GetUserSuggestions)
 
 			// Notifications
 			protected.GET("/notifications", v2.NotificationList)

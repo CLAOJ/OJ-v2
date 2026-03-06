@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/CLAOJ/claoj-go/sanitization"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // bridgeServerRef is set by main.go to allow API handlers to access bridge functions
@@ -371,6 +373,7 @@ func AdminContestDetail(c *gin.Context) {
 	if err := db.DB.Preload("Authors").
 		Preload("Curators").
 		Preload("Testers").
+		Preload("Tags").
 		Where("key = ?", key).First(&contest).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
@@ -415,10 +418,12 @@ func AdminContestCreate(c *gin.Context) {
 		HideProblemTags  bool    `json:"hide_problem_tags"`
 		RunPretestsOnly  bool    `json:"run_pretests_only"`
 		IsOrganizationPrivate bool `json:"is_organization_private"`
+		MaxSubmissions   *int    `json:"max_submissions"`
 		AuthorIDs        []uint  `json:"author_ids"`
 		CuratorIDs       []uint  `json:"curator_ids"`
 		TesterIDs        []uint  `json:"tester_ids"`
 		ProblemIDs       []uint  `json:"problem_ids"`
+		TagIDs           []uint  `json:"tag_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -498,6 +503,11 @@ func AdminContestCreate(c *gin.Context) {
 			})
 		}
 	}
+	if len(input.TagIDs) > 0 {
+		var tags []models.ContestTag
+		db.DB.Where("id IN ?", input.TagIDs).Find(&tags)
+		db.DB.Model(&contest).Association("Tags").Append(&tags)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -533,6 +543,9 @@ func AdminContestUpdate(c *gin.Context) {
 		AddProblemIDs            []uint   `json:"add_problem_ids"`
 		RemoveProblemIDs         []uint   `json:"remove_problem_ids"`
 		UpdateTimeLimit          *int64   `json:"update_time_limit"`
+		MaxSubmissions           *int     `json:"max_submissions"`
+		AddTagIDs                []uint   `json:"add_tag_ids"`
+		RemoveTagIDs             []uint   `json:"remove_tag_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -571,6 +584,9 @@ func AdminContestUpdate(c *gin.Context) {
 	if input.UpdateTimeLimit != nil {
 		updates["time_limit"] = *input.UpdateTimeLimit
 	}
+	if input.MaxSubmissions != nil {
+		updates["max_submissions"] = *input.MaxSubmissions
+	}
 
 	if len(updates) > 0 {
 		db.DB.Model(&contest).Updates(updates)
@@ -603,7 +619,21 @@ func AdminContestUpdate(c *gin.Context) {
 		db.DB.Where("contest_id = ? AND problem_id IN ?", contest.ID, input.RemoveProblemIDs).Delete(&models.ContestProblem{})
 	}
 
-	db.DB.Preload("Authors").Preload("Curators").Preload("Testers").First(&contest, contest.ID)
+	// Add tags
+	if len(input.AddTagIDs) > 0 {
+		var tags []models.ContestTag
+		db.DB.Where("id IN ?", input.AddTagIDs).Find(&tags)
+		db.DB.Model(&contest).Association("Tags").Append(&tags)
+	}
+
+	// Remove tags
+	if len(input.RemoveTagIDs) > 0 {
+		var tags []models.ContestTag
+		db.DB.Where("id IN ?", input.RemoveTagIDs).Find(&tags)
+		db.DB.Model(&contest).Association("Tags").Delete(&tags)
+	}
+
+	db.DB.Preload("Authors").Preload("Curators").Preload("Testers").Preload("Tags").First(&contest, contest.ID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -628,6 +658,197 @@ func AdminContestDelete(c *gin.Context) {
 		"message": "Contest hidden (soft deleted)",
 	})
 }
+
+// AdminContestLock - POST /api/v2/admin/contest/:key/lock
+func AdminContestLock(c *gin.Context) {
+	key := c.Param("key")
+	var contest models.Contest
+	if err := db.DB.Where("key = ?", key).First(&contest).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	var input struct {
+		LockedAfter *string `json:"locked_after"` // ISO 8601 format, or null to unlock
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	if input.LockedAfter == nil {
+		// Unlock - set to NULL
+		db.DB.Model(&contest).Update("locked_after", nil)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Contest unlocked - submissions are now allowed",
+			"locked":  false,
+		})
+	} else {
+		// Lock at specified time
+		lockedAt, err := time.Parse(time.RFC3339, *input.LockedAfter)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, apiError("invalid locked_after format, use ISO 8601"))
+			return
+		}
+		db.DB.Model(&contest).Update("locked_after", lockedAt)
+		c.JSON(http.StatusOK, gin.H{
+			"success":      true,
+			"message":      "Contest lock time updated",
+			"locked":       true,
+			"locked_after": lockedAt,
+		})
+	}
+}
+
+
+// AdminContestClone - POST /api/v2/admin/contest/:key/clone
+func AdminContestClone(c *gin.Context) {
+	key := c.Param("key")
+	var sourceContest models.Contest
+	if err := db.DB.Where("key = ?", key).First(&sourceContest).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	var input struct {
+		NewKey        string `json:"new_key" binding:"required"`
+		NewName       string `json:"new_name" binding:"required"`
+		CopyProblems  bool   `json:"copy_problems"`
+		CopySettings  bool   `json:"copy_settings"`
+		NewStartTime  string `json:"new_start_time"`
+		NewEndTime    string `json:"new_end_time"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if new key already exists
+	var existing models.Contest
+	if err := db.DB.Where("key = ?", input.NewKey).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("contest key already exists"))
+		return
+	}
+
+	// Parse optional new times
+	var startTime, endTime time.Time
+	if input.NewStartTime != "" {
+		var err error
+		startTime, err = parseRFC3339(input.NewStartTime)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, apiError("invalid new_start_time format"))
+			return
+		}
+		endTime, err = parseRFC3339(input.NewEndTime)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, apiError("invalid new_end_time format"))
+			return
+		}
+	} else {
+		// Use original times
+		startTime = sourceContest.StartTime
+		endTime = sourceContest.EndTime
+	}
+
+	// Create new contest with copied settings
+	newContest := models.Contest{
+		Key:                   input.NewKey,
+		Name:                  sanitization.SanitizeTitle(input.NewName),
+		Description:           sourceContest.Description,
+		Summary:               sourceContest.Summary,
+		StartTime:             startTime,
+		EndTime:               endTime,
+		TimeLimit:             sourceContest.TimeLimit,
+		IsVisible:             false, // Start as invisible
+		IsRated:               sourceContest.IsRated,
+		ScoreboardVisibility:  sourceContest.ScoreboardVisibility,
+		ScoreboardCacheTimeout: sourceContest.ScoreboardCacheTimeout,
+		UseClarifications:     sourceContest.UseClarifications,
+		PushAnnouncements:     sourceContest.PushAnnouncements,
+		RatingFloor:           sourceContest.RatingFloor,
+		RatingCeiling:         sourceContest.RatingCeiling,
+		RateAll:               sourceContest.RateAll,
+		IsPrivate:             sourceContest.IsPrivate,
+		HideProblemTags:       sourceContest.HideProblemTags,
+		HideProblemAuthors:    sourceContest.HideProblemAuthors,
+		RunPretestsOnly:       sourceContest.RunPretestsOnly,
+		ShowShortDisplay:      sourceContest.ShowShortDisplay,
+		IsOrganizationPrivate: sourceContest.IsOrganizationPrivate,
+		OgImage:               sourceContest.OgImage,
+		LogoOverrideImage:     sourceContest.LogoOverrideImage,
+		AccessCode:            sourceContest.AccessCode,
+		FormatName:            sourceContest.FormatName,
+		FormatConfig:          sourceContest.FormatConfig,
+		ProblemLabelScript:    sourceContest.ProblemLabelScript,
+		LockedAfter:           nil, // Don't copy lock
+		PointsPrecision:       sourceContest.PointsPrecision,
+	}
+
+	if err := db.DB.Create(&newContest).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Copy authors, curators, testers
+	if input.CopySettings {
+		var authors []models.Profile
+		db.DB.Model(&sourceContest).Association("Authors").Find(&authors)
+		if len(authors) > 0 {
+			db.DB.Model(&newContest).Association("Authors").Append(&authors)
+		}
+
+		var curators []models.Profile
+		db.DB.Model(&sourceContest).Association("Curators").Find(&curators)
+		if len(curators) > 0 {
+			db.DB.Model(&newContest).Association("Curators").Append(&curators)
+		}
+
+		var testers []models.Profile
+		db.DB.Model(&sourceContest).Association("Testers").Find(&testers)
+		if len(testers) > 0 {
+			db.DB.Model(&newContest).Association("Testers").Append(&testers)
+		}
+
+		var orgs []models.Organization
+		db.DB.Model(&sourceContest).Association("Organizations").Find(&orgs)
+		if len(orgs) > 0 {
+			db.DB.Model(&newContest).Association("Organizations").Append(&orgs)
+		}
+	}
+
+	// Copy problems
+	if input.CopyProblems {
+		var contestProblems []models.ContestProblem
+		db.DB.Where("contest_id = ?", sourceContest.ID).Order("order ASC").Find(&contestProblems)
+
+		for _, cp := range contestProblems {
+			newCP := models.ContestProblem{
+				ContestID:            newContest.ID,
+				ProblemID:            cp.ProblemID,
+				Points:               cp.Points,
+				Partial:              cp.Partial,
+				IsPretested:          cp.IsPretested,
+				Order:                cp.Order,
+				OutputPrefixOverride: cp.OutputPrefixOverride,
+				MaxSubmissions:       cp.MaxSubmissions,
+			}
+			db.DB.Create(&newCP)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "contest cloned successfully",
+		"new_contest": gin.H{
+			"id":  newContest.ID,
+			"key": newContest.Key,
+			"name": newContest.Name,
+		},
+	})
+}
+
 
 // ============================================================
 // ADMIN PROBLEM MANAGEMENT
@@ -1960,4 +2181,1732 @@ func contains(slice []uint, item uint) bool {
 		}
 	}
 	return false
+}
+
+// ============================================================
+// SUBMISSION RESCORE ENDPOINTS
+// ============================================================
+
+// AdminSubmissionRescore - POST /admin/submission/:id/rescore
+// Rescores a single submission (recalculates points based on current test cases)
+func AdminSubmissionRescore(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	submissionIDStr := c.Param("id")
+	var submissionID uint
+	if err := parseUint(submissionIDStr, &submissionID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		return
+	}
+
+	var submission models.Submission
+	if err := db.DB.First(&submission, submissionID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("submission not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Requeue the submission for rejudging
+	if err := jobs.EnqueueJudgeSubmission(submission.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to requeue submission"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "submission rescored successfully",
+		"submission_id": submission.ID,
+	})
+}
+
+// AdminSubmissionBatchRescoreRequest - request body for batch rescore
+type AdminSubmissionBatchRescoreRequest struct {
+	SubmissionIDs []uint `json:"submission_ids"`
+	ProblemID     *uint  `json:"problem_id"`
+	UserID        *uint  `json:"user_id"`
+	DryRun        bool   `json:"dry_run"`
+}
+
+// AdminSubmissionBatchRescore - POST /admin/submissions/batch-rescore
+// Rescores multiple submissions based on filters or specific IDs
+func AdminSubmissionBatchRescore(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req AdminSubmissionBatchRescoreRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Build query based on filters
+	query := db.DB.Model(&models.Submission{})
+
+	if len(req.SubmissionIDs) > 0 {
+		query = query.Where("id IN ?", req.SubmissionIDs)
+	} else {
+		// Use filters if no specific IDs provided
+		if req.ProblemID != nil {
+			query = query.Where("problem_id = ?", *req.ProblemID)
+		}
+		if req.UserID != nil {
+			query = query.Where("user_id = ?", *req.UserID)
+		}
+	}
+
+	// Dry run - just count
+	if req.DryRun {
+		var count int64
+		if err := query.Count(&count).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError("database error"))
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"count": count,
+			"message": "dry run complete",
+		})
+		return
+	}
+
+	// Get all submissions to rescore
+	var submissions []models.Submission
+	if err := query.Find(&submissions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Enqueue each submission for rejudging
+	rescored := 0
+	for _, sub := range submissions {
+		if err := jobs.EnqueueJudgeSubmission(sub.ID); err == nil {
+			rescored++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "batch rescore initiated",
+		"rescored":  rescored,
+		"total":     len(submissions),
+	})
+}
+
+// AdminProblemRescoreAll - POST /admin/problem/:code/rescore-all
+// Rescores all submissions for a specific problem
+func AdminProblemRescoreAll(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	code := c.Param("code")
+
+	var problem models.Problem
+	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Get all submissions for this problem
+	var submissions []models.Submission
+	if err := db.DB.Where("problem_id = ?", problem.ID).Find(&submissions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Enqueue each submission for rejudging
+	rescored := 0
+	for _, sub := range submissions {
+		if err := jobs.EnqueueJudgeSubmission(sub.ID); err == nil {
+			rescored++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "problem rescore initiated",
+		"rescored":  rescored,
+		"total":     len(submissions),
+		"problem_code": problem.Code,
+	})
+}
+
+// ============================================================
+// ADMIN COMMENT MANAGEMENT
+// ============================================================
+
+// AdminCommentList - GET /api/v2/admin/comments
+// List all comments with filtering and pagination
+func AdminCommentList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+	search := c.Query("search")
+	hidden := c.Query("hidden") // "true", "false", or empty for all
+
+	query := db.DB.Model(&models.Comment{}).
+		Preload("Author.User").
+		Joins("LEFT JOIN judge_profile ON judge_profile.id = judge_comment.author_id").
+		Joins("LEFT JOIN auth_user ON auth_user.id = judge_profile.user_id")
+
+	if search != "" {
+		query = query.Where("judge_comment.body LIKE ? OR auth_user.username LIKE ? OR judge_comment.page LIKE ?",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	if hidden != "" {
+		if hidden == "true" {
+			query = query.Where("judge_comment.hidden = ?", true)
+		} else if hidden == "false" {
+			query = query.Where("judge_comment.hidden = ?", false)
+		}
+	}
+
+	// Get total count
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// Get comments
+	var comments []models.Comment
+	if err := query.
+		Order("judge_comment.time DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&comments).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type CommentItem struct {
+		ID        uint      `json:"id"`
+		AuthorID  uint      `json:"author_id"`
+		Username  string    `json:"username"`
+		Page      string    `json:"page"`
+		Body      string    `json:"body"`
+		Score     int       `json:"score"`
+		Hidden    bool      `json:"hidden"`
+		Time      time.Time `json:"time"`
+		ParentID  *uint     `json:"parent_id,omitempty"`
+	}
+
+	items := make([]CommentItem, len(comments))
+	for i, cm := range comments {
+		username := ""
+		if cm.Author.User.Username != "" {
+			username = cm.Author.User.Username
+		}
+		items[i] = CommentItem{
+			ID:       cm.ID,
+			AuthorID: cm.AuthorID,
+			Username: username,
+			Page:     cm.Page,
+			Body:     cm.Body,
+			Score:    cm.Score,
+			Hidden:   cm.Hidden,
+			Time:     cm.Time,
+			ParentID: cm.ParentID,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// AdminCommentUpdate - PATCH /api/v2/admin/comment/:id
+// Admin update comment (body, hidden status)
+func AdminCommentUpdate(c *gin.Context) {
+	user, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsStaff && !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	var commentID uint
+	if err := parseUint(commentIDStr, &commentID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid comment id"))
+		return
+	}
+
+	var comment models.Comment
+	if err := db.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("comment not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	var req struct {
+		Body   *string `json:"body,omitempty"`
+		Hidden *bool   `json:"hidden,omitempty"`
+		Reason string  `json:"reason,omitempty"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Create revision if body is being changed
+	if req.Body != nil && *req.Body != comment.Body {
+		revision := models.CommentRevision{
+			CommentID: comment.ID,
+			EditorID:  profile.ID,
+			Time:      time.Now(),
+			Body:      comment.Body, // Save old body
+			Reason:    req.Reason,
+		}
+		db.DB.Create(&revision)
+		comment.Body = sanitization.SanitizeComment(*req.Body)
+	}
+
+	if req.Hidden != nil {
+		comment.Hidden = *req.Hidden
+	}
+
+	if err := db.DB.Save(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to update comment"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "comment updated",
+		"comment": gin.H{
+			"id":     comment.ID,
+			"body":   comment.Body,
+			"hidden": comment.Hidden,
+		},
+	})
+}
+
+// AdminCommentDelete - DELETE /api/v2/admin/comment/:id
+// Hard delete a comment (admin only)
+func AdminCommentDelete(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsStaff && !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	var commentID uint
+	if err := parseUint(commentIDStr, &commentID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid comment id"))
+		return
+	}
+
+	var comment models.Comment
+	if err := db.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("comment not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Hard delete the comment
+	if err := db.DB.Delete(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete comment"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "comment deleted",
+	})
+}
+
+// ============================================================
+// ADMIN LANGUAGE MANAGEMENT
+// ============================================================
+
+// AdminLanguageList - GET /api/v2/admin/languages
+// List all languages
+func AdminLanguageList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+
+	var total int64
+	if err := db.DB.Model(&models.Language{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var languages []models.Language
+	if err := db.DB.
+		Order("key ASC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&languages).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type LanguageItem struct {
+		ID               uint    `json:"id"`
+		Key              string  `json:"key"`
+		Name             string  `json:"name"`
+		ShortName        *string `json:"short_name"`
+		CommonName       string  `json:"common_name"`
+		Ace              string  `json:"ace"`
+		Pygments         string  `json:"pygments"`
+		Extension        string  `json:"extension"`
+		FileOnly         bool    `json:"file_only"`
+		FileSizeLimit    int     `json:"file_size_limit"`
+		IncludeInProblem bool    `json:"include_in_problem"`
+		Info             string  `json:"info"`
+	}
+
+	items := make([]LanguageItem, len(languages))
+	for i, lang := range languages {
+		items[i] = LanguageItem{
+			ID:               lang.ID,
+			Key:              lang.Key,
+			Name:             lang.Name,
+			ShortName:        lang.ShortName,
+			CommonName:       lang.CommonName,
+			Ace:              lang.Ace,
+			Pygments:         lang.Pygments,
+			Extension:        lang.Extension,
+			FileOnly:         lang.FileOnly,
+			FileSizeLimit:    lang.FileSizeLimit,
+			IncludeInProblem: lang.IncludeInProblem,
+			Info:             lang.Info,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// AdminLanguageDetail - GET /api/v2/admin/language/:id
+// Get language detail
+func AdminLanguageDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid language id"))
+		return
+	}
+
+	var lang models.Language
+	if err := db.DB.First(&lang, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("language not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":                 lang.ID,
+		"key":                lang.Key,
+		"name":               lang.Name,
+		"short_name":         lang.ShortName,
+		"common_name":        lang.CommonName,
+		"ace":                lang.Ace,
+		"pygments":           lang.Pygments,
+		"template":           lang.Template,
+		"description":        lang.Description,
+		"extension":          lang.Extension,
+		"file_only":          lang.FileOnly,
+		"file_size_limit":    lang.FileSizeLimit,
+		"include_in_problem": lang.IncludeInProblem,
+		"info":               lang.Info,
+	})
+}
+
+// AdminLanguageCreateRequest - POST /api/v2/admin/languages
+type AdminLanguageCreateRequest struct {
+	Key              string  `json:"key" binding:"required"`
+	Name             string  `json:"name" binding:"required"`
+	ShortName        *string `json:"short_name"`
+	CommonName       string  `json:"common_name" binding:"required"`
+	Ace              string  `json:"ace" binding:"required"`
+	Pygments         string  `json:"pygments" binding:"required"`
+	Template         string  `json:"template"`
+	Description      string  `json:"description"`
+	Extension        string  `json:"extension" binding:"required"`
+	FileOnly         bool    `json:"file_only"`
+	FileSizeLimit    int     `json:"file_size_limit"`
+	IncludeInProblem bool    `json:"include_in_problem"`
+	Info             string  `json:"info"`
+}
+
+// AdminLanguageCreate - POST /api/v2/admin/languages
+// Create a new language
+func AdminLanguageCreate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req AdminLanguageCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if key already exists
+	var existing models.Language
+	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("language key already exists"))
+		return
+	}
+
+	lang := models.Language{
+		Key:              req.Key,
+		Name:             req.Name,
+		ShortName:        req.ShortName,
+		CommonName:       req.CommonName,
+		Ace:              req.Ace,
+		Pygments:         req.Pygments,
+		Template:         req.Template,
+		Description:      req.Description,
+		Extension:        req.Extension,
+		FileOnly:         req.FileOnly,
+		FileSizeLimit:    req.FileSizeLimit,
+		IncludeInProblem: req.IncludeInProblem,
+		Info:             req.Info,
+	}
+
+	if err := db.DB.Create(&lang).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to create language"))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":  "language created",
+		"language": gin.H{"id": lang.ID, "key": lang.Key},
+	})
+}
+
+// AdminLanguageUpdateRequest - PATCH /api/v2/admin/language/:id
+type AdminLanguageUpdateRequest struct {
+	Name             *string `json:"name"`
+	ShortName        *string `json:"short_name"`
+	CommonName       *string `json:"common_name"`
+	Ace              *string `json:"ace"`
+	Pygments         *string `json:"pygments"`
+	Template         *string `json:"template"`
+	Description      *string `json:"description"`
+	Extension        *string `json:"extension"`
+	FileOnly         *bool   `json:"file_only"`
+	FileSizeLimit    *int    `json:"file_size_limit"`
+	IncludeInProblem *bool   `json:"include_in_problem"`
+	Info             *string `json:"info"`
+}
+
+// AdminLanguageUpdate - PATCH /api/v2/admin/language/:id
+// Update a language
+func AdminLanguageUpdate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid language id"))
+		return
+	}
+
+	var lang models.Language
+	if err := db.DB.First(&lang, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("language not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	var req AdminLanguageUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Update fields if provided
+	if req.Name != nil {
+		lang.Name = *req.Name
+	}
+	if req.ShortName != nil {
+		lang.ShortName = req.ShortName
+	}
+	if req.CommonName != nil {
+		lang.CommonName = *req.CommonName
+	}
+	if req.Ace != nil {
+		lang.Ace = *req.Ace
+	}
+	if req.Pygments != nil {
+		lang.Pygments = *req.Pygments
+	}
+	if req.Template != nil {
+		lang.Template = *req.Template
+	}
+	if req.Description != nil {
+		lang.Description = *req.Description
+	}
+	if req.Extension != nil {
+		lang.Extension = *req.Extension
+	}
+	if req.FileOnly != nil {
+		lang.FileOnly = *req.FileOnly
+	}
+	if req.FileSizeLimit != nil {
+		lang.FileSizeLimit = *req.FileSizeLimit
+	}
+	if req.IncludeInProblem != nil {
+		lang.IncludeInProblem = *req.IncludeInProblem
+	}
+	if req.Info != nil {
+		lang.Info = *req.Info
+	}
+
+	if err := db.DB.Save(&lang).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to update language"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "language updated",
+		"language": gin.H{"id": lang.ID, "key": lang.Key},
+	})
+}
+
+// AdminLanguageDelete - DELETE /api/v2/admin/language/:id
+// Delete a language
+func AdminLanguageDelete(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid language id"))
+		return
+	}
+
+	var lang models.Language
+	if err := db.DB.First(&lang, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("language not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Check if language is used in submissions
+	var submissionCount int64
+	db.DB.Model(&models.Submission{}).Where("language_id = ?", id).Count(&submissionCount)
+	if submissionCount > 0 {
+		c.JSON(http.StatusBadRequest, apiError("cannot delete language with existing submissions"))
+		return
+	}
+
+	if err := db.DB.Delete(&lang).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete language"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "language deleted",
+	})
+}
+
+// ============================================================
+// ADMIN BLOG POST MANAGEMENT
+// ============================================================
+
+// AdminBlogPostList - GET /api/v2/admin/blog-posts
+// List all blog posts
+func AdminBlogPostList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+
+	var total int64
+	if err := db.DB.Model(&models.BlogPost{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var posts []models.BlogPost
+	if err := db.DB.
+		Preload("Authors.User").
+		Preload("Organization").
+		Order("publish_on DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&posts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type BlogPostItem struct {
+		ID           uint      `json:"id"`
+		Title        string    `json:"title"`
+		Slug         string    `json:"slug"`
+		AuthorNames  []string  `json:"author_names"`
+		PublishOn    time.Time `json:"publish_on"`
+		Visible      bool      `json:"visible"`
+		Sticky       bool      `json:"sticky"`
+		GlobalPost   bool      `json:"global_post"`
+		Organization *string   `json:"organization,omitempty"`
+		Score        int       `json:"score"`
+	}
+
+	items := make([]BlogPostItem, len(posts))
+	for i, post := range posts {
+		authorNames := make([]string, len(post.Authors))
+		for j, author := range post.Authors {
+			authorNames[j] = author.User.Username
+		}
+		var orgName *string
+		if post.Organization != nil {
+			orgName = &post.Organization.Name
+		}
+		items[i] = BlogPostItem{
+			ID:           post.ID,
+			Title:        post.Title,
+			Slug:         post.Slug,
+			AuthorNames:  authorNames,
+			PublishOn:    post.PublishOn,
+			Visible:      post.Visible,
+			Sticky:       post.Sticky,
+			GlobalPost:   post.GlobalPost,
+			Organization: orgName,
+			Score:        post.Score,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// AdminBlogPostDetail - GET /api/v2/admin/blog-post/:id
+// Get blog post detail
+func AdminBlogPostDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid blog post id"))
+		return
+	}
+
+	var post models.BlogPost
+	if err := db.DB.
+		Preload("Authors.User").
+		Preload("Organization").
+		First(&post, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	authorIDs := make([]uint, len(post.Authors))
+	authorNames := make([]string, len(post.Authors))
+	for i, author := range post.Authors {
+		authorIDs[i] = author.ID
+		authorNames[i] = author.User.Username
+	}
+
+	var orgID *uint
+	var orgName *string
+	if post.Organization != nil {
+		orgID = &post.Organization.ID
+		orgName = &post.Organization.Name
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":           post.ID,
+		"title":        post.Title,
+		"slug":         post.Slug,
+		"content":      post.Content,
+		"summary":      post.Summary,
+		"author_ids":   authorIDs,
+		"author_names": authorNames,
+		"publish_on":   post.PublishOn,
+		"visible":      post.Visible,
+		"sticky":       post.Sticky,
+		"global_post":  post.GlobalPost,
+		"og_image":     post.OgImage,
+		"organization_id": orgID,
+		"organization_name": orgName,
+		"score":        post.Score,
+	})
+}
+
+// AdminBlogPostCreateRequest - POST /api/v2/admin/blog-posts
+type AdminBlogPostCreateRequest struct {
+	Title        string    `json:"title" binding:"required"`
+	Slug         string    `json:"slug" binding:"required"`
+	Content      string    `json:"content" binding:"required"`
+	Summary      string    `json:"summary" binding:"required"`
+	AuthorIDs    []uint    `json:"author_ids"`
+	PublishOn    time.Time `json:"publish_on" binding:"required"`
+	Visible      bool      `json:"visible"`
+	Sticky       bool      `json:"sticky"`
+	GlobalPost   bool      `json:"global_post"`
+	OgImage      string    `json:"og_image"`
+	OrganizationID *uint   `json:"organization_id"`
+}
+
+// AdminBlogPostCreate - POST /api/v2/admin/blog-posts
+// Create a new blog post
+func AdminBlogPostCreate(c *gin.Context) {
+	user, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser && !user.IsStaff {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req AdminBlogPostCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if slug already exists
+	var existing models.BlogPost
+	if err := db.DB.Where("slug = ?", req.Slug).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("slug already exists"))
+		return
+	}
+
+	post := models.BlogPost{
+		Title:          req.Title,
+		Slug:           req.Slug,
+		Content:        req.Content,
+		Summary:        req.Summary,
+		PublishOn:      req.PublishOn,
+		Visible:        req.Visible,
+		Sticky:         req.Sticky,
+		GlobalPost:     req.GlobalPost,
+		OgImage:        req.OgImage,
+		OrganizationID: req.OrganizationID,
+	}
+
+	// Set default author if none provided
+	if len(req.AuthorIDs) == 0 {
+		post.AuthorID = profile.ID
+	} else {
+		post.AuthorID = req.AuthorIDs[0]
+	}
+
+	if err := db.DB.Create(&post).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to create blog post"))
+		return
+	}
+
+	// Set authors many-to-many
+	if len(req.AuthorIDs) > 0 {
+		var authors []models.Profile
+		db.DB.Where("id IN ?", req.AuthorIDs).Find(&authors)
+		post.Authors = authors
+		db.DB.Save(&post)
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "blog post created",
+		"blog_post": gin.H{"id": post.ID, "slug": post.Slug},
+	})
+}
+
+// AdminBlogPostUpdateRequest - PATCH /api/v2/admin/blog-post/:id
+type AdminBlogPostUpdateRequest struct {
+	Title          *string    `json:"title"`
+	Slug           *string    `json:"slug"`
+	Content        *string    `json:"content"`
+	Summary        *string    `json:"summary"`
+	AuthorIDs      []uint     `json:"author_ids"`
+	PublishOn      *time.Time `json:"publish_on"`
+	Visible        *bool      `json:"visible"`
+	Sticky         *bool      `json:"sticky"`
+	GlobalPost     *bool      `json:"global_post"`
+	OgImage        *string    `json:"og_image"`
+	OrganizationID *uint      `json:"organization_id"`
+}
+
+// AdminBlogPostUpdate - PATCH /api/v2/admin/blog-post/:id
+// Update a blog post
+func AdminBlogPostUpdate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser && !user.IsStaff {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid blog post id"))
+		return
+	}
+
+	var post models.BlogPost
+	if err := db.DB.First(&post, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	var req AdminBlogPostUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Update fields if provided
+	if req.Title != nil {
+		post.Title = *req.Title
+	}
+	if req.Slug != nil {
+		// Check if new slug conflicts
+		var existing models.BlogPost
+		if err := db.DB.Where("slug = ? AND id != ?", *req.Slug, id).First(&existing).Error; err == nil {
+			c.JSON(http.StatusBadRequest, apiError("slug already exists"))
+			return
+		}
+		post.Slug = *req.Slug
+	}
+	if req.Content != nil {
+		post.Content = *req.Content
+	}
+	if req.Summary != nil {
+		post.Summary = *req.Summary
+	}
+	if req.PublishOn != nil {
+		post.PublishOn = *req.PublishOn
+	}
+	if req.Visible != nil {
+		post.Visible = *req.Visible
+	}
+	if req.Sticky != nil {
+		post.Sticky = *req.Sticky
+	}
+	if req.GlobalPost != nil {
+		post.GlobalPost = *req.GlobalPost
+	}
+	if req.OgImage != nil {
+		post.OgImage = *req.OgImage
+	}
+	if req.OrganizationID != nil {
+		post.OrganizationID = req.OrganizationID
+	}
+
+	if err := db.DB.Save(&post).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to update blog post"))
+		return
+	}
+
+	// Update authors many-to-many
+	if req.AuthorIDs != nil {
+		var authors []models.Profile
+		db.DB.Where("id IN ?", req.AuthorIDs).Find(&authors)
+		post.Authors = authors
+		db.DB.Save(&post)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "blog post updated",
+		"blog_post": gin.H{"id": post.ID, "slug": post.Slug},
+	})
+}
+
+// AdminBlogPostDelete - DELETE /api/v2/admin/blog-post/:id
+// Delete a blog post
+func AdminBlogPostDelete(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser && !user.IsStaff {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid blog post id"))
+		return
+	}
+
+	var post models.BlogPost
+	if err := db.DB.First(&post, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	if err := db.DB.Delete(&post).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete blog post"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "blog post deleted",
+	})
+}
+
+// ============================================================
+// ADMIN LICENSE MANAGEMENT
+// ============================================================
+
+// AdminLicenseList - GET /api/v2/admin/licenses
+// List all licenses
+func AdminLicenseList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+
+	var total int64
+	if err := db.DB.Model(&models.License{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var licenses []models.License
+	if err := db.DB.
+		Order("key ASC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&licenses).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type LicenseItem struct {
+		ID      uint   `json:"id"`
+		Key     string `json:"key"`
+		Name    string `json:"name"`
+		Link    string `json:"link"`
+		Display string `json:"display"`
+		Icon    string `json:"icon"`
+	}
+
+	items := make([]LicenseItem, len(licenses))
+	for i, lic := range licenses {
+		items[i] = LicenseItem{
+			ID:      lic.ID,
+			Key:     lic.Key,
+			Name:    lic.Name,
+			Link:    lic.Link,
+			Display: lic.Display,
+			Icon:    lic.Icon,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// AdminLicenseDetail - GET /api/v2/admin/license/:id
+// Get license detail
+func AdminLicenseDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid license id"))
+		return
+	}
+
+	var lic models.License
+	if err := db.DB.First(&lic, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("license not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      lic.ID,
+		"key":     lic.Key,
+		"name":    lic.Name,
+		"link":    lic.Link,
+		"display": lic.Display,
+		"icon":    lic.Icon,
+		"text":    lic.Text,
+	})
+}
+
+// AdminLicenseCreateRequest - POST /api/v2/admin/licenses
+type AdminLicenseCreateRequest struct {
+	Key     string `json:"key" binding:"required"`
+	Link    string `json:"link" binding:"required"`
+	Name    string `json:"name" binding:"required"`
+	Display string `json:"display"`
+	Icon    string `json:"icon"`
+	Text    string `json:"text"`
+}
+
+// AdminLicenseCreate - POST /api/v2/admin/licenses
+// Create a new license
+func AdminLicenseCreate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req AdminLicenseCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if key already exists
+	var existing models.License
+	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("license key already exists"))
+		return
+	}
+
+	lic := models.License{
+		Key:     req.Key,
+		Link:    req.Link,
+		Name:    req.Name,
+		Display: req.Display,
+		Icon:    req.Icon,
+		Text:    req.Text,
+	}
+
+	if err := db.DB.Create(&lic).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to create license"))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "license created",
+		"license": gin.H{"id": lic.ID, "key": lic.Key},
+	})
+}
+
+// AdminLicenseUpdateRequest - PATCH /api/v2/admin/license/:id
+type AdminLicenseUpdateRequest struct {
+	Link    *string `json:"link"`
+	Name    *string `json:"name"`
+	Display *string `json:"display"`
+	Icon    *string `json:"icon"`
+	Text    *string `json:"text"`
+}
+
+// AdminLicenseUpdate - PATCH /api/v2/admin/license/:id
+// Update a license
+func AdminLicenseUpdate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid license id"))
+		return
+	}
+
+	var lic models.License
+	if err := db.DB.First(&lic, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("license not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	var req AdminLicenseUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Update fields if provided
+	if req.Link != nil {
+		lic.Link = *req.Link
+	}
+	if req.Name != nil {
+		lic.Name = *req.Name
+	}
+	if req.Display != nil {
+		lic.Display = *req.Display
+	}
+	if req.Icon != nil {
+		lic.Icon = *req.Icon
+	}
+	if req.Text != nil {
+		lic.Text = *req.Text
+	}
+
+	if err := db.DB.Save(&lic).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to update license"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "license updated",
+		"license": gin.H{"id": lic.ID, "key": lic.Key},
+	})
+}
+
+// AdminLicenseDelete - DELETE /api/v2/admin/license/:id
+// Delete a license
+func AdminLicenseDelete(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid license id"))
+		return
+	}
+
+	var lic models.License
+	if err := db.DB.First(&lic, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("license not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Check if license is used by problems
+	var problemCount int64
+	db.DB.Model(&models.Problem{}).Where("license_id = ?", id).Count(&problemCount)
+	if problemCount > 0 {
+		c.JSON(http.StatusBadRequest, apiError("cannot delete license used by problems"))
+		return
+	}
+
+	if err := db.DB.Delete(&lic).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete license"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "license deleted",
+	})
+}
+
+// ============================================================
+// ADMIN PROBLEM GROUP MANAGEMENT
+// ============================================================
+
+// AdminProblemGroupList - GET /api/v2/admin/problem-groups
+// List all problem groups
+func AdminProblemGroupList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+
+	var total int64
+	if err := db.DB.Model(&models.ProblemGroup{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var groups []models.ProblemGroup
+	if err := db.DB.
+		Order("name ASC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&groups).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type ProblemGroupItem struct {
+		ID       uint   `json:"id"`
+		Name     string `json:"name"`
+		FullName string `json:"full_name"`
+	}
+
+	items := make([]ProblemGroupItem, len(groups))
+	for i, g := range groups {
+		items[i] = ProblemGroupItem{
+			ID:       g.ID,
+			Name:     g.Name,
+			FullName: g.FullName,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// AdminProblemGroupDetail - GET /api/v2/admin/problem-group/:id
+// Get problem group detail
+func AdminProblemGroupDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid problem group id"))
+		return
+	}
+
+	var group models.ProblemGroup
+	if err := db.DB.First(&group, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem group not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":        group.ID,
+		"name":      group.Name,
+		"full_name": group.FullName,
+	})
+}
+
+// AdminProblemGroupCreateRequest - POST /api/v2/admin/problem-groups
+type AdminProblemGroupCreateRequest struct {
+	Name     string `json:"name" binding:"required"`
+	FullName string `json:"full_name" binding:"required"`
+}
+
+// AdminProblemGroupCreate - POST /api/v2/admin/problem-groups
+// Create a new problem group
+func AdminProblemGroupCreate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req AdminProblemGroupCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if name already exists
+	var existing models.ProblemGroup
+	if err := db.DB.Where("name = ?", req.Name).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("problem group name already exists"))
+		return
+	}
+
+	group := models.ProblemGroup{
+		Name:     req.Name,
+		FullName: req.FullName,
+	}
+
+	if err := db.DB.Create(&group).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to create problem group"))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "problem group created",
+		"group": gin.H{"id": group.ID, "name": group.Name},
+	})
+}
+
+// AdminProblemGroupUpdateRequest - PATCH /api/v2/admin/problem-group/:id
+type AdminProblemGroupUpdateRequest struct {
+	FullName *string `json:"full_name"`
+}
+
+// AdminProblemGroupUpdate - PATCH /api/v2/admin/problem-group/:id
+// Update a problem group
+func AdminProblemGroupUpdate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid problem group id"))
+		return
+	}
+
+	var group models.ProblemGroup
+	if err := db.DB.First(&group, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem group not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	var req AdminProblemGroupUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	if req.FullName != nil {
+		group.FullName = *req.FullName
+	}
+
+	if err := db.DB.Save(&group).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to update problem group"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "problem group updated",
+		"group": gin.H{"id": group.ID, "name": group.Name},
+	})
+}
+
+// AdminProblemGroupDelete - DELETE /api/v2/admin/problem-group/:id
+// Delete a problem group
+func AdminProblemGroupDelete(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid problem group id"))
+		return
+	}
+
+	var group models.ProblemGroup
+	if err := db.DB.First(&group, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem group not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	// Check if group is used by problems
+	var problemCount int64
+	db.DB.Model(&models.Problem{}).Where("group_id = ?", id).Count(&problemCount)
+	if problemCount > 0 {
+		c.JSON(http.StatusBadRequest, apiError("cannot delete problem group used by problems"))
+		return
+	}
+
+	if err := db.DB.Delete(&group).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete problem group"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "problem group deleted",
+	})
+}
+
+// ============================================================
+// ADMIN PROBLEM TYPE MANAGEMENT
+// ============================================================
+
+// AdminProblemTypeList - GET /api/v2/admin/problem-types
+// List all problem types
+func AdminProblemTypeList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+
+	var total int64
+	if err := db.DB.Model(&models.ProblemType{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var types []models.ProblemType
+	if err := db.DB.
+		Order("name ASC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&types).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type ProblemTypeItem struct {
+		ID       uint   `json:"id"`
+		Name     string `json:"name"`
+		FullName string `json:"full_name"`
+	}
+
+	items := make([]ProblemTypeItem, len(types))
+	for i, t := range types {
+		items[i] = ProblemTypeItem{
+			ID:       t.ID,
+			Name:     t.Name,
+			FullName: t.FullName,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// AdminProblemTypeDetail - GET /api/v2/admin/problem-type/:id
+// Get problem type detail
+func AdminProblemTypeDetail(c *gin.Context) {
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid problem type id"))
+		return
+	}
+
+	var ptype models.ProblemType
+	if err := db.DB.First(&ptype, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem type not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":        ptype.ID,
+		"name":      ptype.Name,
+		"full_name": ptype.FullName,
+	})
+}
+
+// AdminProblemTypeCreateRequest - POST /api/v2/admin/problem-types
+type AdminProblemTypeCreateRequest struct {
+	Name     string `json:"name" binding:"required"`
+	FullName string `json:"full_name" binding:"required"`
+}
+
+// AdminProblemTypeCreate - POST /api/v2/admin/problem-types
+// Create a new problem type
+func AdminProblemTypeCreate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req AdminProblemTypeCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// Check if name already exists
+	var existing models.ProblemType
+	if err := db.DB.Where("name = ?", req.Name).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, apiError("problem type name already exists"))
+		return
+	}
+
+	ptype := models.ProblemType{
+		Name:     req.Name,
+		FullName: req.FullName,
+	}
+
+	if err := db.DB.Create(&ptype).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to create problem type"))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "problem type created",
+		"type": gin.H{"id": ptype.ID, "name": ptype.Name},
+	})
+}
+
+// AdminProblemTypeUpdateRequest - PATCH /api/v2/admin/problem-type/:id
+type AdminProblemTypeUpdateRequest struct {
+	FullName *string `json:"full_name"`
+}
+
+// AdminProblemTypeUpdate - PATCH /api/v2/admin/problem-type/:id
+// Update a problem type
+func AdminProblemTypeUpdate(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid problem type id"))
+		return
+	}
+
+	var ptype models.ProblemType
+	if err := db.DB.First(&ptype, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem type not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	var req AdminProblemTypeUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	if req.FullName != nil {
+		ptype.FullName = *req.FullName
+	}
+
+	if err := db.DB.Save(&ptype).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to update problem type"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "problem type updated",
+		"type": gin.H{"id": ptype.ID, "name": ptype.Name},
+	})
+}
+
+// AdminProblemTypeDelete - DELETE /api/v2/admin/problem-type/:id
+// Delete a problem type
+func AdminProblemTypeDelete(c *gin.Context) {
+	user, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !user.IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	idStr := c.Param("id")
+	var id uint
+	if err := parseUint(idStr, &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid problem type id"))
+		return
+	}
+
+	var ptype models.ProblemType
+	if err := db.DB.First(&ptype, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("problem type not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
+	if err := db.DB.Delete(&ptype).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete problem type"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "problem type deleted",
+	})
 }

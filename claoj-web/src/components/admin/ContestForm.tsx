@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Trophy, Clock, Calendar } from 'lucide-react';
+import { Trophy, Clock, Calendar, Tags } from 'lucide-react';
 
 export interface ContestFormData {
     key: string;
@@ -23,10 +23,12 @@ export interface ContestFormData {
     hide_problem_tags: boolean;
     run_pretests_only: boolean;
     is_organization_private: boolean;
+    max_submissions?: number | null;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
     problem_ids?: number[];
+    tag_ids?: number[];
 }
 
 export interface ContestFormProps {
@@ -45,6 +47,13 @@ interface Problem {
 interface UserProfile {
     id: number;
     username: string;
+}
+
+interface ContestTag {
+    id: number;
+    name: string;
+    color: string;
+    description: string;
 }
 
 const CONTEST_FORMATS = [
@@ -72,6 +81,7 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
             hide_problem_tags: initialData?.hide_problem_tags ?? false,
             run_pretests_only: initialData?.run_pretests_only ?? false,
             is_organization_private: initialData?.is_organization_private ?? false,
+            max_submissions: initialData?.max_submissions,
         }
     });
 
@@ -94,11 +104,20 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
         }
     });
 
+    const { data: tags } = useQuery<{ data: ContestTag[] }>({
+        queryKey: ['admin-contest-tags-list'],
+        queryFn: async () => {
+            const res = await api.get('/admin/contest-tags?page=1&page_size=1000');
+            return res.data;
+        }
+    });
+
     const selectedFormat = watch('format_name');
     const selectedProblems = watch('problem_ids') || [];
     const selectedAuthors = watch('author_ids') || [];
     const selectedCurators = watch('curator_ids') || [];
     const selectedTesters = watch('tester_ids') || [];
+    const selectedTags = watch('tag_ids') || [];
 
     const handleMultiSelect = (
         field: 'problem_ids' | 'author_ids' | 'curator_ids' | 'tester_ids',
@@ -119,6 +138,15 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
             setValue('problem_ids', [...current, problemId] as any);
         } else {
             setValue('problem_ids', current.filter(i => i !== problemId) as any);
+        }
+    };
+
+    const handleTagSelect = (tagId: number, checked: boolean) => {
+        const current = watch('tag_ids') || [];
+        if (checked) {
+            setValue('tag_ids', [...current, tagId] as any);
+        } else {
+            setValue('tag_ids', current.filter(i => i !== tagId) as any);
         }
     };
 
@@ -268,6 +296,20 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
             <div className="bg-card rounded-2xl border p-6 space-y-4">
                 <h3 className="text-lg font-bold">Format & Settings</h3>
 
+                <div>
+                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        Max Submissions (optional)
+                    </label>
+                    <input
+                        type="number"
+                        min="1"
+                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                        placeholder="No limit"
+                        {...register('max_submissions', { valueAsNumber: true })}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Limit total submissions per user in this contest. Leave empty for no limit.</p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="text-sm font-medium text-muted-foreground block mb-2">
@@ -372,6 +414,37 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
                 {selectedProblems.length > 0 && (
                     <div className="text-sm text-muted-foreground">
                         Selected: {selectedProblems.length} problem(s)
+                    </div>
+                )}
+            </div>
+
+            {/* Tags */}
+            <div className="bg-card rounded-2xl border p-6 space-y-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Tags size={20} className="text-primary" />
+                    Contest Tags
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    Select tags to categorize this contest.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                    {tags?.data.map(t => (
+                        <label key={t.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
+                            <input
+                                type="checkbox"
+                                checked={selectedTags.includes(t.id)}
+                                onChange={(e) => handleTagSelect(t.id, e.target.checked)}
+                                className="rounded"
+                            />
+                            <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate" style={{ color: t.color }}>{t.name}</div>
+                            </div>
+                        </label>
+                    ))}
+                </div>
+                {selectedTags.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                        Selected: {selectedTags.length} tag(s)
                     </div>
                 )}
             </div>

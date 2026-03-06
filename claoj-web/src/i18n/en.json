@@ -54,6 +54,7 @@
   },
   "Contest": {
     "title": "Contests",
+    "calendar": "Calendar",
     "active": "Active Contests",
     "ongoing": "Ongoing Contests",
     "upcoming": "Upcoming Contests",

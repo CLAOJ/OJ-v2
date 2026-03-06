@@ -24,7 +24,7 @@ export default function AdminRolesPage() {
 
     const queryClient = useQueryClient();
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading } = useQuery<{ data: Role[] }>({
         queryKey: ['admin-roles'],
         queryFn: async () => {
             const res = await adminRolesApi.list();

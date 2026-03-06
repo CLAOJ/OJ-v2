@@ -1,10 +1,13 @@
 package v2
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/CLAOJ/claoj-go/db"
+	"github.com/CLAOJ/claoj-go/jobs"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/gin-gonic/gin"
 )
@@ -105,7 +108,6 @@ func UserDetail(c *gin.Context) {
 	})
 }
 
-// Add this at the end of file or in helpers.go
 // UserSolvedProblems – GET /api/v2/user/:user/solved
 func UserSolvedProblems(c *gin.Context) {
 	username := c.Param("user")
@@ -159,7 +161,6 @@ func UserRatingHistory(c *gin.Context) {
 }
 
 // UserAnalytics – GET /api/v2/user/:user/analytics
-// Advanced user analytics with charts data
 func UserAnalytics(c *gin.Context) {
 	username := c.Param("user")
 	var profile models.Profile
@@ -213,8 +214,8 @@ func UserAnalytics(c *gin.Context) {
 
 	// Get problem group distribution
 	type GroupDist struct {
-		Group string `json:"group"`
-		Solved int64 `json:"solved"`
+		Group  string  `json:"group"`
+		Solved int64   `json:"solved"`
 		Points float64 `json:"points"`
 	}
 	var groupDist []GroupDist
@@ -227,10 +228,10 @@ func UserAnalytics(c *gin.Context) {
 
 	// Get contest history
 	type ContestHistory struct {
-		ContestKey  string  `json:"contest_key"`
-		ContestName string  `json:"contest_name"`
-		Score       float64 `json:"score"`
-		Rank        int64   `json:"rank"`
+		ContestKey  string    `json:"contest_key"`
+		ContestName string    `json:"contest_name"`
+		Score       float64   `json:"score"`
+		Rank        int64     `json:"rank"`
 		Date        time.Time `json:"date"`
 	}
 	var contestHistory []ContestHistory
@@ -251,14 +252,127 @@ func UserAnalytics(c *gin.Context) {
 	`, profile.ID).Scan(&streakDays)
 
 	c.JSON(http.StatusOK, gin.H{
-		"username":         profile.User.Username,
-		"statistics":       stats,
-		"language_stats":   langDist,
-		"activity":         activity,
-		"group_stats":      groupDist,
-		"contest_history":  contestHistory,
-		"streak_days":      streakDays,
-		"performance_points": profile.PerformancePoints,
+		"username":            profile.User.Username,
+		"statistics":          stats,
+		"language_stats":      langDist,
+		"activity":            activity,
+		"group_stats":         groupDist,
+		"contest_history":     contestHistory,
+		"streak_days":         streakDays,
+		"performance_points":  profile.PerformancePoints,
 		"contribution_points": profile.ContributionPoints,
 	})
+}
+
+// UserExportRequest – POST /api/v2/user/export/request
+func UserExportRequest(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var profile models.Profile
+	if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	// Rate limiting: one export per week
+	if profile.DataLastDownloaded != nil {
+		weekAgo := time.Now().AddDate(0, 0, -7)
+		if profile.DataLastDownloaded.After(weekAgo) {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "you can only request data export once per week",
+				"last_export": profile.DataLastDownloaded,
+			})
+			return
+		}
+	}
+
+	// Enqueue the export job
+	if err := jobs.EnqueueUserExport(userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to queue export job"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "data export request queued, you will be notified when ready",
+		"estimated_time": "5-10 minutes",
+	})
+}
+
+// UserExportStatus – GET /api/v2/user/export/status
+func UserExportStatus(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var profile models.Profile
+	if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	type ExportStatus struct {
+		CanRequest       bool       `json:"can_request"`
+		LastExport       *time.Time `json:"last_export,omitempty"`
+		DaysUntilRequest int        `json:"days_until_request"`
+		ExportReady      bool       `json:"export_ready"`
+	}
+
+	status := ExportStatus{
+		CanRequest:  true,
+		LastExport:  profile.DataLastDownloaded,
+		ExportReady: false,
+	}
+
+	if profile.DataLastDownloaded != nil {
+		weekAgo := time.Now().AddDate(0, 0, -7)
+		if profile.DataLastDownloaded.After(weekAgo) {
+			status.CanRequest = false
+			nextRequest := profile.DataLastDownloaded.AddDate(0, 0, 7)
+			daysLeft := int(time.Until(nextRequest).Hours() / 24)
+			if daysLeft < 0 {
+				daysLeft = 0
+			}
+			status.DaysUntilRequest = daysLeft
+		}
+	}
+
+	c.JSON(http.StatusOK, status)
+}
+
+// UserExportDownload – GET /api/v2/user/export/download/:exportID
+func UserExportDownload(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	exportID := c.Param("export_id")
+
+	if len(exportID) < 5 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid export ID"})
+		return
+	}
+
+	expectedPrefix := fmt.Sprintf("%d_", userID)
+	if len(exportID) < len(expectedPrefix) || exportID[:len(expectedPrefix)] != expectedPrefix {
+		c.JSON(http.StatusForbidden, gin.H{"error": "unauthorized access to export file"})
+		return
+	}
+
+	filePath, err := jobs.GetExportFilePath(userID, exportID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "export file not found or expired"})
+		return
+	}
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "export file not found"})
+		return
+	}
+
+	if time.Since(fileInfo.ModTime()) > 24*time.Hour {
+		os.Remove(filePath)
+		c.JSON(http.StatusGone, gin.H{"error": "export file has expired"})
+		return
+	}
+
+	if err := jobs.ServeExportFile(c.Writer, filePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to serve export file"})
+		return
+	}
 }

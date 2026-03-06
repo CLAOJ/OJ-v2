@@ -23,6 +23,43 @@ import type {
     AdminSolutionDetail,
     SolutionCreateRequest,
     SolutionUpdateRequest,
+    AdminTicket,
+    AdminTicketDetail,
+    AdminComment,
+    AdminCommentUpdateRequest,
+    AdminLanguage,
+    AdminLanguageCreateRequest,
+    AdminLanguageUpdateRequest,
+    AdminLanguageDetail,
+    AdminBlogPost,
+    AdminBlogPostCreateRequest,
+    AdminBlogPostUpdateRequest,
+    AdminBlogPostDetail,
+    AdminLicense,
+    AdminLicenseCreateRequest,
+    AdminLicenseUpdateRequest,
+    AdminLicenseDetail,
+    AdminUserListResponse,
+    AdminContestListResponse,
+    AdminProblemListResponse,
+    AdminJudgeListResponse,
+    AdminOrganizationListResponse,
+    AdminSubmissionListResponse,
+    AdminCommentListResponse,
+    AdminLanguageListResponse,
+    AdminBlogPostListResponse,
+    AdminLicenseListResponse,
+    AdminProblemGroupListResponse,
+    AdminProblemTypeListResponse,
+    AdminProblemGroup,
+    AdminProblemType,
+    AdminProblemGroupCreateRequest,
+    AdminProblemGroupUpdateRequest,
+    AdminProblemTypeCreateRequest,
+    AdminProblemTypeUpdateRequest,
+    RoleListResponse,
+    AdminSolutionListResponse,
+    AdminTicketListResponse,
 } from '@/types';
 
 // ============================================================
@@ -71,12 +108,6 @@ export const adminProblemDataApi = {
 // ADMIN USER API
 // ============================================================
 
-export interface AdminUserListResponse {
-    data: AdminUser[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export const adminUserApi = {
     list: (page: number = 1, pageSize: number = 50) =>
@@ -102,12 +133,6 @@ export const adminUserApi = {
 // ADMIN CONTEST API
 // ============================================================
 
-export interface AdminContestListResponse {
-    data: AdminContest[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export const adminContestApi = {
     list: (page: number = 1, pageSize: number = 50) =>
@@ -124,18 +149,24 @@ export const adminContestApi = {
 
     delete: (key: string) =>
         api.delete(`/admin/contest/${key}`),
+    lock: (key: string, lockedAfter: string | null) =>
+        api.post<{ success: boolean; message: string; locked: boolean }>(`/admin/contest/${key}/lock`, { locked_after: lockedAfter }),
+
+    clone: (key: string, data: {
+        new_key: string;
+        new_name: string;
+        copy_problems?: boolean;
+        copy_settings?: boolean;
+        new_start_time?: string;
+        new_end_time?: string;
+    }) =>
+        api.post<{ success: boolean; message: string; new_contest: any }>(`/admin/contest/${key}/clone`, data),
 };
 
 // ============================================================
 // ADMIN PROBLEM API
 // ============================================================
 
-export interface AdminProblemListResponse {
-    data: AdminProblem[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export const adminProblemApi = {
     list: (page: number = 1, pageSize: number = 50) =>
@@ -158,12 +189,6 @@ export const adminProblemApi = {
 // ADMIN JUDGE API
 // ============================================================
 
-export interface AdminJudgeListResponse {
-    data: AdminJudge[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export const adminJudgeApi = {
     list: (page: number = 1, pageSize: number = 50) =>
@@ -192,12 +217,6 @@ export const adminJudgeApi = {
 // ADMIN ORGANIZATION API
 // ============================================================
 
-export interface AdminOrganizationListResponse {
-    data: AdminOrganization[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export interface AdminOrganizationUpdateRequest {
     name?: string;
@@ -237,12 +256,6 @@ export const adminOrganizationApi = {
 // ADMIN SUBMISSION API
 // ============================================================
 
-export interface AdminSubmissionListResponse {
-    data: AdminSubmission[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export interface BatchRejudgeRequest {
     submission_ids?: number[];
@@ -280,6 +293,19 @@ export interface MossMatch {
     match_lines: number;
 }
 
+export interface BatchRescoreRequest {
+    submission_ids?: number[];
+    problem_id?: number;
+    user_id?: number;
+    dry_run?: boolean;
+}
+
+export interface BatchRescoreResponse {
+    rescored: number;
+    total: number;
+    message: string;
+}
+
 export const adminSubmissionApi = {
     list: (page: number = 1, pageSize: number = 50) =>
         api.get<AdminSubmissionListResponse>(`/admin/submissions?page=${page}&page_size=${pageSize}`),
@@ -293,6 +319,15 @@ export const adminSubmissionApi = {
     batchRejudge: (data: BatchRejudgeRequest) =>
         api.post<BatchRejudgeResponse>('/admin/submissions/batch-rejudge', data),
 
+    rescore: (id: number) =>
+        api.post<{ message: string; submission_id: number }>(`/admin/submission/${id}/rescore`),
+
+    batchRescore: (data: BatchRescoreRequest) =>
+        api.post<BatchRescoreResponse>('/admin/submissions/batch-rescore', data),
+
+    rescoreAll: (problemCode: string) =>
+        api.post<BatchRescoreResponse>(`/admin/problem/${problemCode}/rescore-all`),
+
     mossAnalyze: (id: number, language: string) =>
         api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/moss`, { language }),
 
@@ -304,10 +339,6 @@ export const adminSubmissionApi = {
 // ADMIN ROLES & PERMISSIONS API
 // ============================================================
 
-export interface RoleListResponse {
-    data: Role[];
-    total: number;
-}
 
 export interface RoleCreateRequest {
     name: string;
@@ -356,12 +387,6 @@ export const adminRolesApi = {
 // ADMIN SOLUTION API
 // ============================================================
 
-export interface AdminSolutionListResponse {
-    data: AdminSolution[];
-    total: number;
-    page: number;
-    page_size: number;
-}
 
 export const adminSolutionApi = {
     list: (page: number = 1, pageSize: number = 50) =>
@@ -378,4 +403,175 @@ export const adminSolutionApi = {
 
     delete: (id: number) =>
         api.delete(`/admin/solution/${id}`),
+};
+
+// ============================================================
+// ADMIN TICKET API
+// ============================================================
+
+
+export interface AdminTicketAssignRequest {
+    profile_ids: number[];
+}
+
+export const adminTicketApi = {
+    list: (page: number = 1, pageSize: number = 50, filters?: {
+        search?: string;
+        status?: 'open' | 'closed';
+        assigned?: 'true' | 'false';
+        is_contributive?: 'true' | 'false';
+    }) => {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: pageSize.toString(),
+            ...filters,
+        });
+        return api.get<AdminTicketListResponse>(`/admin/tickets?${params.toString()}`);
+    },
+
+    detail: (id: number) =>
+        api.get<AdminTicketDetail>(`/admin/ticket/${id}`),
+
+    assign: (id: number, profileIds: number[]) =>
+        api.post<{ message: string }>(`/admin/ticket/${id}/assign`, { profile_ids: profileIds }),
+
+    toggleOpen: (id: number) =>
+        api.post<{ message: string; is_open: boolean }>(`/admin/ticket/${id}/toggle`),
+
+    setContributive: (id: number, isContributive: boolean) =>
+        api.post<{ message: string; is_contributive: boolean }>(`/admin/ticket/${id}/set-contributive`, { is_contributive: isContributive }),
+
+    updateNotes: (id: number, notes: string) =>
+        api.patch<{ message: string }>(`/admin/ticket/${id}/notes`, { notes }),
+};
+
+// ============================================================
+// ADMIN COMMENT API
+// ============================================================
+
+
+export const adminCommentApi = {
+    list: (page: number = 1, pageSize: number = 50, filters?: {
+        search?: string;
+        hidden?: 'true' | 'false';
+    }) => {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: pageSize.toString(),
+            ...filters,
+        });
+        return api.get<AdminCommentListResponse>(`/admin/comments?${params.toString()}`);
+    },
+
+    update: (id: number, data: AdminCommentUpdateRequest) =>
+        api.patch<{ message: string; comment: { id: number; body: string; hidden: boolean } }>(`/admin/comment/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/comment/${id}`),
+};
+
+// ============================================================
+// ADMIN LANGUAGE API
+// ============================================================
+
+
+export const adminLanguageApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminLanguageListResponse>(`/admin/languages?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminLanguageDetail>(`/admin/language/${id}`),
+
+    create: (data: AdminLanguageCreateRequest) =>
+        api.post<{ message: string; language: { id: number; key: string } }>('/admin/languages', data),
+
+    update: (id: number, data: AdminLanguageUpdateRequest) =>
+        api.patch<{ message: string; language: { id: number; key: string } }>(`/admin/language/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/language/${id}`),
+};
+
+// ============================================================
+// ADMIN BLOG POST API
+// ============================================================
+
+
+export const adminBlogPostApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminBlogPostListResponse>(`/admin/blog-posts?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminBlogPostDetail>(`/admin/blog-post/${id}`),
+
+    create: (data: AdminBlogPostCreateRequest) =>
+        api.post<{ message: string; blog_post: { id: number; slug: string } }>('/admin/blog-posts', data),
+
+    update: (id: number, data: AdminBlogPostUpdateRequest) =>
+        api.patch<{ message: string; blog_post: { id: number; slug: string } }>(`/admin/blog-post/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/blog-post/${id}`),
+};
+
+// ============================================================
+// ADMIN LICENSE API
+// ============================================================
+
+
+export const adminLicenseApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminLicenseListResponse>(`/admin/licenses?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminLicenseDetail>(`/admin/license/${id}`),
+
+    create: (data: AdminLicenseCreateRequest) =>
+        api.post<{ message: string; license: { id: number; key: string } }>('/admin/licenses', data),
+
+    update: (id: number, data: AdminLicenseUpdateRequest) =>
+        api.patch<{ message: string; license: { id: number; key: string } }>(`/admin/license/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/license/${id}`),
+};
+
+// ============================================================
+// ADMIN PROBLEM TAXONOMY API
+// ============================================================
+
+
+
+export const adminProblemGroupApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminProblemGroupListResponse>(`/admin/problem-groups?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminProblemGroup>(`/admin/problem-group/${id}`),
+
+    create: (data: AdminProblemGroupCreateRequest) =>
+        api.post<{ message: string; group: { id: number; name: string } }>('/admin/problem-groups', data),
+
+    update: (id: number, data: AdminProblemGroupUpdateRequest) =>
+        api.patch<{ message: string; group: { id: number; name: string } }>(`/admin/problem-group/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/problem-group/${id}`),
+};
+
+export const adminProblemTypeApi = {
+    list: (page: number = 1, pageSize: number = 50) =>
+        api.get<AdminProblemTypeListResponse>(`/admin/problem-types?page=${page}&page_size=${pageSize}`),
+
+    detail: (id: number) =>
+        api.get<AdminProblemType>(`/admin/problem-type/${id}`),
+
+    create: (data: AdminProblemTypeCreateRequest) =>
+        api.post<{ message: string; type: { id: number; name: string } }>('/admin/problem-types', data),
+
+    update: (id: number, data: AdminProblemTypeUpdateRequest) =>
+        api.patch<{ message: string; type: { id: number; name: string } }>(`/admin/problem-type/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/problem-type/${id}`),
 };

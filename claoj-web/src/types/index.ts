@@ -117,6 +117,25 @@ export interface Contest {
     is_joined: boolean;
 }
 
+export interface ContestCalendarItem {
+    key: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+    is_rated: boolean;
+    format: string;
+    day: number;
+}
+
+export interface ContestCalendarResponse {
+    year: number;
+    month: number;
+    month_name: string;
+    days_in_month: number;
+    first_day_of_week: number;
+    contests: ContestCalendarItem[];
+}
+
 export interface ContestDetail extends Contest {
     description: string;
     summary: string;
@@ -154,6 +173,7 @@ export interface Comment {
     time: string;
     parent_id?: number;
     author: string;
+    hidden?: boolean;
 }
 
 export interface CommentCreateRequest {
@@ -231,6 +251,27 @@ export interface RatingChange {
 // ADMIN TYPES
 // ============================================================
 
+export interface ContestTag {
+    id: number;
+    name: string;
+    color: string;
+    description: string;
+}
+
+export interface AdminContestTag extends ContestTag {}
+
+export interface AdminContestTagCreateRequest {
+    name: string;
+    color: string;
+    description?: string;
+}
+
+export interface AdminContestTagUpdateRequest {
+    name?: string;
+    color?: string;
+    description?: string;
+}
+
 export interface AdminUser {
     id: number;
     username: string;
@@ -243,6 +284,7 @@ export interface AdminUser {
     is_super_user: boolean;
     is_active: boolean;
     is_unlisted: boolean;
+    slots?: number;
     is_muted: boolean;
     date_joined: string;
     last_access: string;
@@ -271,6 +313,9 @@ export interface AdminContest {
     author_ids: number[];
     curator_ids: number[];
     tester_ids: number[];
+    tag_ids?: number[];
+    locked_after?: string | null;
+    max_submissions?: number | null;
 }
 
 export interface AdminProblem {
@@ -325,6 +370,7 @@ export interface AdminOrganization {
     short_name: string;
     is_open: boolean;
     is_unlisted: boolean;
+    slots?: number;
     member_count: number;
 }
 
@@ -371,6 +417,7 @@ export interface AdminContestCreateRequest {
     hide_problem_tags?: boolean;
     run_pretests_only?: boolean;
     is_organization_private?: boolean;
+    max_submissions?: number | null;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
@@ -406,10 +453,12 @@ export interface Organization {
     about?: string;
     is_open: boolean;
     is_unlisted: boolean;
+    slots?: number;
     member_count: number;
 }
 
 export interface OrganizationDetail extends Organization {
+    user_id: number;
     members: OrganizationMember[];
     admins: OrganizationMember[];
 }
@@ -432,6 +481,7 @@ export interface Ticket {
     created_on: string;
     updated_on: string;
     is_closed: boolean;
+    is_contributive?: boolean;
     user: {
         id: number;
         username: string;
@@ -441,10 +491,18 @@ export interface Ticket {
         name: string;
     };
     message_count: number;
+    assignees?: string[];
 }
 
 export interface TicketDetail extends Ticket {
     messages: TicketMessage[];
+    notes?: string;
+    linked_item?: {
+        type: 'problem' | 'contest';
+        code?: string;
+        key?: string;
+        name: string;
+    };
 }
 
 export interface TicketMessage {
@@ -462,6 +520,29 @@ export interface TicketCreateRequest {
     title: string;
     body: string;
     problem_code?: string;
+}
+
+export interface AdminTicket {
+    id: number;
+    title: string;
+    is_open: boolean;
+    is_contributive: boolean;
+    created: string;
+    user: string;
+    assignees: string[];
+    notes: string;
+}
+
+export interface AdminTicketDetail {
+    id: number;
+    title: string;
+    creator: string;
+    is_open: boolean;
+    is_contributive: boolean;
+    notes: string;
+    created: string;
+    assignees: string[];
+    messages: TicketMessage[];
 }
 
 // ============================================================
@@ -644,3 +725,397 @@ export interface CommentUpdateRequest {
     body: string;
     reason?: string;
 }
+
+// ============================================================
+// API TOKEN TYPES
+// ============================================================
+
+export interface APITokenResponse {
+    has_token: boolean;
+    token: string;
+    message?: string;
+    created_at?: string | null;
+}
+
+export interface APITokenGenerateResponse {
+    token: string;
+    message: string;
+    warning: string;
+}
+
+// ============================================================
+// WEBAUTHN TYPES
+// ============================================================
+
+export interface WebAuthnCredential {
+    id: number;
+    name: string;
+    cred_id: string;
+    counter: number;
+}
+
+export interface WebAuthnStatus {
+    enabled: boolean;
+    credentials_count: number;
+}
+
+export interface WebAuthnSetupResponse {
+    options: PublicKeyCredentialCreationOptions;
+}
+
+export interface WebAuthnLoginResponse {
+    options: PublicKeyCredentialRequestOptions;
+    username: string;
+}
+
+export interface WebAuthnCredentialCreationResponse {
+    id: string;
+    rawId: number[];
+    type: string;
+    clientExtensionResults: any;
+    response: {
+        attestationObject: number[];
+        clientDataJSON: number[];
+    };
+    name: string;
+}
+
+export interface WebAuthnCredentialAssertionResponse {
+    id: string;
+    rawId: number[];
+    type: string;
+    clientExtensionResults: any;
+    response: {
+        authenticatorData: number[];
+        clientDataJSON: number[];
+        signature: number[];
+        userHandle: number[] | null;
+    };
+}
+
+// ============================================================
+// PROBLEM SUGGESTION TYPES (Task #31)
+// ============================================================
+
+export interface ProblemSuggestion {
+    id: number;
+    code: string;
+    name: string;
+    points: number;
+    time_limit: number;
+    memory_limit: number;
+    group: string;
+    suggestion_status: 'none' | 'pending' | 'approved' | 'rejected';
+    suggester_id?: number;
+    date?: string;
+}
+
+export interface ProblemSuggestionAdmin {
+    id: number;
+    code: string;
+    name: string;
+    points: number;
+    suggestion_status: 'none' | 'pending' | 'approved' | 'rejected';
+    suggester_id?: number;
+    suggester_username: string;
+    suggestion_notes: string;
+    suggestion_reviewed_at?: string;
+    suggestion_reviewed_by_id?: number;
+    is_public: boolean;
+    date?: string;
+}
+
+export interface ProblemSuggestionDetail {
+    id: number;
+    code: string;
+    name: string;
+    description: string;
+    points: number;
+    partial: boolean;
+    time_limit: number;
+    memory_limit: number;
+    group_id: number;
+    group: string;
+    types: { name: string }[];
+    source: string;
+    summary: string;
+    pdf_url: string;
+    is_full_markup: boolean;
+    short_circuit: boolean;
+    suggestion_status: 'none' | 'pending' | 'approved' | 'rejected';
+    suggestion_notes: string;
+    suggestion_reviewed_at?: string;
+    suggester_id?: number;
+    suggester_username: string;
+    suggester_email: string;
+    is_public: boolean;
+    authors: { username: string }[];
+}
+
+export interface ProblemSuggestRequest {
+    name: string;
+    description: string;
+    points: number;
+    partial?: boolean;
+    time_limit: number;
+    memory_limit: number;
+    group_id: number;
+    type_ids?: number[];
+    source?: string;
+    summary?: string;
+    pdf_url?: string;
+    is_full_markup?: boolean;
+    short_circuit?: boolean;
+    additional_notes?: string;
+}
+
+export interface ApproveSuggestionRequest {
+    code: string;
+    admin_notes?: string;
+    is_public?: boolean;
+    make_full_markup?: boolean;
+}
+
+export interface RejectSuggestionRequest {
+    admin_notes?: string;
+    reason: string;
+}
+
+// ============================================================
+// ADMIN COMMENT TYPES
+// ============================================================
+
+export interface AdminComment {
+    id: number;
+    author_id: number;
+    username: string;
+    page: string;
+    body: string;
+    score: number;
+    hidden: boolean;
+    time: string;
+    parent_id?: number;
+}
+
+export interface AdminCommentUpdateRequest {
+    body?: string;
+    hidden?: boolean;
+    reason?: string;
+}
+
+// ============================================================
+// ADMIN LANGUAGE TYPES
+// ============================================================
+
+export interface AdminLanguage {
+    id: number;
+    key: string;
+    name: string;
+    short_name?: string;
+    common_name: string;
+    ace: string;
+    pygments: string;
+    extension: string;
+    file_only: boolean;
+    file_size_limit: number;
+    include_in_problem: boolean;
+    info: string;
+}
+
+export interface AdminLanguageDetail extends AdminLanguage {
+    template: string;
+    description: string;
+}
+
+export interface AdminLanguageCreateRequest {
+    key: string;
+    name: string;
+    short_name?: string;
+    common_name: string;
+    ace: string;
+    pygments: string;
+    template?: string;
+    description?: string;
+    extension: string;
+    file_only?: boolean;
+    file_size_limit?: number;
+    include_in_problem?: boolean;
+    info?: string;
+}
+
+export interface AdminLanguageUpdateRequest {
+    name?: string;
+    short_name?: string;
+    common_name?: string;
+    ace?: string;
+    pygments?: string;
+    template?: string;
+    description?: string;
+    extension?: string;
+    file_only?: boolean;
+    file_size_limit?: number;
+    include_in_problem?: boolean;
+    info?: string;
+}
+
+// ============================================================
+// ADMIN BLOG POST TYPES
+// ============================================================
+
+export interface AdminBlogPost {
+    id: number;
+    title: string;
+    slug: string;
+    author_names: string[];
+    publish_on: string;
+    visible: boolean;
+    sticky: boolean;
+    global_post: boolean;
+    organization?: string;
+    score: number;
+}
+
+export interface AdminBlogPostDetail {
+    id: number;
+    title: string;
+    slug: string;
+    content: string;
+    summary: string;
+    author_ids: number[];
+    author_names: string[];
+    publish_on: string;
+    visible: boolean;
+    sticky: boolean;
+    global_post: boolean;
+    og_image: string;
+    organization_id?: number;
+    organization_name?: string;
+    score: number;
+}
+
+export interface AdminBlogPostCreateRequest {
+    title: string;
+    slug: string;
+    content: string;
+    summary: string;
+    author_ids?: number[];
+    publish_on: string;
+    visible?: boolean;
+    sticky?: boolean;
+    global_post?: boolean;
+    og_image?: string;
+    organization_id?: number;
+}
+
+export interface AdminBlogPostUpdateRequest {
+    title?: string;
+    slug?: string;
+    content?: string;
+    summary?: string;
+    author_ids?: number[];
+    publish_on?: string;
+    visible?: boolean;
+    sticky?: boolean;
+    global_post?: boolean;
+    og_image?: string;
+    organization_id?: number;
+}
+
+// ============================================================
+// ADMIN LICENSE TYPES
+// ============================================================
+
+export interface AdminLicense {
+    id: number;
+    key: string;
+    name: string;
+    link: string;
+    display: string;
+    icon: string;
+}
+
+export interface AdminLicenseDetail {
+    id: number;
+    key: string;
+    name: string;
+    link: string;
+    display: string;
+    icon: string;
+    text: string;
+}
+
+export interface AdminLicenseCreateRequest {
+    key: string;
+    link: string;
+    name: string;
+    display?: string;
+    icon?: string;
+    text?: string;
+}
+
+export interface AdminLicenseUpdateRequest {
+    link?: string;
+    name?: string;
+    display?: string;
+    icon?: string;
+    text?: string;
+}
+
+// ============================================================
+// ADMIN PROBLEM TAXONOMY TYPES
+// ============================================================
+
+export interface AdminProblemGroup {
+    id: number;
+    name: string;
+    full_name: string;
+}
+
+export interface AdminProblemType {
+    id: number;
+    name: string;
+    full_name: string;
+}
+
+export interface AdminProblemGroupCreateRequest {
+    name: string;
+    full_name: string;
+}
+
+export interface AdminProblemTypeCreateRequest {
+    name: string;
+    full_name: string;
+}
+
+export interface AdminProblemGroupUpdateRequest {
+    full_name?: string;
+}
+
+export interface AdminProblemTypeUpdateRequest {
+    full_name?: string;
+}
+
+// ============================================================
+// ADMIN LIST RESPONSE TYPES
+// ============================================================
+
+export interface AdminListResponse<T> {
+    data: T[];
+    total: number;
+}
+
+export type AdminCommentListResponse = AdminListResponse<AdminComment>;
+export type AdminLanguageListResponse = AdminListResponse<AdminLanguage>;
+export type AdminBlogPostListResponse = AdminListResponse<AdminBlogPost>;
+export type AdminLicenseListResponse = AdminListResponse<AdminLicense>;
+export type AdminProblemGroupListResponse = AdminListResponse<AdminProblemGroup>;
+export type AdminProblemTypeListResponse = AdminListResponse<AdminProblemType>;
+export type AdminUserListResponse = AdminListResponse<AdminUser>;
+export type AdminContestListResponse = AdminListResponse<AdminContest>;
+export type AdminProblemListResponse = AdminListResponse<AdminProblem>;
+export type AdminJudgeListResponse = AdminListResponse<AdminJudge>;
+export type AdminOrganizationListResponse = AdminListResponse<AdminOrganization>;
+export type AdminSubmissionListResponse = AdminListResponse<AdminSubmission>;
+export type RoleListResponse = AdminListResponse<Role>;
+export type AdminSolutionListResponse = AdminListResponse<AdminSolution>;
+export type AdminTicketListResponse = AdminListResponse<AdminTicket>;

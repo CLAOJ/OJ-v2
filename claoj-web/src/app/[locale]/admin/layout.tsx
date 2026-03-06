@@ -17,7 +17,13 @@ import {
     Menu,
     X,
     BarChart3,
-    Shield
+    Shield,
+    Ticket,
+    MessageSquare,
+    Terminal,
+    BookOpen,
+    Scale,
+    Folder
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -52,6 +58,36 @@ const adminLinks = [
         href: '/admin/submissions',
         label: 'Submissions',
         icon: FileText
+    },
+    {
+        href: '/admin/tickets',
+        label: 'Tickets',
+        icon: Ticket
+    },
+    {
+        href: '/admin/comments',
+        label: 'Comments',
+        icon: MessageSquare
+    },
+    {
+        href: '/admin/blog-posts',
+        label: 'Blog Posts',
+        icon: BookOpen
+    },
+    {
+        href: '/admin/languages',
+        label: 'Languages',
+        icon: Terminal
+    },
+    {
+        href: '/admin/licenses',
+        label: 'Licenses',
+        icon: Scale
+    },
+    {
+        href: '/admin/taxonomy',
+        label: 'Taxonomy',
+        icon: Folder
     },
     {
         href: '/admin/moss',

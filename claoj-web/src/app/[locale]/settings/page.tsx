@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserDetail } from '@/types';
 import { Badge } from '@/components/ui/Badge';
+import WebAuthnSettings from '@/components/settings/WebAuthnSettings';
 
 const settingsSchema = z.object({
     display_name: z.string().max(100).optional(),
@@ -32,7 +33,7 @@ const passwordSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-type ActiveTab = 'profile' | 'account' | 'oauth' | 'notifications';
+type ActiveTab = 'profile' | 'account' | 'oauth' | 'notifications' | 'api-token' | 'data-export' | 'webauthn';
 
 type TwoFactorStatus = {
     enabled: boolean;
@@ -292,6 +293,42 @@ export default function SettingsPage() {
                     >
                         <Bell size={18} />
                         Notifications
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('api-token')}
+                        className={cn(
+                            "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm text-left transition-all",
+                            activeTab === 'api-token'
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-muted text-muted-foreground"
+                        )}
+                    >
+                        <Key size={18} />
+                        API Token
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('data-export')}
+                        className={cn(
+                            "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm text-left transition-all",
+                            activeTab === 'data-export'
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-muted text-muted-foreground"
+                        )}
+                    >
+                        <Download size={18} />
+                        Data Export
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('webauthn')}
+                        className={cn(
+                            "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm text-left transition-all",
+                            activeTab === 'webauthn'
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-muted text-muted-foreground"
+                        )}
+                    >
+                        <Shield size={18} />
+                        Passkey (WebAuthn)
                     </button>
                 </aside>
 
@@ -706,6 +743,20 @@ export default function SettingsPage() {
                         </div>
                     )}
 
+                    {/* API Token Tab */}
+                    {activeTab === 'api-token' && (
+                        <APITokenTab />
+                    )}
+
+                    {/* Data Export Tab */}
+                    {activeTab === 'webauthn' && (
+                        <WebAuthnSettings />
+                    )}
+
+                    {activeTab === 'data-export' && (
+                        <DataExportTab />
+                    )}
+
                     {/* Notifications Tab */}
                     {activeTab === 'notifications' && (
                         <NotificationsTab />
@@ -835,4 +886,269 @@ function NotificationsTab() {
 
 function Skeleton({ className }: { className?: string }) {
     return <div className={cn("animate-pulse bg-muted rounded-xl", className)} />;
+}
+
+// API Token Tab Component
+function APITokenTab() {
+    const queryClient = useQueryClient();
+
+    const { data: tokenInfo, isLoading } = useQuery({
+        queryKey: ['api-token'],
+        queryFn: async () => {
+            const res = await api.get('/user/api-token');
+            return res.data;
+        },
+    });
+
+    const { mutate: generateToken, isPending: isGenerating } = useMutation({
+        mutationFn: async () => {
+            const res = await api.post('/user/api-token');
+            return res.data;
+        },
+        onSuccess: (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ['api-token'] });
+            if (data.token) {
+                navigator.clipboard.writeText(data.token);
+            }
+        },
+        onError: (err: any) => {
+            alert(err.response?.data?.error || 'Failed to generate API token');
+        },
+    });
+
+    const { mutate: revokeToken, isPending: isRevoking } = useMutation({
+        mutationFn: async () => {
+            const res = await api.delete('/user/api-token');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['api-token'] });
+        },
+        onError: (err: any) => {
+            alert(err.response?.data?.error || 'Failed to revoke API token');
+        },
+    });
+
+    const [showToken, setShowToken] = useState(false);
+    const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+
+    const handleGenerate = () => {
+        generateToken(undefined, {
+            onSuccess: (data: any) => {
+                if (data.token) {
+                    setGeneratedToken(data.token);
+                    setShowToken(true);
+                }
+            },
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <h2 className="text-2xl font-bold">API Token</h2>
+                <p className="text-muted-foreground text-sm">
+                    Generate a token to access your account programmatically.
+                </p>
+            </div>
+
+            {tokenInfo?.has_token && !generatedToken ? (
+                <div className="p-6 rounded-2xl border bg-card space-y-4">
+                    <div className="flex items-center gap-2 text-amber-600">
+                        <Info size={20} />
+                        <span className="font-bold text-sm">Existing Token</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        You already have an API token. For security reasons, you cannot view it again.
+                        Generate a new token if you&apos;ve lost yours (this will invalidate the old token).
+                    </p>
+                    <button
+                        onClick={() => revokeToken()}
+                        disabled={isRevoking}
+                        className="px-6 py-3 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                    >
+                        {isRevoking ? 'Revoking...' : 'Revoke Token'}
+                    </button>
+                </div>
+            ) : generatedToken ? (
+                <div className="p-6 rounded-2xl border bg-card space-y-4">
+                    <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle size={20} />
+                        <span className="font-bold text-sm">Token Generated</span>
+                    </div>
+                    <div className="p-4 bg-muted rounded-xl">
+                        <code className="text-xs break-all">{generatedToken}</code>
+                    </div>
+                    <button
+                        onClick={() => {
+                            navigator.clipboard.writeText(generatedToken);
+                        }}
+                        className="px-4 py-2 rounded-lg bg-primary/10 text-primary font-medium text-sm hover:bg-primary/20 transition-colors flex items-center gap-2"
+                    >
+                        <Copy size={14} />
+                        Copy to Clipboard
+                    </button>
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm">
+                        <p className="font-medium flex items-center gap-2">
+                            <Info size={16} />
+                            Important: Save this token now
+                        </p>
+                        <p className="mt-1">
+                            For security reasons, the token will not be shown again. Store it in a secure location.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setShowToken(false);
+                            setGeneratedToken(null);
+                        }}
+                        className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
+                    >
+                        Done
+                    </button>
+                </div>
+            ) : (
+                <div className="p-6 rounded-2xl border bg-card">
+                    <button
+                        onClick={handleGenerate}
+                        disabled={isGenerating}
+                        className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {isGenerating && <Loader2 size={16} className="animate-spin" />}
+                        Generate API Token
+                    </button>
+                </div>
+            )}
+
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-sm space-y-2">
+                <p className="font-medium flex items-center gap-2">
+                    <Shield size={16} />
+                    How to use your API token
+                </p>
+                <p>
+                    Include the token in the Authorization header of your API requests:
+                </p>
+                <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto mt-2">
+                    <code>Authorization: Bearer YOUR_API_TOKEN</code>
+                </pre>
+            </div>
+        </div>
+    );
+}
+
+// Data Export Tab Component
+function DataExportTab() {
+    const { data: exportStatus, refetch } = useQuery({
+        queryKey: ['user-export', 'status'],
+        queryFn: async () => {
+            const res = await api.get('/user/export/status');
+            return res.data;
+        },
+    });
+
+    const { mutate: requestExport, isPending: isRequesting } = useMutation({
+        mutationFn: async () => {
+            const res = await api.post('/user/export/request');
+            return res.data;
+        },
+        onSuccess: () => {
+            refetch();
+        },
+        onError: (err: any) => {
+            alert(err.response?.data?.error || 'Failed to request data export');
+        },
+    });
+
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <h2 className="text-2xl font-bold">Download Your Data</h2>
+                <p className="text-muted-foreground text-sm">
+                    Export all your personal data including submissions, comments, blog posts, and contest participations.
+                </p>
+            </div>
+
+            <div className="p-6 rounded-2xl border bg-muted/50 space-y-4">
+                <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-primary mt-0.5" />
+                    <div className="space-y-2 text-sm">
+                        <p className="font-medium">What&apos;s included in your export:</p>
+                        <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
+                            <li>Profile information and preferences</li>
+                            <li>All submissions with source code</li>
+                            <li>Comments and blog posts</li>
+                            <li>Support tickets</li>
+                            <li>Contest participations and ratings</li>
+                            <li>Organization memberships</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-6 rounded-2xl border bg-card">
+                <h3 className="text-lg font-bold mb-4">Export Status</h3>
+                
+                {exportStatus ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Last export:</span>
+                            <span className="text-sm font-medium">
+                                {exportStatus.last_export 
+                                    ? new Date(exportStatus.last_export).toLocaleDateString()
+                                    : 'Never'}
+                            </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Can request export:</span>
+                            <Badge variant={exportStatus.can_request ? 'success' : 'secondary'}>
+                                {exportStatus.can_request ? 'Yes' : 'No'}
+                            </Badge>
+                        </div>
+
+                        {!exportStatus.can_request && (
+                            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm">
+                                <p className="font-medium flex items-center gap-2">
+                                    <Info size={16} />
+                                    Rate limit active
+                                </p>
+                                <p className="mt-1">
+                                    You can request a new data export in {exportStatus.days_until_request} days.
+                                    This helps us manage server resources.
+                                </p>
+                            </div>
+                        )}
+
+                        {exportStatus.can_request && (
+                            <button
+                                onClick={() => requestExport()}
+                                disabled={isRequesting}
+                                className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isRequesting && <Loader2 size={16} className="animate-spin" />}
+                                Request Data Export
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="animate-spin" size={24} />
+                    </div>
+                )}
+            </div>
+
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-sm space-y-2">
+                <p className="font-medium flex items-center gap-2">
+                    <Shield size={16} />
+                    Export details
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Exports are prepared asynchronously (5-10 minutes)</li>
+                    <li>Download links expire after 24 hours</li>
+                    <li>You can request a new export once per week</li>
+                    <li>Data is provided in JSON format within a ZIP archive</li>
+                </ul>
+            </div>
+        </div>
+    );
 }

@@ -32,7 +32,7 @@ export default function OrganizationManagePage() {
     const router = useRouter();
     const id = params.id as string;
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'requests' | 'edit'>('requests');
+    const [activeTab, setActiveTab] = useState<'requests' | 'members' | 'edit'>('requests');
 
     const { data: org, isLoading: orgLoading } = useQuery({
         queryKey: ['organization', id],
@@ -48,7 +48,7 @@ export default function OrganizationManagePage() {
             const res = await api.get<{ data: OrganizationRequest[] }>(`/organization/${id}/requests`);
             return res.data;
         },
-        enabled: !!org?.admins?.some(admin => admin.is_current_user)
+        enabled: !!org?.admins?.some(admin => admin.id === org.user_id)
     });
 
     const kickMutation = useMutation({
@@ -101,7 +101,7 @@ export default function OrganizationManagePage() {
         );
     }
 
-    const isAdmin = org.admins?.some(admin => admin.is_current_user);
+    const isAdmin = org.admins?.some(admin => admin.id === org.user_id);
 
     if (!isAdmin) {
         return (

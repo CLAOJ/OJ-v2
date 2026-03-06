@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj-go/contribution"
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/gin-gonic/gin"
@@ -183,7 +184,12 @@ func BlogVoteHandler(c *gin.Context) {
 			return err
 		}
 
-		return tx.Model(&post).Update("score", post.Score).Error
+		err = tx.Model(&post).Update("score", post.Score).Error
+		if err == nil {
+			// Update author's contribution points
+			contribution.UpdateProfileContributionPoints(post.AuthorID)
+		}
+		return err
 	})
 
 	if err != nil {

@@ -166,9 +166,11 @@ func Login(c *gin.Context) {
 
 	// Set httpOnly cookies for tokens
 	// Access token cookie (15 minutes)
-	c.SetCookie("access_token", accessToken, 900, "/", "", true, true) // Secure=true, HttpOnly=true
+	// Secure=false for HTTP development, true for HTTPS production
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
 	// Refresh token cookie (7 days)
-	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", true, true) // Secure=true, HttpOnly=true
+	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", secureCookie, true)
 
 	// In a real app we might update last_login here
 	c.JSON(http.StatusOK, gin.H{
@@ -252,8 +254,9 @@ func Refresh(c *gin.Context) {
 	tx.Commit()
 
 	// Set httpOnly cookies for tokens
-	c.SetCookie("access_token", accessToken, 900, "/", "", true, true)
-	c.SetCookie("refresh_token", newRefreshToken, 7*24*60*60, "/", "", true, true)
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
+	c.SetCookie("refresh_token", newRefreshToken, 7*24*60*60, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
@@ -381,14 +384,14 @@ func OAuthStart(c *gin.Context) {
 	}
 
 	// Store state in cookie with SameSite attribute for CSRF protection
-	// Using http.Cookie directly to set SameSite=Strict for maximum protection
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
 	cookie := &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
 		MaxAge:   600,
 		Path:     "/api/v2/auth",
 		Domain:   "",
-		Secure:   true,
+		Secure:   secureCookie,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	}
@@ -434,13 +437,14 @@ func OAuthCallback(c *gin.Context) {
 		return
 	}
 	// Clear state cookie
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
 	cookie := &http.Cookie{
 		Name:     "oauth_state",
 		Value:    "",
 		MaxAge:   -1,
 		Path:     "/api/v2/auth",
 		Domain:   "",
-		Secure:   true,
+		Secure:   secureCookie,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	}
@@ -492,8 +496,9 @@ func OAuthCallback(c *gin.Context) {
 	}
 
 	// Set httpOnly cookies
-	c.SetCookie("access_token", accessToken, 900, "/", "", true, true)
-	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", true, true)
+	secureCookie = strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
+	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
@@ -673,7 +678,8 @@ func Logout(c *gin.Context) {
 	if err != nil {
 		// No refresh token in cookie, user might already be logged out
 		// Still clear any access token cookie and return success
-		c.SetCookie("access_token", "", -1, "/", "", true, true)
+		secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+		c.SetCookie("access_token", "", -1, "/", "", secureCookie, true)
 		c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 		return
 	}
@@ -682,8 +688,9 @@ func Logout(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
 		// No valid access token, but still clear cookies
-		c.SetCookie("access_token", "", -1, "/", "", true, true)
-		c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+		secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+		c.SetCookie("access_token", "", -1, "/", "", secureCookie, true)
+		c.SetCookie("refresh_token", "", -1, "/", "", secureCookie, true)
 		c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 		return
 	}
@@ -709,8 +716,9 @@ func Logout(c *gin.Context) {
 	}
 
 	// Clear cookies
-	c.SetCookie("access_token", "", -1, "/", "", true, true)
-	c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetCookie("access_token", "", -1, "/", "", secureCookie, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }

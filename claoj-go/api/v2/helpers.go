@@ -91,6 +91,11 @@ func apiList(data interface{}) gin.H {
 	return gin.H{"data": data}
 }
 
+// apiListWithTotal is a helper for consistent paginated list responses
+func apiListWithTotal(data interface{}, total int64) gin.H {
+	return gin.H{"data": data, "total": total}
+}
+
 // parseUint parses a string to uint
 func parseUint(s string, result *uint) error {
 	val, err := strconv.ParseUint(s, 10, 64)

@@ -73,6 +73,7 @@ type Contest struct {
 	ProblemLabelScript     string     `gorm:"column:problem_label_script;type:longtext;not null"`
 	LockedAfter            *time.Time `gorm:"column:locked_after"`
 	PointsPrecision        int        `gorm:"column:points_precision;not null;default:3"`
+	MaxSubmissions         *int       `gorm:"column:max_submissions"`
 
 	// relations
 	Authors            []Profile        `gorm:"many2many:judge_contest_authors;joinForeignKey:contest_id;joinReferences:profile_id"`

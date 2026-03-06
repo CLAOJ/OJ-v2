@@ -69,10 +69,16 @@ type Problem struct {
 	TestcaseVisibilityMode         string     `gorm:"column:testcase_visibility_mode;size:1;not null;default:'C'"`
 	IsOrganizationPrivate          bool       `gorm:"column:is_organization_private;not null;default:0"`
 	SuggesterID                    *uint      `gorm:"column:suggester_id"`
+	SuggestionStatus               string     `gorm:"column:suggestion_status;size:20;not null;default:'none'"` // none, pending, approved, rejected
+	SuggestionNotes                string     `gorm:"column:suggestion_notes;type:longtext;not null;default:''"`
+	SuggestionReviewedAt           *time.Time `gorm:"column:suggestion_reviewed_at"`
+	SuggestionReviewedBy           *uint      `gorm:"column:suggestion_reviewed_by_id"`
 
 	// relations
 	Group         ProblemGroup   `gorm:"foreignKey:GroupID"`
 	License       *License       `gorm:"foreignKey:LicenseID"`
+	Suggester     *Profile       `gorm:"foreignKey:SuggesterID"`
+	ReviewedBy    *Profile       `gorm:"foreignKey:SuggestionReviewedBy"`
 	Authors       []Profile      `gorm:"many2many:judge_problem_authors;joinForeignKey:problem_id;joinReferences:profile_id"`
 	Curators      []Profile      `gorm:"many2many:judge_problem_curators;joinForeignKey:problem_id;joinReferences:profile_id"`
 	Testers       []Profile      `gorm:"many2many:judge_problem_testers;joinForeignKey:problem_id;joinReferences:profile_id"`

@@ -1,20 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Dialog Components - Compound component pattern
+interface DialogContextType {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
+
+const DialogContext = React.createContext<DialogContextType | undefined>(undefined);
 
 interface DialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     children: React.ReactNode;
     className?: string;
-    title?: string;
-    description?: string;
 }
 
-export function Dialog({ open, onOpenChange, children, className, title, description }: DialogProps) {
+export function Dialog({ open, onOpenChange, children, className }: DialogProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
     const previousActiveElement = useRef<HTMLElement | null>(null);
 
@@ -22,12 +28,10 @@ export function Dialog({ open, onOpenChange, children, className, title, descrip
     useEffect(() => {
         if (open) {
             previousActiveElement.current = document.activeElement as HTMLElement;
-            // Focus the dialog when opened
             setTimeout(() => {
                 dialogRef.current?.focus();
             }, 0);
         } else {
-            // Restore focus to previous element
             previousActiveElement.current?.focus();
         }
     }, [open]);
@@ -78,57 +82,44 @@ export function Dialog({ open, onOpenChange, children, className, title, descrip
     }, [open, onOpenChange]);
 
     const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        // Only close if clicking directly on backdrop (not dialog content)
         if (e.target === e.currentTarget) {
             onOpenChange(false);
         }
     }, [onOpenChange]);
 
     return (
-        <AnimatePresence>
-            {open && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={handleBackdropClick}
-                        className="fixed inset-0 bg-black/50 z-50"
-                        aria-hidden="true"
-                    />
-                    {/* Dialog */}
-                    <motion.div
-                        ref={dialogRef}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby={title ? 'dialog-title' : undefined}
-                        aria-describedby={description ? 'dialog-description' : undefined}
-                        tabIndex={-1}
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className={cn(
-                            "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-popover p-6 shadow-lg outline-none",
-                            className
-                        )}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {title && (
-                            <h2 id="dialog-title" className="sr-only">
-                                {title}
-                            </h2>
-                        )}
-                        {description && (
-                            <p id="dialog-description" className="sr-only">
-                                {description}
-                            </p>
-                        )}
-                        {children}
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence>
+        <DialogContext.Provider value={{ open, onOpenChange }}>
+            <AnimatePresence>
+                {open && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={handleBackdropClick}
+                            className="fixed inset-0 bg-black/50 z-50"
+                            aria-hidden="true"
+                        />
+                        <motion.div
+                            ref={dialogRef}
+                            role="dialog"
+                            aria-modal="true"
+                            tabIndex={-1}
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className={cn(
+                                "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-popover p-6 shadow-lg outline-none",
+                                className
+                            )}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {children}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </DialogContext.Provider>
     );
 }
 
@@ -144,10 +135,39 @@ export function DialogHeader({ children, className }: DialogHeaderProps) {
 interface DialogTitleProps {
     children: React.ReactNode;
     className?: string;
+    id?: string;
 }
 
-export function DialogTitle({ children, className }: DialogTitleProps) {
-    return <h2 className={cn("text-xl font-bold", className)}>{children}</h2>;
+export function DialogTitle({ children, className, id }: DialogTitleProps) {
+    return <h2 id={id} className={cn("text-xl font-bold", className)}>{children}</h2>;
+}
+
+interface DialogDescriptionProps {
+    children: React.ReactNode;
+    className?: string;
+    id?: string;
+}
+
+export function DialogDescription({ children, className, id }: DialogDescriptionProps) {
+    return <p id={id} className={cn("text-sm text-muted-foreground mt-1", className)}>{children}</p>;
+}
+
+interface DialogContentProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function DialogContent({ children, className }: DialogContentProps) {
+    return <div className={cn("mt-4", className)}>{children}</div>;
+}
+
+interface DialogFooterProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function DialogFooter({ children, className }: DialogFooterProps) {
+    return <div className={cn("flex justify-end gap-2 mt-6 pt-4 border-t", className)}>{children}</div>;
 }
 
 interface DialogCloseProps {
@@ -168,22 +188,4 @@ export function DialogClose({ className, ariaLabel }: DialogCloseProps) {
             <X size={20} />
         </button>
     );
-}
-
-interface DialogContentProps {
-    children: React.ReactNode;
-    className?: string;
-}
-
-export function DialogContent({ children, className }: DialogContentProps) {
-    return <div className={cn("mt-4", className)}>{children}</div>;
-}
-
-interface DialogFooterProps {
-    children: React.ReactNode;
-    className?: string;
-}
-
-export function DialogFooter({ children, className }: DialogFooterProps) {
-    return <div className={cn("flex justify-end gap-2 mt-6 pt-4 border-t", className)}>{children}</div>;
 }

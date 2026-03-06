@@ -9,28 +9,75 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RequiredMiddleware ensures a valid access token is present in httpOnly cookie
+// RequiredMiddleware ensures a valid access token is present in httpOnly cookie or Authorization header
 func RequiredMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Read access token from httpOnly cookie
-		tokenString, err := c.Cookie("access_token")
+		var tokenString string
+		var err error
+
+		// Try to read access token from httpOnly cookie first
+		tokenString, err = c.Cookie("access_token")
 		if err != nil {
+			// Cookie not found, try Authorization header (for API token auth)
+			authHeader := c.GetHeader("Authorization")
+			if authHeader != "" {
+				// Support "Bearer <token>" format
+				if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+					tokenString = authHeader[7:]
+				} else {
+					// Assume it's an API token (64 hex chars)
+					tokenString = authHeader
+				}
+			}
+		}
+
+		if tokenString == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "access token required"})
 			return
 		}
 
-		claims, err := VerifyToken(tokenString, "access")
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		// Check if this is a JWT access token (has dots for base64 encoding)
+		if len(tokenString) > 50 && tokenString[0] == 'e' {
+			// This is likely a JWT (starts with 'eyJ')
+			claims, err := VerifyToken(tokenString, "access")
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+				return
+			}
+
+			// Store user properties in context for downstream handlers
+			c.Set("user_id", claims.UserID)
+			c.Set("username", claims.Username)
+			c.Set("is_admin", claims.IsAdmin)
+			c.Next()
 			return
 		}
 
-		// Store user properties in context for downstream handlers
-		c.Set("user_id", claims.UserID)
-		c.Set("username", claims.Username)
-		c.Set("is_admin", claims.IsAdmin)
+		// Otherwise, treat as API token (64 hex character token)
+		if len(tokenString) == 64 {
+			// Look up user by API token
+			var profile models.Profile
+			if err := db.DB.Where("api_token = ?", tokenString).First(&profile).Error; err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid API token"})
+				return
+			}
 
-		c.Next()
+			// Get auth user info
+			var authUser models.AuthUser
+			if err := db.DB.First(&authUser, profile.UserID).Error; err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+				return
+			}
+
+			// Store user properties in context
+			c.Set("user_id", authUser.ID)
+			c.Set("username", authUser.Username)
+			c.Set("is_admin", authUser.IsSuperuser)
+			c.Next()
+			return
+		}
+
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token format"})
 	}
 }
 

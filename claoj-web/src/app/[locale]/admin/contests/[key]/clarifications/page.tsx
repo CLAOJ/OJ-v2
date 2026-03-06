@@ -1,17 +1,15 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ContestClarificationList } from '@/components/contests/ClarificationList';
 import { Badge } from '@/components/ui/Badge';
 import { MessageSquare } from 'lucide-react';
 
-interface PageProps {
-    params: Promise<{ key: string }>;
-}
-
-export default function AdminContestClarificationsPage({ params }: PageProps) {
+export default function AdminContestClarificationsPage() {
+    const params = useParams();
     const t = useTranslations();
-    const contestKey = params.key;
+    const contestKey = params.key as string;
 
     return (
         <div className="container mx-auto py-8 space-y-6">
@@ -22,7 +20,7 @@ export default function AdminContestClarificationsPage({ params }: PageProps) {
                         Answer clarification questions from contestants
                     </p>
                 </div>
-                <Badge variant="primary">
+                <Badge variant="default">
                     <MessageSquare className="w-4 h-4 mr-2" />
                     Staff View
                 </Badge>

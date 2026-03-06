@@ -4,7 +4,7 @@ import { Link, usePathname, useRouter, routing } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, User, LogOut, Menu, X, Settings as SettingsIcon, Flag, Ticket, ChevronDown } from 'lucide-react';
+import { Moon, Sun, User, LogOut, Menu, X, Settings as SettingsIcon, Flag, Ticket, ChevronDown, RefreshCw } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import WebSocketStatusIndicator from '@/components/common/WebSocketStatus';
 import { useState, useEffect, useRef } from 'react';
@@ -165,6 +165,18 @@ export default function Navbar() {
                                         {t(link.key)}
                                     </Link>
                                 ))}
+                                <Link
+                                    href="/problems/random"
+                                    className={cn(
+                                        "px-3 py-2 text-sm font-medium transition-colors rounded flex items-center gap-1",
+                                        pathname === '/problems/random'
+                                            ? "text-[#009688] bg-white/5"
+                                            : "text-gray-300 hover:text-white hover:bg-white/10"
+                                    )}
+                                    title="Random Problem"
+                                >
+                                    <RefreshCw size={14} />
+                                </Link>
                             </nav>
                         </div>
 
@@ -368,6 +380,17 @@ export default function Navbar() {
                                 {t(link.key)}
                             </Link>
                         ))}
+                        <Link
+                            href="/problems/random"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={cn(
+                                "text-xl font-bold tracking-tight flex items-center gap-2",
+                                pathname === '/problems/random' ? "text-[#009688]" : "text-gray-300"
+                            )}
+                        >
+                            <RefreshCw size={20} />
+                            <span>Random Problem</span>
+                        </Link>
 
                         {/* Report Issue */}
                         {user && (
