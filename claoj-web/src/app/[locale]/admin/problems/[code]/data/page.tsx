@@ -726,7 +726,7 @@ function PdfTab({ code, problem }: { code: string; problem: any }) {
         uploadMutation.mutate(selectedFile);
     };
 
-    const hasPdf = !!problemData?.problem?.pdf_url;
+    const hasPdf = !!problemData?.pdf_url;
 
     return (
         <div className="space-y-6">
@@ -744,7 +744,7 @@ function PdfTab({ code, problem }: { code: string; problem: any }) {
                                 <span className="font-medium">PDF statement is configured</span>
                             </div>
                             <p className="text-sm mt-2 text-green-600 dark:text-green-500">
-                                Current file: {problemData.problem.pdf_url}
+                                Current file: {problemData.pdf_url}
                             </p>
                         </div>
 

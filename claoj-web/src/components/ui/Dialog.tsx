@@ -189,3 +189,27 @@ export function DialogClose({ className, ariaLabel }: DialogCloseProps) {
         </button>
     );
 }
+
+interface DialogTriggerProps {
+    children: React.ReactNode;
+    className?: string;
+    asChild?: boolean;
+}
+
+export function DialogTrigger({ children, className, asChild }: DialogTriggerProps) {
+    const { onOpenChange } = React.useContext(DialogContext) || {};
+    
+    if (asChild) {
+        // Return children directly to be handled by parent
+        return <>{children}</>;
+    }
+    
+    return (
+        <div 
+            onClick={() => onOpenChange?.(true)}
+            className={cn("cursor-pointer", className)}
+        >
+            {children}
+        </div>
+    );
+}

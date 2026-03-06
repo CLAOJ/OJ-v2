@@ -70,6 +70,7 @@ export default function NavigationBarsAdminPage() {
         try {
             const response = await adminNavigationBarApi.detail(navBar.id);
             setFormData({
+                key: response.data.key,
                 label: response.data.label,
                 path: response.data.path,
                 order: response.data.order,
@@ -275,7 +276,8 @@ export default function NavigationBarsAdminPage() {
                                 <Input
                                     id="key"
                                     value={formData.key}
-                                    onChange={(e) => setFormData({ ...formData, key: e.target.value })}
+                                    onChange={(e) => setFormData({
+                ...formData, key: e.target.value })}
                                     placeholder="e.g., home"
                                     disabled={!!editingNavBar}
                                 />
@@ -286,7 +288,8 @@ export default function NavigationBarsAdminPage() {
                                 <Input
                                     id="label"
                                     value={formData.label}
-                                    onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                                    onChange={(e) => setFormData({
+                ...formData, label: e.target.value })}
                                     placeholder="e.g., Home"
                                 />
                             </div>
@@ -297,7 +300,8 @@ export default function NavigationBarsAdminPage() {
                             <Input
                                 id="path"
                                 value={formData.path}
-                                onChange={(e) => setFormData({ ...formData, path: e.target.value })}
+                                onChange={(e) => setFormData({
+                ...formData, path: e.target.value })}
                                 placeholder="e.g., / or /problems"
                             />
                         </div>
@@ -309,7 +313,8 @@ export default function NavigationBarsAdminPage() {
                                     id="order"
                                     type="number"
                                     value={formData.order}
-                                    onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+                                    onChange={(e) => setFormData({
+                ...formData, order: parseInt(e.target.value) || 0 })}
                                 />
                             </div>
                         </div>

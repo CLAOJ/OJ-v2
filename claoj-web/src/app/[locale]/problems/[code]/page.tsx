@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter, Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
+import api, { problemClarificationApi } from '@/lib/api';
 import { ProblemDetail, ProblemClarification } from '@/types';
 import MathRenderer from '@/components/ui/MathRenderer';
 import CodeEditor from '@/components/ui/CodeEditor';
