@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api, { webauthnApi } from '@/lib/api';
+import axios from 'axios';
 import { User } from '@/types';
 
 interface AuthContextType {
@@ -111,17 +112,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            // Auth is handled entirely via httpOnly cookies
-            // No need to check localStorage - tokens are automatically sent with requests
             try {
                 const res = await api.get('/user/me', { _skipAuthRedirect: true } as any);
-                if (res.status === 200) {
+                if (res.status === 200 && res.data.user) {
                     setUser(res.data.user);
                 }
+                // Not logged in or session expired - silently fail, don't redirect
             } catch (err) {
-                // Not logged in or token expired - silently handle
+                // Axios errors: distinguish between network errors and HTTP errors
+                // HTTP 401 errors are handled by the interceptor (refresh + retry)
+                // If refresh succeeds, the retried request will return user data
+                // and setUser will be called on the retry
+                if (axios.isAxiosError(err)) {
+                    if (err.code === 'ERR_NETWORK' || !err.response) {
+                        // Network error - silently fail, user might be offline
+                        console.debug('Auth check failed - network error');
+                    }
+                    // HTTP errors (401, etc) are handled by interceptor retry
+                    // If refresh succeeds, the retried request will update user state
+                    // If refresh fails, interceptor redirects to login (unless _skipAuthRedirect)
+                } else {
+                    // Non-Axios error - log for debugging
+                    console.debug('Auth check failed - unknown error:', err);
+                }
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         checkAuth();

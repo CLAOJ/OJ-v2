@@ -32,13 +32,42 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Refresh locking to prevent concurrent refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: () => void; reject: (err: any) => void }> = [];
+
+const processQueue = (error: any = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve();
+        }
+    });
+    failedQueue = [];
+};
+
 // Interceptor to handle token refresh using httpOnly cookies
 // NOTE: Refresh token is read from httpOnly cookie only - never from localStorage
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config as AxiosRequestConfigWithRetry;
-        if (error.response?.status === 401 && !originalRequest._retry) {
+
+        // If refresh is in progress and this isn't a retried request, queue it
+        if (isRefreshing && !originalRequest._retry) {
+            return new Promise((resolve, reject) => {
+                failedQueue.push({
+                    resolve: () => {
+                        resolve(api(originalRequest));
+                    },
+                    reject,
+                });
+            });
+        }
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isRefreshing) {
+            isRefreshing = true;
             originalRequest._retry = true;
 
             // Refresh using httpOnly cookie - no need to send refresh_token
@@ -50,20 +79,26 @@ api.interceptors.response.use(
 
                 if (res.status === 200) {
                     // New tokens are set via httpOnly cookies by the server
+                    processQueue();
                     return api(originalRequest);
+                } else {
+                    throw new Error('Refresh returned non-200 status');
                 }
             } catch (refreshError) {
+                processQueue(refreshError);
                 // Refresh failed, redirect to login unless _skipAuthRedirect is set
                 if (typeof window !== 'undefined' && !originalRequest._skipAuthRedirect) {
                     window.location.href = '/login';
                 }
+                throw refreshError;
+            } finally {
+                isRefreshing = false;
             }
         }
+
         return Promise.reject(error);
     }
 );
-
-export default api;
 
 // ============================================================
 // PUBLIC SOLUTION API
@@ -318,3 +353,46 @@ export const problemPdfApi = {
     // Check if PDF exists (by checking if pdf_url is non-empty in problem detail)
     hasPdf: (problem: { pdf_url?: string }) => !!problem.pdf_url,
 };
+
+// ============================================================
+// SUBMISSION DIFF API (Task #58)
+// ============================================================
+
+export interface SubmissionDiffResponse {
+    submission1: {
+        id: number;
+        problem: string;
+        user: string;
+        date: string;
+        language: string;
+        result: string | null;
+        points: number | null;
+    };
+    submission2: {
+        id: number;
+        problem: string;
+        user: string;
+        date: string;
+        language: string;
+        result: string | null;
+        points: number | null;
+    };
+    unified_diff: string;
+    diff_lines: Array<{
+        type: 'add' | 'delete' | 'context';
+        line: number;
+        content: string;
+    }>;
+    stats: {
+        additions: number;
+        deletions: number;
+    };
+}
+
+export const submissionDiffApi = {
+    // Get diff between two submissions
+    getDiff: (id1: number, id2: number) =>
+        api.get<SubmissionDiffResponse>(`/submissions/diff/${id1}?compare=${id2}`),
+};
+
+export default api;
