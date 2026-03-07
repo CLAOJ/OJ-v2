@@ -86,10 +86,9 @@ api.interceptors.response.use(
                 }
             } catch (refreshError) {
                 processQueue(refreshError);
-                // Refresh failed, redirect to login unless _skipAuthRedirect is set
-                if (typeof window !== 'undefined' && !originalRequest._skipAuthRedirect) {
-                    window.location.href = '/login';
-                }
+                // Refresh failed - don't redirect automatically
+                // Let the AuthProvider handle the auth state clearing
+                // Redirect should only happen on explicit login-required actions
                 throw refreshError;
             } finally {
                 isRefreshing = false;

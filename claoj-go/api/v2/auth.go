@@ -186,8 +186,10 @@ func Login(c *gin.Context) {
 	// Access token cookie (15 minutes)
 	// Secure=false for HTTP development, true for HTTPS production
 	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
 	// Refresh token cookie (7 or 30 days based on remember_me)
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("refresh_token", refreshToken, cookieMaxAge, "/", "", secureCookie, true)
 
 	// In a real app we might update last_login here
@@ -273,8 +275,19 @@ func Refresh(c *gin.Context) {
 
 	// Set httpOnly cookies for tokens
 	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+
+	// Calculate remaining time for refresh token cookie based on original expiration
+	remainingSeconds := int(refreshTokenModel.ExpiresAt.Sub(time.Now()).Seconds())
+	if remainingSeconds < 0 {
+		remainingSeconds = 7 * 24 * 60 * 60 // Fallback to 7 days if somehow expired
+	}
+
+	// Set access token cookie (15 minutes)
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
-	c.SetCookie("refresh_token", newRefreshToken, 7*24*60*60, "/", "", secureCookie, true)
+	// Set refresh token cookie with remaining time from original expiration
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("refresh_token", newRefreshToken, remainingSeconds, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
@@ -515,7 +528,9 @@ func OAuthCallback(c *gin.Context) {
 
 	// Set httpOnly cookies
 	secureCookie = strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -691,12 +706,14 @@ func generateUsernameFromEmail(email string) string {
 // Logout - POST /api/v2/auth/logout
 // Revokes refresh token and invalidates session
 func Logout(c *gin.Context) {
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+
 	// Get refresh token from httpOnly cookie
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
 		// No refresh token in cookie, user might already be logged out
 		// Still clear any access token cookie and return success
-		secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+		c.SetSameSite(http.SameSiteNoneMode)
 		c.SetCookie("access_token", "", -1, "/", "", secureCookie, true)
 		c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 		return
@@ -706,8 +723,9 @@ func Logout(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
 		// No valid access token, but still clear cookies
-		secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+		c.SetSameSite(http.SameSiteNoneMode)
 		c.SetCookie("access_token", "", -1, "/", "", secureCookie, true)
+		c.SetSameSite(http.SameSiteNoneMode)
 		c.SetCookie("refresh_token", "", -1, "/", "", secureCookie, true)
 		c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 		return
@@ -734,8 +752,9 @@ func Logout(c *gin.Context) {
 	}
 
 	// Clear cookies
-	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("access_token", "", -1, "/", "", secureCookie, true)
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("refresh_token", "", -1, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})

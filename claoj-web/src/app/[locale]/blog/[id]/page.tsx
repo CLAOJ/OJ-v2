@@ -126,7 +126,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ id: strin
                     </div>
                 </header>
 
-                <section className="prose prose-zinc dark:prose-invert max-w-none">
+                <section className="prose prose-invert max-w-none text-foreground">
                     <MathRenderer content={post.content} fullMarkup={true} />
                 </section>
             </article>

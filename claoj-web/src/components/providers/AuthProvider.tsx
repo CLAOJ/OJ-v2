@@ -38,6 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Tokens are set via httpOnly cookies by the server - no localStorage storage
         const userData = res.data.user as User;
         setUser(userData);
+        // Broadcast auth state change for other tabs/components
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth-state-change'));
+        }
         return { user: userData };
     };
 
@@ -46,6 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Tokens are set via httpOnly cookies by the server - no localStorage storage
         const userData = res.data.user as User;
         setUser(userData);
+        // Broadcast auth state change for other tabs/components
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth-state-change'));
+        }
         return userData;
     };
 
@@ -98,6 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Tokens are set via httpOnly cookies by the server
         const userData = finishRes.data.user as User;
         setUser(userData);
+        // Broadcast auth state change for other tabs/components
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth-state-change'));
+        }
         return userData;
     };
 
@@ -109,8 +121,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Logout error - continue to clear user state anyway
         }
         setUser(null);
+        // Broadcast auth state change for other tabs/components
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth-state-change'));
+        }
     };
 
+    // Check auth status on mount and when auth-state-change event fires
     useEffect(() => {
         let isSubscribed = true;
 
@@ -121,27 +138,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             try {
+                // Try to get user info
+                // If access token is invalid, the API interceptor will try to refresh
+                // If refresh succeeds, the request will be retried automatically
+                // If refresh fails, we'll get a 401 error here
                 const res = await api.get('/user/me', { _skipAuthRedirect: true } as any);
-                // If we get here, the request succeeded (either directly or after refresh+retry)
+
                 if (res.status === 200 && res.data && isSubscribed) {
-                    // /user/me returns user directly in res.data, not wrapped in res.data.user
+                    // User is authenticated
                     setUser(res.data as User);
                 }
             } catch (err) {
-                // Axios errors: distinguish between network errors and HTTP errors
-                // HTTP 401 errors are handled by the interceptor (refresh + retry)
-                // If refresh succeeds, the retried request returns user data above
-                // If refresh fails with _skipAuthRedirect, we still get here
+                // Handle different error scenarios
                 if (axios.isAxiosError(err)) {
                     if (err.code === 'ERR_NETWORK' || !err.response) {
-                        // Network error - silently fail, user might be offline
+                        // Network error - keep current user state, user might be offline
+                        // Don't clear user on network errors
                     } else if (err.response?.status === 401) {
-                        // 401 after refresh attempt - user is not authenticated
-                        // Don't redirect (due to _skipAuthRedirect), just don't set user
+                        // 401 means:
+                        // 1. No access token AND no refresh token, OR
+                        // 2. Access token invalid AND refresh token invalid/expired
+                        //
+                        // The API interceptor already tried to refresh if possible
+                        // If we still get 401, clear user state - user is not authenticated
+                        if (isSubscribed) {
+                            setUser(null);
+                        }
                     }
-                    // Other HTTP errors are silently handled
+                    // Other HTTP errors (403, 500, etc.) - don't clear auth state
                 }
-                // Non-Axios error - silently handled
+                // Non-Axios errors - silently handled
             } finally {
                 if (isSubscribed) {
                     setLoading(false);
@@ -151,6 +177,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         checkAuth();
 
+        // Listen for auth state changes from other components/tabs
+        const handleAuthChange = () => {
+            checkAuth();
+        };
+        window.addEventListener('auth-state-change', handleAuthChange);
+
+        return () => {
+            isSubscribed = false;
+            window.removeEventListener('auth-state-change', handleAuthChange);
+        };
+    }, []);
+
+    // Separate effect for periodic token refresh
+    useEffect(() => {
         // Periodic refresh every 10 minutes to keep tokens alive
         const refreshInterval = setInterval(() => {
             if (user) {
@@ -159,10 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }, 10 * 60 * 1000);
 
-        return () => {
-            isSubscribed = false;
-            clearInterval(refreshInterval);
-        };
+        return () => clearInterval(refreshInterval);
     }, [user]);
 
     return (

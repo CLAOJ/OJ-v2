@@ -74,23 +74,46 @@ func CommentList(c *gin.Context) {
 	}
 
 	type Item struct {
-		ID       uint      `json:"id"`
-		Body     string    `json:"body"`
-		Score    int       `json:"score"`
-		Time     time.Time `json:"time"`
-		ParentID *uint     `json:"parent_id,omitempty"`
-		Author   string    `json:"author"`
+		ID          uint      `json:"id"`
+		Body        string    `json:"body"`
+		Score       int       `json:"score"`
+		Time        time.Time `json:"time"`
+		ParentID    *uint     `json:"parent_id,omitempty"`
+		Author      string    `json:"author"`
+		AuthorName  string    `json:"author_name"`
+		Page        string    `json:"page"`
+		PageTitle   string    `json:"page_title"`
+		Link        string    `json:"link"`
 	}
 
 	items := make([]Item, len(comments))
 	for i, cm := range comments {
+		// Derive link and page title from page field
+		link := "/" + cm.Page
+		pageTitle := cm.Page
+		if len(cm.Page) > 2 && cm.Page[1] == '/' {
+			// Format: p/code, e/code, blog/id
+			switch cm.Page[0] {
+			case 'p':
+				pageTitle = "Problem: " + cm.Page[2:]
+			case 'e':
+				pageTitle = "Editorial: " + cm.Page[2:]
+			case 'b': // blog/
+				pageTitle = "Blog: " + cm.Page[5:]
+			}
+		}
+
 		items[i] = Item{
-			ID:       cm.ID,
-			Body:     cm.Body,
-			Score:    cm.Score,
-			Time:     cm.Time,
-			ParentID: cm.ParentID,
-			Author:   cm.Author.User.Username,
+			ID:         cm.ID,
+			Body:       cm.Body,
+			Score:      cm.Score,
+			Time:       cm.Time,
+			ParentID:   cm.ParentID,
+			Author:     cm.Author.User.Username,
+			AuthorName: cm.Author.User.Username,
+			Page:       cm.Page,
+			PageTitle:  pageTitle,
+			Link:       link,
 		}
 	}
 

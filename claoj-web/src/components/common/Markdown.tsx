@@ -13,7 +13,7 @@ interface MarkdownProps {
 
 export default function Markdown({ content }: MarkdownProps) {
     return (
-        <div className="prose prose-lg dark:prose-invert max-w-none">
+        <div className="prose prose-invert max-w-none text-foreground">
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}

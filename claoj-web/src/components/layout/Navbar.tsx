@@ -21,15 +21,19 @@ const MS_PER_MINUTE = MS_PER_SECOND * 60;
 const MS_PER_HOUR = MS_PER_MINUTE * 60;
 
 function Logo() {
-    const { theme } = useTheme();
+    const { theme, resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
+    // Use resolvedTheme to handle 'system' theme correctly
+    // resolvedTheme will be 'dark' or 'light' even when theme is 'system'
+    const currentTheme = mounted ? (resolvedTheme || theme) : 'light';
+
     // Use dark logo for light theme, light logo for dark theme
-    const logoSrc = mounted && theme === 'dark'
+    const logoSrc = currentTheme === 'dark'
         ? '/static/claoj-logo-light.png'
         : '/static/claoj-logo-dark.png';
 
@@ -284,10 +288,14 @@ export default function Navbar() {
                             <button
                                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="p-2 rounded-full hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hidden md:block"
-                                aria-label={mounted && theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                                title="Toggle Theme"
+                                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                             >
-                                {mounted && (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />)}
+                                {mounted ? (
+                                    theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />
+                                ) : (
+                                    <Moon size={18} className="opacity-50" />
+                                )}
                             </button>
 
                             {/* WebSocket Status */}
@@ -323,7 +331,7 @@ export default function Navbar() {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 10 }}
                                                 transition={{ duration: reduceMotion ? 0 : 0.15 }}
-                                                className="absolute right-0 mt-2 w-48 bg-card border rounded-lg shadow-xl py-1 z-50"
+                                                className="absolute right-0 top-full mt-2 w-48 bg-card border rounded-lg shadow-xl py-1 z-50 max-h-[calc(100vh-80px)] overflow-y-auto"
                                                 role="menu"
                                                 aria-orientation="vertical"
                                             >
@@ -518,8 +526,12 @@ export default function Navbar() {
                                 className="flex items-center gap-2 p-3 rounded bg-muted text-sm font-bold"
                                 aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                             >
-                                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                                <span>Theme ({theme === 'dark' ? 'Dark' : 'Light'})</span>
+                                {mounted ? (
+                                    theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />
+                                ) : (
+                                    <Moon size={18} className="opacity-50" />
+                                )}
+                                <span>Theme ({mounted ? (theme === 'dark' ? 'Dark' : 'Light') : '...'})</span>
                             </button>
 
                             {!user ? (

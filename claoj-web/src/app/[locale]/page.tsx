@@ -43,8 +43,8 @@ export default function HomePage() {
     const { data: posts, isLoading: postsLoading } = useQuery({
         queryKey: ['blog-posts'],
         queryFn: async () => {
-            const res = await api.get<{ items: BlogPost[] }>('/blogs?limit=10');
-            return res.data.items;
+            const res = await api.get<{ data: BlogPost[] }>('/blogs?limit=10');
+            return res.data.data;
         }
     });
 
@@ -52,8 +52,8 @@ export default function HomePage() {
     const { data: ongoingContests } = useQuery({
         queryKey: ['ongoing-contests'],
         queryFn: async () => {
-            const res = await api.get<{ items: Contest[] }>('/contests?status=ongoing&limit=5');
-            return res.data.items;
+            const res = await api.get<{ data: Contest[] }>('/contests?status=ongoing&limit=5');
+            return res.data.data;
         }
     });
 
@@ -61,8 +61,8 @@ export default function HomePage() {
     const { data: upcomingContests } = useQuery({
         queryKey: ['upcoming-contests'],
         queryFn: async () => {
-            const res = await api.get<{ items: Contest[] }>('/contests?status=upcoming&limit=5');
-            return res.data.items;
+            const res = await api.get<{ data: Contest[] }>('/contests?status=upcoming&limit=5');
+            return res.data.data;
         }
     });
 
@@ -70,8 +70,8 @@ export default function HomePage() {
     const { data: topRatingUsers } = useQuery({
         queryKey: ['top-rating-users'],
         queryFn: async () => {
-            const res = await api.get<{ items: User[] }>('/users?order=-rating&limit=5');
-            return res.data.items;
+            const res = await api.get<{ data: User[] }>('/users?order=-rating&limit=5');
+            return res.data.data;
         }
     });
 
@@ -79,8 +79,8 @@ export default function HomePage() {
     const { data: topScorers } = useQuery({
         queryKey: ['top-scorers'],
         queryFn: async () => {
-            const res = await api.get<{ items: User[] }>('/users?order=-performance_points&limit=5');
-            return res.data.items;
+            const res = await api.get<{ data: User[] }>('/users?order=-performance_points&limit=5');
+            return res.data.data;
         }
     });
 
@@ -88,8 +88,8 @@ export default function HomePage() {
     const { data: newProblems } = useQuery({
         queryKey: ['new-problems'],
         queryFn: async () => {
-            const res = await api.get<{ items: Problem[] }>('/problems?sort=date&order=desc&limit=5');
-            return res.data.items;
+            const res = await api.get<{ data: Problem[] }>('/problems?sort=date&order=desc&limit=5');
+            return res.data.data;
         }
     });
 
@@ -97,8 +97,8 @@ export default function HomePage() {
     const { data: recentComments } = useQuery({
         queryKey: ['recent-comments'],
         queryFn: async () => {
-            const res = await api.get<{ items: any[] }>('/comments?limit=10');
-            return res.data.items;
+            const res = await api.get<{ data: any[] }>('/comments?page_type=blog&limit=10');
+            return res.data.data;
         }
     });
 
@@ -240,7 +240,7 @@ export default function HomePage() {
                                             <div className="flex items-center gap-4 text-xs text-gray-400 mb-3 flex-wrap">
                                                 <span className="flex items-center gap-1">
                                                     <Users size={12} />
-                                                    {post.authors?.map((a: any) => a.name).join(', ')}
+                                                    {post.authors?.map((a: any) => a.username).join(', ')}
                                                 </span>
                                                 <span className="flex items-center gap-1">
                                                     <Clock size={12} />
@@ -252,7 +252,7 @@ export default function HomePage() {
                                                 </span>
                                             </div>
 
-                                            <div className="prose prose-invert max-w-none text-sm text-gray-300 line-clamp-3">
+                                            <div className="prose dark:prose-invert max-w-none text-sm text-muted-foreground line-clamp-3">
                                                 <ReactMarkdown
                                                     remarkPlugins={[remarkGfm]}
                                                     rehypePlugins={[rehypeRaw]}

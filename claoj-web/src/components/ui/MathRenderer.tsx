@@ -16,7 +16,7 @@ interface MathRendererProps {
 
 export default function MathRenderer({ content, className, fullMarkup }: MathRendererProps) {
     return (
-        <div className={cn("prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-primary", className)}>
+        <div className={cn("prose prose-invert max-w-none prose-headings:font-bold prose-a:text-primary text-foreground", className)}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[...(fullMarkup ? [rehypeRaw] : []), rehypeKatex]}

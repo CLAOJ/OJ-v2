@@ -16,7 +16,16 @@
     "description": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao.",
     "platform": "Nền tảng",
     "support": "Hỗ trợ",
-    "builtBy": "IT-CLA Productions"
+    "builtBy": "IT-CLA Productions",
+    "problems": "Bài toán",
+    "contests": "Thi đấu",
+    "submissions": "Bài nộp",
+    "organizations": "Tổ chức",
+    "helpTickets": "Hỗ trợ Ticket",
+    "aboutUs": "Về chúng tôi",
+    "donate": "Ủng hộ",
+    "github": "GitHub",
+    "copyright": "Nền tảng CLAOJ. Được xây dựng với"
   },
   "Home": {
     "welcome": "Chào mừng đến với CLAOJ",

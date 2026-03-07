@@ -16,7 +16,16 @@
     "description": "Modern, high-performance competitive programming platform.",
     "platform": "Platform",
     "support": "Support",
-    "builtBy": "IT-CLA Productions"
+    "builtBy": "IT-CLA Productions",
+    "problems": "Problems",
+    "contests": "Contests",
+    "submissions": "Submissions",
+    "organizations": "Organizations",
+    "helpTickets": "Help Tickets",
+    "aboutUs": "About Us",
+    "donate": "Donate",
+    "github": "GitHub",
+    "copyright": "CLAOJ Platform. Built with"
   },
   "Home": {
     "welcome": "Welcome to CLAOJ",

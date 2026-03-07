@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/CLAOJ/claoj-go/auth"
 	"github.com/CLAOJ/claoj-go/config"
@@ -121,6 +122,7 @@ type WebAuthnBeginRegistrationRequest struct {
 func WebAuthnBeginRegistration(c *gin.Context) {
 	userID := c.GetUint("userID")
 	username := c.GetString("username")
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
 
 	var req WebAuthnBeginRegistrationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -175,7 +177,8 @@ func WebAuthnBeginRegistration(c *gin.Context) {
 
 	// Store session in cookie
 	sessionData, _ := json.Marshal(session)
-	c.SetCookie("webauthn_registration_session", base64.StdEncoding.EncodeToString(sessionData), 300, "/", "", true, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("webauthn_registration_session", base64.StdEncoding.EncodeToString(sessionData), 300, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"options": options,
@@ -192,6 +195,7 @@ type WebAuthnFinishRegistrationRequest struct {
 func WebAuthnFinishRegistration(c *gin.Context) {
 	userID := c.GetUint("userID")
 	username := c.GetString("username")
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
 
 	var req WebAuthnFinishRegistrationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -274,7 +278,8 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 	}
 
 	// Clear session cookie
-	c.SetCookie("webauthn_registration_session", "", -1, "/", "", true, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("webauthn_registration_session", "", -1, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "WebAuthn credential registered successfully",
@@ -287,6 +292,7 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 
 // WebAuthnBeginLogin starts WebAuthn login
 func WebAuthnBeginLogin(c *gin.Context) {
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
 	var req struct {
 		Username string `json:"username" binding:"required"`
 	}
@@ -337,7 +343,8 @@ func WebAuthnBeginLogin(c *gin.Context) {
 
 	// Store session in cookie
 	sessionData, _ := json.Marshal(session)
-	c.SetCookie("webauthn_login_session", base64.StdEncoding.EncodeToString(sessionData), 300, "/", "", true, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("webauthn_login_session", base64.StdEncoding.EncodeToString(sessionData), 300, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"options":  options,
@@ -440,12 +447,18 @@ func WebAuthnFinishLogin(c *gin.Context) {
 		return
 	}
 
+	// Determine secure cookie flag based on site URL
+	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
+
 	// Clear session cookie
-	c.SetCookie("webauthn_login_session", "", -1, "/", "", true, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("webauthn_login_session", "", -1, "/", "", secureCookie, true)
 
 	// Set httpOnly cookies for tokens
-	c.SetCookie("access_token", accessToken, 900, "/", "", true, true)
-	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", true, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
