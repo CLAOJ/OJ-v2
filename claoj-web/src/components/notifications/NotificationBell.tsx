@@ -109,7 +109,7 @@ export default function NotificationBell() {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                className="relative p-2 rounded-full hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground"
                 aria-label="Notifications"
                 aria-expanded={isOpen}
                 aria-haspopup="true"

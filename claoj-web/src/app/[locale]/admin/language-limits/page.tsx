@@ -66,7 +66,7 @@ export default function LanguageLimitsAdminPage() {
             const response = await adminProblemApi.list(1, 1000);
             setProblems(response.data.data);
         } catch (error) {
-            console.error('Failed to load problems');
+            toast.error('Failed to load problems');
         }
     };
 
@@ -75,7 +75,7 @@ export default function LanguageLimitsAdminPage() {
             const response = await adminLanguageApi.list(1, 100);
             setLanguages(response.data.data);
         } catch (error) {
-            console.error('Failed to load languages');
+            toast.error('Failed to load languages');
         }
     };
 

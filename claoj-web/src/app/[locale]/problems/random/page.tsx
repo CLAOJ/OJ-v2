@@ -16,7 +16,6 @@ export default function RandomProblemPage() {
                 router.push(`/problems/${res.data.code}`);
             })
             .catch((err) => {
-                console.error('Failed to get random problem:', err);
                 setError('Failed to load random problem. Please try again.');
             });
     }, []);

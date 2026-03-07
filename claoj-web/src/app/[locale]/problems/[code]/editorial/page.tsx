@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { solutionApi } from '@/lib/api';
+import api from '@/lib/api';
 import type { Solution } from '@/types';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import Markdown from '@/components/common/Markdown';
+import Comments from '@/components/common/Comments';
 
 export default function ProblemEditorialPage() {
     const params = useParams();
@@ -15,6 +17,7 @@ export default function ProblemEditorialPage() {
     const code = params.code as string;
 
     const [solution, setSolution] = useState<Solution | null>(null);
+    const [problemName, setProblemName] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +26,10 @@ export default function ProblemEditorialPage() {
             try {
                 const res = await solutionApi.getSolution(code);
                 setSolution(res.data);
+
+                // Fetch problem detail to get problem name
+                const problemRes = await api.get<{ name: string }>(`/problem/${code}`);
+                setProblemName(problemRes.data.name);
             } catch (err: unknown) {
                 if (err && typeof err === 'object' && 'response' in err) {
                     const axiosError = err as { response?: { status?: number } };
@@ -125,6 +132,11 @@ export default function ProblemEditorialPage() {
                         {t('problem.published_on')}: {new Date(solution.publish_on).toLocaleDateString()}
                     </p>
                 )}
+            </div>
+
+            {/* Comments Section */}
+            <div className="mt-12">
+                <Comments page={`e/${code}`} problemName={problemName || code} contextType="editorial" />
             </div>
         </div>
     );

@@ -346,8 +346,8 @@ func TotpVerify(c *gin.Context) {
 		return
 	}
 
-	// Generate tokens
-	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
+	// Generate tokens (TOTP verification doesn't have remember_me, use default 7 days)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return
@@ -468,8 +468,8 @@ func TotpBackupVerify(c *gin.Context) {
 		return
 	}
 
-	// Generate tokens
-	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
+	// Generate tokens (backup code verification doesn't have remember_me, use default 7 days)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return

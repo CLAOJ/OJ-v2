@@ -29,19 +29,42 @@ func (CommentRevision) TableName() string { return "judge_commentrevision" }
 
 // CommentList - GET /api/v2/comments
 // Fetches comments for a specific page (e.g. ?page=p/aplusb)
+// Supports optional page_type filter: ?page_type=editorial,problem,blog
 func CommentList(c *gin.Context) {
 	pageFilter := c.Query("page")
-	if pageFilter == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "page query parameter is required"})
+	pageType := c.Query("page_type")
+
+	if pageFilter == "" && pageType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "page or page_type query parameter is required"})
 		return
 	}
 
 	page, pageSize := parsePagination(c)
 	var comments []models.Comment
 
-	if err := db.DB.
-		Preload("Author.User"). // Preload Author profile and their AuthUser for username
-		Where("page = ? AND hidden = ?", pageFilter, false).
+	query := db.DB.Preload("Author.User") // Preload Author profile and their AuthUser for username
+
+	// Apply page_type filter if provided
+	if pageType != "" {
+		switch pageType {
+		case "problem":
+			query = query.Where("page LIKE ?", "p/%")
+		case "editorial":
+			query = query.Where("page LIKE ?", "e/%")
+		case "blog":
+			query = query.Where("page LIKE ?", "blog/%")
+		}
+	}
+
+	// Apply specific page filter if provided (takes precedence)
+	if pageFilter != "" {
+		query = query.Where("page = ?", pageFilter)
+	}
+
+	// Filter out hidden comments
+	query = query.Where("hidden = ?", false)
+
+	if err := query.
 		Order("time DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).

@@ -29,7 +29,8 @@ import {
     RefreshCw,
     Loader2,
     ArrowLeft,
-    ExternalLink
+    ExternalLink,
+    GitCompare
 } from 'lucide-react';
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -138,6 +139,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const [isRejudging, setIsRejudging] = useState(false);
     const [rejudgeError, setRejudgeError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [compareId, setCompareId] = useState<string>('');
 
     const { data: sub, isLoading } = useQuery({
         queryKey: ['submission', id],
@@ -337,7 +339,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
 
                 {/* Admin Actions */}
                 {isAdmin && (
-                    <div className="mt-6 pt-6 border-t flex items-center gap-3">
+                    <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
                         <span className="text-sm text-muted-foreground font-medium">Admin Actions:</span>
                         <button
                             onClick={handleRejudge}
@@ -353,6 +355,32 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                         </button>
                     </div>
                 )}
+
+                {/* Compare Actions */}
+                <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
+                    <span className="text-sm text-muted-foreground font-medium">Compare:</span>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={compareId}
+                            onChange={(e) => setCompareId(e.target.value)}
+                            placeholder="Submission ID"
+                            className="w-32 px-3 py-2 rounded-xl bg-muted border border-muted-foreground/20 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <Link
+                            href={compareId ? `/submissions/${id}/diff?compare=${compareId}` : '#'}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-colors",
+                                compareId
+                                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                            )}
+                        >
+                            <GitCompare size={16} />
+                            Compare
+                        </Link>
+                    </div>
+                </div>
             </motion.header>
 
             {/* Main Content */}

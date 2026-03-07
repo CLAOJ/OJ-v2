@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Link, useRouter } from '@/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User as UserIcon, AlertCircle, Shield, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 const loginSchema = z.object({
     username: z.string().min(1, 'Username is required'),
     password: z.string().min(1, 'Password is required'),
+    rememberMe: z.boolean().optional(),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -31,6 +32,34 @@ export default function LoginPage() {
     const [webAuthnUsername, setWebAuthnUsername] = useState('');
     const [showWebAuthnForm, setShowWebAuthnForm] = useState(false);
 
+    // Capture referrer on mount for redirect after login
+    useEffect(() => {
+        // Only store if there's a referrer and it's not the login page
+        if (document.referrer && !document.referrer.includes('/login')) {
+            try {
+                const referrerPath = new URL(document.referrer).pathname;
+                if (!sessionStorage.getItem('loginRedirectUrl')) {
+                    sessionStorage.setItem('loginRedirectUrl', referrerPath);
+                }
+            } catch {
+                // Invalid referrer URL, ignore
+            }
+        }
+    }, []);
+
+    // Helper function to get redirect URL after login
+    const getRedirectUrl = (isStaff: boolean): string => {
+        if (isStaff) return '/admin';
+
+        const stored = sessionStorage.getItem('loginRedirectUrl');
+        sessionStorage.removeItem('loginRedirectUrl');
+
+        if (!stored || stored === '/' || stored.includes('/login')) {
+            return '/';
+        }
+        return stored;
+    };
+
     const {
         register,
         handleSubmit,
@@ -43,12 +72,13 @@ export default function LoginPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const result = await login(data.username, data.password);
+            const result = await login(data.username, data.password, data.rememberMe);
             if (result.requiresTotp) {
                 setRequiresTotp(true);
                 setTotpUsername(result.username || data.username);
-            } else {
-                router.push('/');
+            } else if (result.user) {
+                // Redirect based on user type: admin -> /admin, normal -> previous page or home
+                router.push(getRedirectUrl(result.user.is_staff));
             }
         } catch (err: any) {
             setError(err.response?.data?.error || t('invalidCredentials'));
@@ -61,8 +91,9 @@ export default function LoginPage() {
         setIsLoading(true);
         setError(null);
         try {
-            await loginTotp(totpUsername, code);
-            router.push('/');
+            const user = await loginTotp(totpUsername, code);
+            // Redirect based on user type: admin -> /admin, normal -> previous page or home
+            router.push(getRedirectUrl(user.is_staff));
         } catch (err: any) {
             setError(err.response?.data?.error || 'Invalid TOTP code');
         } finally {
@@ -78,8 +109,9 @@ export default function LoginPage() {
         setIsLoading(true);
         setError(null);
         try {
-            await loginWebAuthn(webAuthnUsername);
-            router.push('/');
+            const user = await loginWebAuthn(webAuthnUsername);
+            // Redirect based on user type: admin -> /admin, normal -> previous page or home
+            router.push(getRedirectUrl(user.is_staff));
         } catch (err: any) {
             setError(err.response?.data?.error || 'WebAuthn login failed');
         } finally {
@@ -226,12 +258,14 @@ export default function LoginPage() {
                                 </div>
                                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
                                 <div className="flex justify-between items-center">
-                                    <Link
-                                        href="/resend-verification"
-                                        className="text-xs font-bold text-muted-foreground hover:text-primary transition-colors"
-                                    >
-                                        Resend verification?
-                                    </Link>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            {...register('rememberMe')}
+                                            className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-xs text-muted-foreground">Remember me</span>
+                                    </label>
                                     <Link
                                         href="/forgot-password"
                                         className="text-xs font-bold text-primary hover:underline underline-offset-4 transition-all"

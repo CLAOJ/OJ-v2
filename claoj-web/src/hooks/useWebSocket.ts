@@ -68,7 +68,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
             const ws = new WebSocket(url);
 
             ws.onopen = () => {
-                console.log('[WebSocket] Connected');
                 setStatus('connected');
                 reconnectAttemptsRef.current = 0;
 
@@ -79,7 +78,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
             };
 
             ws.onclose = (event) => {
-                console.log('[WebSocket] Disconnected', event.code, event.reason);
                 wsRef.current = null;
 
                 if (!manualCloseRef.current && status !== 'error') {
@@ -88,38 +86,32 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
                     // Attempt to reconnect
                     if (reconnectAttemptsRef.current < maxReconnectAttempts) {
                         reconnectAttemptsRef.current += 1;
-                        console.log(`[WebSocket] Reconnecting (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
 
                         reconnectTimeoutRef.current = setTimeout(() => {
                             connect();
                         }, reconnectInterval);
-                    } else {
-                        console.log('[WebSocket] Max reconnect attempts reached');
                     }
                 }
             };
 
             ws.onerror = (error) => {
-                console.error('[WebSocket] Error', error);
                 setStatus('error');
             };
 
             ws.onmessage = (event) => {
                 try {
                     const message: WebSocketMessage = JSON.parse(event.data);
-                    console.log('[WebSocket] Message received', message);
 
                     if (onMessage) {
                         onMessage(message);
                     }
                 } catch (err) {
-                    console.error('[WebSocket] Failed to parse message', err);
+                    // Failed to parse message - silently ignore
                 }
             };
 
             wsRef.current = ws;
         } catch (error) {
-            console.error('[WebSocket] Failed to create connection', error);
             setStatus('error');
         }
     }, [url, reconnectInterval, maxReconnectAttempts, onMessage]);
@@ -157,9 +149,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
     const send = useCallback((message: WebSocketMessage) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify(message));
-        } else {
-            console.warn('[WebSocket] Cannot send message - not connected');
         }
+        // Silently ignore if not connected - will be handled by connection state
     }, []);
 
     // Initial connection and channel subscriptions

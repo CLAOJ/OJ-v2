@@ -43,13 +43,15 @@ export default function CommentAdminPage() {
     const [editReason, setEditReason] = useState('');
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+    const [pageTypeFilter, setPageTypeFilter] = useState<'all' | 'problem' | 'editorial' | 'blog'>('all');
 
     const loadComments = async () => {
         setLoading(true);
         try {
-            const filters: { search?: string; hidden?: 'true' | 'false' } = {};
+            const filters: { search?: string; hidden?: 'true' | 'false'; page_type?: 'problem' | 'editorial' | 'blog' } = {};
             if (search) filters.search = search;
             if (hiddenFilter !== 'all') filters.hidden = hiddenFilter;
+            if (pageTypeFilter !== 'all') filters.page_type = pageTypeFilter;
 
             const response = await adminCommentApi.list(page, pageSize, filters);
             setComments(response.data.data);
@@ -63,7 +65,7 @@ export default function CommentAdminPage() {
 
     useEffect(() => {
         loadComments();
-    }, [page, search, hiddenFilter]);
+    }, [page, search, hiddenFilter, pageTypeFilter]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -134,7 +136,7 @@ export default function CommentAdminPage() {
             </div>
 
             {/* Filters */}
-            <form onSubmit={handleSearch} className="flex gap-4">
+            <form onSubmit={handleSearch} className="flex gap-4 flex-wrap">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -144,6 +146,19 @@ export default function CommentAdminPage() {
                         className="pl-10"
                     />
                 </div>
+                <select
+                    value={pageTypeFilter}
+                    onChange={(e) => {
+                        setPageTypeFilter(e.target.value as typeof pageTypeFilter);
+                        setPage(1);
+                    }}
+                    className="px-4 py-2 border rounded-lg bg-background"
+                >
+                    <option value="all">All Types</option>
+                    <option value="problem">Problem Comments</option>
+                    <option value="editorial">Editorial Comments</option>
+                    <option value="blog">Blog Comments</option>
+                </select>
                 <select
                     value={hiddenFilter}
                     onChange={(e) => {

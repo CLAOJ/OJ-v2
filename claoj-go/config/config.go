@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -8,6 +9,19 @@ import (
 	"github.com/spf13/viper"
 	"github.com/subosito/gotenv"
 )
+
+// readSecretFromFile reads a secret from a Docker secret file
+func readSecretFromFile(filePath string) string {
+	if filePath == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("config: warning: failed to read secret file %s: %v", filePath, err)
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
 
 // Config holds all application configuration.
 type Config struct {
@@ -164,10 +178,49 @@ func Load() {
 	v.BindEnv("oauth.github.redirect_url", "OAUTH_GITHUB_REDIRECT_URL", "GITHUB_REDIRECT_URL", "CLAOJ_OAUTH_GITHUB_REDIRECT_URL")
 	v.BindEnv("oauth.github.enabled", "OAUTH_GITHUB_ENABLED", "CLAOJ_OAUTH_GITHUB_ENABLED")
 
+	// Secret file paths (for Docker secrets)
+	v.BindEnv("app.secret_key_file", "SECRET_KEY_FILE", "CLAOJ_SECRET_KEY_FILE")
+	v.BindEnv("app.jwt_secret_key_file", "JWT_SECRET_KEY_FILE", "CLAOJ_JWT_SECRET_KEY_FILE")
+	v.BindEnv("database.password_file", "MYSQL_PASSWORD_FILE", "CLAOJ_MYSQL_PASSWORD_FILE")
+	// Database components for DSN construction
+	v.BindEnv("database.host", "MYSQL_HOST", "MYSQL_HOST_ENV", "CLAOJ_MYSQL_HOST")
+	v.BindEnv("database.port", "MYSQL_PORT", "MYSQL_PORT_ENV", "CLAOJ_MYSQL_PORT")
+	v.BindEnv("database.user", "MYSQL_USER", "MYSQL_USER_ENV", "CLAOJ_MYSQL_USER")
+	v.BindEnv("database.name", "MYSQL_DATABASE", "MYSQL_DATABASE_ENV", "CLAOJ_MYSQL_DATABASE")
+
 	v.AutomaticEnv()
 
 	if err := v.Unmarshal(&C); err != nil {
 		log.Fatalf("config: failed to unmarshal: %v", err)
+	}
+
+	// Load secrets from Docker secret files if paths are provided
+	// Priority: Secret file > Environment variable > Default
+	if secretKeyFile := v.GetString("app.secret_key_file"); secretKeyFile != "" {
+		if secret := readSecretFromFile(secretKeyFile); secret != "" {
+			C.App.SecretKey = secret
+			log.Println("config: loaded secret_key from Docker secret file")
+		}
+	}
+	if jwtSecretKeyFile := v.GetString("app.jwt_secret_key_file"); jwtSecretKeyFile != "" {
+		if secret := readSecretFromFile(jwtSecretKeyFile); secret != "" {
+			C.App.JwtSecretKey = secret
+			log.Println("config: loaded jwt_secret_key from Docker secret file")
+		}
+	}
+	if dbPasswordFile := v.GetString("database.password_file"); dbPasswordFile != "" {
+		if password := readSecretFromFile(dbPasswordFile); password != "" {
+			log.Println("config: loaded database password from Docker secret file")
+			// Construct DSN from components using password from secret file
+			host := v.GetString("database.host")
+			port := v.GetString("database.port")
+			user := v.GetString("database.user")
+			dbname := v.GetString("database.name")
+			if host != "" && user != "" && dbname != "" {
+				C.Database.DSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=UTC", user, password, host, port, dbname)
+				log.Println("config: constructed DSN from Docker secret-based credentials")
+			}
+		}
 	}
 
 	// Security validation

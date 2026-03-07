@@ -5,6 +5,16 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+/**
+ * Reusable focus ring utility for consistent accessibility focus states
+ */
+export function focusRing(className?: string) {
+    return cn(
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className
+    );
+}
+
 export function formatTime(seconds: number): string {
     if (seconds < 60) return `${Math.round(seconds)}s`;
     const mins = Math.floor(seconds / 60);
@@ -28,7 +38,7 @@ export function getStatusColor(status: string): string {
     }
 }
 
-export function getStatusVariant(status: string): any {
+export function getStatusVariant(status: string): 'success' | 'destructive' | 'warning' | 'default' | 'outline' {
     switch (status) {
         case 'AC': return 'success';
         case 'WA': return 'destructive';

@@ -22,7 +22,7 @@ export default function ProblemSuggestPage() {
                     { id: 1, name: 'Standard' },
                 ]);
             } catch (error) {
-                console.error('Failed to fetch options:', error);
+                // Failed to fetch options - using placeholder data
             } finally {
                 setIsLoading(false);
             }

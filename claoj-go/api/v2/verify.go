@@ -67,26 +67,39 @@ func VerifyEmail(c *gin.Context) {
 // ResendVerificationRequest - POST /api/v2/auth/resend-verification
 // Resends verification email
 type ResendVerificationRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email,omitempty"`
 }
 
 func ResendVerification(c *gin.Context) {
 	var req ResendVerificationRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
-		return
-	}
+	c.ShouldBindJSON(&req) // Email is optional for authenticated users
 
-	// Find user by email
 	var user models.AuthUser
-	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// Don't reveal if email exists
-			c.JSON(http.StatusOK, gin.H{"message": "If the email exists and is not verified, a verification link has been sent"})
+
+	// Check if user is authenticated (via access token)
+	userID, exists := c.Get("user_id")
+	if exists && userID != nil && userID.(uint) > 0 {
+		// Authenticated user - use their account
+		if err := db.DB.First(&user, userID).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, apiError("user not found"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
-		return
+	} else {
+		// Unauthenticated - require email
+		if req.Email == "" {
+			c.JSON(http.StatusBadRequest, apiError("email is required"))
+			return
+		}
+		// Find user by email
+		if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Don't reveal if email exists
+				c.JSON(http.StatusOK, gin.H{"message": "If the email exists and is not verified, a verification link has been sent"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, apiError("database error"))
+			return
+		}
 	}
 
 	// Check if user is already verified (is_active = true)

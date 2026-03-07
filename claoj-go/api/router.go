@@ -2,15 +2,15 @@
 package api
 
 import (
-	v2 "github.com/CLAOJ/claoj-go/api/v2"
+	"github.com/CLAOJ/claoj-go/api/v2"
 	"github.com/CLAOJ/claoj-go/auth"
-	"github.com/CLAOJ/claoj-go/cache"
 	"github.com/CLAOJ/claoj-go/config"
 	"github.com/CLAOJ/claoj-go/csrf"
 	"github.com/CLAOJ/claoj-go/events"
-	"github.com/CLAOJ/claoj-go/ratelimit"
+	"github.com/CLAOJ/claoj-go/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // NewRouter creates and returns the fully configured Gin engine.
@@ -25,19 +25,18 @@ func NewRouter() *gin.Engine {
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	r.Use(cors.New(corsConfig))
 
-	// Health-check
+	// Prometheus metrics middleware
+	r.Use(middleware.Metrics())
+
+	// Health-check endpoint
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 
-	// Rate limiting middleware for API v2
-	// Use Redis-backed rate limiting in production, in-memory for development
-	var ratelimitRepo ratelimit.Repository
-	if cache.Client != nil {
-		ratelimitRepo = ratelimit.NewRedisRepository(cache.Client)
-	} else {
-		ratelimitRepo = ratelimit.NewInMemoryRepository(60) // 60-second window
-	}
+	// Prometheus metrics endpoint (public - can be restricted by network config)
+	r.GET("/metrics", func(c *gin.Context) {
+		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+	})
+
 	apiv2 := r.Group("/api/v2")
-	apiv2.Use(ratelimit.Middleware(ratelimitRepo))
 	{
 		// Public Auth
 		apiv2.POST("/auth/login", v2.Login)
@@ -77,6 +76,7 @@ func NewRouter() *gin.Engine {
 		// =======================================================
 		admin := apiv2.Group("")
 		admin.Use(auth.AdminRequiredMiddleware())
+		admin.Use(middleware.Audit()) // Audit logging for all admin actions
 		{
 			// Users
 			admin.GET("/admin/users", v2.AdminUserList)
@@ -250,6 +250,10 @@ func NewRouter() *gin.Engine {
 		admin.POST("/admin/misc-configs", v2.AdminMiscConfigCreate)
 		admin.PATCH("/admin/misc-config/:id", v2.AdminMiscConfigUpdate)
 		admin.DELETE("/admin/misc-config/:id", v2.AdminMiscConfigDelete)
+
+		// Audit Logs
+		admin.GET("/audit-logs", v2.AdminAuditLogList)
+		admin.GET("/audit-log/:id", v2.AdminAuditLogDetail)
 		}
 
 		apiv2.GET("/problems", v2.ProblemList)
@@ -260,6 +264,9 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/problem/:code/solution/exists", v2.ProblemSolutionExists)
 		// Problem PDF Statement
 		apiv2.GET("/problem/:code/pdf", v2.ProblemStatementPDF)
+		// Problem Feeds
+		apiv2.GET("/problems/feed/rss", v2.ProblemFeedRSS)
+		apiv2.GET("/problems/feed/atom", v2.ProblemFeedAtom)
 		// Problem Language Limits
 		apiv2.GET("/problem/:code/language-limits", v2.ProblemLanguageLimits)
 		// Problem Clarifications (public read)
@@ -273,10 +280,12 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
 		apiv2.GET("/contest/:key/ranking/pdf", v2.ContestRankingPDF)
 		apiv2.GET("/contest/:key/stats", v2.ContestStats)
+		apiv2.GET("/contest/:key/stats/public", v2.ContestPublicStats)
 		apiv2.GET("/contest/:key/participations", v2.ParticipationList)
 
 		apiv2.GET("/submissions", v2.SubmissionList)
 		apiv2.GET("/submission/:id", v2.SubmissionDetail)
+		apiv2.GET("/submissions/:id1/diff/:id2", v2.SubmissionDiff)
 
 		apiv2.GET("/users", v2.UserList)
 		apiv2.GET("/user/:user", v2.UserDetail)
@@ -297,9 +306,17 @@ func NewRouter() *gin.Engine {
 		// Stats
 		apiv2.GET("/stats/languages", v2.LanguageStats)
 		apiv2.GET("/stats/submissions/daily", v2.DailySubmissionStats)
+		apiv2.GET("/stats/overall", v2.OverallStats)
+		apiv2.GET("/stats/submissions", v2.SubmissionStats)
+		apiv2.GET("/stats/problems", v2.ProblemStatsList)
+		apiv2.GET("/stats/judges", v2.JudgeStats)
+		apiv2.GET("/stats/users", v2.UserStats)
+		apiv2.GET("/stats/contests", v2.ContestStatsList)
 
 		// Comments
 		apiv2.GET("/comments", v2.CommentList)
+		apiv2.GET("/comments/feed/rss", v2.CommentFeedRSS)
+		apiv2.GET("/comments/feed/atom", v2.CommentFeedAtom)
 
 		// Contest clarifications (public read)
 		apiv2.GET("/contest/:key/clarifications", v2.ContestClarificationList)
@@ -309,6 +326,16 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/blog/:id", v2.BlogDetail)
 		apiv2.GET("/blogs/feed/rss", v2.BlogFeedRSS)
 		apiv2.GET("/blogs/feed/atom", v2.BlogFeedAtom)
+
+		// Sitemap (public)
+		apiv2.GET("/sitemap.xml", v2.SitemapIndex)
+		apiv2.GET("/sitemap-static.xml", v2.SitemapStatic)
+		apiv2.GET("/sitemap-problems.xml", v2.SitemapProblems)
+		apiv2.GET("/sitemap-problem-groups.xml", v2.SitemapProblemGroups)
+		apiv2.GET("/sitemap-contests.xml", v2.SitemapContests)
+		apiv2.GET("/sitemap-users.xml", v2.SitemapUsers)
+		apiv2.GET("/sitemap-blog-posts.xml", v2.SitemapBlogPosts)
+		apiv2.GET("/sitemap-organizations.xml", v2.SitemapOrganizations)
 
 		// Protected endpoints with CSRF protection
 		protected := apiv2.Group("")

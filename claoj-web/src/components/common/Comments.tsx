@@ -22,7 +22,9 @@ import {
     History,
     Eye,
     Shield,
-    X
+    X,
+    BookOpen,
+    FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -43,10 +45,12 @@ import { Badge } from '@/components/ui/Badge';
 dayjs.extend(relativeTime);
 
 interface CommentsProps {
-    page: string; // e.g. "p/aplusb" or "blog/1"
+    page: string; // e.g. "p/aplusb" or "blog/1" or "e/aplusb"
+    problemName?: string; // Optional problem name for context display
+    contextType?: 'problem' | 'editorial'; // Force context type
 }
 
-export default function Comments({ page }: CommentsProps) {
+export default function Comments({ page, problemName, contextType }: CommentsProps) {
     const t = useTranslations('Comments');
     const { user } = useAuth()
     const isAdmin = user?.is_admin || false;
@@ -56,6 +60,20 @@ export default function Comments({ page }: CommentsProps) {
     const [editingComment, setEditingComment] = useState<Comment | null>(null);
     const [revisionHistory, setRevisionHistory] = useState<Comment | null>(null);
     const [deletingComment, setDeletingComment] = useState<number | null>(null);
+
+    // Determine context type from page prefix if not explicitly provided
+    const getTypeFromPage = (): 'problem' | 'editorial' | 'blog' => {
+        if (contextType) return contextType;
+        if (page.startsWith('e/')) return 'editorial';
+        if (page.startsWith('p/')) return 'problem';
+        if (page.startsWith('blog/')) return 'blog';
+        return 'problem';
+    };
+
+    const commentType = getTypeFromPage();
+
+    // Use editorialComments translations for editorial context
+    const contextTranslations = useTranslations(commentType === 'editorial' ? 'editorialComments' : commentType === 'problem' ? 'problemComments' : 'Comments');
 
     const { data: comments, isLoading } = useQuery({
         queryKey: ['comments', page],
@@ -138,6 +156,39 @@ export default function Comments({ page }: CommentsProps) {
         postComment(body);
     };
 
+    // Context header display
+    const ContextHeader = () => {
+        if (commentType !== 'problem' && commentType !== 'editorial') return null;
+
+        return (
+            <div className={cn(
+                "p-4 rounded-2xl border flex items-start gap-3",
+                commentType === 'editorial'
+                    ? "bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                    : "bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+            )}>
+                <div className={cn(
+                    "p-2 rounded-lg",
+                    commentType === 'editorial'
+                        ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                        : "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                )}>
+                    {commentType === 'editorial' ? <BookOpen size={18} /> : <FileText size={18} />}
+                </div>
+                <div className="flex-1">
+                    <div className="text-sm font-bold text-foreground">
+                        {contextTranslations('commentingOn')}
+                    </div>
+                    {problemName && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                            {contextTranslations('problemName', { problemName })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     if (isLoading) return (
         <div className="space-y-6">
             <Skeleton className="h-10 w-48 rounded-full" />
@@ -149,9 +200,9 @@ export default function Comments({ page }: CommentsProps) {
     );
 
     // Build tree structure
-    const buildTree = (list: Comment[]) => {
-        const map: Record<number, Comment & { children: any[] }> = {};
-        const roots: any[] = [];
+    const buildTree = (list: Comment[]): CommentNode[] => {
+        const map: Record<number, CommentNode> = {};
+        const roots: CommentNode[] = [];
 
         list.forEach(c => {
             map[c.id] = { ...c, children: [] };
@@ -184,22 +235,25 @@ export default function Comments({ page }: CommentsProps) {
 
             {/* New Root Comment Input */}
             {user ? (
-                <div className="p-8 rounded-[2rem] bg-card border border-dashed hover:border-primary/50 transition-colors space-y-4">
-                    <textarea
-                        value={commentBody}
-                        onChange={(e) => setCommentBody(e.target.value)}
-                        placeholder={t('placeholder')}
-                        className="w-full h-32 p-6 rounded-2xl bg-muted/30 border outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none text-base font-medium"
-                    />
-                    <div className="flex justify-end">
-                        <button
-                            onClick={() => handlePost(commentBody)}
-                            disabled={isPosting || !commentBody.trim()}
-                            className="flex items-center gap-2 h-12 px-8 rounded-xl bg-primary text-primary-foreground text-sm font-black shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
-                        >
-                            {isPosting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-                            {t('post')}
-                        </button>
+                <div className="space-y-4">
+                    <ContextHeader />
+                    <div className="p-8 rounded-[2rem] bg-card border border-dashed hover:border-primary/50 transition-colors space-y-4">
+                        <textarea
+                            value={commentBody}
+                            onChange={(e) => setCommentBody(e.target.value)}
+                            placeholder={contextTranslations('placeholder')}
+                            className="w-full h-32 p-6 rounded-2xl bg-muted/30 border outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none text-base font-medium"
+                        />
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => handlePost(commentBody)}
+                                disabled={isPosting || !commentBody.trim()}
+                                className="flex items-center gap-2 h-12 px-8 rounded-xl bg-primary text-primary-foreground text-sm font-black shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {isPosting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                                {t('post')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -213,7 +267,7 @@ export default function Comments({ page }: CommentsProps) {
                 {tree.length === 0 ? (
                     <div className="py-20 text-center text-muted-foreground/50 flex flex-col items-center gap-4">
                         <MessageSquare size={48} className="opacity-10" />
-                        <p className="font-bold">{t('noComments')}</p>
+                        <p className="font-bold">{contextTranslations('noComments')}</p>
                     </div>
                 ) : (
                     tree.map(node => (
@@ -345,14 +399,18 @@ export default function Comments({ page }: CommentsProps) {
     );
 }
 
+interface CommentNode extends Comment {
+    children: CommentNode[];
+}
+
 interface CommentNodeProps {
-    node: Comment & { children: Comment[] };
+    node: CommentNode;
     level?: number;
     onReply: (id: number | null) => void;
     replyTo: number | null;
     onPost: (body: string) => void;
     isPosting: boolean;
-    user: any;
+    user: { username: string } | null;
     isAdmin: boolean;
     t: (key: string) => string;
     onEdit: (comment: Comment | null) => void;
@@ -522,7 +580,7 @@ function CommentNode({ node, level = 0, onReply, replyTo, onPost, isPosting, use
 
             {isExpanded && node.children.length > 0 && (
                 <div className="space-y-8">
-                    {node.children.map((child: any) => (
+                    {node.children.map((child) => (
                         <CommentNode
                             key={child.id}
                             node={child}

@@ -20,7 +20,8 @@ import {
     Trophy,
     MapPin,
     Calendar,
-    ArrowLeft
+    ArrowLeft,
+    FileText
 } from 'lucide-react';
 import { cn, getRankColor } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -213,7 +214,17 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     )}
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
+                        <Link
+                            href={`/organization/${org.id}/blog`}
+                            className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed hover:border-primary/30 hover:bg-muted/50 transition-all group"
+                        >
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <FileText size={16} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Blog</span>
+                            </div>
+                            <div className="text-3xl font-black group-hover:text-primary transition-colors">View</div>
+                        </Link>
                         <div className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Users size={16} />

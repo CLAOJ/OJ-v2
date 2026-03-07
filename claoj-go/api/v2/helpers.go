@@ -105,3 +105,107 @@ func parseUint(s string, result *uint) error {
 	*result = uint(val)
 	return nil
 }
+
+// ============================================================
+// STANDARDIZED ERROR HANDLING HELPERS
+// ============================================================
+
+// Common error variables for consistent error handling
+var (
+	ErrNotFound     = "resource not found"
+	ErrUnauthorized = "unauthorized access"
+	ErrForbidden    = "access denied"
+	ErrBadRequest   = "invalid request"
+	ErrInternal     = "internal server error"
+)
+
+// ErrorResponse returns a standardized error response
+func ErrorResponse(msg string) gin.H {
+	return gin.H{"error": msg}
+}
+
+// ErrorResponseWithStatus returns a standardized error response with HTTP status code
+func ErrorResponseWithStatus(c *gin.Context, status int, msg string) {
+	c.JSON(status, ErrorResponse(msg))
+}
+
+// BadRequestError returns a 400 Bad Request error response
+func BadRequestError(c *gin.Context, msg string) {
+	if msg == "" {
+		msg = ErrBadRequest
+	}
+	c.JSON(http.StatusBadRequest, ErrorResponse(msg))
+}
+
+// UnauthorizedError returns a 401 Unauthorized error response
+func UnauthorizedError(c *gin.Context, msg string) {
+	if msg == "" {
+		msg = ErrUnauthorized
+	}
+	c.JSON(http.StatusUnauthorized, ErrorResponse(msg))
+}
+
+// ForbiddenError returns a 403 Forbidden error response
+func ForbiddenError(c *gin.Context, msg string) {
+	if msg == "" {
+		msg = ErrForbidden
+	}
+	c.JSON(http.StatusForbidden, ErrorResponse(msg))
+}
+
+// NotFoundError returns a 404 Not Found error response
+func NotFoundError(c *gin.Context, msg string) {
+	if msg == "" {
+		msg = ErrNotFound
+	}
+	c.JSON(http.StatusNotFound, ErrorResponse(msg))
+}
+
+// InternalError returns a 500 Internal Server Error response
+// Logs the actual error but returns a generic message to avoid information disclosure
+func InternalError(c *gin.Context, err error) {
+	log.Printf("Internal error: %v", err)
+	c.JSON(http.StatusInternalServerError, ErrorResponse(ErrInternal))
+}
+
+// InternalErrorWithMessage returns a 500 Internal Server Error response with custom message
+func InternalErrorWithMessage(c *gin.Context, msg string) {
+	log.Printf("Internal error: %s", msg)
+	c.JSON(http.StatusInternalServerError, ErrorResponse(msg))
+}
+
+// ConflictError returns a 409 Conflict error response
+func ConflictError(c *gin.Context, msg string) {
+	c.JSON(http.StatusConflict, ErrorResponse(msg))
+}
+
+// ValidationError returns a 422 Unprocessable Entity error response for validation errors
+func ValidationError(c *gin.Context, msg string) {
+	c.JSON(http.StatusUnprocessableEntity, ErrorResponse(msg))
+}
+
+// SuccessResponse returns a standardized success response
+func SuccessResponse(data interface{}) gin.H {
+	return gin.H{"success": true, "data": data}
+}
+
+// SuccessResponseWithMessage returns a standardized success response with message
+func SuccessResponseWithMessage(data interface{}, msg string) gin.H {
+	return gin.H{"success": true, "data": data, "message": msg}
+}
+
+// PaginationResponse returns a standardized paginated response
+func PaginationResponse(data interface{}, total int64) gin.H {
+	return gin.H{"data": data, "total": total}
+}
+
+// PaginationResponseWithPage returns a standardized paginated response with page info
+func PaginationResponseWithPage(data interface{}, total int64, page, pageSize int) gin.H {
+	return gin.H{
+		"data":      data,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+		"has_more":  page*pageSize < int(total),
+	}
+}

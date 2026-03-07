@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -135,8 +136,14 @@ func (h *Handler) handlePacket(pkt Packet) error {
 
 // onHandshake verifies the auth key
 func (h *Handler) onHandshake(pkt Packet) error {
-	judgeID, _ := pkt["id"].(string)
-	key, _ := pkt["key"].(string)
+	judgeID, ok := pkt["id"].(string)
+	if !ok {
+		return errors.New("invalid handshake: id must be a string")
+	}
+	key, ok := pkt["key"].(string)
+	if !ok {
+		return errors.New("invalid handshake: key must be a string")
+	}
 
 	var judge models.Judge
 	if err := db.DB.Where("name = ?", judgeID).First(&judge).Error; err != nil {
@@ -168,9 +175,13 @@ func (h *Handler) onHandshake(pkt Packet) error {
 	log.Printf("bridge [%s]: authenticated as %s", h.conn.RemoteAddr(), h.name)
 
 	// Update DB to online
+	var judgeAddr string
+	if addr, ok := h.conn.RemoteAddr().(*net.TCPAddr); ok {
+		judgeAddr = addr.IP.String()
+	}
 	db.DB.Model(&judge).Updates(map[string]interface{}{
 		"online":  true,
-		"last_ip": h.conn.RemoteAddr().(*net.TCPAddr).IP.String(),
+		"last_ip": judgeAddr,
 	})
 
 	// Send handshake-success response
@@ -205,14 +216,22 @@ func (h *Handler) onPingResponse(pkt Packet) error {
 }
 
 func (h *Handler) onSubmissionAcknowledged(pkt Packet) error {
-	subID := uint(pkt["submission-id"].(float64))
+	subIDVal, ok := pkt["submission-id"].(float64)
+	if !ok {
+		return errors.New("invalid submission-id: must be a number")
+	}
+	subID := uint(subIDVal)
 	db.DB.Model(&models.Submission{}).Where("id = ?", subID).Update("status", "P")
 	PostSubmissionState(subID, "processing", nil)
 	return nil
 }
 
 func (h *Handler) onGradingBegin(pkt Packet) error {
-	subID := uint(pkt["submission-id"].(float64))
+	subIDVal, ok := pkt["submission-id"].(float64)
+	if !ok {
+		return errors.New("invalid submission-id: must be a number")
+	}
+	subID := uint(subIDVal)
 	log.Printf("bridge [%s]: grading begin for sub %d", h.name, subID)
 
 	db.DB.Model(&models.Submission{}).Where("id = ?", subID).Updates(map[string]interface{}{
@@ -228,19 +247,40 @@ func (h *Handler) onGradingBegin(pkt Packet) error {
 }
 
 func (h *Handler) onTestCase(pkt Packet) error {
-	subID := uint(pkt["submission-id"].(float64))
-	cases := pkt["cases"].([]interface{})
+	subIDVal, ok := pkt["submission-id"].(float64)
+	if !ok {
+		return errors.New("invalid submission-id: must be a number")
+	}
+	subID := uint(subIDVal)
+
+	casesRaw, ok := pkt["cases"].([]interface{})
+	if !ok {
+		return errors.New("invalid cases: must be an array")
+	}
 
 	var maxPos int
 	var bulk []models.SubmissionTestCase
 
-	for _, cInterface := range cases {
-		c := cInterface.(map[string]interface{})
-		pos := int(c["position"].(float64))
+	for _, cInterface := range casesRaw {
+		c, ok := cInterface.(map[string]interface{})
+		if !ok {
+			continue // Skip invalid case entries
+		}
+
+		posVal, ok := c["position"].(float64)
+		if !ok {
+			continue
+		}
+		pos := int(posVal)
 		if pos > maxPos {
 			maxPos = pos
 		}
-		statusNum := int(c["status"].(float64))
+
+		statusNumVal, ok := c["status"].(float64)
+		if !ok {
+			continue
+		}
+		statusNum := int(statusNumVal)
 
 		statusCode := "AC"
 		if statusNum&4 != 0 {
@@ -259,13 +299,31 @@ func (h *Handler) onTestCase(pkt Packet) error {
 			statusCode = "SC"
 		}
 
-		timeLimit, _ := c["time"].(float64)
-		memLimit, _ := c["memory"].(float64)
-		points, _ := c["points"].(float64)
-		totalPts, _ := c["total-points"].(float64)
-		feedback, _ := c["feedback"].(string)
-		extFeedback, _ := c["extended-feedback"].(string)
-		output, _ := c["output"].(string)
+		// Safe type assertions with defaults
+		var timeLimit, memLimit, points, totalPts float64
+		var feedback, extFeedback, output string
+
+		if v, ok := c["time"].(float64); ok {
+			timeLimit = v
+		}
+		if v, ok := c["memory"].(float64); ok {
+			memLimit = v
+		}
+		if v, ok := c["points"].(float64); ok {
+			points = v
+		}
+		if v, ok := c["total-points"].(float64); ok {
+			totalPts = v
+		}
+		if v, ok := c["feedback"].(string); ok {
+			feedback = v
+		}
+		if v, ok := c["extended-feedback"].(string); ok {
+			extFeedback = v
+		}
+		if v, ok := c["output"].(string); ok {
+			output = v
+		}
 
 		bulk = append(bulk, models.SubmissionTestCase{
 			SubmissionID:     subID,
@@ -289,7 +347,11 @@ func (h *Handler) onTestCase(pkt Packet) error {
 }
 
 func (h *Handler) onGradingEnd(pkt Packet) error {
-	subID := uint(pkt["submission-id"].(float64))
+	subIDVal, ok := pkt["submission-id"].(float64)
+	if !ok {
+		return errors.New("invalid submission-id: must be a number")
+	}
+	subID := uint(subIDVal)
 	log.Printf("bridge [%s]: grading end for sub %d", h.name, subID)
 
 	var cases []models.SubmissionTestCase
@@ -372,8 +434,18 @@ func (h *Handler) onGradingEnd(pkt Packet) error {
 }
 
 func (h *Handler) onCompileError(pkt Packet) error {
-	subID := uint(pkt["submission-id"].(float64))
-	logRaw, _ := pkt["log"].(string)
+	subIDVal, ok := pkt["submission-id"].(float64)
+	if !ok {
+		return errors.New("invalid submission-id: must be a number")
+	}
+	subID := uint(subIDVal)
+
+	// Safe type assertion with default
+	var logRaw string
+	if v, ok := pkt["log"].(string); ok {
+		logRaw = v
+	}
+
 	db.DB.Model(&models.Submission{}).Where("id = ?", subID).Updates(map[string]interface{}{
 		"status": "CE", "result": "CE", "error": logRaw,
 	})
@@ -383,8 +455,18 @@ func (h *Handler) onCompileError(pkt Packet) error {
 }
 
 func (h *Handler) onInternalError(pkt Packet) error {
-	subID := uint(pkt["submission-id"].(float64))
-	msg, _ := pkt["message"].(string)
+	subIDVal, ok := pkt["submission-id"].(float64)
+	if !ok {
+		return errors.New("invalid submission-id: must be a number")
+	}
+	subID := uint(subIDVal)
+
+	// Safe type assertion with default
+	var msg string
+	if v, ok := pkt["message"].(string); ok {
+		msg = v
+	}
+
 	db.DB.Model(&models.Submission{}).Where("id = ?", subID).Updates(map[string]interface{}{
 		"status": "IE", "result": "IE", "error": msg,
 	})

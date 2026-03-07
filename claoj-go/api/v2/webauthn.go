@@ -433,8 +433,8 @@ func WebAuthnFinishLogin(c *gin.Context) {
 		// Log error but don't fail login
 	}
 
-	// Generate tokens
-	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
+	// Generate tokens (WebAuthn login doesn't have remember_me, use default 7 days)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return

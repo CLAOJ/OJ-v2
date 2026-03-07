@@ -34,9 +34,9 @@ api.interceptors.request.use((config) => {
 
 // Refresh locking to prevent concurrent refresh attempts
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: () => void; reject: (err: any) => void }> = [];
+let failedQueue: Array<{ resolve: () => void; reject: (error: unknown) => void }> = [];
 
-const processQueue = (error: any = null) => {
+const processQueue = (error: unknown = null) => {
     failedQueue.forEach(prom => {
         if (error) {
             prom.reject(error);
@@ -194,7 +194,7 @@ export const webauthnApi = {
     beginRegistration: (password: string) =>
         api.post<WebAuthnSetupResponse>('/auth/webauthn/register/begin', { password }),
 
-    finishRegistration: (response: any, name: string) =>
+    finishRegistration: (response: unknown, name: string) =>
         api.post<{ message: string; credential: WebAuthnCredential }>('/auth/webauthn/register/finish', {
             response,
             name,
@@ -203,8 +203,8 @@ export const webauthnApi = {
     beginLogin: (username: string) =>
         api.post<WebAuthnLoginResponse>('/auth/webauthn/login/begin', { username }),
 
-    finishLogin: (response: any) =>
-        api.post<{ access_token: string; refresh_token: string; user: any }>('/auth/webauthn/login/finish', {
+    finishLogin: (response: unknown) =>
+        api.post<{ access_token: string; refresh_token: string; user: unknown }>('/auth/webauthn/login/finish', {
             response,
         }),
 

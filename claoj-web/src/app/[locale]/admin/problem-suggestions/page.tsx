@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { problemSuggestionApi } from '@/lib/api';
+import { toast } from 'sonner';
 import type { ProblemSuggestionAdmin } from '@/types';
 
 export default function AdminProblemSuggestionsPage() {
@@ -20,7 +21,7 @@ export default function AdminProblemSuggestionsPage() {
             setSuggestions(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            console.error('Failed to fetch suggestions:', error);
+            toast.error('Failed to fetch suggestions');
         } finally {
             setLoading(false);
         }

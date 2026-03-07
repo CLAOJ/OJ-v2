@@ -7,6 +7,7 @@
     "users": "Users",
     "ratings": "Ratings",
     "organizations": "Organizations",
+    "stats": "Stats",
     "login": "Log in",
     "signup": "Sign up",
     "report": "Report issue"
@@ -125,6 +126,24 @@
     "noRevisionHistory": "No revision history available",
     "hiddenComment": "This comment has been hidden"
   },
+  "editorialComments": {
+    "title": "Editorial Comments",
+    "placeholder": "Discuss this editorial solution...",
+    "noComments": "No comments yet. Be the first to discuss this editorial!",
+    "guidelines": "Keep discussions focused on the editorial solution approach.",
+    "commentingOn": "Commenting on Editorial",
+    "problemName": "Problem: {{problemName}}",
+    "icon": "Book"
+  },
+  "problemComments": {
+    "title": "Problem Comments",
+    "placeholder": "Ask questions or discuss this problem...",
+    "noComments": "No comments yet. Be the first to comment!",
+    "guidelines": "Please keep discussions respectful and on-topic.",
+    "commentingOn": "Commenting on Problem",
+    "problemName": "{{problemName}}",
+    "icon": "FileText"
+  },
   "Blog": {
     "title": "Blog",
     "noPosts": "No blog posts available",
@@ -225,5 +244,30 @@
     "submit_answer": "Submit Answer",
     "pending": "Pending",
     "answered": "Answered"
+  },
+  "stats": {
+    "title": "Site Statistics",
+    "total_users": "Total Users",
+    "total_problems": "Total Problems",
+    "total_submissions": "Total Submissions",
+    "total_contests": "Total Contests",
+    "total_organizations": "Organizations",
+    "active_judges": "Active Judges",
+    "submissions_by_result": "Submissions by Result",
+    "submissions_by_language": "Submissions by Language",
+    "user_statistics": "User Statistics",
+    "judge_queue": "Judge Queue",
+    "queue_size": "Queue Size",
+    "judges": "Judges",
+    "active_users": "Active Users (30 days)",
+    "banned_users": "Banned Users",
+    "unverified_users": "Unverified Users",
+    "total_participants": "Total Participants",
+    "submissions_per_participant": "Submissions / Participant",
+    "problem_statistics": "Problem Statistics",
+    "language_distribution": "Language Distribution",
+    "score_distribution": "Score Distribution",
+    "top_performers": "Top Performers",
+    "view_ranking": "View the full ranking on the scoreboard page."
   }
 }

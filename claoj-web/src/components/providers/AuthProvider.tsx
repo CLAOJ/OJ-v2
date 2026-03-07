@@ -8,15 +8,16 @@ import { User } from '@/types';
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (username: string, password: string) => Promise<LoginResponse>;
-    loginTotp: (username: string, code: string) => Promise<void>;
-    loginWebAuthn: (username: string) => Promise<void>;
+    login: (username: string, password: string, rememberMe?: boolean) => Promise<LoginResponse>;
+    loginTotp: (username: string, code: string) => Promise<User>;
+    loginWebAuthn: (username: string) => Promise<User>;
     logout: () => Promise<void>;
 }
 
 interface LoginResponse {
     requiresTotp?: boolean;
     username?: string;
+    user?: User;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,8 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const login = async (username: string, password: string): Promise<LoginResponse> => {
-        const res = await api.post('/auth/login', { username, password });
+    const login = async (username: string, password: string, rememberMe?: boolean): Promise<LoginResponse> => {
+        const res = await api.post('/auth/login', { username, password, remember_me: rememberMe });
         const { requires_totp, requiresTotp } = res.data;
 
         // Check if TOTP is required
@@ -35,17 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Tokens are set via httpOnly cookies by the server - no localStorage storage
-        setUser(res.data.user);
-        return {};
+        const userData = res.data.user as User;
+        setUser(userData);
+        return { user: userData };
     };
 
-    const loginTotp = async (username: string, code: string) => {
+    const loginTotp = async (username: string, code: string): Promise<User> => {
         const res = await api.post('/auth/totp/verify', { username, code });
         // Tokens are set via httpOnly cookies by the server - no localStorage storage
-        setUser(res.data.user);
+        const userData = res.data.user as User;
+        setUser(userData);
+        return userData;
     };
 
-    const loginWebAuthn = async (username: string) => {
+    const loginWebAuthn = async (username: string): Promise<User> => {
         // Begin login
         const beginRes = await webauthnApi.beginLogin(username);
         const options = beginRes.data.options;
@@ -92,7 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Finish login
         const finishRes = await webauthnApi.finishLogin(response);
         // Tokens are set via httpOnly cookies by the server
-        setUser(finishRes.data.user);
+        const userData = finishRes.data.user as User;
+        setUser(userData);
+        return userData;
     };
 
     const logout = async () => {
@@ -100,12 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             await api.post('/auth/logout');
         } catch (err) {
-            console.error('Logout error', err);
+            // Logout error - continue to clear user state anyway
         }
         setUser(null);
     };
 
     useEffect(() => {
+        let isSubscribed = true;
+
         const checkAuth = async () => {
             if (typeof window === 'undefined') {
                 setLoading(false);
@@ -114,34 +122,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             try {
                 const res = await api.get('/user/me', { _skipAuthRedirect: true } as any);
-                if (res.status === 200 && res.data.user) {
-                    setUser(res.data.user);
+                // If we get here, the request succeeded (either directly or after refresh+retry)
+                if (res.status === 200 && res.data && isSubscribed) {
+                    // /user/me returns user directly in res.data, not wrapped in res.data.user
+                    setUser(res.data as User);
                 }
-                // Not logged in or session expired - silently fail, don't redirect
             } catch (err) {
                 // Axios errors: distinguish between network errors and HTTP errors
                 // HTTP 401 errors are handled by the interceptor (refresh + retry)
-                // If refresh succeeds, the retried request will return user data
-                // and setUser will be called on the retry
+                // If refresh succeeds, the retried request returns user data above
+                // If refresh fails with _skipAuthRedirect, we still get here
                 if (axios.isAxiosError(err)) {
                     if (err.code === 'ERR_NETWORK' || !err.response) {
                         // Network error - silently fail, user might be offline
-                        console.debug('Auth check failed - network error');
+                    } else if (err.response?.status === 401) {
+                        // 401 after refresh attempt - user is not authenticated
+                        // Don't redirect (due to _skipAuthRedirect), just don't set user
                     }
-                    // HTTP errors (401, etc) are handled by interceptor retry
-                    // If refresh succeeds, the retried request will update user state
-                    // If refresh fails, interceptor redirects to login (unless _skipAuthRedirect)
-                } else {
-                    // Non-Axios error - log for debugging
-                    console.debug('Auth check failed - unknown error:', err);
+                    // Other HTTP errors are silently handled
                 }
+                // Non-Axios error - silently handled
             } finally {
-                setLoading(false);
+                if (isSubscribed) {
+                    setLoading(false);
+                }
             }
         };
 
         checkAuth();
-    }, []);
+
+        // Periodic refresh every 10 minutes to keep tokens alive
+        const refreshInterval = setInterval(() => {
+            if (user) {
+                api.post('/auth/refresh', {}, { withCredentials: true })
+                    .catch(() => { /* Silent fail - token will be cleared on next API call if truly invalid */ });
+            }
+        }, 10 * 60 * 1000);
+
+        return () => {
+            isSubscribed = false;
+            clearInterval(refreshInterval);
+        };
+    }, [user]);
 
     return (
         <AuthContext.Provider value={{ user, loading, login, loginTotp, loginWebAuthn, logout }}>

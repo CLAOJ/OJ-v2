@@ -127,13 +127,14 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        <label htmlFor="problem-code" className="text-sm font-medium text-muted-foreground block mb-2">
                             Problem Code *
                         </label>
                         <input
+                            id="problem-code"
                             type="text"
                             className={cn(
-                                "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
+                                "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                                 errors.code && "border-destructive"
                             )}
                             placeholder="e.g., SAMPLE"
@@ -146,13 +147,14 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        <label htmlFor="problem-name" className="text-sm font-medium text-muted-foreground block mb-2">
                             Problem Name *
                         </label>
                         <input
+                            id="problem-name"
                             type="text"
                             className={cn(
-                                "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
+                                "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                                 errors.name && "border-destructive"
                             )}
                             placeholder="e.g., Sample Problem"
@@ -165,12 +167,13 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="problem-description" className="text-sm font-medium text-muted-foreground block mb-2">
                         Description *
                     </label>
                     <textarea
+                        id="problem-description"
                         className={cn(
-                            "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[300px] font-mono text-sm",
+                            "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[300px] font-mono text-sm",
                             errors.description && "border-destructive"
                         )}
                         placeholder="Problem description in Markdown..."
@@ -188,39 +191,42 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        <label htmlFor="problem-points" className="text-sm font-medium text-muted-foreground block mb-2">
                             Points *
                         </label>
                         <input
+                            id="problem-points"
                             type="number"
                             step="0.01"
-                            className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                            className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             {...register('points', { required: true, min: 0 })}
                         />
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        <label htmlFor="problem-time-limit" className="text-sm font-medium text-muted-foreground block mb-2">
                             Time Limit (seconds) *
                         </label>
                         <input
+                            id="problem-time-limit"
                             type="number"
                             step="0.1"
                             min="0.1"
-                            className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                            className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             {...register('time_limit', { required: true, min: 0.1 })}
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="problem-memory-limit" className="text-sm font-medium text-muted-foreground block mb-2">
                         Memory Limit (MB) *
                     </label>
                     <input
+                        id="problem-memory-limit"
                         type="number"
                         min="1"
-                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                        className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                         {...register('memory_limit', { required: true, min: 1 })}
                     />
                 </div>
@@ -231,11 +237,12 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 <h3 className="text-lg font-bold">Classification</h3>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="problem-group" className="text-sm font-medium text-muted-foreground block mb-2">
                         Problem Group
                     </label>
                     <select
-                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                        id="problem-group"
+                        className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                         value={selectedGroup || ''}
                         onChange={(e) => setValue('group_id', e.target.value ? Number(e.target.value) : undefined)}
                     >
@@ -247,10 +254,10 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="problem-types" className="text-sm font-medium text-muted-foreground block mb-2">
                         Problem Types
                     </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div id="problem-types" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="problem-types">
                         {types?.data.map(t => (
                             <label key={t.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
                                 <input
@@ -271,10 +278,10 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 <h3 className="text-lg font-bold">Authors & Languages</h3>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="problem-authors" className="text-sm font-medium text-muted-foreground block mb-2">
                         Authors
                     </label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                    <div id="problem-authors" className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto" role="group" aria-labelledby="problem-authors">
                         {users?.data.map(u => (
                             <label key={u.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
                                 <input
@@ -290,10 +297,10 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="allowed-languages" className="text-sm font-medium text-muted-foreground block mb-2">
                         Allowed Languages
                     </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div id="allowed-languages" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="allowed-languages">
                         {languages?.data.map(lang => (
                             <label key={lang.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
                                 <input
@@ -343,12 +350,13 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    <label htmlFor="pdf-url" className="text-sm font-medium text-muted-foreground block mb-2">
                         PDF URL (optional)
                     </label>
                     <input
+                        id="pdf-url"
                         type="url"
-                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                        className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                         placeholder="https://example.com/problem.pdf"
                         {...register('pdf_url')}
                     />
@@ -360,7 +368,7 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-6 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="px-6 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                     {isLoading ? 'Saving...' : (initialData?.code ? 'Update Problem' : 'Create Problem')}
                 </button>

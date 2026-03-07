@@ -32,8 +32,9 @@ func getLockoutRepo() *lockout.Repository {
 }
 
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username    string `json:"username" binding:"required"`
+	Password    string `json:"password" binding:"required"`
+	RememberMe  bool   `json:"remember_me"`
 }
 
 // Login verifies credentials and returns an access/refresh JWT pair
@@ -85,6 +86,17 @@ func Login(c *gin.Context) {
 				"error": "email not verified",
 				"message": "Please verify your email address before logging in. Check your inbox for the verification link.",
 				"requires_email_verification": true,
+			})
+			return
+		}
+		// Check if user is banned (profile has ban_reason)
+		var profile models.Profile
+		err = db.DB.Where("user_id = ?", user.ID).First(&profile).Error
+		if err == nil && profile.BanReason != nil && *profile.BanReason != "" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "account_banned",
+				"message": "Your account has been banned.",
+				"ban_reason": *profile.BanReason,
 			})
 			return
 		}
@@ -140,9 +152,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Generate JWTs
+	// Generate JWTs with extended TTL if remember_me is true
 	var familyID string
-	accessToken, refreshToken, familyID, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "")
+	accessToken, refreshToken, familyID, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", req.RememberMe)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
@@ -151,10 +163,16 @@ func Login(c *gin.Context) {
 	// Store refresh token in database for revocation tracking
 	userAgent := c.Request.UserAgent()
 	clientIP := c.ClientIP()
+	refreshTokenTTL := 7 * 24 * time.Hour
+	cookieMaxAge := 7 * 24 * 60 * 60 // 7 days in seconds
+	if req.RememberMe {
+		refreshTokenTTL = 30 * 24 * time.Hour
+		cookieMaxAge = 30 * 24 * 60 * 60 // 30 days in seconds
+	}
 	refreshTokenModel := models.RefreshToken{
 		UserID:    user.ID,
 		Token:     refreshToken,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt: time.Now().Add(refreshTokenTTL),
 		UserAgent: &userAgent,
 		ClientIP:  &clientIP,
 		FamilyID:  familyID,
@@ -169,8 +187,8 @@ func Login(c *gin.Context) {
 	// Secure=false for HTTP development, true for HTTPS production
 	secureCookie := strings.HasPrefix(config.C.App.SiteFullURL, "https://")
 	c.SetCookie("access_token", accessToken, 900, "/", "", secureCookie, true)
-	// Refresh token cookie (7 days)
-	c.SetCookie("refresh_token", refreshToken, 7*24*60*60, "/", "", secureCookie, true)
+	// Refresh token cookie (7 or 30 days based on remember_me)
+	c.SetCookie("refresh_token", refreshToken, cookieMaxAge, "/", "", secureCookie, true)
 
 	// In a real app we might update last_login here
 	c.JSON(http.StatusOK, gin.H{
@@ -220,8 +238,8 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	// Generate new token pair with same family ID
-	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, refreshTokenModel.FamilyID)
+	// Generate new token pair with same family ID (maintain original remember_me setting via family)
+	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, refreshTokenModel.FamilyID, false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
@@ -235,13 +253,13 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	// Store new refresh token
+	// Store new refresh token - maintain same TTL as original
 	userAgent := c.Request.UserAgent()
 	clientIP := c.ClientIP()
 	newRefreshTokenModel := models.RefreshToken{
 		UserID:    claims.UserID,
 		Token:     newRefreshToken,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt: refreshTokenModel.ExpiresAt, // Maintain original expiration
 		UserAgent: &userAgent,
 		ClientIP:  &clientIP,
 		FamilyID:  familyID,
@@ -488,8 +506,8 @@ func OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// Generate JWT tokens
-	accessToken, refreshToken, _, err := auth.GenerateTokens(userID, userInfo.Email, false, "")
+	// Generate JWT tokens (OAuth logins don't have remember_me, use default 7 days)
+	accessToken, refreshToken, _, err := auth.GenerateTokens(userID, userInfo.Email, false, "", false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return

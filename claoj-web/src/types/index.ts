@@ -160,9 +160,16 @@ export interface RankingRow {
     rating?: number | null;
     rating_change?: number | null;
     performance?: number | null;
-    breakdown: any[];
+    breakdown: BreakdownItem[];
     is_disqualified?: boolean;
     participation_id?: number;
+}
+
+export interface BreakdownItem {
+    points: number;
+    penalty?: number;
+    solved?: boolean;
+    label?: string;
 }
 
 export interface RankingResponse {
@@ -179,6 +186,8 @@ export interface Comment {
     author: string;
     hidden?: boolean;
 }
+
+export type CommentPageType = 'problem' | 'editorial' | 'blog' | 'all';
 
 export interface CommentCreateRequest {
     page: string;
@@ -321,7 +330,7 @@ export interface AdminContest {
     is_rated: boolean;
     user_count: number;
     format_name: string;
-    format_config: any;
+    format_config: Record<string, unknown>;
     is_organization_private: boolean;
     hide_problem_tags: boolean;
     run_pretests_only: boolean;
@@ -351,7 +360,7 @@ export interface AdminProblem {
     time_limit: number;
     memory_limit: number;
     type_ids: number[];
-    allowed_langs: any[];
+    allowed_langs: number[];
     pdf_url: string;
 }
 
@@ -789,7 +798,7 @@ export interface WebAuthnCredentialCreationResponse {
     id: string;
     rawId: number[];
     type: string;
-    clientExtensionResults: any;
+    clientExtensionResults: Record<string, unknown>;
     response: {
         attestationObject: number[];
         clientDataJSON: number[];
@@ -801,7 +810,7 @@ export interface WebAuthnCredentialAssertionResponse {
     id: string;
     rawId: number[];
     type: string;
-    clientExtensionResults: any;
+    clientExtensionResults: Record<string, unknown>;
     response: {
         authenticatorData: number[];
         clientDataJSON: number[];
@@ -896,6 +905,13 @@ export interface ApproveSuggestionRequest {
 export interface RejectSuggestionRequest {
     admin_notes?: string;
     reason: string;
+}
+
+// WebAuthn credential type
+export interface WebAuthnCredential {
+    id: number;
+    name: string;
+    created_at: string;
 }
 
 // ============================================================

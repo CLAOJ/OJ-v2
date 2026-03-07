@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
 import { useState, useEffect } from 'react';
+import { AdminWelcomeBanner } from '@/components/admin';
 import {
     Flame,
     Trophy,
@@ -145,8 +146,12 @@ export default function HomePage() {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6">
-            {/* Main Content - Blog Posts */}
+        <div className="flex flex-col gap-6">
+            {/* Admin Welcome Banner - Shown for admin users */}
+            <AdminWelcomeBanner />
+
+            <div className="flex flex-col lg:flex-row gap-6">
+                {/* Main Content - Blog Posts */}
             <div className="flex-grow min-w-0">
                 {/* Mobile Tabs */}
                 <div className="md:hidden mb-4">
@@ -156,7 +161,7 @@ export default function HomePage() {
                             className={cn(
                                 "flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2",
                                 activeTab === 'blog'
-                                    ? "bg-[#009688] text-white"
+                                    ? "bg-primary text-white"
                                     : "text-gray-400 hover:bg-white/5"
                             )}
                         >
@@ -168,7 +173,7 @@ export default function HomePage() {
                             className={cn(
                                 "flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2",
                                 activeTab === 'events'
-                                    ? "bg-[#009688] text-white"
+                                    ? "bg-primary text-white"
                                     : "text-gray-400 hover:bg-white/5"
                             )}
                         >
@@ -182,10 +187,10 @@ export default function HomePage() {
                 <div className={cn("space-y-4", activeTab !== 'blog' && "hidden md:block")}>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
-                            <BookOpen className="text-[#009688]" size={24} />
+                            <BookOpen className="text-primary" size={24} />
                             Latest Blog Posts
                         </h2>
-                        <Link href="/blog" className="text-sm font-bold text-[#009688] hover:underline flex items-center gap-1">
+                        <Link href="/blog" className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
                             View all <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -203,15 +208,15 @@ export default function HomePage() {
                             <article
                                 key={post.id}
                                 className={cn(
-                                    "bg-card border rounded-lg overflow-hidden transition-all hover:shadow-lg hover:shadow-[#009688]/5",
-                                    post.sticky && "border-[#009688] border-2"
+                                    "bg-card border rounded-lg overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5",
+                                    post.sticky && "border-primary border-2"
                                 )}
                             >
                                 <div className="p-6">
                                     <div className="flex gap-4">
                                         {/* Vote Section */}
                                         <div className="flex flex-col items-center gap-1">
-                                            <button className="text-gray-400 hover:text-[#009688] transition-colors">
+                                            <button className="text-gray-400 hover:text-primary transition-colors">
                                                 <ThumbsUp size={20} />
                                             </button>
                                             <span className="text-sm font-bold text-gray-400">{post.score || 0}</span>
@@ -223,7 +228,7 @@ export default function HomePage() {
                                         {/* Content Section */}
                                         <div className="flex-grow min-w-0">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <h3 className="text-xl font-bold hover:text-[#009688] transition-colors">
+                                                <h3 className="text-xl font-bold hover:text-primary transition-colors">
                                                     <Link href={`/blog/${post.id}`} className="hover:underline">
                                                         {!post.visible && <Lock size={14} className="inline text-red-500 mr-1" />}
                                                         {post.title}
@@ -260,7 +265,7 @@ export default function HomePage() {
                                                 <div className="mt-3">
                                                     <Link
                                                         href={`/blog/${post.id}`}
-                                                        className="text-sm font-bold text-[#009688] hover:underline"
+                                                        className="text-sm font-bold text-primary hover:underline"
                                                     >
                                                         Continue reading...
                                                     </Link>
@@ -283,7 +288,7 @@ export default function HomePage() {
                     {/* Ongoing Contests */}
                     {ongoingContests && ongoingContests.length > 0 && (
                         <div className="bg-card border rounded-xl overflow-hidden">
-                            <div className="bg-[#3b4d56] px-4 py-3 border-b border-[#546e7a]">
+                            <div className="bg-muted px-4 py-3 border-b border-primary-50">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                                     <Flame className="text-yellow-500" size={18} />
                                     Ongoing Contests
@@ -293,11 +298,11 @@ export default function HomePage() {
                                 {ongoingContests.map(contest => (
                                     <div
                                         key={contest.key}
-                                        className="bg-[#304047] rounded-lg p-4 border border-[#3b4d56] hover:border-[#009688]/50 transition-colors"
+                                        className="bg-primary-10 rounded-lg p-4 border border-muted hover:border-primary/50 transition-colors"
                                     >
                                         <Link
                                             href={`/contests/${contest.key}`}
-                                            className="text-lg font-bold hover:text-[#009688] transition-colors block mb-2"
+                                            className="text-lg font-bold hover:text-primary transition-colors block mb-2"
                                         >
                                             {contest.name}
                                         </Link>
@@ -320,9 +325,9 @@ export default function HomePage() {
                     {/* Upcoming Contests */}
                     {upcomingContests && upcomingContests.length > 0 && (
                         <div className="bg-card border rounded-xl overflow-hidden">
-                            <div className="bg-[#3b4d56] px-4 py-3 border-b border-[#546e7a]">
+                            <div className="bg-muted px-4 py-3 border-b border-primary-50">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                                    <Calendar className="text-[#009688]" size={18} />
+                                    <Calendar className="text-primary" size={18} />
                                     Upcoming Contests
                                 </h3>
                             </div>
@@ -330,11 +335,11 @@ export default function HomePage() {
                                 {upcomingContests.map(contest => (
                                     <div
                                         key={contest.key}
-                                        className="bg-[#304047] rounded-lg p-4 border border-[#3b4d56] hover:border-[#009688]/50 transition-colors"
+                                        className="bg-primary-10 rounded-lg p-4 border border-muted hover:border-primary/50 transition-colors"
                                     >
                                         <Link
                                             href={`/contests/${contest.key}`}
-                                            className="text-lg font-bold hover:text-[#009688] transition-colors block mb-2"
+                                            className="text-lg font-bold hover:text-primary transition-colors block mb-2"
                                         >
                                             {contest.name}
                                         </Link>
@@ -362,8 +367,8 @@ export default function HomePage() {
 
                 {/* Ongoing Contests (Desktop) */}
                 {ongoingContests && ongoingContests.length > 0 && (
-                    <div className="bg-[#304047] rounded-lg overflow-hidden shadow-lg hidden lg:block">
-                        <h3 className="bg-[#3b4d56] px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg hidden lg:block">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                             <Trophy className="text-yellow-500" size={16} />
                             Ongoing contests
                         </h3>
@@ -372,7 +377,7 @@ export default function HomePage() {
                                 <div key={contest.key}>
                                     <Link
                                         href={`/contests/${contest.key}`}
-                                        className="text-sm font-bold hover:text-[#009688] transition-colors block"
+                                        className="text-sm font-bold hover:text-primary transition-colors block"
                                     >
                                         {contest.name}
                                     </Link>
@@ -387,9 +392,9 @@ export default function HomePage() {
 
                 {/* Upcoming Contests */}
                 {upcomingContests && upcomingContests.length > 0 && (
-                    <div className="bg-[#304047] rounded-lg overflow-hidden shadow-lg hidden lg:block">
-                        <h3 className="bg-[#3b4d56] px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                            <Calendar className="text-[#009688]" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg hidden lg:block">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                            <Calendar className="text-primary" size={16} />
                             Upcoming contests
                         </h3>
                         <div className="p-4 space-y-3">
@@ -397,7 +402,7 @@ export default function HomePage() {
                                 <div key={contest.key}>
                                     <Link
                                         href={`/contests/${contest.key}`}
-                                        className="text-sm font-bold hover:text-[#009688] transition-colors block"
+                                        className="text-sm font-bold hover:text-primary transition-colors block"
                                     >
                                         {contest.name}
                                     </Link>
@@ -412,15 +417,15 @@ export default function HomePage() {
 
                 {/* Top Rating Users */}
                 {topRatingUsers && topRatingUsers.length > 0 && (
-                    <div className="bg-[#304047] rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-[#3b4d56] px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                            <Trophy className="text-[#009688]" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                            <Trophy className="text-primary" size={16} />
                             Top rating users
                         </h3>
                         <div className="p-2">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-xs text-gray-400 border-b border-[#3b4d56]">
+                                    <tr className="text-xs text-gray-400 border-b border-muted">
                                         <th className="px-3 py-2 text-left">#</th>
                                         <th className="px-3 py-2 text-left">Username</th>
                                         <th className="px-3 py-2 text-right">Rating</th>
@@ -428,10 +433,10 @@ export default function HomePage() {
                                 </thead>
                                 <tbody>
                                     {topRatingUsers.map((user, i) => (
-                                        <tr key={user.id} className="border-b border-[#3b4d56]/50 last:border-0 hover:bg-[#3b4d56]/50">
+                                        <tr key={user.id} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
                                             <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Link href={`/user/${user.username}`} className={cn("font-bold hover:text-[#009688]", getRatingClass(user.rating))}>
+                                                <Link href={`/user/${user.username}`} className={cn("font-bold hover:text-primary", getRatingClass(user.rating))}>
                                                     {user.username}
                                                 </Link>
                                             </td>
@@ -441,8 +446,8 @@ export default function HomePage() {
                                 </tbody>
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
-                                <Link href="/organizations" className="text-gray-400 hover:text-[#009688]">Organizations</Link>
-                                <Link href="/users?order=-rating" className="text-gray-400 hover:text-[#009688]">View all &gt;&gt;&gt;</Link>
+                                <Link href="/organizations" className="text-gray-400 hover:text-primary">Organizations</Link>
+                                <Link href="/users?order=-rating" className="text-gray-400 hover:text-primary">View all &gt;&gt;&gt;</Link>
                             </div>
                         </div>
                     </div>
@@ -450,15 +455,15 @@ export default function HomePage() {
 
                 {/* Top Scorers */}
                 {topScorers && topScorers.length > 0 && (
-                    <div className="bg-[#304047] rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-[#3b4d56] px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                             <Star className="text-yellow-500" size={16} />
                             Top scorers
                         </h3>
                         <div className="p-2">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-xs text-gray-400 border-b border-[#3b4d56]">
+                                    <tr className="text-xs text-gray-400 border-b border-muted">
                                         <th className="px-3 py-2 text-left">#</th>
                                         <th className="px-3 py-2 text-left">Username</th>
                                         <th className="px-3 py-2 text-right">Points</th>
@@ -466,10 +471,10 @@ export default function HomePage() {
                                 </thead>
                                 <tbody>
                                     {topScorers.map((user, i) => (
-                                        <tr key={user.id} className="border-b border-[#3b4d56]/50 last:border-0 hover:bg-[#3b4d56]/50">
+                                        <tr key={user.id} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
                                             <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Link href={`/user/${user.username}`} className="font-bold text-[#72ff72] hover:text-[#009688]">
+                                                <Link href={`/user/${user.username}`} className="font-bold text-[#72ff72] hover:text-primary">
                                                     {user.username}
                                                 </Link>
                                             </td>
@@ -481,8 +486,8 @@ export default function HomePage() {
                                 </tbody>
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
-                                <Link href="/organizations" className="text-gray-400 hover:text-[#009688]">Organizations</Link>
-                                <Link href="/users?order=-performance_points" className="text-gray-400 hover:text-[#009688]">View all &gt;&gt;&gt;</Link>
+                                <Link href="/organizations" className="text-gray-400 hover:text-primary">Organizations</Link>
+                                <Link href="/users?order=-performance_points" className="text-gray-400 hover:text-primary">View all &gt;&gt;&gt;</Link>
                             </div>
                         </div>
                     </div>
@@ -490,9 +495,9 @@ export default function HomePage() {
 
                 {/* New Problems */}
                 {newProblems && newProblems.length > 0 && (
-                    <div className="bg-[#304047] rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-[#3b4d56] px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                            <TrendingUp className="text-[#009688]" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                            <TrendingUp className="text-primary" size={16} />
                             New problems
                         </h3>
                         <div className="p-4 space-y-2">
@@ -500,11 +505,11 @@ export default function HomePage() {
                                 <div key={problem.code} className="flex items-center justify-between">
                                     <Link
                                         href={`/problems/${problem.code}`}
-                                        className="text-sm font-bold hover:text-[#009688] transition-colors truncate flex-grow"
+                                        className="text-sm font-bold hover:text-primary transition-colors truncate flex-grow"
                                     >
                                         {problem.name}
                                     </Link>
-                                    <span className="px-2 py-0.5 bg-[#3b4d56] rounded text-xs font-bold text-gray-300 ml-2">
+                                    <span className="px-2 py-0.5 bg-muted rounded text-xs font-bold text-gray-300 ml-2">
                                         {problem.points}
                                     </span>
                                 </div>
@@ -515,9 +520,9 @@ export default function HomePage() {
 
                 {/* Comment Stream */}
                 {recentComments && recentComments.length > 0 && (
-                    <div className="bg-[#304047] rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-[#3b4d56] px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                            <MessageSquare className="text-[#009688]" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                            <MessageSquare className="text-primary" size={16} />
                             <span className="mr-2">Comment stream</span>
                             <a href="https://discord.gg/xdMrcJHxZv" target="_blank" rel="noreferrer">
                                 <img
@@ -531,7 +536,7 @@ export default function HomePage() {
                             <ul className="space-y-2 text-sm">
                                 {recentComments.map((comment: any) => (
                                     <li key={comment.id} className="text-xs">
-                                        <Link href={`/user/${comment.author}`} className="text-[#009688] hover:underline font-bold">
+                                        <Link href={`/user/${comment.author}`} className="text-primary hover:underline font-bold">
                                             {comment.author_name}
                                         </Link>
                                         {' → '}
@@ -541,8 +546,8 @@ export default function HomePage() {
                                     </li>
                                 ))}
                             </ul>
-                            <div className="mt-3 pt-3 border-t border-[#3b4d56] text-xs flex gap-2">
-                                <a href="/comments/rss" className="text-gray-400 hover:text-[#009688] flex items-center gap-1">
+                            <div className="mt-3 pt-3 border-t border-muted text-xs flex gap-2">
+                                <a href="/comments/rss" className="text-gray-400 hover:text-primary flex items-center gap-1">
                                     <span className="text-[#ff8f00]"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20S4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18zM4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44zm0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/></svg></span>
                                     RSS
                                 </a>
@@ -554,5 +559,6 @@ export default function HomePage() {
                 )}
             </aside>
         </div>
+    </div>
     );
 }

@@ -14,6 +14,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UserListResponse represents a user in the list
+// @Description	Returns a list of all users with their basic statistics
+// @Tags			Users
+// @Summary		List users
+// @Produce		json
+// @Param			page	query		int		false	"Page number"	default(1)
+// @Param			page_size	query		int		false	"Items per page"	default(100)
+// @Success		200		{object}	map[string]interface{}	{"data": []UserListItem}
+// @Router			/users [get]
 // UserList – GET /api/v2/users
 func UserList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
@@ -55,6 +64,15 @@ func UserList(c *gin.Context) {
 	c.JSON(http.StatusOK, apiList(items))
 }
 
+// UserDetailResponse represents a user profile with full details
+// @Description	Get detailed user profile information including ratings, organizations, and rankings
+// @Tags			Users
+// @Summary		Get user profile
+// @Produce		json
+// @Param			user	path		string	true	"Username"
+// @Success		200		{object}	map[string]interface{}	{"username": string, "display_name": string, "about": string, "points": number, "performance_points": number, "rating": number, "organizations": []object{}}
+// @Failure		404		{object}	map[string]string	{"error": "user not found"}
+// @Router			/user/{user} [get]
 // UserDetail – GET /api/v2/user/:user
 func UserDetail(c *gin.Context) {
 	username := c.Param("user")

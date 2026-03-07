@@ -2,7 +2,6 @@ package v2
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -215,113 +214,6 @@ func canEditBlog(tx *gorm.DB, post *models.BlogPost, profileID uint) bool {
 		return isOrgAdmin(tx, *post.OrganizationID, profileID)
 	}
 	return false
-}
-
-// BlogFeedRSS – GET /api/v2/blogs/feed/rss
-func BlogFeedRSS(c *gin.Context) {
-	var posts []models.BlogPost
-	if err := db.DB.Preload("Authors.User").
-		Where("visible = ? AND publish_on <= ?", true, time.Now()).
-		Order("publish_on DESC").
-		Limit(50).
-		Find(&posts).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-		return
-	}
-
-	baseURL := "https://claoj.example.com"
-
-	xml := `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>CLAOJ Blog</title>
-    <link>` + baseURL + `/blog</link>
-    <description>CLAOJ Blog Posts</description>
-    <lastBuildDate>` + time.Now().Format(time.RFC1123Z) + `</lastBuildDate>
-`
-
-	for _, post := range posts {
-		authorNames := ""
-		for i, a := range post.Authors {
-			if i > 0 {
-				authorNames += ", "
-			}
-			authorNames += a.User.Username
-		}
-
-		xml += `    <item>
-      <title>` + escapeXML(post.Title) + `</title>
-      <link>` + baseURL + `/blog/` + fmt.Sprintf("%d", post.ID) + `</link>
-      <description>` + escapeXML(post.Summary) + `</description>
-      <pubDate>` + post.PublishOn.Format(time.RFC1123Z) + `</pubDate>
-      <guid>blog-` + fmt.Sprintf("%d", post.ID) + `</guid>
-      <author>` + escapeXML(authorNames) + `</author>
-    </item>
-`
-	}
-
-	xml += `  </channel>
-</rss>`
-
-	c.Header("Content-Type", "application/rss+xml; charset=utf-8")
-	c.String(http.StatusOK, xml)
-}
-
-// BlogFeedAtom – GET /api/v2/blogs/feed/atom
-func BlogFeedAtom(c *gin.Context) {
-	var posts []models.BlogPost
-	if err := db.DB.Preload("Authors.User").
-		Where("visible = ? AND publish_on <= ?", true, time.Now()).
-		Order("publish_on DESC").
-		Limit(50).
-		Find(&posts).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-		return
-	}
-
-	baseURL := "https://claoj.example.com"
-
-	// Find most recent post time for updated
-	var updated time.Time
-	if len(posts) > 0 {
-		updated = posts[0].PublishOn
-	} else {
-		updated = time.Now()
-	}
-
-	xml := `<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <title>CLAOJ Blog</title>
-  <link href="` + baseURL + `/blog"/>
-  <updated>` + updated.Format(time.RFC3339) + `</updated>
-  <id>` + baseURL + `/blog</id>
-`
-
-	for _, post := range posts {
-		authorNames := ""
-		for i, a := range post.Authors {
-			if i > 0 {
-				authorNames += ", "
-			}
-			authorNames += a.User.Username
-		}
-
-		xml += `  <entry>
-    <title>` + escapeXML(post.Title) + `</title>
-    <link href="` + baseURL + `/blog/` + fmt.Sprintf("%d", post.ID) + `"/>
-    <id>blog-` + fmt.Sprintf("%d", post.ID) + `</id>
-    <published>` + post.PublishOn.Format(time.RFC3339) + `</published>
-    <updated>` + post.PublishOn.Format(time.RFC3339) + `</updated>
-    <summary>` + escapeXML(post.Summary) + `</summary>
-    <author><name>` + escapeXML(authorNames) + `</name></author>
-  </entry>
-`
-	}
-
-	xml += `</feed>`
-
-	c.Header("Content-Type", "application/atom+xml; charset=utf-8")
-	c.String(http.StatusOK, xml)
 }
 
 // escapeXML escapes special XML characters using Go's built-in function

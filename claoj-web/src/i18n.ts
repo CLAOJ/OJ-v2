@@ -14,7 +14,7 @@ export default getRequestConfig(async ({ locale }) => {
             messages: (await import(`./i18n/${locale}.json`)).default
         };
     } catch (error) {
-        console.error(`Failed to load locale ${locale}:`, error);
+        // Failed to load locale - return empty messages
         return {
             locale: locale as string,
             messages: {}

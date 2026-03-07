@@ -123,23 +123,23 @@ export default function Footer() {
             {/* QR Popup Widget - Original CLAOJ Feature */}
             {showQr && (
                 <div
-                    className={`fixed bottom-5 right-5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50 transition-all duration-300 ${minimized ? 'w-[120px]' : 'w-[160px]'}`}
+                    className={`fixed bottom-5 right-5 bg-background border border-border rounded-lg shadow-lg z-50 transition-all duration-300 ${minimized ? 'w-[120px]' : 'w-[160px]'}`}
                     style={{ display: showQr ? 'block' : 'none' }}
                 >
                     {/* Header */}
-                    <div className="bg-gray-50 dark:bg-zinc-800 px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-zinc-700">
-                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Hỗ Trợ CLAOJ</span>
+                    <div className="bg-muted/50 px-3 py-2 flex items-center justify-between border-b border-border">
+                        <span className="text-xs font-semibold text-foreground">Hỗ Trợ CLAOJ</span>
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={() => setMinimized(!minimized)}
-                                className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
+                                className="text-muted-foreground hover:text-foreground text-sm"
                                 title={minimized ? 'Expand' : 'Minimize'}
                             >
                                 {minimized ? '+' : '−'}
                             </button>
                             <button
                                 onClick={handleCloseQr}
-                                className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
+                                className="text-muted-foreground hover:text-foreground text-sm"
                                 title="Close"
                             >
                                 ×

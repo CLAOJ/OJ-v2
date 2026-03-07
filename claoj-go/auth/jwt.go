@@ -33,8 +33,9 @@ func generateFamilyID() string {
 	return hex.EncodeToString(bytes)
 }
 
-// GenerateTokens creates an Access (15m) and Refresh (7d) token pair
-func GenerateTokens(userID uint, username string, isAdmin bool, familyID string) (accessToken string, refreshToken string, newFamilyID string, err error) {
+// GenerateTokens creates an Access (15m) and Refresh (7d/30d) token pair
+// When extendedRefresh=true, refresh token expires in 30 days instead of 7 days
+func GenerateTokens(userID uint, username string, isAdmin bool, familyID string, extendedRefresh bool) (accessToken string, refreshToken string, newFamilyID string, err error) {
 	secret := []byte(config.C.App.JwtSecretKey)
 	if len(secret) == 0 {
 		return "", "", "", errors.New("jwt secret key is not configured")
@@ -64,14 +65,18 @@ func GenerateTokens(userID uint, username string, isAdmin bool, familyID string)
 		return "", "", "", err
 	}
 
-	// 2. Refresh Token
+	// 2. Refresh Token - 7 days default, 30 days if extendedRefresh
+	refreshTTL := 7 * 24 * time.Hour
+	if extendedRefresh {
+		refreshTTL = 30 * 24 * time.Hour
+	}
 	refreshClaims := &Claims{
 		UserID:   userID,
 		Username: username,
 		IsAdmin:  isAdmin,
 		FamilyID: familyID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   "refresh",
 		},

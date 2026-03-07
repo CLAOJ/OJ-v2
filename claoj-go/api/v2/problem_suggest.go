@@ -2,12 +2,13 @@ package v2
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
-	"github.com/CLAOJ/claoj-go/contribution"
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/CLAOJ/claoj-go/sanitization"
+	"github.com/CLAOJ/claoj-go/service/problemsuggestion"
 	"github.com/gin-gonic/gin"
 )
 
@@ -167,27 +168,12 @@ func AdminProblemSuggestionList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	status := c.Query("status") // pending, approved, rejected, or empty for all
 
-	var suggestions []models.Problem
-	var total int64
-
-	q := db.DB.Model(&models.Problem{}).
-		Preload("Types").
-		Preload("Group").
-		Preload("Suggester.User")
-
-	if status != "" {
-		q = q.Where("suggestion_status = ?", status)
-	}
-
-	// Count total
-	q.Count(&total)
-
-	// Get suggestions
-	if err := q.
-		Order("id DESC").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&suggestions).Error; err != nil {
+	resp, err := getSuggestionService().ListSuggestions(problemsuggestion.ListSuggestionsRequest{
+		Page:     page,
+		PageSize: pageSize,
+		Status:   status,
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
@@ -207,12 +193,10 @@ func AdminProblemSuggestionList(c *gin.Context) {
 		Date                 *time.Time `json:"date"`
 	}
 
-	items := make([]SuggestionAdminItem, len(suggestions))
-	for i, p := range suggestions {
-		username := ""
-		if p.Suggester != nil && p.Suggester.User.Username != "" {
-			username = p.Suggester.User.Username
-		}
+	items := make([]SuggestionAdminItem, len(resp.Suggestions))
+	for i, p := range resp.Suggestions {
+		// Note: For list view, we don't have suggester username here
+		// The service would need to be extended to include this, or we use a separate endpoint
 		items[i] = SuggestionAdminItem{
 			ID:                   p.ID,
 			Code:                 p.Code,
@@ -220,7 +204,6 @@ func AdminProblemSuggestionList(c *gin.Context) {
 			Points:               p.Points,
 			SuggestionStatus:     p.SuggestionStatus,
 			SuggesterID:          p.SuggesterID,
-			SuggesterUsername:    username,
 			SuggestionNotes:      p.SuggestionNotes,
 			SuggestionReviewedAt: p.SuggestionReviewedAt,
 			SuggestionReviewedBy: p.SuggestionReviewedBy,
@@ -229,58 +212,55 @@ func AdminProblemSuggestionList(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, resp.Total))
 }
 
 // AdminProblemSuggestionDetail - GET /api/v2/admin/problem-suggestion/:id
 // Get details of a specific problem suggestion
 func AdminProblemSuggestionDetail(c *gin.Context) {
-	id := c.Param("id")
-
-	var problem models.Problem
-	if err := db.DB.
-		Preload("Types").
-		Preload("Group").
-		Preload("Authors.User").
-		Preload("Suggester.User").
-		Where("id = ?", id).
-		First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("suggestion not found"))
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid suggestion ID"))
 		return
 	}
 
-	suggesterUsername := ""
-	suggesterEmail := ""
-	if problem.Suggester != nil {
-		suggesterUsername = problem.Suggester.User.Username
-		suggesterEmail = problem.Suggester.User.Email
+	detail, err := getSuggestionService().GetSuggestion(problemsuggestion.GetSuggestionRequest{
+		SuggestionID: uint(id),
+	})
+	if err != nil {
+		if err == problemsuggestion.ErrSuggestionNotFound {
+			c.JSON(http.StatusNotFound, apiError("suggestion not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":                     problem.ID,
-		"code":                   problem.Code,
-		"name":                   problem.Name,
-		"description":            problem.Description,
-		"points":                 problem.Points,
-		"partial":                problem.Partial,
-		"time_limit":             problem.TimeLimit,
-		"memory_limit":           problem.MemoryLimit,
-		"group_id":               problem.GroupID,
-		"group":                  problem.Group.FullName,
-		"types":                  problem.Types,
-		"source":                 problem.Source,
-		"summary":                problem.Summary,
-		"pdf_url":                problem.PdfURL,
-		"is_full_markup":         problem.IsFullMarkup,
-		"short_circuit":          problem.ShortCircuit,
-		"suggestion_status":      problem.SuggestionStatus,
-		"suggestion_notes":       problem.SuggestionNotes,
-		"suggestion_reviewed_at": problem.SuggestionReviewedAt,
-		"suggester_id":           problem.SuggesterID,
-		"suggester_username":     suggesterUsername,
-		"suggester_email":        suggesterEmail,
-		"is_public":              problem.IsPublic,
-		"authors":                problem.Authors,
+		"id":                     detail.Suggestion.ID,
+		"code":                   detail.Suggestion.Code,
+		"name":                   detail.Suggestion.Name,
+		"description":            detail.Suggestion.Description,
+		"points":                 detail.Suggestion.Points,
+		"partial":                detail.Suggestion.Partial,
+		"time_limit":             detail.Suggestion.TimeLimit,
+		"memory_limit":           detail.Suggestion.MemoryLimit,
+		"group_id":               detail.Suggestion.GroupID,
+		"group":                  detail.GroupName,
+		"types":                  detail.TypeNames,
+		"source":                 detail.Suggestion.Source,
+		"summary":                detail.Suggestion.Summary,
+		"pdf_url":                detail.Suggestion.PdfURL,
+		"is_full_markup":         detail.Suggestion.IsFullMarkup,
+		"short_circuit":          detail.Suggestion.ShortCircuit,
+		"suggestion_status":      detail.Suggestion.SuggestionStatus,
+		"suggestion_notes":       detail.Suggestion.SuggestionNotes,
+		"suggestion_reviewed_at": detail.Suggestion.SuggestionReviewedAt,
+		"suggester_id":           detail.Suggestion.SuggesterID,
+		"suggester_username":     detail.SuggesterUsername,
+		"suggester_email":        detail.SuggesterEmail,
+		"is_public":              detail.Suggestion.IsPublic,
 	})
 }
 
@@ -295,7 +275,12 @@ type ApproveProblemSuggestionInput struct {
 // AdminProblemSuggestionApprove - POST /api/v2/admin/problem-suggestion/:id/approve
 // Approve a problem suggestion and create the problem
 func AdminProblemSuggestionApprove(c *gin.Context) {
-	id := c.Param("id")
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid suggestion ID"))
+		return
+	}
 
 	var input ApproveProblemSuggestionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -303,57 +288,32 @@ func AdminProblemSuggestionApprove(c *gin.Context) {
 		return
 	}
 
-	// Get the suggestion
-	var problem models.Problem
-	if err := db.DB.Where("id = ?", id).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("suggestion not found"))
-		return
-	}
-
-	if problem.SuggestionStatus != "pending" {
-		c.JSON(http.StatusBadRequest, apiError("suggestion is not pending"))
-		return
-	}
-
-	// Check if code already exists
-	var existingCount int64
-	db.DB.Model(&models.Problem{}).Where("code = ?", input.Code).Count(&existingCount)
-	if existingCount > 0 {
-		c.JSON(http.StatusBadRequest, apiError("problem code already exists"))
-		return
-	}
-
 	// Get admin profile ID
 	adminProfileID, _ := c.Get("profile_id")
 	adminProfileIDUint := adminProfileID.(uint)
-	now := time.Now()
 
-	// Update the problem
-	updates := map[string]interface{}{
-		"code":                      input.Code,
-		"name":                      sanitization.SanitizeTitle(problem.Name),
-		"is_public":                 input.IsPublic,
-		"suggestion_status":         "approved",
-		"suggestion_notes":          problem.SuggestionNotes + "\n\n[Admin Notes] " + input.AdminNotes,
-		"suggestion_reviewed_at":    &now,
-		"suggestion_reviewed_by_id": adminProfileIDUint,
-	}
-
-	if input.MakeFullMarkup {
-		updates["is_full_markup"] = true
-	}
-
-	if err := db.DB.Model(&problem).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-		return
-	}
-
-	// Award contribution points to suggester
-	if problem.SuggesterID != nil {
-		// Update the suggester's contribution points
-		if err := contribution.UpdateProfileContributionPoints(*problem.SuggesterID); err != nil {
-			// Log error but don't fail the request
+	problem, err := getSuggestionService().ApproveSuggestion(problemsuggestion.ApproveSuggestionRequest{
+		SuggestionID:   uint(id),
+		Code:           input.Code,
+		AdminNotes:     input.AdminNotes,
+		IsPublic:       input.IsPublic,
+		MakeFullMarkup: input.MakeFullMarkup,
+		AdminID:        adminProfileIDUint,
+	})
+	if err != nil {
+		switch {
+		case err == problemsuggestion.ErrSuggestionNotFound:
+			c.JSON(http.StatusNotFound, apiError("suggestion not found"))
+		case err == problemsuggestion.ErrSuggestionNotPending:
+			c.JSON(http.StatusBadRequest, apiError("suggestion is not pending"))
+		case err == problemsuggestion.ErrSuggestionAlreadyApproved:
+			c.JSON(http.StatusBadRequest, apiError("suggestion already approved"))
+		case err == problemsuggestion.ErrProblemCodeExists:
+			c.JSON(http.StatusBadRequest, apiError("problem code already exists"))
+		default:
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		}
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -361,7 +321,7 @@ func AdminProblemSuggestionApprove(c *gin.Context) {
 		"message": "Problem suggestion approved successfully",
 		"problem": gin.H{
 			"id":   problem.ID,
-			"code": input.Code,
+			"code": problem.Code,
 			"name": problem.Name,
 		},
 	})
@@ -376,7 +336,12 @@ type RejectProblemSuggestionInput struct {
 // AdminProblemSuggestionReject - POST /api/v2/admin/problem-suggestion/:id/reject
 // Reject a problem suggestion
 func AdminProblemSuggestionReject(c *gin.Context) {
-	id := c.Param("id")
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid suggestion ID"))
+		return
+	}
 
 	var input RejectProblemSuggestionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -384,33 +349,28 @@ func AdminProblemSuggestionReject(c *gin.Context) {
 		return
 	}
 
-	// Get the suggestion
-	var problem models.Problem
-	if err := db.DB.Where("id = ?", id).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("suggestion not found"))
-		return
-	}
-
-	if problem.SuggestionStatus != "pending" {
-		c.JSON(http.StatusBadRequest, apiError("suggestion is not pending"))
-		return
-	}
-
 	// Get admin profile ID
 	adminProfileID, _ := c.Get("profile_id")
 	adminProfileIDUint := adminProfileID.(uint)
-	now := time.Now()
 
-	// Update the problem
-	updates := map[string]interface{}{
-		"suggestion_status":       "rejected",
-		"suggestion_notes":        problem.SuggestionNotes + "\n\n[Rejected] Reason: " + input.Reason + "\nAdmin Notes: " + input.AdminNotes,
-		"suggestion_reviewed_at":  &now,
-		"suggestion_reviewed_by_id": adminProfileIDUint,
-	}
-
-	if err := db.DB.Model(&problem).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+	if err := getSuggestionService().RejectSuggestion(problemsuggestion.RejectSuggestionRequest{
+		SuggestionID: uint(id),
+		Reason:       input.Reason,
+		AdminNotes:   input.AdminNotes,
+		AdminID:      adminProfileIDUint,
+	}); err != nil {
+		switch {
+		case err == problemsuggestion.ErrSuggestionNotFound:
+			c.JSON(http.StatusNotFound, apiError("suggestion not found"))
+		case err == problemsuggestion.ErrSuggestionNotPending:
+			c.JSON(http.StatusBadRequest, apiError("suggestion is not pending"))
+		case err == problemsuggestion.ErrSuggestionAlreadyRejected:
+			c.JSON(http.StatusBadRequest, apiError("suggestion already rejected"))
+		case err == problemsuggestion.ErrEmptyReason:
+			c.JSON(http.StatusBadRequest, apiError("rejection reason cannot be empty"))
+		default:
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		}
 		return
 	}
 
@@ -423,22 +383,24 @@ func AdminProblemSuggestionReject(c *gin.Context) {
 // AdminProblemSuggestionDelete - DELETE /api/v2/admin/problem-suggestion/:id
 // Delete a problem suggestion
 func AdminProblemSuggestionDelete(c *gin.Context) {
-	id := c.Param("id")
-
-	var problem models.Problem
-	if err := db.DB.Where("id = ?", id).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("suggestion not found"))
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid suggestion ID"))
 		return
 	}
 
-	// Only allow deleting pending or rejected suggestions
-	if problem.SuggestionStatus == "approved" {
-		c.JSON(http.StatusBadRequest, apiError("cannot delete approved suggestions; use problem delete instead"))
-		return
-	}
-
-	if err := db.DB.Delete(&problem).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+	if err := getSuggestionService().DeleteSuggestion(problemsuggestion.DeleteSuggestionRequest{
+		SuggestionID: uint(id),
+	}); err != nil {
+		switch {
+		case err == problemsuggestion.ErrSuggestionNotFound:
+			c.JSON(http.StatusNotFound, apiError("suggestion not found"))
+		case err == problemsuggestion.ErrSuggestionAlreadyApproved:
+			c.JSON(http.StatusBadRequest, apiError("cannot delete approved suggestions; use problem delete instead"))
+		default:
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		}
 		return
 	}
 

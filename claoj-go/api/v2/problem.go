@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/CLAOJ/claoj-go/db"
@@ -281,6 +282,6 @@ func ProblemStatementPDF(c *gin.Context) {
 
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Disposition", "inline; filename=\""+filepath.Base(cleanPath)+"\"")
-	c.Header("Content-Length", string(len(content)))
+	c.Header("Content-Length", strconv.Itoa(len(content)))
 	c.Data(http.StatusOK, "application/pdf", content)
 }

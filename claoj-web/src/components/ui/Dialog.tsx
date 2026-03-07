@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,10 @@ import { cn } from '@/lib/utils';
 interface DialogContextType {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    titleId: string | undefined;
+    descriptionId: string | undefined;
+    setTitleId: (id: string | undefined) => void;
+    setDescriptionId: (id: string | undefined) => void;
 }
 
 const DialogContext = React.createContext<DialogContextType | undefined>(undefined);
@@ -23,6 +27,9 @@ interface DialogProps {
 export function Dialog({ open, onOpenChange, children, className }: DialogProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
     const previousActiveElement = useRef<HTMLElement | null>(null);
+    const [titleId, setTitleId] = React.useState<string | undefined>(undefined);
+    const [descriptionId, setDescriptionId] = React.useState<string | undefined>(undefined);
+    const reduceMotion = useReducedMotion();
 
     // Store previous focus and restore on close
     useEffect(() => {
@@ -88,7 +95,7 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
     }, [onOpenChange]);
 
     return (
-        <DialogContext.Provider value={{ open, onOpenChange }}>
+        <DialogContext.Provider value={{ open, onOpenChange, titleId, descriptionId, setTitleId, setDescriptionId }}>
             <AnimatePresence>
                 {open && (
                     <>
@@ -96,6 +103,7 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
+                            transition={{ duration: reduceMotion ? 0 : 0.2 }}
                             onClick={handleBackdropClick}
                             className="fixed inset-0 bg-black/50 z-50"
                             aria-hidden="true"
@@ -104,12 +112,15 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
                             ref={dialogRef}
                             role="dialog"
                             aria-modal="true"
+                            aria-labelledby={titleId}
+                            aria-describedby={descriptionId}
                             tabIndex={-1}
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            transition={{ duration: reduceMotion ? 0 : 0.2 }}
                             className={cn(
-                                "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-popover p-6 shadow-lg outline-none",
+                                "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-popover p-6 shadow-lg outline-none",
                                 className
                             )}
                             onClick={(e) => e.stopPropagation()}
@@ -139,6 +150,14 @@ interface DialogTitleProps {
 }
 
 export function DialogTitle({ children, className, id }: DialogTitleProps) {
+    const context = React.useContext(DialogContext);
+
+    React.useEffect(() => {
+        if (id) {
+            context?.setTitleId(id);
+        }
+    }, [id, context]);
+
     return <h2 id={id} className={cn("text-xl font-bold", className)}>{children}</h2>;
 }
 
@@ -149,6 +168,14 @@ interface DialogDescriptionProps {
 }
 
 export function DialogDescription({ children, className, id }: DialogDescriptionProps) {
+    const context = React.useContext(DialogContext);
+
+    React.useEffect(() => {
+        if (id) {
+            context?.setDescriptionId(id);
+        }
+    }, [id, context]);
+
     return <p id={id} className={cn("text-sm text-muted-foreground mt-1", className)}>{children}</p>;
 }
 

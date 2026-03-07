@@ -20,7 +20,7 @@ export default function AdminProblemSuggestionDetailPage() {
                 const response = await problemSuggestionApi.getSuggestion(parseInt(id));
                 setSuggestion(response.data);
             } catch (error) {
-                console.error('Failed to fetch suggestion:', error);
+                // Failed to fetch suggestion - will show error state
             } finally {
                 setLoading(false);
             }

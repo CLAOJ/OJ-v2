@@ -66,7 +66,7 @@ export default function ProblemListPage() {
             const res = await api.get<{ code: string }>('/problems/random');
             router.push(`/problems/${res.data.code}`);
         } catch (err) {
-            console.error('Failed to launch random problem', err);
+            // Failed to launch random problem - user will see error state
         }
     };
 

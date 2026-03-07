@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -448,7 +449,7 @@ func ContestClarificationAnswer(c *gin.Context) {
 }
 
 // ContestStats - GET /api/v2/contest/:key/stats
-// Returns statistics for the current user's contest performance
+// Returns statistics for the current user's contest performance (personal stats)
 func ContestStats(c *gin.Context) {
 	key := c.Param("key")
 
@@ -620,4 +621,112 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// ContestPublicStats - GET /api/v2/contest/:key/stats/public
+// Returns public statistics for a contest (overall stats, not personal)
+func ContestPublicStats(c *gin.Context) {
+	key := c.Param("key")
+
+	var ct models.Contest
+	if err := db.DB.Where("`key` = ? AND (is_visible = ? OR is_public = ?)", key, true, true).First(&ct).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	// Submissions per problem
+	type ProblemSubmissionStats struct {
+		ProblemCode  string `json:"problem_code"`
+		ProblemName  string `json:"problem_name"`
+		ProblemLabel string `json:"problem_label"`
+		Total        int64  `json:"total"`
+		Accepted     int64  `json:"accepted"`
+		ACRate       string `json:"ac_rate"`
+	}
+
+	var problemStats []ProblemSubmissionStats
+	db.DB.Raw(`
+		SELECT p.code, p.name, cp.label,
+		       COUNT(cs.submission_id) as total,
+		       SUM(CASE WHEN cs.points >= cp.points THEN 1 ELSE 0 END) as accepted
+		FROM judge_contestproblem cp
+		JOIN judge_problem p ON p.id = cp.problem_id
+		LEFT JOIN judge_contestsubmission cs ON cs.problem_id = cp.id
+		WHERE cp.contest_id = ?
+		GROUP BY cp.id, p.code, p.name, cp.label, cp.points
+		ORDER BY cp.order
+	`, ct.ID).Scan(&problemStats)
+
+	for i := range problemStats {
+		if problemStats[i].Total > 0 {
+			rate := float64(problemStats[i].Accepted) / float64(problemStats[i].Total) * 100
+			problemStats[i].ACRate = fmt.Sprintf("%.1f", rate)
+		} else {
+			problemStats[i].ACRate = "0.0"
+		}
+	}
+
+	// Language distribution
+	type LanguageStats struct {
+		Language string `json:"language"`
+		Count    int64  `json:"count"`
+	}
+
+	var languageStats []LanguageStats
+	db.DB.Raw(`
+		SELECT l.name as language, COUNT(cs.submission_id) as count
+		FROM judge_contestsubmission cs
+		JOIN judge_submission s ON s.id = cs.submission_id
+		JOIN judge_language l ON l.id = s.language_id
+		JOIN judge_contestparticipation cp ON cp.id = cs.participation_id
+		WHERE cp.contest_id = ?
+		GROUP BY l.id, l.name
+		ORDER BY count DESC
+	`, ct.ID).Scan(&languageStats)
+
+	// Participation stats
+	var totalParticipants int64
+	db.DB.Model(&models.ContestParticipation{}).
+		Where("contest_id = ? AND virtual = 0 AND is_disqualified = 0", ct.ID).
+		Count(&totalParticipants)
+
+	var totalSubmissions int64
+	db.DB.Table("judge_contestsubmission").
+		Joins("JOIN judge_contestparticipation cp ON cp.id = judge_contestsubmission.participation_id").
+		Where("cp.contest_id = ?", ct.ID).
+		Count(&totalSubmissions)
+
+	// Score distribution
+	type ScoreDistribution struct {
+		ScoreRange string `json:"score_range"`
+		Count      int64  `json:"count"`
+	}
+
+	var scoreDist []ScoreDistribution
+	db.DB.Raw(`
+		SELECT
+			CASE
+				WHEN score = 0 THEN '0'
+				WHEN score > 0 AND score < 25 THEN '1-24%'
+				WHEN score >= 25 AND score < 50 THEN '25-49%'
+				WHEN score >= 50 AND score < 75 THEN '50-74%'
+				WHEN score >= 75 AND score < 100 THEN '75-99%'
+				WHEN score >= 100 THEN '100%'
+			END as score_range,
+			COUNT(*) as count
+		FROM judge_contestparticipation
+		WHERE contest_id = ? AND virtual = 0 AND is_disqualified = 0
+		GROUP BY score_range
+		ORDER BY MIN(score)
+	`, ct.ID).Scan(&scoreDist)
+
+	c.JSON(http.StatusOK, gin.H{
+		"contest_key":         ct.Key,
+		"contest_name":        ct.Name,
+		"total_participants":  totalParticipants,
+		"total_submissions":   totalSubmissions,
+		"problems":            problemStats,
+		"languages":           languageStats,
+		"score_distribution":  scoreDist,
+	})
 }
