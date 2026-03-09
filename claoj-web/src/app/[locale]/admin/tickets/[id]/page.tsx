@@ -66,7 +66,7 @@ export default function AdminTicketDetailPage() {
 
     const replyMutation = useMutation({
         mutationFn: async (body: string) => {
-            const res = await fetch(`/api/v2/ticket/${id}/message`, {
+            const res = await fetch(`/api/ticket/${id}/message`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ body })

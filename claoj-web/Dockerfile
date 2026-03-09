@@ -8,7 +8,7 @@ RUN npm install
 
 COPY . .
 
-# Build argument for API URL (optional - defaults to window.location.origin/api/v2 at runtime)
+# Build argument for API URL (optional - defaults to window.location.origin/api at runtime)
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 

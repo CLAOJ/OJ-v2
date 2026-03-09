@@ -377,7 +377,7 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                         {/* Modal header */}
                         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                             <a
-                                href={`/api/v2/problem/${code}/pdf`}
+                                href={`/api/problem/${code}/pdf`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:scale-105 transition-all font-bold shadow-lg"
@@ -397,7 +397,7 @@ export default function ProblemPage({ params }: { params: Promise<{ code: string
                         {/* PDF iframe */}
                         <div className="w-full h-full bg-white rounded-lg overflow-hidden shadow-2xl">
                             <iframe
-                                src={`/api/v2/problem/${code}/pdf`}
+                                src={`/api/problem/${code}/pdf`}
                                 className="w-full h-full"
                                 title="PDF Statement"
                             />

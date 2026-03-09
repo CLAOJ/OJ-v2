@@ -19,7 +19,7 @@ jest.mock('@/lib/api', () => ({
             },
         },
         defaults: {
-            baseURL: '/api/v2',
+            baseURL: '/api',
         },
     },
     webauthnApi: {

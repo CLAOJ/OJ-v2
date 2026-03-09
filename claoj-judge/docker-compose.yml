@@ -1,0 +1,174 @@
+version: '3.8'
+
+# Docker Compose for CLAOJ Go Judge (Multiple instances connecting to one backend)
+# This replaces the Python-based judges with Go judges
+
+services:
+  # Judge instance 1
+  judge1:
+    container_name: claoj_judge_go_1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - problems:/problems
+      - /tmp/judge1:/tmp/judge
+      - ./logs/judge1:/var/log/judge
+    networks:
+      - claoj_judge
+    command:
+      - "-server=backend"
+      - "-port=9999"
+      - "-name=Judge-Go-1"
+      - "-key=${JUDGE1_KEY:-default-key-change-me}"
+      - "-api-port=9998"
+      - "-api-host=0.0.0.0"
+      - "-log=/var/log/judge/judge.log"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4096m
+        reservations:
+          cpus: '2'
+          memory: 2048m
+    depends_on:
+      - backend
+
+  # Judge instance 2
+  judge2:
+    container_name: claoj_judge_go_2
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - problems:/problems
+      - /tmp/judge2:/tmp/judge
+      - ./logs/judge2:/var/log/judge
+    networks:
+      - claoj_judge
+    command:
+      - "-server=backend"
+      - "-port=9999"
+      - "-name=Judge-Go-2"
+      - "-key=${JUDGE2_KEY:-default-key-change-me}"
+      - "-api-port=9998"
+      - "-api-host=0.0.0.0"
+      - "-log=/var/log/judge/judge.log"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4096m
+        reservations:
+          cpus: '2'
+          memory: 2048m
+    depends_on:
+      - backend
+
+  # Judge instance 3
+  judge3:
+    container_name: claoj_judge_go_3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - problems:/problems
+      - /tmp/judge3:/tmp/judge
+      - ./logs/judge3:/var/log/judge
+    networks:
+      - claoj_judge
+    command:
+      - "-server=backend"
+      - "-port=9999"
+      - "-name=Judge-Go-3"
+      - "-key=${JUDGE3_KEY:-default-key-change-me}"
+      - "-api-port=9998"
+      - "-api-host=0.0.0.0"
+      - "-log=/var/log/judge/judge.log"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4096m
+        reservations:
+          cpus: '2'
+          memory: 2048m
+    depends_on:
+      - backend
+
+  # Judge instance 4
+  judge4:
+    container_name: claoj_judge_go_4
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - problems:/problems
+      - /tmp/judge4:/tmp/judge
+      - ./logs/judge4:/var/log/judge
+    networks:
+      - claoj_judge
+    command:
+      - "-server=backend"
+      - "-port=9999"
+      - "-name=Judge-Go-4"
+      - "-key=${JUDGE4_KEY:-default-key-change-me}"
+      - "-api-port=9998"
+      - "-api-host=0.0.0.0"
+      - "-log=/var/log/judge/judge.log"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4096m
+        reservations:
+          cpus: '2'
+          memory: 2048m
+    depends_on:
+      - backend
+
+  # Problem watcher (notifies judges of problem updates)
+  judge_watcher:
+    container_name: claoj_judge_watcher
+    image: alpine:3.19
+    restart: always
+    volumes:
+      - problems:/problems
+    networks:
+      - claoj_judge
+    command: >
+      sh -c "while true; do
+        echo 'Watching for problem changes...';
+        sleep 60;
+      done"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128m
+        reservations:
+          cpus: '0.1'
+          memory: 64m
+
+networks:
+  claoj_judge:
+    external: true
+    name: claoj_judge
+
+volumes:
+  problems:
+    external: true
+    name: claoj_problems

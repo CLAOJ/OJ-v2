@@ -87,7 +87,7 @@ export function PdfTab({ code }: PdfTabProps) {
 
                         <div className="flex gap-4">
                             <a
-                                href={`/api/v2/problem/${code}/pdf`}
+                                href={`/api/problem/${code}/pdf`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2"

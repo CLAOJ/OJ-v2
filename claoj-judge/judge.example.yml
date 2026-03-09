@@ -1,0 +1,59 @@
+# Judge configuration file
+# Copy to /etc/claoj/judge.yml in container or mount as volume
+
+# Backend server connection
+server_host: "backend"
+server_port: 9999
+
+# Judge authentication (override with -name and -key flags or environment variables)
+# judge_name: "Judge1"
+# judge_key: "your-judge-key-here"
+
+# Use TLS connection
+secure: false
+
+# API server for local testing
+api_host: "0.0.0.0"
+api_port: 9998
+
+# Logging
+log_file: "/var/log/judge/judge.log"
+
+# Problem storage locations
+problem_globs:
+  - "/problems/*/"
+
+# Temporary directory for compilation and execution
+tempdir: "/tmp/judge"
+
+# Resource limits
+max_submissions: 10
+max_processes: 32
+memory_limit: 524288  # 512MB in KB
+time_limit: 10        # seconds
+compiler_time_limit: 30  # seconds
+
+# Runtime-specific configuration
+runtime:
+  CPP17:
+    compiler: g++
+    flags: "-std=c++17 -O2 -static"
+  CPP20:
+    compiler: g++
+    flags: "-std=c++20 -O2 -static"
+  C11:
+    compiler: gcc
+    flags: "-std=c11 -O2 -static"
+  JAVA8:
+    compiler: javac
+    runner: java
+    memory_overhead: 65536  # Extra memory for JVM
+  GO:
+    cgo_enabled: 0
+  NODEJS:
+    runtime: node
+    max_old_space_size: 256
+
+# Features
+no_watchdog: false
+skip_self_test: false

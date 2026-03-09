@@ -29,7 +29,7 @@ interface WebSocketHook {
 function getDefaultWebSocketUrl(): string {
     if (typeof window === 'undefined') return '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/api/v2/events`;
+    return `${protocol}//${window.location.host}/api/events`;
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {

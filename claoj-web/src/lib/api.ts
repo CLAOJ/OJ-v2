@@ -7,8 +7,8 @@ interface AxiosRequestConfigWithRetry extends InternalAxiosRequestConfig {
 }
 
 function getApiBaseUrl(): string {
-    if (typeof window === 'undefined') return 'http://localhost:8080/api/v2';
-    return `${window.location.origin}/api/v2`;
+    if (typeof window === 'undefined') return 'http://localhost:8080/api';
+    return `${window.location.origin}/api`;
 }
 
 const api = axios.create({

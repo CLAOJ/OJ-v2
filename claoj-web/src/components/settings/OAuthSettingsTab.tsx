@@ -8,7 +8,7 @@ export default function OAuthSettingsTab() {
     const t = useTranslations('Settings');
 
     const handleOAuthConnect = (provider: string) => {
-        window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v2'}/auth/oauth/${provider}`;
+        window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/auth/oauth/${provider}`;
     };
 
     return (
