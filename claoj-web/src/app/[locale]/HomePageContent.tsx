@@ -1,13 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { BlogPost, Contest, User, Problem } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminWelcomeBanner } from '@/components/admin';
 import {
     Flame,
@@ -34,19 +34,38 @@ import rehypeRaw from 'rehype-raw';
 
 dayjs.extend(relativeTime);
 
+const BLOG_PAGE_SIZE = 5;
+
 export default function HomePageContent() {
     const t = useTranslations('Home');
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'blog' | 'events'>('blog');
+    const loaderRef = useRef<HTMLDivElement>(null);
 
-    // Fetch blog posts
-    const { data: posts, isLoading: postsLoading } = useQuery({
+    // Fetch blog posts with infinite scroll
+    const {
+        data: postsData,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading: postsLoading
+    } = useInfiniteQuery({
         queryKey: ['blog-posts'],
-        queryFn: async () => {
-            const res = await api.get<{ data: BlogPost[] }>('/blogs?limit=10');
-            return res.data.data;
-        }
+        queryFn: async ({ pageParam = 1 }) => {
+            const res = await api.get<{ data: BlogPost[] }>('/blogs', {
+                params: { limit: BLOG_PAGE_SIZE, page: pageParam }
+            });
+            return { data: res.data.data, page: pageParam as number };
+        },
+        getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.data.length < BLOG_PAGE_SIZE) return undefined;
+            return lastPage.page + 1;
+        },
+        initialPageParam: 1
     });
+
+    // Flatten infinite query data
+    const posts = postsData?.pages.flatMap(page => page.data) || [];
 
     // Fetch ongoing contests
     const { data: ongoingContests } = useQuery({
@@ -66,29 +85,29 @@ export default function HomePageContent() {
         }
     });
 
-    // Fetch top users by rating
+    // Fetch top users by rating (limit 10)
     const { data: topRatingUsers } = useQuery({
         queryKey: ['top-rating-users'],
         queryFn: async () => {
-            const res = await api.get<{ data: User[] }>('/users?order=-rating&limit=5');
+            const res = await api.get<{ data: User[] }>('/users?order=-rating&limit=10');
             return res.data.data;
         }
     });
 
-    // Fetch top scorers
+    // Fetch top scorers (limit 10)
     const { data: topScorers } = useQuery({
         queryKey: ['top-scorers'],
         queryFn: async () => {
-            const res = await api.get<{ data: User[] }>('/users?order=-performance_points&limit=5');
+            const res = await api.get<{ data: User[] }>('/users?order=-performance_points&limit=10');
             return res.data.data;
         }
     });
 
-    // Fetch new problems
+    // Fetch new problems (limit 10)
     const { data: newProblems } = useQuery({
         queryKey: ['new-problems'],
         queryFn: async () => {
-            const res = await api.get<{ data: Problem[] }>('/problems?sort=date&order=desc&limit=5');
+            const res = await api.get<{ data: Problem[] }>('/problems?sort=date&order=desc&limit=10');
             return res.data.data;
         }
     });
@@ -101,6 +120,32 @@ export default function HomePageContent() {
             return res.data.data;
         }
     });
+
+    // Infinite scroll handler
+    const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(handleObserver, {
+            root: null,
+            rootMargin: '200px',
+            threshold: 0
+        });
+
+        if (loaderRef.current) {
+            observer.observe(loaderRef.current);
+        }
+
+        return () => {
+            if (loaderRef.current) {
+                observer.unobserve(loaderRef.current);
+            }
+        };
+    }, [handleObserver]);
 
     const [now, setNow] = useState(dayjs());
     useEffect(() => {
@@ -204,78 +249,102 @@ export default function HomePageContent() {
                             </div>
                         ))
                     ) : posts && posts.length > 0 ? (
-                        posts.map(post => (
-                            <article
-                                key={post.id}
-                                className={cn(
-                                    "bg-card border rounded-lg overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5",
-                                    post.sticky && "border-primary border-2"
-                                )}
-                            >
-                                <div className="p-6">
-                                    <div className="flex gap-4">
-                                        {/* Vote Section */}
-                                        <div className="flex flex-col items-center gap-1">
-                                            <button className="text-gray-400 hover:text-primary transition-colors">
-                                                <ThumbsUp size={20} />
-                                            </button>
-                                            <span className="text-sm font-bold text-gray-400">{post.score || 0}</span>
-                                            <button className="text-gray-400 hover:text-red-400 transition-colors">
-                                                <ThumbsDown size={20} />
-                                            </button>
-                                        </div>
-
-                                        {/* Content Section */}
-                                        <div className="flex-grow min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <h3 className="text-xl font-bold hover:text-primary transition-colors">
-                                                    <Link href={`/blog/${post.id}`} className="hover:underline">
-                                                        {!post.visible && <Lock size={14} className="inline text-red-500 mr-1" />}
-                                                        {post.title}
-                                                    </Link>
-                                                </h3>
-                                                {post.sticky && <Star size={16} className="text-yellow-500 fill-yellow-500" />}
+                        <>
+                            {posts.map((post, index) => (
+                                <article
+                                    key={post.id}
+                                    className={cn(
+                                        "bg-card border rounded-lg overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5",
+                                        post.sticky && "border-primary border-2",
+                                        // Show full content for first post, truncated for others
+                                        index === 0 ? "" : ""
+                                    )}
+                                >
+                                    <div className="p-6">
+                                        <div className="flex gap-4">
+                                            {/* Vote Section */}
+                                            <div className="flex flex-col items-center gap-1">
+                                                <button className="text-gray-400 hover:text-primary transition-colors">
+                                                    <ThumbsUp size={20} />
+                                                </button>
+                                                <span className="text-sm font-bold text-gray-400">{post.score || 0}</span>
+                                                <button className="text-gray-400 hover:text-red-400 transition-colors">
+                                                    <ThumbsDown size={20} />
+                                                </button>
                                             </div>
 
-                                            <div className="flex items-center gap-4 text-xs text-gray-400 mb-3 flex-wrap">
-                                                <span className="flex items-center gap-1">
-                                                    <Users size={12} />
-                                                    {post.authors?.map((a: any) => a.username).join(', ')}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Clock size={12} />
-                                                    {dayjs(post.publish_on).fromNow()}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <MessageCircle size={12} />
-                                                    {post.comment_count || 0}
-                                                </span>
-                                            </div>
-
-                                            <div className="prose dark:prose-invert max-w-none text-sm text-muted-foreground line-clamp-3">
-                                                <ReactMarkdown
-                                                    remarkPlugins={[remarkGfm]}
-                                                    rehypePlugins={[rehypeRaw]}
-                                                >
-                                                    {post.summary || post.content}
-                                                </ReactMarkdown>
-                                            </div>
-
-                                            {post.summary && (
-                                                <div className="mt-3">
-                                                    <Link
-                                                        href={`/blog/${post.id}`}
-                                                        className="text-sm font-bold text-primary hover:underline"
-                                                    >
-                                                        Continue reading...
-                                                    </Link>
+                                            {/* Content Section */}
+                                            <div className="flex-grow min-w-0">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <h3 className="text-xl font-bold hover:text-primary transition-colors">
+                                                        <Link href={`/blog/${post.id}`} className="hover:underline">
+                                                            {!post.visible && <Lock size={14} className="inline text-red-500 mr-1" />}
+                                                            {post.title}
+                                                        </Link>
+                                                    </h3>
+                                                    {post.sticky && <Star size={16} className="text-yellow-500 fill-yellow-500" />}
                                                 </div>
-                                            )}
+
+                                                <div className="flex items-center gap-4 text-xs text-gray-400 mb-3 flex-wrap">
+                                                    <span className="flex items-center gap-1">
+                                                        <Users size={12} />
+                                                        {post.authors?.map((a: any) => a.username).join(', ')}
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock size={12} />
+                                                        {dayjs(post.publish_on).fromNow()}
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <MessageCircle size={12} />
+                                                        {post.comment_count || 0}
+                                                    </span>
+                                                </div>
+
+                                                <div className={cn(
+                                                    "prose dark:prose-invert max-w-none text-sm text-muted-foreground",
+                                                    index > 0 ? "line-clamp-3" : ""
+                                                )}>
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkGfm]}
+                                                        rehypePlugins={[rehypeRaw]}
+                                                    >
+                                                        {post.summary || post.content}
+                                                    </ReactMarkdown>
+                                                </div>
+
+                                                {index === 0 && (post.summary || (post.content && post.content.length > 200)) && (
+                                                    <div className="mt-3">
+                                                        <Link
+                                                            href={`/blog/${post.id}`}
+                                                            className="text-sm font-bold text-primary hover:underline"
+                                                        >
+                                                            Continue reading...
+                                                        </Link>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </article>
-                        ))
+                                </article>
+                            ))}
+
+                            {/* Infinite Scroll Loader */}
+                            <div ref={loaderRef} className="py-8 text-center">
+                                {isFetchingNextPage && (
+                                    <div className="flex items-center justify-center gap-2 text-gray-400">
+                                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        <span className="text-sm font-bold">Loading more posts...</span>
+                                    </div>
+                                )}
+                                {!hasNextPage && posts.length > 0 && (
+                                    <div className="text-sm text-gray-500">
+                                        No more posts to load
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     ) : (
                         <div className="bg-card border border-dashed rounded-lg p-8 text-center text-gray-400">
                             No blog posts available
@@ -285,44 +354,7 @@ export default function HomePageContent() {
 
                 {/* Events Tab (for mobile) */}
                 <div className={cn("space-y-6", activeTab !== 'events' && "hidden md:block")}>
-                    {/* Ongoing Contests */}
-                    {ongoingContests && ongoingContests.length > 0 && (
-                        <div className="bg-card border rounded-xl overflow-hidden">
-                            <div className="bg-muted px-4 py-3 border-b border-primary-50">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                                    <Flame className="text-yellow-500" size={18} />
-                                    Ongoing Contests
-                                </h3>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                {ongoingContests.map(contest => (
-                                    <div
-                                        key={contest.key}
-                                        className="bg-primary-10 rounded-lg p-4 border border-muted hover:border-primary/50 transition-colors"
-                                    >
-                                        <Link
-                                            href={`/contests/${contest.key}`}
-                                            className="text-lg font-bold hover:text-primary transition-colors block mb-2"
-                                        >
-                                            {contest.name}
-                                        </Link>
-                                        <div className="flex items-center justify-between text-xs text-gray-400">
-                                            <span className="flex items-center gap-2">
-                                                <Clock size={14} />
-                                                Ends in <span className="text-yellow-400 font-bold">{getTimeRemaining(contest.end_time)}</span>
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Users size={14} />
-                                                {contest.user_count} users
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Upcoming Contests */}
+                    {/* Upcoming Contests - Only show, no ongoing in main content */}
                     {upcomingContests && upcomingContests.length > 0 && (
                         <div className="bg-card border rounded-xl overflow-hidden">
                             <div className="bg-muted px-4 py-3 border-b border-primary-50">
@@ -362,9 +394,9 @@ export default function HomePageContent() {
 
             {/* Sidebar - Original CLAOJ Style */}
             <aside className="w-full lg:w-80 space-y-4 shrink-0">
-                {/* Ongoing Contests (Desktop) */}
+                {/* Ongoing Contests (Desktop - Right Sidebar Only) */}
                 {ongoingContests && ongoingContests.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg hidden lg:block">
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
                         <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                             <Trophy className="text-yellow-500" size={16} />
                             Ongoing contests
@@ -389,7 +421,7 @@ export default function HomePageContent() {
 
                 {/* Upcoming Contests */}
                 {upcomingContests && upcomingContests.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg hidden lg:block">
+                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
                         <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                             <Calendar className="text-primary" size={16} />
                             Upcoming contests
@@ -412,7 +444,7 @@ export default function HomePageContent() {
                     </div>
                 )}
 
-                {/* Top Rating Users */}
+                {/* Top Rating Users (limit 10) */}
                 {topRatingUsers && topRatingUsers.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
                         <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
@@ -450,7 +482,7 @@ export default function HomePageContent() {
                     </div>
                 )}
 
-                {/* Top Scorers */}
+                {/* Top Scorers (limit 10) */}
                 {topScorers && topScorers.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
                         <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
@@ -490,7 +522,7 @@ export default function HomePageContent() {
                     </div>
                 )}
 
-                {/* New Problems */}
+                {/* New Problems (limit 10) */}
                 {newProblems && newProblems.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
                         <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
