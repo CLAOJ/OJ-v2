@@ -56,18 +56,21 @@ func TestResendVerification_Unauthenticated(t *testing.T) {
 		body       map[string]interface{}
 		wantStatus int
 		wantMsg    string
+		wantField  string // "message" or "error"
 	}{
 		{
 			name:       "missing email",
 			body:       map[string]interface{}{},
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "email is required",
+			wantMsg:    "An error occurred. Please try again.",
+			wantField:  "error",
 		},
 		{
 			name:       "non-existent email",
 			body:       map[string]interface{}{"email": "nonexistent@example.com"},
 			wantStatus: http.StatusOK, // Don't reveal if email exists
 			wantMsg:    "If the email exists and is not verified, a verification link has been sent",
+			wantField:  "message",
 		},
 	}
 
@@ -85,7 +88,7 @@ func TestResendVerification_Unauthenticated(t *testing.T) {
 			var response map[string]string
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantMsg, response["message"])
+			assert.Equal(t, tt.wantMsg, response[tt.wantField])
 		})
 	}
 }
@@ -143,6 +146,8 @@ func TestResendVerification_AuthenticatedUser(t *testing.T) {
 		DateJoined:  time.Now(),
 	}
 	database.Create(&user)
+	// GORM ignores boolean zero values, so explicitly update is_active
+	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
 	router := gin.New()
 	router.POST("/auth/resend-verification", func(c *gin.Context) {
@@ -189,6 +194,8 @@ func TestResendVerification_CreatesToken(t *testing.T) {
 		DateJoined:  time.Now(),
 	}
 	database.Create(&user)
+	// GORM ignores boolean zero values, so explicitly update is_active
+	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
 	router := gin.New()
 	router.POST("/auth/resend-verification", ResendVerification)
@@ -202,6 +209,10 @@ func TestResendVerification_CreatesToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Check that a token was created in the database
+	// First check the response code and body
+	t.Logf("Response code: %d", w.Code)
+	t.Logf("Response body: %s", w.Body.String())
+
 	var token models.EmailVerificationToken
 	err := database.Where("user_id = ?", user.ID).First(&token).Error
 
@@ -233,6 +244,8 @@ func TestResendVerification_ReplacesOldToken(t *testing.T) {
 		DateJoined:  time.Now(),
 	}
 	database.Create(&user)
+	// GORM ignores boolean zero values, so explicitly update is_active
+	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
 	// Create an old token
 	oldToken := models.EmailVerificationToken{
@@ -286,6 +299,8 @@ func TestVerifyEmail(t *testing.T) {
 		DateJoined:  time.Now(),
 	}
 	database.Create(&user)
+	// GORM ignores boolean zero values, so explicitly update is_active
+	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
 	// Create a valid verification token
 	token := models.EmailVerificationToken{
@@ -305,24 +320,28 @@ func TestVerifyEmail(t *testing.T) {
 		body       map[string]interface{}
 		wantStatus int
 		wantMsg    string
+		wantField  string // "message" for success, "error" for errors
 	}{
 		{
 			name:       "valid token",
 			body:       map[string]interface{}{"token": "valid-verification-token"},
 			wantStatus: http.StatusOK,
 			wantMsg:    "Email verified successfully",
+			wantField:  "message",
 		},
 		{
 			name:       "invalid token",
 			body:       map[string]interface{}{"token": "invalid-token"},
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "invalid or expired verification token",
+			wantMsg:    "An error occurred. Please try again.",
+			wantField:  "error",
 		},
 		{
 			name:       "missing token",
 			body:       map[string]interface{}{},
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "Key: 'VerifyEmailRequest.Token' Error:Field validation for 'Token' failed on the 'required' tag",
+			wantMsg:    "An error occurred. Please try again.",
+			wantField:  "error",
 		},
 	}
 
@@ -330,7 +349,9 @@ func TestVerifyEmail(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset user state for each test
 			database.Model(&user).Update("is_active", false)
-			database.Create(&token) // Recreate token if it was deleted
+			// Delete old tokens and create fresh one
+			database.Where("user_id = ?", user.ID).Delete(&models.EmailVerificationToken{})
+			database.Create(&token)
 
 			jsonBody, _ := json.Marshal(tt.body)
 			req := httptest.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(jsonBody))
@@ -344,7 +365,7 @@ func TestVerifyEmail(t *testing.T) {
 			var response map[string]string
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantMsg, response["message"])
+			assert.Equal(t, tt.wantMsg, response[tt.wantField])
 
 			// For valid token, check user is now active
 			if tt.name == "valid token" {
@@ -378,6 +399,8 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 		DateJoined:  time.Now(),
 	}
 	database.Create(&user)
+	// GORM ignores boolean zero values, so explicitly update is_active
+	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
 	// Create an expired token
 	expiredToken := models.EmailVerificationToken{
@@ -404,7 +427,7 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 
 	var response map[string]string
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "invalid or expired verification token", response["error"])
+	assert.Equal(t, "An error occurred. Please try again.", response["error"])
 
 	// User should still be inactive
 	var updatedUser models.AuthUser
@@ -435,7 +458,7 @@ func TestResendVerification_UserNotFound_Authenticated(t *testing.T) {
 
 	var response map[string]string
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "user not found", response["error"])
+	assert.Equal(t, "An error occurred. Please try again.", response["error"])
 }
 
 // Helper to check if error is a GORM "record not found" error
