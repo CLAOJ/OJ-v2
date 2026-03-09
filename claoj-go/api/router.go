@@ -3,6 +3,9 @@ package api
 
 import (
 	"github.com/CLAOJ/claoj-go/api/v2"
+	adminHandlers "github.com/CLAOJ/claoj-go/api/v2/admin"
+	authHandlers "github.com/CLAOJ/claoj-go/api/v2/auth"
+	contestHandlers "github.com/CLAOJ/claoj-go/api/v2/contest"
 	"github.com/CLAOJ/claoj-go/auth"
 	"github.com/CLAOJ/claoj-go/config"
 	"github.com/CLAOJ/claoj-go/csrf"
@@ -15,7 +18,16 @@ import (
 
 // NewRouter creates and returns the fully configured Gin engine.
 func NewRouter() *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
+
+	// Recovery middleware - recovers from panics
+	r.Use(middleware.RecoveryMiddleware())
+
+	// Logger middleware
+	r.Use(gin.Logger())
+
+	// Error handler middleware
+	r.Use(middleware.ErrorHandlerMiddleware())
 
 	// CORS middleware - only allow configured origins
 	corsConfig := cors.DefaultConfig()
@@ -39,12 +51,12 @@ func NewRouter() *gin.Engine {
 	apiv2 := r.Group("/api/v2")
 	{
 		// Public Auth
-		apiv2.POST("/auth/login", v2.Login)
-		apiv2.POST("/auth/logout", v2.Logout)
-		apiv2.POST("/auth/refresh", v2.Refresh)
+		apiv2.POST("/auth/login", authHandlers.Login)
+		apiv2.POST("/auth/logout", authHandlers.Logout)
+		apiv2.POST("/auth/refresh", authHandlers.Refresh)
 		apiv2.POST("/auth/register", v2.Register)
-		apiv2.POST("/auth/password/reset", v2.PasswordResetRequest)
-		apiv2.POST("/auth/password/reset/confirm", v2.PasswordResetConfirm)
+		apiv2.POST("/auth/password/reset", authHandlers.PasswordResetRequest)
+		apiv2.POST("/auth/password/reset/confirm", authHandlers.PasswordResetConfirm)
 		// Email verification
 		apiv2.POST("/auth/verify-email", v2.VerifyEmail)
 		apiv2.POST("/auth/resend-verification", v2.ResendVerification)
@@ -64,8 +76,8 @@ func NewRouter() *gin.Engine {
 		apiv2.POST("/auth/webauthn/login/finish", v2.WebAuthnFinishLogin)
 		// WebAuthn Credentials (Protected)
 		// OAuth
-		apiv2.GET("/auth/oauth/:provider", v2.OAuthStart)
-		apiv2.POST("/auth/oauth/:provider/callback", v2.OAuthCallback)
+		apiv2.GET("/auth/oauth/:provider", authHandlers.OAuthStart)
+		apiv2.POST("/auth/oauth/:provider/callback", authHandlers.OAuthCallback)
 
 		// Optional Auth (for user-specific logic on public pages like problem solved status)
 		// We'll apply this globally to the main apiv2 group since it doesn't block unauthenticated requests.
@@ -119,19 +131,19 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/problem/:code/clarification", v2.ProblemClarificationCreate)
 			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
 			// Problem Data
-			admin.GET("/admin/problem/:code/data", v2.AdminProblemData)
-			admin.POST("/admin/problem/:code/data", v2.AdminProblemDataUpload)
-			admin.DELETE("/admin/problem/:code/data/testcase/:id", v2.AdminProblemDataDeleteTestCase)
+			admin.GET("/admin/problem/:code/data", adminHandlers.AdminProblemData)
+			admin.POST("/admin/problem/:code/data", adminHandlers.AdminProblemDataUpload)
+			admin.DELETE("/admin/problem/:code/data/testcase/:id", adminHandlers.AdminProblemDataDeleteTestCase)
 		// Problem PDF
-		admin.POST("/admin/problem/:code/pdf", v2.AdminProblemPdfUpload)
-		admin.DELETE("/admin/problem/:code/pdf", v2.AdminProblemPdfDelete)
+		admin.POST("/admin/problem/:code/pdf", adminHandlers.AdminProblemPdfUpload)
+		admin.DELETE("/admin/problem/:code/pdf", adminHandlers.AdminProblemPdfDelete)
 			// Problem Data - Reorder & File Operations
-			admin.PATCH("/admin/problem/:code/data/reorder", v2.AdminProblemDataReorder)
-			admin.GET("/admin/problem/:code/data/files", v2.AdminProblemDataFiles)
-			admin.GET("/admin/problem/:code/data/file/*path", v2.AdminProblemDataFileContent)
-			admin.DELETE("/admin/problem/:code/data/file/*path", v2.AdminProblemDataFileDelete)
-			admin.GET("/admin/problem/:code/data/testcase/:id/content", v2.AdminProblemDataTestCaseContent)
-			admin.PATCH("/admin/problem/:code/data/testcase/:id", v2.AdminProblemDataTestCaseUpdate)
+			admin.PATCH("/admin/problem/:code/data/reorder", adminHandlers.AdminProblemDataReorder)
+			admin.GET("/admin/problem/:code/data/files", adminHandlers.AdminProblemDataFiles)
+			admin.GET("/admin/problem/:code/data/file/*path", adminHandlers.AdminProblemDataFileContent)
+			admin.DELETE("/admin/problem/:code/data/file/*path", adminHandlers.AdminProblemDataFileDelete)
+			admin.GET("/admin/problem/:code/data/testcase/:id/content", adminHandlers.AdminProblemDataTestCaseContent)
+			admin.PATCH("/admin/problem/:code/data/testcase/:id", adminHandlers.AdminProblemDataTestCaseUpdate)
 
 			// Solutions
 			admin.GET("/admin/solutions", v2.AdminSolutionList)
@@ -274,14 +286,14 @@ func NewRouter() *gin.Engine {
 
 		apiv2.GET("/events", events.ServeWS)
 
-		apiv2.GET("/contests", v2.ContestList)
+		apiv2.GET("/contests", contestHandlers.ContestList)
 		apiv2.GET("/contests/calendar", v2.ContestCalendar)
-		apiv2.GET("/contest/:key", v2.ContestDetail)
+		apiv2.GET("/contest/:key", contestHandlers.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
 		apiv2.GET("/contest/:key/ranking/pdf", v2.ContestRankingPDF)
-		apiv2.GET("/contest/:key/stats", v2.ContestStats)
-		apiv2.GET("/contest/:key/stats/public", v2.ContestPublicStats)
-		apiv2.GET("/contest/:key/participations", v2.ParticipationList)
+		apiv2.GET("/contest/:key/stats", contestHandlers.ContestStats)
+		apiv2.GET("/contest/:key/stats/public", contestHandlers.ContestPublicStats)
+		apiv2.GET("/contest/:key/participations", contestHandlers.ParticipationList)
 
 		apiv2.GET("/submissions", v2.SubmissionList)
 		apiv2.GET("/submission/:id", v2.SubmissionDetail)
@@ -319,7 +331,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/comments/feed/atom", v2.CommentFeedAtom)
 
 		// Contest clarifications (public read)
-		apiv2.GET("/contest/:key/clarifications", v2.ContestClarificationList)
+		apiv2.GET("/contest/:key/clarifications", contestHandlers.ContestClarificationList)
 
 		// Blogs
 		apiv2.GET("/blogs", v2.BlogList)
@@ -342,7 +354,7 @@ func NewRouter() *gin.Engine {
 		protected.Use(auth.RequiredMiddleware())
 		protected.Use(csrf.Middleware(csrf.DefaultConfig()))
 		{
-			protected.POST("/auth/revoke-all-sessions", v2.RevokeAllSessions)
+			protected.POST("/auth/revoke-all-sessions", authHandlers.RevokeAllSessions)
 			// WebAuthn Credential Management
 			protected.GET("/auth/webauthn/credentials", v2.WebAuthnCredentialsList)
 			protected.PATCH("/auth/webauthn/credentials/:id", v2.WebAuthnCredentialUpdate)
@@ -362,7 +374,7 @@ func NewRouter() *gin.Engine {
 		protected.GET("/user/export/download/:export_id", v2.UserExportDownload)
 
 			protected.POST("/contest/:key/join", v2.ContestJoin)
-			protected.GET("/user/contests", v2.UserParticipationList)
+			protected.GET("/user/contests", contestHandlers.UserParticipationList)
 
 			// Tickets
 			protected.GET("/tickets", v2.TicketList)
@@ -378,8 +390,8 @@ func NewRouter() *gin.Engine {
 			protected.GET("/comment/:id/revisions", v2.CommentRevisionList)
 
 			// Contest clarifications (protected write)
-			protected.POST("/contest/:key/clarifications", v2.ContestClarificationCreate)
-			protected.POST("/contest/:key/clarification/:id/answer", v2.ContestClarificationAnswer)
+			protected.POST("/contest/:key/clarifications", contestHandlers.ContestClarificationCreate)
+			protected.POST("/contest/:key/clarification/:id/answer", contestHandlers.ContestClarificationAnswer)
 
 			// Blogs
 			protected.POST("/blog/:id/vote", v2.BlogVoteHandler)

@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, UseFormRegister } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { BasicInfoSection } from './problem-form/BasicInfoSection';
+import { ClassificationSection } from './problem-form/ClassificationSection';
+import { AuthorsSection } from './problem-form/AuthorsSection';
+import { SettingsSection } from './problem-form/SettingsSection';
 
 export interface ProblemFormData {
     code: string;
@@ -68,7 +71,6 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
 
     const [description, setDescription] = useState(initialData?.description || '');
 
-    // Fetch groups, types, languages, and users for selects
     const { data: groups } = useQuery<{ data: ProblemGroup[] }>({
         queryKey: ['problem-groups'],
         queryFn: async () => {
@@ -111,259 +113,62 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
         id: number,
         checked: boolean
     ) => {
-        const current = watch(field) || [];
+        const current = (watch(field) as number[] | undefined) || [];
         if (checked) {
-            setValue(field, [...current, id] as any);
+            setValue(field, [...current, id]);
         } else {
-            setValue(field, current.filter(i => i !== id) as any);
+            setValue(field, current.filter(i => i !== id));
         }
     };
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Basic Info */}
-            <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">Basic Information</h3>
+            <BasicInfoSection
+                formData={{
+                    code: watch('code'),
+                    name: watch('name'),
+                    description: watch('description'),
+                    points: watch('points'),
+                    time_limit: watch('time_limit'),
+                    memory_limit: watch('memory_limit')
+                }}
+                errors={errors as any}
+                register={register}
+                onDescriptionChange={(value) => {
+                    setDescription(value);
+                    setValue('description', value);
+                }}
+                isEditMode={!!initialData?.code}
+            />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label htmlFor="problem-code" className="text-sm font-medium text-muted-foreground block mb-2">
-                            Problem Code *
-                        </label>
-                        <input
-                            id="problem-code"
-                            type="text"
-                            className={cn(
-                                "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
-                                errors.code && "border-destructive"
-                            )}
-                            placeholder="e.g., SAMPLE"
-                            {...register('code', { required: 'Problem code is required' })}
-                            disabled={!!initialData?.code}
-                        />
-                        {errors.code && (
-                            <p className="text-destructive text-xs mt-1">{errors.code.message}</p>
-                        )}
-                    </div>
+            <ClassificationSection
+                groups={groups}
+                types={types}
+                selectedGroup={selectedGroup}
+                selectedTypes={selectedTypes}
+                onGroupChange={(groupId) => setValue('group_id', groupId)}
+                onTypeToggle={(typeId, checked) => handleMultiSelect('type_ids', typeId, checked)}
+            />
 
-                    <div>
-                        <label htmlFor="problem-name" className="text-sm font-medium text-muted-foreground block mb-2">
-                            Problem Name *
-                        </label>
-                        <input
-                            id="problem-name"
-                            type="text"
-                            className={cn(
-                                "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
-                                errors.name && "border-destructive"
-                            )}
-                            placeholder="e.g., Sample Problem"
-                            {...register('name', { required: 'Problem name is required' })}
-                        />
-                        {errors.name && (
-                            <p className="text-destructive text-xs mt-1">{errors.name.message}</p>
-                        )}
-                    </div>
-                </div>
+            <AuthorsSection
+                users={users}
+                languages={languages}
+                selectedAuthors={selectedAuthors}
+                selectedLangs={selectedLangs}
+                onAuthorToggle={(userId, checked) => handleMultiSelect('author_ids', userId, checked)}
+                onLangToggle={(langId, checked) => handleMultiSelect('allowed_lang_ids', langId, checked)}
+            />
 
-                <div>
-                    <label htmlFor="problem-description" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Description *
-                    </label>
-                    <textarea
-                        id="problem-description"
-                        className={cn(
-                            "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[300px] font-mono text-sm",
-                            errors.description && "border-destructive"
-                        )}
-                        placeholder="Problem description in Markdown..."
-                        value={description}
-                        onChange={(e) => {
-                            setDescription(e.target.value);
-                            setValue('description', e.target.value);
-                        }}
-                        required
-                    />
-                    {errors.description && (
-                        <p className="text-destructive text-xs mt-1">{errors.description.message}</p>
-                    )}
-                </div>
+            <SettingsSection
+                settings={{
+                    is_public: watch('is_public') || false,
+                    partial: watch('partial') || false,
+                    is_manually_managed: watch('is_manually_managed') || false,
+                    pdf_url: watch('pdf_url')
+                }}
+                register={register}
+            />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label htmlFor="problem-points" className="text-sm font-medium text-muted-foreground block mb-2">
-                            Points *
-                        </label>
-                        <input
-                            id="problem-points"
-                            type="number"
-                            step="0.01"
-                            className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                            {...register('points', { required: true, min: 0 })}
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="problem-time-limit" className="text-sm font-medium text-muted-foreground block mb-2">
-                            Time Limit (seconds) *
-                        </label>
-                        <input
-                            id="problem-time-limit"
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                            {...register('time_limit', { required: true, min: 0.1 })}
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label htmlFor="problem-memory-limit" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Memory Limit (MB) *
-                    </label>
-                    <input
-                        id="problem-memory-limit"
-                        type="number"
-                        min="1"
-                        className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        {...register('memory_limit', { required: true, min: 1 })}
-                    />
-                </div>
-            </div>
-
-            {/* Group and Types */}
-            <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">Classification</h3>
-
-                <div>
-                    <label htmlFor="problem-group" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Problem Group
-                    </label>
-                    <select
-                        id="problem-group"
-                        className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        value={selectedGroup || ''}
-                        onChange={(e) => setValue('group_id', e.target.value ? Number(e.target.value) : undefined)}
-                    >
-                        <option value="">Select a group...</option>
-                        {groups?.data.map(g => (
-                            <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label htmlFor="problem-types" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Problem Types
-                    </label>
-                    <div id="problem-types" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="problem-types">
-                        {types?.data.map(t => (
-                            <label key={t.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedTypes.includes(t.id)}
-                                    onChange={(e) => handleMultiSelect('type_ids', t.id, e.target.checked)}
-                                    className="rounded"
-                                />
-                                <span className="text-sm">{t.full_name}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Authors and Languages */}
-            <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">Authors & Languages</h3>
-
-                <div>
-                    <label htmlFor="problem-authors" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Authors
-                    </label>
-                    <div id="problem-authors" className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto" role="group" aria-labelledby="problem-authors">
-                        {users?.data.map(u => (
-                            <label key={u.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedAuthors.includes(u.id)}
-                                    onChange={(e) => handleMultiSelect('author_ids', u.id, e.target.checked)}
-                                    className="rounded"
-                                />
-                                <span className="text-sm truncate">{u.username}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label htmlFor="allowed-languages" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Allowed Languages
-                    </label>
-                    <div id="allowed-languages" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="allowed-languages">
-                        {languages?.data.map(lang => (
-                            <label key={lang.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedLangs.includes(lang.id)}
-                                    onChange={(e) => handleMultiSelect('allowed_lang_ids', lang.id, e.target.checked)}
-                                    className="rounded"
-                                />
-                                <span className="text-sm">{lang.name}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Settings */}
-            <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">Settings</h3>
-
-                <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="rounded w-5 h-5"
-                            {...register('is_public')}
-                        />
-                        <span className="text-sm font-medium">Public (visible to users)</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="rounded w-5 h-5"
-                            {...register('partial')}
-                        />
-                        <span className="text-sm font-medium">Partial scoring</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="rounded w-5 h-5"
-                            {...register('is_manually_managed')}
-                        />
-                        <span className="text-sm font-medium">Manually managed</span>
-                    </label>
-                </div>
-
-                <div>
-                    <label htmlFor="pdf-url" className="text-sm font-medium text-muted-foreground block mb-2">
-                        PDF URL (optional)
-                    </label>
-                    <input
-                        id="pdf-url"
-                        type="url"
-                        className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        placeholder="https://example.com/problem.pdf"
-                        {...register('pdf_url')}
-                    />
-                </div>
-            </div>
-
-            {/* Submit */}
             <div className="flex justify-end gap-3">
                 <button
                     type="submit"

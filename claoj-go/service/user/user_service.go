@@ -183,7 +183,7 @@ func (s *UserService) DeleteUser(req DeleteUserRequest) error {
 	}
 
 	var profile models.Profile
-	if err := db.DB.First(&profile, req.UserID).Error; err != nil {
+	if err := db.DB.Preload("User").First(&profile, req.UserID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrUserNotFound
 		}

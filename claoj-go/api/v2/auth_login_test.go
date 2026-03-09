@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	authHandlers "github.com/CLAOJ/claoj-go/api/v2/auth"
 	"github.com/CLAOJ/claoj-go/auth"
 	"github.com/CLAOJ/claoj-go/config"
 	"github.com/CLAOJ/claoj-go/db"
@@ -39,6 +40,7 @@ func setupLoginTestDB(t *testing.T) *gorm.DB {
 		&models.Profile{},
 		&models.RefreshToken{},
 		&models.TotpDevice{},
+		&models.EmailVerificationToken{},
 	)
 
 	return database
@@ -55,7 +57,7 @@ func createTestUser(t *testing.T, database *gorm.DB, username, password string, 
 		Username:    username,
 		Email:       username + "@example.com",
 		Password:    hashedPassword,
-		IsActive:    isActive,
+		IsActive:    true, // Set to true first to work around GORM default value issue
 		IsStaff:     false,
 		IsSuperuser: false,
 		DateJoined:  time.Now(),
@@ -63,6 +65,13 @@ func createTestUser(t *testing.T, database *gorm.DB, username, password string, 
 
 	if err := database.Create(&user).Error; err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Update IsActive if it should be false (GORM ignores bool zero values with defaults)
+	if !isActive {
+		database.Model(&user).Update("is_active", false)
+		// Refresh the user object
+		database.First(&user, user.ID)
 	}
 
 	// Create profile
@@ -91,7 +100,7 @@ func TestLogin_Success(t *testing.T) {
 	createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username": "testuser",
@@ -144,7 +153,7 @@ func TestLogin_WithRememberMe(t *testing.T) {
 	createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username":     "testuser",
@@ -186,7 +195,7 @@ func TestLogin_WithoutRememberMe(t *testing.T) {
 	createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username":     "testuser",
@@ -228,7 +237,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	tests := []struct {
 		name     string
@@ -283,7 +292,7 @@ func TestLogin_InactiveUser(t *testing.T) {
 	user := createTestUser(t, database, "inactiveuser", "password123", false)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username": "inactiveuser",
@@ -331,7 +340,7 @@ func TestLogin_MissingFields(t *testing.T) {
 	db.DB = database
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	tests := []struct {
 		name string
@@ -375,7 +384,7 @@ func TestLogin_StoresRefreshToken(t *testing.T) {
 	user := createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username":    "testuser",
@@ -424,7 +433,7 @@ func TestLogin_TOTPRequired(t *testing.T) {
 	database.Create(&totpDevice)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username": "testuser",
@@ -460,7 +469,7 @@ func TestLogin_UserAgentAndIP(t *testing.T) {
 	user := createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
-	router.POST("/auth/login", Login)
+	router.POST("/auth/login", authHandlers.Login)
 
 	body := map[string]interface{}{
 		"username": "testuser",

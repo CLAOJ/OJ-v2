@@ -11,11 +11,20 @@ import (
 )
 
 // ContestService provides contest management operations.
-type ContestService struct{}
+type ContestService struct {
+	problems *ContestProblemService
+}
 
 // NewContestService creates a new ContestService instance.
 func NewContestService() *ContestService {
-	return &ContestService{}
+	return &ContestService{
+		problems: NewContestProblemService(),
+	}
+}
+
+// GetProblemService returns the contest problem service.
+func (s *ContestService) GetProblemService() *ContestProblemService {
+	return s.problems
 }
 
 // ListContests retrieves a paginated list of contests.
@@ -74,22 +83,10 @@ func (s *ContestService) GetContest(req GetContestRequest) (*ContestDetailRespon
 		return nil, err
 	}
 
-	// Get contest problems
-	var contestProblems []models.ContestProblem
-	if err := db.DB.Where("contest_id = ?", contest.ID).Find(&contestProblems).Error; err != nil {
+	// Get contest problems using problem service
+	problems, err := s.problems.GetContestProblems(contest.ID)
+	if err != nil {
 		return nil, err
-	}
-
-	problems := make([]ContestProblemInfo, len(contestProblems))
-	for i, cp := range contestProblems {
-		problems[i] = ContestProblemInfo{
-			ID:        cp.ID,
-			ProblemID: cp.ProblemID,
-			Code:      cp.Problem.Code,
-			Name:      cp.Problem.Name,
-			Points:    cp.Points,
-			Order:     cp.Order,
-		}
 	}
 
 	profile := contestToProfile(contest)
@@ -148,16 +145,9 @@ func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfil
 		db.DB.Model(&contest).Association("Testers").Append(&testers)
 	}
 	if len(req.ProblemIDs) > 0 {
-		var problems []models.Problem
-		db.DB.Where("id IN ?", req.ProblemIDs).Find(&problems)
-		for i, p := range problems {
-			db.DB.Create(&models.ContestProblem{
-				ContestID: contest.ID,
-				ProblemID: p.ID,
-				Points:    100,
-				Partial:   true,
-				Order:     uint(i + 1),
-			})
+		// Use problem service to add problems
+		if err := s.problems.AddProblemsToContest(contest.ID, req.ProblemIDs); err != nil {
+			return nil, err
 		}
 	}
 	if len(req.TagIDs) > 0 {
@@ -221,31 +211,18 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 		}
 	}
 
-	// Add problems
+	// Add problems using problem service
 	if len(req.AddProblemIDs) > 0 {
-		var problems []models.Problem
-		db.DB.Where("id IN ?", req.AddProblemIDs).Find(&problems)
-
-		var existing []uint
-		db.DB.Table("judge_contestproblem").Where("contest_id = ?", contest.ID).Pluck("problem_id", &existing)
-
-		for i, p := range problems {
-			if contains(existing, p.ID) {
-				continue
-			}
-			db.DB.Create(&models.ContestProblem{
-				ContestID: contest.ID,
-				ProblemID: p.ID,
-				Points:    100,
-				Partial:   true,
-				Order:     uint(len(existing) + i + 1),
-			})
+		if err := s.problems.AddProblemsToContest(contest.ID, req.AddProblemIDs); err != nil {
+			return nil, err
 		}
 	}
 
-	// Remove problems
+	// Remove problems using problem service
 	if len(req.RemoveProblemIDs) > 0 {
-		db.DB.Where("contest_id = ? AND problem_id IN ?", contest.ID, req.RemoveProblemIDs).Delete(&models.ContestProblem{})
+		if err := s.problems.RemoveProblemsFromContest(contest.ID, req.RemoveProblemIDs); err != nil {
+			return nil, err
+		}
 	}
 
 	// Add tags
@@ -392,21 +369,8 @@ func (s *ContestService) CloneContest(req CloneContestRequest) (*ContestProfile,
 
 	// Copy problems if requested
 	if req.CopyProblems {
-		var contestProblems []models.ContestProblem
-		db.DB.Where("contest_id = ?", sourceContest.ID).Order("order ASC").Find(&contestProblems)
-
-		for _, cp := range contestProblems {
-			newCP := models.ContestProblem{
-				ContestID:            newContest.ID,
-				ProblemID:            cp.ProblemID,
-				Points:               cp.Points,
-				Partial:              cp.Partial,
-				IsPretested:          cp.IsPretested,
-				Order:                cp.Order,
-				OutputPrefixOverride: cp.OutputPrefixOverride,
-				MaxSubmissions:       cp.MaxSubmissions,
-			}
-			db.DB.Create(&newCP)
+		if err := s.problems.CopyProblemsToContest(sourceContest.ID, newContest.ID); err != nil {
+			return nil, err
 		}
 	}
 
@@ -575,15 +539,6 @@ func getOrgIDs(orgs []models.Organization) []uint {
 		ids[i] = o.ID
 	}
 	return ids
-}
-
-func contains(slice []uint, item uint) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }
 
 func copyAssociations(tx *gorm.DB, sourceID, targetID uint) {

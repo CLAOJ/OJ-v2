@@ -907,8 +907,8 @@ export interface RejectSuggestionRequest {
     reason: string;
 }
 
-// WebAuthn credential type
-export interface WebAuthnCredential {
+// WebAuthn credential summary for list display
+export interface WebAuthnCredentialSummary {
     id: number;
     name: string;
     created_at: string;

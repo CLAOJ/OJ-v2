@@ -67,7 +67,7 @@ export default function Footer() {
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li><Link href="/tickets" className="hover:text-primary transition-colors">{t('helpTickets')}</Link></li>
                                 <li><Link href="/about" className="hover:text-primary transition-colors">{t('aboutUs')}</Link></li>
-                                <li><a href="https://www.facebook.com/itclapro" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">IT-CLA Productions</a></li>
+                                <li><a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">IT-CLA Productions</a></li>
                                 <li><Link href="/donate" className="hover:text-primary transition-colors">{t('donate')}</Link></li>
                             </ul>
                         </div>

@@ -7,6 +7,8 @@ jest.mock('next-intl', () => ({
             return key;
         };
     },
+    // Mock NextIntlClientProvider for tests
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // Mock next-intl/navigation
@@ -23,6 +25,17 @@ jest.mock('@/navigation', () => ({
         push: jest.fn(),
         replace: jest.fn(),
         prefetch: jest.fn(),
+    }),
+}));
+
+// Mock next-themes
+jest.mock('next-themes', () => ({
+    ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
+    useTheme: () => ({
+        theme: 'light',
+        setTheme: jest.fn(),
+        resolvedTheme: 'light',
+        themes: ['light', 'dark'],
     }),
 }));
 
@@ -43,3 +56,12 @@ Object.defineProperty(window, 'matchMedia', {
 
 // Mock fetch
 global.fetch = jest.fn();
+
+// Mock WebSocket
+global.WebSocket = jest.fn().mockImplementation(() => ({
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    send: jest.fn(),
+    close: jest.fn(),
+    readyState: WebSocket.CLOSED,
+}));

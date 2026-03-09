@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 // Dialog Components - Compound component pattern
 interface DialogContextType {
@@ -25,68 +26,17 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onOpenChange, children, className }: DialogProps) {
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const previousActiveElement = useRef<HTMLElement | null>(null);
     const [titleId, setTitleId] = React.useState<string | undefined>(undefined);
     const [descriptionId, setDescriptionId] = React.useState<string | undefined>(undefined);
     const reduceMotion = useReducedMotion();
 
-    // Store previous focus and restore on close
-    useEffect(() => {
-        if (open) {
-            previousActiveElement.current = document.activeElement as HTMLElement;
-            setTimeout(() => {
-                dialogRef.current?.focus();
-            }, 0);
-        } else {
-            previousActiveElement.current?.focus();
-        }
-    }, [open]);
-
-    // Handle escape key and focus trap
-    useEffect(() => {
-        if (!open) return;
-
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onOpenChange(false);
-            }
-        };
-
-        const handleTabKey = (e: KeyboardEvent) => {
-            if (e.key !== 'Tab') return;
-
-            const dialog = dialogRef.current;
-            if (!dialog) return;
-
-            const focusableElements = dialog.querySelectorAll<HTMLElement>(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"]), [role="button"]'
-            );
-
-            if (focusableElements.length === 0) return;
-
-            const firstEl = focusableElements[0];
-            const lastEl = focusableElements[focusableElements.length - 1];
-
-            if (e.shiftKey && document.activeElement === firstEl) {
-                e.preventDefault();
-                lastEl.focus();
-            } else if (!e.shiftKey && document.activeElement === lastEl) {
-                e.preventDefault();
-                firstEl.focus();
-            }
-        };
-
-        document.addEventListener('keydown', handleEscape);
-        document.addEventListener('keydown', handleTabKey);
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.removeEventListener('keydown', handleTabKey);
-            document.body.style.overflow = 'unset';
-        };
-    }, [open, onOpenChange]);
+    // Use consolidated focus trap hook
+    const dialogRef = useFocusTrap({
+        isActive: open,
+        onEscape: () => onOpenChange(false),
+        lockBodyScroll: true,
+        restoreFocus: true,
+    });
 
     const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget) {
@@ -225,14 +175,14 @@ interface DialogTriggerProps {
 
 export function DialogTrigger({ children, className, asChild }: DialogTriggerProps) {
     const { onOpenChange } = React.useContext(DialogContext) || {};
-    
+
     if (asChild) {
         // Return children directly to be handled by parent
         return <>{children}</>;
     }
-    
+
     return (
-        <div 
+        <div
             onClick={() => onOpenChange?.(true)}
             className={cn("cursor-pointer", className)}
         >

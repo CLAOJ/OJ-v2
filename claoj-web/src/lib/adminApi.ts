@@ -78,6 +78,28 @@ import type {
 } from '@/types';
 
 // ============================================================
+// SHARED TYPES
+// ============================================================
+
+interface ContestProblem {
+    id: number;
+    code: string;
+    name: string;
+    points: number;
+    order: number;
+}
+
+interface ProblemAuthor {
+    id: number;
+    username: string;
+}
+
+interface ProblemTypeRef {
+    id: number;
+    full_name: string;
+}
+
+// ============================================================
 // ADMIN PROBLEM DATA API
 // ============================================================
 
@@ -166,10 +188,10 @@ export const adminContestApi = {
         api.get<AdminContestListResponse>(`/admin/contests?page=${page}&page_size=${pageSize}`),
 
     detail: (key: string) =>
-        api.get<AdminContest & { problems: any[] }>(`/admin/contest/${key}`),
+        api.get<AdminContest & { problems: ContestProblem[] }>(`/admin/contest/${key}`),
 
     create: (data: AdminContestCreateRequest) =>
-        api.post<{ success: boolean; contest: any }>('/admin/contests', data),
+        api.post<{ success: boolean; contest: AdminContest }>('/admin/contests', data),
 
     update: (key: string, data: Partial<AdminContestCreateRequest>) =>
         api.patch(`/admin/contest/${key}`, data),
@@ -187,7 +209,7 @@ export const adminContestApi = {
         new_start_time?: string;
         new_end_time?: string;
     }) =>
-        api.post<{ success: boolean; message: string; new_contest: any }>(`/admin/contest/${key}/clone`, data),
+        api.post<{ success: boolean; message: string; new_contest: AdminContest }>(`/admin/contest/${key}/clone`, data),
 
     disqualifyParticipation: (key: string, participationId: number) =>
         api.post<{ message: string; participation: { id: number; is_disqualified: boolean } }>(
@@ -210,10 +232,10 @@ export const adminProblemApi = {
         api.get<AdminProblemListResponse>(`/admin/problems?page=${page}&page_size=${pageSize}`),
 
     detail: (code: string) =>
-        api.get<AdminProblem & { authors: any[]; types: any[] }>(`/admin/problem/${code}`),
+        api.get<AdminProblem & { authors: ProblemAuthor[]; types: ProblemTypeRef[] }>(`/admin/problem/${code}`),
 
     create: (data: AdminProblemCreateRequest) =>
-        api.post<{ success: boolean; problem: any }>('/admin/problems', data),
+        api.post<{ success: boolean; problem: AdminProblem }>('/admin/problems', data),
 
     update: (code: string, data: Partial<AdminProblemCreateRequest>) =>
         api.patch(`/admin/problem/${code}`, data),

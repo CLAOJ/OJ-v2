@@ -18,7 +18,20 @@ type SubmitRequest struct {
 	ContestKey string `json:"contest_key"` // Optional
 }
 
-// Submit handles user code submission for a given problem
+// Submit – POST /api/v2/problem/:code/submit
+// @Description Submit a solution for a problem. Requires authentication.
+// @Tags Problems
+// @Summary Submit solution
+// @Accept json
+// @Produce json
+// @Param code path string true "Problem code"
+// @Param request body SubmitRequest true "Submission details"
+// @Success 200 {object} map[string]interface{} "Submission queued"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Problem not accessible"
+// @Failure 404 {object} map[string]string "Problem not found"
+// @Router /problem/{code}/submit [post]
 func Submit(c *gin.Context) {
 	code := c.Param("code")
 

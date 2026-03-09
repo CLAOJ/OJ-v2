@@ -139,17 +139,6 @@ type ListContestsResponse struct {
 	PageSize int
 }
 
-// ContestProblemInfo holds contest problem information.
-type ContestProblemInfo struct {
-	ID        uint
-	ProblemID uint
-	Code      string
-	Name      string
-	Points    int
-	Order     uint
-	Partial   bool
-}
-
 // ContestDetailResponse holds the full contest detail response.
 type ContestDetailResponse struct {
 	Contest  ContestProfile

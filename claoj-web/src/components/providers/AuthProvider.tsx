@@ -2,8 +2,13 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api, { webauthnApi } from '@/lib/api';
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { User } from '@/types';
+
+// Extended axios config for internal options
+interface ApiRequestConfig extends AxiosRequestConfig {
+    _skipAuthRedirect?: boolean;
+}
 
 interface AuthContextType {
     user: User | null;
@@ -68,9 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             challenge: typeof options.challenge === 'string'
                 ? Uint8Array.from(atob(options.challenge), (b) => b.charCodeAt(0))
                 : new Uint8Array(options.challenge as ArrayBuffer),
-            allowCredentials: options.allowCredentials?.map((cred: any) => ({
+            allowCredentials: options.allowCredentials?.map((cred: PublicKeyCredentialDescriptor) => ({
                 ...cred,
-                id: Uint8Array.from(cred.id, (b: number) => b),
+                id: Uint8Array.from(cred.id as unknown as number[], (b: number) => b),
             })),
         };
 
@@ -142,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // If access token is invalid, the API interceptor will try to refresh
                 // If refresh succeeds, the request will be retried automatically
                 // If refresh fails, we'll get a 401 error here
-                const res = await api.get('/user/me', { _skipAuthRedirect: true } as any);
+                const res = await api.get('/user/me', { _skipAuthRedirect: true } as ApiRequestConfig);
 
                 if (res.status === 200 && res.data && isSubscribed) {
                     // User is authenticated

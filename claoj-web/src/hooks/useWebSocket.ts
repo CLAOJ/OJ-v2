@@ -5,7 +5,7 @@ export type WebSocketStatus = 'disconnected' | 'connecting' | 'connected' | 'err
 export interface WebSocketMessage {
     type: string;
     channel?: string;
-    data?: any;
+    data?: unknown;
 }
 
 export interface UseWebSocketOptions {

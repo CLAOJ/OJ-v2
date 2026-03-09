@@ -12,6 +12,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ProblemList – GET /api/v2/problems
+// @Description List all public problems with pagination, filtering, and sorting.
+// @Tags Problems
+// @Summary List problems
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Items per page" default(20)
+// @Param search query string false "Search by problem code or name"
+// @Param group query string false "Filter by problem group"
+// @Param points_min query float64 false "Minimum points"
+// @Param points_max query float64 false "Maximum points"
+// @Param status query string false "Filter by status: solved, unsolved (requires login)"
+// @Param sort query string false "Sort field: code, name, points, ac_rate, user_count" default(code)
+// @Param order query string false "Sort order: asc, desc" default(asc)
+// @Success 200 {object} map[string]interface{} "Paginated list of problems"
+// @Router /problems [get]
 func ProblemList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	search := c.Query("search")

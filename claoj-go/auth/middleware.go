@@ -3,11 +3,17 @@ package auth
 import (
 	"net/http"
 	"strings"
-	
+
 	"github.com/CLAOJ/claoj-go/db"
 	"github.com/CLAOJ/claoj-go/models"
 	"github.com/gin-gonic/gin"
 )
+
+// isJWTFormat checks if a token string is in JWT format (3 base64 parts separated by dots)
+func isJWTFormat(token string) bool {
+	parts := strings.Split(token, ".")
+	return len(parts) == 3 && len(parts[0]) > 0 && len(parts[1]) > 0 && len(parts[2]) > 0
+}
 
 // RequiredMiddleware ensures a valid access token is present in httpOnly cookie or Authorization header
 func RequiredMiddleware() gin.HandlerFunc {
@@ -36,9 +42,8 @@ func RequiredMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Check if this is a JWT access token (has dots for base64 encoding)
-		if len(tokenString) > 50 && tokenString[0] == 'e' {
-			// This is likely a JWT (starts with 'eyJ')
+		// Check if this is a JWT access token (JWTs have 3 parts separated by dots)
+		if isJWTFormat(tokenString) {
 			claims, err := VerifyToken(tokenString, "access")
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -54,7 +59,7 @@ func RequiredMiddleware() gin.HandlerFunc {
 		}
 
 		// Otherwise, treat as API token (64 hex character token)
-		if len(tokenString) == 64 {
+		if len(tokenString) == 64 && isHexString(tokenString) {
 			// Look up user by API token
 			var profile models.Profile
 			if err := db.DB.Where("api_token = ?", tokenString).First(&profile).Error; err != nil {
@@ -81,6 +86,16 @@ func RequiredMiddleware() gin.HandlerFunc {
 	}
 }
 
+// isHexString checks if a string contains only hexadecimal characters
+func isHexString(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
 // OptionalMiddleware parses the token from httpOnly cookie if present, but doesn't abort if missing or invalid.
 // Useful for endpoints that return different data depending on auth state (like problem list).
 func OptionalMiddleware() gin.HandlerFunc {
@@ -88,11 +103,25 @@ func OptionalMiddleware() gin.HandlerFunc {
 		// Read access token from httpOnly cookie
 		tokenString, err := c.Cookie("access_token")
 		if err == nil && tokenString != "" {
-			claims, err := VerifyToken(tokenString, "access")
-			if err == nil {
-				c.Set("user_id", claims.UserID)
-				c.Set("username", claims.Username)
-				c.Set("is_admin", claims.IsAdmin)
+			// Try JWT first
+			if isJWTFormat(tokenString) {
+				claims, err := VerifyToken(tokenString, "access")
+				if err == nil {
+					c.Set("user_id", claims.UserID)
+					c.Set("username", claims.Username)
+					c.Set("is_admin", claims.IsAdmin)
+				}
+			} else if len(tokenString) == 64 && isHexString(tokenString) {
+				// Try API token
+				var profile models.Profile
+				if err := db.DB.Where("api_token = ?", tokenString).First(&profile).Error; err == nil {
+					var authUser models.AuthUser
+					if err := db.DB.First(&authUser, profile.UserID).Error; err == nil {
+						c.Set("user_id", authUser.ID)
+						c.Set("username", authUser.Username)
+						c.Set("is_admin", authUser.IsSuperuser)
+					}
+				}
 			}
 		}
 		c.Next()
