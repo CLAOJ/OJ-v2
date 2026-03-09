@@ -81,6 +81,11 @@ func Register(c *gin.Context) {
 			return err
 		}
 
+		// GORM ignores boolean zero values with defaults, so we need to explicitly update is_active
+		if err := tx.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false).Error; err != nil {
+			return err
+		}
+
 		userID = user.ID
 		userEmail = user.Email
 		userName = user.Username

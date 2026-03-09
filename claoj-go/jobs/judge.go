@@ -14,6 +14,9 @@ const (
 	TypeJudgeSubmission = "judge_submission"
 )
 
+// enqueueFunc is the function used to enqueue jobs - can be overridden for testing
+var enqueueFunc = defaultEnqueue
+
 // BridgeRouter is an interface we inject so `jobs` doesn't strictly depend on `bridge.Server`
 // but can still call `Submit(subID)`.
 type BridgeRouter interface {
@@ -25,6 +28,16 @@ var globalBridge BridgeRouter
 // SetBridge lets main.go inject the bridge router for the worker to use.
 func SetBridge(b BridgeRouter) {
 	globalBridge = b
+}
+
+// defaultEnqueue is the default implementation for enqueueing jobs
+func defaultEnqueue(task *asynq.Task, queueOpt asynq.Option) (*asynq.TaskInfo, error) {
+	return Client.Enqueue(task, queueOpt)
+}
+
+// SetMockEnqueue sets a mock enqueue function for testing
+func SetMockEnqueue(fn func(*asynq.Task, asynq.Option) (*asynq.TaskInfo, error)) {
+	enqueueFunc = fn
 }
 
 // JudgeSubmissionPayload contains the info for a submission-request job.
@@ -40,7 +53,7 @@ func EnqueueJudgeSubmission(subID uint) error {
 	}
 
 	task := asynq.NewTask(TypeJudgeSubmission, payload, asynq.MaxRetry(3), asynq.Timeout(5*time.Minute))
-	info, err := Client.Enqueue(task, asynq.Queue("critical"))
+	info, err := enqueueFunc(task, asynq.Queue("critical"))
 	if err != nil {
 		return err
 	}
