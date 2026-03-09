@@ -1,4 +1,69 @@
 {
+  "SEO": {
+    "siteName": "CLAOJ - Nền tảng Lập trình Thi đấu",
+    "siteDescription": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao.",
+    "home": {
+      "title": "CLAOJ - Nền tảng Lập trình Thi đấu",
+      "description": "Chào mừng đến với CLAOJ - Nền tảng lập trình thi đấu hiện đại với các cuộc thi, bài toán và cộng đồng."
+    },
+    "problems": {
+      "title": "Bài toán - CLAOJ",
+      "description": "Browse and solve competitive programming problems. From beginner to advanced, find problems matching your skill level."
+    },
+    "problem": {
+      "titlePrefix": "Bài toán",
+      "points": "điểm",
+      "acRate": "Tỉ lệ AC",
+      "description": "{code}: {name} - {points} điểm, tỉ lệ chấp nhận {acRate}%. Giải bài toán lập trình thi đấu này trên CLAOJ."
+    },
+    "contests": {
+      "title": "Thi đấu - CLAOJ",
+      "description": "Tham gia các cuộc thi lập trình thi đấu. Tham gia các kỳ thi đang diễn ra, luyện tập với các kỳ thi đã qua và cải thiện rating của bạn."
+    },
+    "contest": {
+      "title": "Kỳ thi",
+      "format": "hình thức",
+      "startingIn": "Bắt đầu trong {time}",
+      "ongoing": "Đang diễn ra",
+      "ended": "Đã kết thúc",
+      "description": "{name} - Kỳ thi {format} trên CLAOJ. {status}"
+    },
+    "users": {
+      "title": "Người dùng - CLAOJ",
+      "description": "Duyệt hồ sơ các lập trình viên competitive programming trên CLAOJ."
+    },
+    "user": {
+      "title": "Hồ sơ",
+      "rating": "Rating",
+      "rank": "Hạng",
+      "description": "{username} - rating {rating}, hạng #{rank}. Xem hồ sơ và bài nộp trên CLAOJ."
+    },
+    "ratings": {
+      "title": "Bảng xếp hạng Rating - CLAOJ",
+      "description": "Top các lập trình viên competitive programming được xếp hạng theo Elo-MMR. Xem ai đang dẫn đầu cộng đồng CLAOJ."
+    },
+    "blog": {
+      "title": "Blog - CLAOJ",
+      "description": "Đọc các insights, hướng dẫn và cập nhật từ đội ngũ CLAOJ và cộng đồng."
+    },
+    "blogPost": {
+      "by": "bởi",
+      "publishedOn": "Xuất bản ngày {date}",
+      "description": "{title} bởi {author}. {summary}"
+    },
+    "submissions": {
+      "title": "Bài nộp - CLAOJ",
+      "description": "Xem các bài nộp code và giải pháp gần đây từ cộng đồng CLAOJ."
+    },
+    "stats": {
+      "title": "Thống kê - CLAOJ",
+      "description": "Xem thống kê nền tảng CLAOJ bao gồm số lượng người dùng, thống kê bài nộp và hơn thế nữa."
+    },
+    "organizations": {
+      "title": "Tổ chức - CLAOJ",
+      "description": "Duyệt các tổ chức và trường học trên CLAOJ."
+    }
+  },
   "Navbar": {
     "home": "Trang chủ",
     "problems": "Bài tập",

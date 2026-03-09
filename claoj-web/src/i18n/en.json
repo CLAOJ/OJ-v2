@@ -1,4 +1,69 @@
 {
+  "SEO": {
+    "siteName": "CLAOJ - Online Judge",
+    "siteDescription": "Modern, high-performance competitive programming platform.",
+    "home": {
+      "title": "CLAOJ - Online Judge",
+      "description": "Welcome to CLAOJ - Modern competitive programming platform with contests, problems, and community."
+    },
+    "problems": {
+      "title": "Problems - CLAOJ",
+      "description": "Browse and solve competitive programming problems. From beginner to advanced, find problems matching your skill level."
+    },
+    "problem": {
+      "titlePrefix": "Problem",
+      "points": "points",
+      "acRate": "AC rate",
+      "description": "{code}: {name} - {points} points, {acRate}% acceptance rate. Solve this competitive programming problem on CLAOJ."
+    },
+    "contests": {
+      "title": "Contests - CLAOJ",
+      "description": "Participate in competitive programming contests. Join ongoing contests, practice with past contests, and improve your rating."
+    },
+    "contest": {
+      "title": "Contest",
+      "format": "format",
+      "startingIn": "Starting in {time}",
+      "ongoing": "Ongoing",
+      "ended": "Ended",
+      "description": "{name} - {format} contest on CLAOJ. {status}"
+    },
+    "users": {
+      "title": "Users - CLAOJ",
+      "description": "Browse competitive programmers profiles on CLAOJ."
+    },
+    "user": {
+      "title": "Profile",
+      "rating": "Rating",
+      "rank": "Rank",
+      "description": "{username} - {rating} rating, Rank #{rank}. View profile and submissions on CLAOJ."
+    },
+    "ratings": {
+      "title": "Rating Leaderboard - CLAOJ",
+      "description": "Top competitive programmers ranked by Elo-MMR rating. See who leads the CLAOJ community."
+    },
+    "blog": {
+      "title": "Blog - CLAOJ",
+      "description": "Read insights, tutorials, and updates from the CLAOJ team and community."
+    },
+    "blogPost": {
+      "by": "by",
+      "publishedOn": "Published on {date}",
+      "description": "{title} by {author}. {summary}"
+    },
+    "submissions": {
+      "title": "Submissions - CLAOJ",
+      "description": "View recent code submissions and solutions from the CLAOJ community."
+    },
+    "stats": {
+      "title": "Statistics - CLAOJ",
+      "description": "View CLAOJ platform statistics including user counts, submission stats, and more."
+    },
+    "organizations": {
+      "title": "Organizations - CLAOJ",
+      "description": "Browse organizations and schools on CLAOJ."
+    }
+  },
   "Navbar": {
     "home": "Home",
     "problems": "Problems",

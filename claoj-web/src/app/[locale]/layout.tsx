@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
@@ -9,18 +9,30 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { DEFAULT_SEO, SITE_URL, generateWebSiteJsonLd, generateOrganizationJsonLd } from '@/lib/seo';
+import JsonLd from '@/components/seo/JsonLd';
 
 const outfit = Outfit({
   subsets: ["latin", "latin-ext"],
   variable: "--font-outfit",
 });
 
-const SITE_URL = process.env.SITE_URL || "https://beta.claoj.edu.vn";
+const siteUrl = process.env.SITE_URL || "https://beta.claoj.edu.vn";
 
 export const metadata: Metadata = {
-  title: "CLAOJ - Online Judge",
+  title: {
+    default: "CLAOJ - Online Judge",
+    template: "%s | CLAOJ",
+  },
   description: "Modern, high-performance competitive programming platform.",
-  metadataBase: new URL(SITE_URL),
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: siteUrl,
+    languages: {
+      'en-US': '/en',
+      'vi-VN': '/vi',
+    },
+  },
 
   // Open Graph
   openGraph: {
@@ -98,6 +110,10 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <JsonLd data={generateWebSiteJsonLd()} />
+        <JsonLd data={generateOrganizationJsonLd()} />
+      </head>
       <body className={`${outfit.variable} font-sans antialiased min-h-screen flex flex-col`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
