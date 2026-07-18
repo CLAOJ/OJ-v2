@@ -74,6 +74,9 @@ type GetUserRequest struct {
 type ListUsersRequest struct {
 	Page     int
 	PageSize int
+	// Search, when non-empty, filters results to users whose username or
+	// email contains the given term (case-insensitive substring match).
+	Search string
 }
 
 // ListUsersResponse holds the response for listing users.

@@ -21,7 +21,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
-import { Shield, Plus, Edit, Trash2, Users, Key, X, UserPlus } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Users, Key, X, UserPlus, AlertCircle } from 'lucide-react';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 type PermissionsByAppModel = Record<string, Record<string, PermissionInfo[]>>;
@@ -46,12 +46,12 @@ export default function AdminGroupsPage() {
     const [memberSearch, setMemberSearch] = useState('');
     const debouncedMemberSearch = useDebounce(memberSearch, 300);
 
-    const { data: groupsData, isLoading: groupsLoading } = useQuery({
+    const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useQuery({
         queryKey: ['admin-groups'],
         queryFn: async () => (await adminGroupsApi.list()).data,
     });
 
-    const { data: permissionsData } = useQuery({
+    const { data: permissionsData, isError: permissionsError } = useQuery({
         queryKey: ['admin-permissions'],
         queryFn: async () => (await adminGroupsApi.permissions()).data,
     });
@@ -177,6 +177,14 @@ export default function AdminGroupsPage() {
                 </Button>
             </div>
 
+            {/* Error State */}
+            {(groupsError || permissionsError) && (
+                <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                    <AlertCircle size={18} />
+                    {t('loadFailed')}
+                </div>
+            )}
+
             {/* Groups Grid */}
             {groupsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -184,7 +192,7 @@ export default function AdminGroupsPage() {
                         <Skeleton key={i} className="h-32 rounded-2xl" />
                     ))}
                 </div>
-            ) : groups.length === 0 ? (
+            ) : groupsError ? null : groups.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">{t('noGroups')}</div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

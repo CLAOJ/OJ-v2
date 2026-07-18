@@ -21,10 +21,12 @@ import (
 // AdminUserList - GET /api/v2/admin/users
 func AdminUserList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
+	search := c.Query("search")
 
 	resp, err := getUserService().ListUsers(user.ListUsersRequest{
 		Page:     page,
 		PageSize: pageSize,
+		Search:   search,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

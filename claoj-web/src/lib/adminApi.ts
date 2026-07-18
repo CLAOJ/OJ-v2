@@ -434,7 +434,7 @@ export const adminGroupsApi = {
         api.post<{ id: number; name: string }>('/admin/groups', data),
 
     update: (id: number, data: GroupUpdateRequest) =>
-        api.patch<{ id: number; name: string }>(`/admin/group/${id}`, data),
+        api.patch<{ success: boolean }>(`/admin/group/${id}`, data),
 
     delete: (id: number) =>
         api.delete(`/admin/group/${id}`),
@@ -443,10 +443,10 @@ export const adminGroupsApi = {
         api.get<{ data: PermissionInfo[] }>('/admin/permissions'),
 
     addUser: (profileId: number, groupId: number) =>
-        api.post<{ success: boolean }>(`/admin/user/${profileId}/groups`, { group_id: groupId }),
+        api.post<void>(`/admin/user/${profileId}/groups`, { group_id: groupId }),
 
     removeUser: (profileId: number, groupId: number) =>
-        api.delete(`/admin/user/${profileId}/groups/${groupId}`),
+        api.delete<void>(`/admin/user/${profileId}/groups/${groupId}`),
 };
 
 // ============================================================

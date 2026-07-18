@@ -288,3 +288,17 @@ func (s *UserServiceTestSuite) TestListUsers_MaxPageSize() {
 	s.NoError(err)
 	s.Equal(100, resp.PageSize)
 }
+
+func (s *UserServiceTestSuite) TestListUsers_Search() {
+	s.createTestUser("alice_wonder", true)
+	s.createTestUser("bob_builder", true)
+	s.createTestUser("carol_singer", true)
+
+	req := ListUsersRequest{Page: 1, PageSize: 10, Search: "bob"}
+	resp, err := s.service.ListUsers(req)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(int64(1), resp.Total)
+	s.Require().Len(resp.Users, 1)
+	s.Equal("bob_builder", resp.Users[0].Username)
+}

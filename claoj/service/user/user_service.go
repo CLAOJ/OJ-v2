@@ -270,6 +270,11 @@ func (s *UserService) ListUsers(req ListUsersRequest) (*ListUsersResponse, error
 		Select("judge_profile.*, auth_user.username, auth_user.email, auth_user.is_active, auth_user.is_staff, auth_user.is_superuser, auth_user.date_joined").
 		Order("auth_user.date_joined DESC")
 
+	if req.Search != "" {
+		searchPattern := "%" + req.Search + "%"
+		query = query.Where("auth_user.username LIKE ? OR auth_user.email LIKE ?", searchPattern, searchPattern)
+	}
+
 	// Get total count
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
