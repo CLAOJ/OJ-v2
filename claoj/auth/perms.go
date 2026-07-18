@@ -107,7 +107,15 @@ func resolveFromDB(userID uint) (*UserAccess, error) {
 }
 
 func permCacheKey(userID uint) string {
-	version := "1"
+	// The fallback version used when permVersionKey is absent from Redis (a
+	// cold start or a fresh/flushed cache) must NOT be a value that Redis's
+	// INCR can ever produce for that key. INCR on an absent key initializes
+	// it to 0 and returns 1, so the first BumpPermVersion() after a cold
+	// start yields version "1". If the fallback were also "1", entries
+	// cached before that first bump would keep matching the post-bump key
+	// and would keep serving stale (possibly revoked) permissions until
+	// their TTL expires. "0" is never returned by INCR, so it's safe.
+	version := "0"
 	if cache.Client != nil {
 		if v, err := cache.Client.Get(cache.Ctx, permVersionKey).Result(); err == nil {
 			version = v
@@ -156,13 +164,19 @@ func GetAccess(c *gin.Context) *UserAccess {
 	if v, ok := c.Get(accessCtxKey); ok {
 		return v.(*UserAccess)
 	}
-	userID, ok := c.Get("user_id")
+	rawUserID, ok := c.Get("user_id")
 	if !ok {
 		a := AnonymousAccess()
 		c.Set(accessCtxKey, a)
 		return a
 	}
-	access, err := LoadUserAccess(userID.(uint))
+	userID, ok := rawUserID.(uint)
+	if !ok {
+		a := AnonymousAccess()
+		c.Set(accessCtxKey, a)
+		return a
+	}
+	access, err := LoadUserAccess(userID)
 	if err != nil {
 		access = AnonymousAccess()
 	}
