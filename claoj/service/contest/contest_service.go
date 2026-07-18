@@ -114,7 +114,6 @@ func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfil
 		HideProblemTags:       req.HideProblemTags,
 		RunPretestsOnly:       req.RunPretestsOnly,
 		IsOrganizationPrivate: req.IsOrganizationPrivate,
-		MaxSubmissions:        req.MaxSubmissions,
 	}
 
 	if req.FormatConfig != "" {
@@ -200,9 +199,6 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 	}
 	if req.TimeLimit != nil {
 		updates["time_limit"] = *req.TimeLimit
-	}
-	if req.MaxSubmissions != nil {
-		updates["max_submissions"] = *req.MaxSubmissions
 	}
 
 	if len(updates) > 0 {
@@ -508,7 +504,6 @@ func contestToProfile(c models.Contest) ContestProfile {
 		ProblemLabelScript:     c.ProblemLabelScript,
 		LockedAfter:            c.LockedAfter,
 		PointsPrecision:        c.PointsPrecision,
-		MaxSubmissions:         c.MaxSubmissions,
 		AuthorIDs:              authorIDs,
 		CuratorIDs:             curatorIDs,
 		TesterIDs:              testerIDs,

@@ -113,7 +113,6 @@ func AdminContestCreate(c *gin.Context) {
 		HideProblemTags       bool    `json:"hide_problem_tags"`
 		RunPretestsOnly       bool    `json:"run_pretests_only"`
 		IsOrganizationPrivate bool    `json:"is_organization_private"`
-		MaxSubmissions        *int    `json:"max_submissions"`
 		AuthorIDs             []uint  `json:"author_ids"`
 		CuratorIDs            []uint  `json:"curator_ids"`
 		TesterIDs             []uint  `json:"tester_ids"`
@@ -154,7 +153,6 @@ func AdminContestCreate(c *gin.Context) {
 		HideProblemTags:       input.HideProblemTags,
 		RunPretestsOnly:       input.RunPretestsOnly,
 		IsOrganizationPrivate: input.IsOrganizationPrivate,
-		MaxSubmissions:        input.MaxSubmissions,
 		AuthorIDs:             input.AuthorIDs,
 		CuratorIDs:            input.CuratorIDs,
 		TesterIDs:             input.TesterIDs,
@@ -199,7 +197,6 @@ func AdminContestUpdate(c *gin.Context) {
 		AddProblemIDs         []uint  `json:"add_problem_ids"`
 		RemoveProblemIDs      []uint  `json:"remove_problem_ids"`
 		UpdateTimeLimit       *int64  `json:"update_time_limit"`
-		MaxSubmissions        *int    `json:"max_submissions"`
 		AddTagIDs             []uint  `json:"add_tag_ids"`
 		RemoveTagIDs          []uint  `json:"remove_tag_ids"`
 	}
@@ -223,7 +220,6 @@ func AdminContestUpdate(c *gin.Context) {
 		RunPretestsOnly:       input.RunPretestsOnly,
 		IsOrganizationPrivate: input.IsOrganizationPrivate,
 		TimeLimit:             input.UpdateTimeLimit,
-		MaxSubmissions:        input.MaxSubmissions,
 		AddProblemIDs:         input.AddProblemIDs,
 		RemoveProblemIDs:      input.RemoveProblemIDs,
 		AddTagIDs:             input.AddTagIDs,

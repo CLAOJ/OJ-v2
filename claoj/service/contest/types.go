@@ -42,7 +42,6 @@ type ContestProfile struct {
 	ProblemLabelScript     string
 	LockedAfter            *time.Time
 	PointsPrecision        int
-	MaxSubmissions         *int
 	AuthorIDs              []uint
 	CuratorIDs             []uint
 	TesterIDs              []uint
@@ -67,7 +66,6 @@ type CreateContestRequest struct {
 	HideProblemTags       bool
 	RunPretestsOnly       bool
 	IsOrganizationPrivate bool
-	MaxSubmissions        *int
 	AuthorIDs             []uint
 	CuratorIDs            []uint
 	TesterIDs             []uint
@@ -93,7 +91,6 @@ type UpdateContestRequest struct {
 	AddProblemIDs         []uint
 	RemoveProblemIDs      []uint
 	TimeLimit             *int64
-	MaxSubmissions        *int
 	AddTagIDs             []uint
 	RemoveTagIDs          []uint
 }

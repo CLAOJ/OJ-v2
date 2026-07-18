@@ -141,20 +141,6 @@ func Submit(c *gin.Context) {
 				return errors.New("user profile not found")
 			}
 
-			// Check contest-level submission limit
-			if ct.MaxSubmissions != nil {
-				var submissionCount int64
-				if err := tx.Table("judge_contestsubmission").
-					Joins("JOIN judge_contestparticipation ON judge_contestsubmission.participation_id = judge_contestparticipation.id").
-					Where("judge_contestparticipation.contest_id = ? AND judge_contestparticipation.user_id = ?", ct.ID, profile.ID).
-					Count(&submissionCount).Error; err != nil {
-					return err
-				}
-				if submissionCount >= int64(*ct.MaxSubmissions) {
-					return errors.New("contest submission limit reached")
-				}
-			}
-
 			var part models.ContestParticipation
 			if err := tx.Where("contest_id = ? AND user_id = ?", ct.ID, profile.ID).First(&part).Error; err != nil {
 				return errors.New("user has not joined the contest")

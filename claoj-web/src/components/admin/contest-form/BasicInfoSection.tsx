@@ -33,7 +33,6 @@ interface ContestFormData {
     hide_problem_tags: boolean;
     run_pretests_only: boolean;
     is_organization_private: boolean;
-    max_submissions?: number | null;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];

@@ -340,7 +340,6 @@ export interface AdminContest {
     tester_ids: number[];
     tag_ids?: number[];
     locked_after?: string | null;
-    max_submissions?: number | null;
 }
 
 export interface AdminProblem {
@@ -442,7 +441,6 @@ export interface AdminContestCreateRequest {
     hide_problem_tags?: boolean;
     run_pretests_only?: boolean;
     is_organization_private?: boolean;
-    max_submissions?: number | null;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];

@@ -91,7 +91,6 @@ export default function EditContestPage() {
         hide_problem_tags: contest.hide_problem_tags,
         run_pretests_only: contest.run_pretests_only,
         is_organization_private: contest.is_organization_private,
-        max_submissions: contest.max_submissions || undefined,
         author_ids: contest.author_ids || [],
         curator_ids: contest.curator_ids || [],
         tester_ids: contest.tester_ids || [],

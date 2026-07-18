@@ -27,7 +27,6 @@ export interface ContestFormData {
     hide_problem_tags: boolean;
     run_pretests_only: boolean;
     is_organization_private: boolean;
-    max_submissions?: number | null;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
@@ -78,7 +77,6 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
             hide_problem_tags: initialData?.hide_problem_tags ?? false,
             run_pretests_only: initialData?.run_pretests_only ?? false,
             is_organization_private: initialData?.is_organization_private ?? false,
-            max_submissions: initialData?.max_submissions,
         }
     });
 
@@ -176,7 +174,6 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
 
             <FormatSection
                 formData={{
-                    max_submissions: watch('max_submissions'),
                     format_name: watch('format_name'),
                     access_code: watch('access_code'),
                     is_visible: watch('is_visible'),

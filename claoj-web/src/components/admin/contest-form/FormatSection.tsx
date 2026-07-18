@@ -4,7 +4,6 @@ import { UseFormRegister } from 'react-hook-form';
 import { cn } from '@/lib/utils';
 
 interface FormatSettings {
-    max_submissions?: number | null;
     format_name?: string;
     access_code?: string;
     is_visible: boolean;
@@ -30,7 +29,6 @@ interface ContestFormData {
     hide_problem_tags: boolean;
     run_pretests_only: boolean;
     is_organization_private: boolean;
-    max_submissions?: number | null;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
@@ -56,20 +54,6 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
             <h3 className="text-lg font-bold">Format & Settings</h3>
-
-            <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Max Submissions (optional)
-                </label>
-                <input
-                    type="number"
-                    min="1"
-                    className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                    placeholder="No limit"
-                    {...register('max_submissions', { valueAsNumber: true })}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Limit total submissions per user in this contest. Leave empty for no limit.</p>
-            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
