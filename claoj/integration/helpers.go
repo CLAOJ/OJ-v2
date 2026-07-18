@@ -75,7 +75,6 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 		&models.EmailVerificationToken{},
 		&models.TotpDevice{},
 		&models.Organization{},
-		&models.Role{},
 	)
 	require.NoError(t, err)
 

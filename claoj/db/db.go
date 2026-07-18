@@ -12,8 +12,8 @@ import (
 var DB *gorm.DB
 
 // Connect opens the GORM connection to MySQL using the configured DSN.
-// CLAOJ uses the same MySQL database as Django — we do NOT run AutoMigrate
-// to avoid touching the schema managed by Django migrations.
+// The schema is 100% owned by Django migrations (OJ repo). OJ-v2 must NEVER
+// execute DDL — no AutoMigrate, no CREATE/ALTER/DROP. Rows only.
 func Connect() {
 	cfg := config.C.Database
 	if cfg.DSN == "" {

@@ -20,7 +20,6 @@ import (
 	"github.com/CLAOJ/claoj/service/problemgroup"
 	"github.com/CLAOJ/claoj/service/problemtype"
 	"github.com/CLAOJ/claoj/service/problemsuggestion"
-	"github.com/CLAOJ/claoj/service/role"
 	"github.com/CLAOJ/claoj/service/submission"
 	"github.com/CLAOJ/claoj/service/user"
 	"github.com/gin-gonic/gin"
@@ -44,7 +43,6 @@ var (
 	submissionService   *submission.SubmissionService
 	contestService      *contest.ContestService
 	userService         *user.UserService
-	roleService         *role.RoleService
 )
 
 // getProblemService returns the problem service instance
@@ -165,14 +163,6 @@ func getUserService() *user.UserService {
 		userService = user.NewUserService()
 	}
 	return userService
-}
-
-// getRoleService returns the role service instance
-func getRoleService() *role.RoleService {
-	if roleService == nil {
-		roleService = role.NewRoleService()
-	}
-	return roleService
 }
 
 // countRecords counts the number of records in a table

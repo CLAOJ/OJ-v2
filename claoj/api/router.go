@@ -178,15 +178,6 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
 			admin.POST("/admin/problem/:code/rescore-all", v2.AdminProblemRescoreAll)
 
-			// Roles & Permissions
-			admin.GET("/admin/roles", v2.AdminRoleList)
-			admin.GET("/admin/role/:id", v2.AdminRoleDetail)
-			admin.POST("/admin/roles", v2.AdminRoleCreate)
-			admin.PATCH("/admin/role/:id", v2.AdminRoleUpdate)
-			admin.DELETE("/admin/role/:id", v2.AdminRoleDelete)
-			admin.GET("/admin/permissions", v2.AdminPermissionList)
-			admin.POST("/admin/profile/:id/roles", v2.AdminProfileAssignRole)
-			admin.DELETE("/admin/profile/:id/roles/:roleId", v2.AdminProfileRemoveRole)
 			admin.POST("/admin/comment/:id/hide", v2.CommentHide)
 
 			// Comments Admin

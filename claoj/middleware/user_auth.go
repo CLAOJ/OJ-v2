@@ -165,59 +165,6 @@ func RequireAdmin() gin.HandlerFunc {
 	}
 }
 
-// RequirePermission creates a middleware that checks for specific permissions
-// Use auth.PermissionRequiredMiddleware() from auth package for actual permission check
-func RequirePermission(permissions ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userID, exists := GetUser(c)
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization required"})
-			c.Abort()
-			return
-		}
-
-		// Check if superuser (has all permissions)
-		var user models.AuthUser
-		if err := db.DB.First(&user, userID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
-			c.Abort()
-			return
-		}
-
-		if user.IsSuperuser {
-			c.Next()
-			return
-		}
-
-		// Load user's permissions from roles
-		var profile models.Profile
-		if err := db.DB.Preload("Roles.Permissions").First(&profile, userID).Error; err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "unable to load permissions"})
-			c.Abort()
-			return
-		}
-
-		// Build set of user's permissions
-		userPerms := make(map[string]bool)
-		for _, role := range profile.Roles {
-			for _, perm := range role.Permissions {
-				userPerms[perm.Code] = true
-			}
-		}
-
-		// Check if user has ALL required permissions
-		for _, requiredPerm := range permissions {
-			if !userPerms[requiredPerm] {
-				c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: " + requiredPerm})
-				c.Abort()
-				return
-			}
-		}
-
-		c.Next()
-	}
-}
-
 // CurrentUser is a helper for handlers that need user, profile, and ok
 type CurrentUser struct {
 	UserID  uint

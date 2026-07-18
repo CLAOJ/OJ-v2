@@ -65,7 +65,6 @@ type Profile struct {
 	Language      Language       `gorm:"foreignKey:LanguageID"`
 	User          AuthUser       `gorm:"foreignKey:UserID"`
 	Organizations []Organization `gorm:"many2many:judge_profile_organizations;joinForeignKey:profile_id;joinReferences:organization_id"`
-	Roles         []Role         `gorm:"many2many:judge_profile_roles;joinForeignKey:profile_id;joinReferences:role_id"`
 }
 
 func (Profile) TableName() string { return "judge_profile" }
