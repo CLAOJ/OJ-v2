@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { adminContestApi } from '@/lib/adminApi';
 import { RankingResponse } from '@/types';
@@ -20,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function ContestParticipationsPage() {
+    const t = useTranslations('Admin');
     const params = useParams();
     const key = params.key as string;
     const queryClient = useQueryClient();
@@ -39,7 +41,7 @@ export default function ContestParticipationsPage() {
             queryClient.invalidateQueries({ queryKey: ['contest-ranking', key] });
         },
         onError: (err: any) => {
-            alert(err.response?.data?.error || 'Failed to disqualify participation');
+            alert(err.response?.data?.error || t('contests.disqualifyError'));
         }
     });
 
@@ -50,7 +52,7 @@ export default function ContestParticipationsPage() {
             queryClient.invalidateQueries({ queryKey: ['contest-ranking', key] });
         },
         onError: (err: any) => {
-            alert(err.response?.data?.error || 'Failed to undisqualify participation');
+            alert(err.response?.data?.error || t('contests.undisqualifyError'));
         }
     });
 
@@ -67,10 +69,10 @@ export default function ContestParticipationsPage() {
                     <div>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             <Users className="text-primary" size={32} />
-                            Contest Participations
+                            {t('contests.participationsTitle')}
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Manage participations for contest {key}
+                            {t('contests.participationsSubtitle', { key })}
                         </p>
                     </div>
                 </div>
@@ -85,9 +87,9 @@ export default function ContestParticipationsPage() {
             ) : !ranking?.rankings || ranking.rankings.length === 0 ? (
                 <div className="bg-card border rounded-2xl p-12 text-center">
                     <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-lg font-medium">No participations yet</p>
+                    <p className="text-lg font-medium">{t('contests.noParticipations')}</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                        No users have joined this contest yet
+                        {t('contests.noParticipationsDesc')}
                     </p>
                 </div>
             ) : (
@@ -95,12 +97,12 @@ export default function ContestParticipationsPage() {
                     <table className="w-full text-left">
                         <thead className="bg-muted/50 border-b">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Rank</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">User</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Score</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Time</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Status</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">Actions</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colRank')}</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colUser')}</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colScore')}</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colStatus')}</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
@@ -149,12 +151,12 @@ export default function ContestParticipationsPage() {
                                         {row.is_disqualified ? (
                                             <Badge variant="destructive" className="gap-1">
                                                 <XCircle size={12} />
-                                                Disqualified
+                                                {t('contests.disqualified')}
                                             </Badge>
                                         ) : (
                                             <Badge variant="success" className="gap-1">
                                                 <CheckCircle size={12} />
-                                                Active
+                                                {t('contests.active')}
                                             </Badge>
                                         )}
                                     </td>
@@ -167,7 +169,7 @@ export default function ContestParticipationsPage() {
                                                 disabled={undisqualifyMutation.isPending}
                                             >
                                                 <CheckCircle size={16} className="mr-1" />
-                                                Undisqualify
+                                                {t('contests.undisqualifyButton')}
                                             </Button>
                                         ) : (
                                             <Button
@@ -177,7 +179,7 @@ export default function ContestParticipationsPage() {
                                                 disabled={disqualifyMutation.isPending}
                                             >
                                                 <ShieldAlert size={16} className="mr-1" />
-                                                Disqualify
+                                                {t('contests.disqualifyButton')}
                                             </Button>
                                         )}
                                     </td>

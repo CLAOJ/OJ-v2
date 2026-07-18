@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminContestTag, AdminContestTagCreateRequest, AdminContestTagUpdateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminContestTagsPage() {
+    const t = useTranslations('Admin');
     const [search, setSearch] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingTag, setEditingTag] = useState<AdminContestTag | null>(null);
@@ -87,9 +89,9 @@ export default function AdminContestTagsPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Tag className="text-primary" size={32} />
-                        Contest Tags
+                        {t('contestTags.title')}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage contest categorization tags</p>
+                    <p className="text-muted-foreground mt-1">{t('contestTags.subtitle')}</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -97,7 +99,7 @@ export default function AdminContestTagsPage() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
-                            placeholder="Search tags..."
+                            placeholder={t('contestTags.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -107,7 +109,7 @@ export default function AdminContestTagsPage() {
                         onClick={() => setShowCreateModal(true)}
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                     >
-                        <Plus size={18} /> Create Tag
+                        <Plus size={18} /> {t('contestTags.createButton')}
                     </button>
                 </div>
             </div>
@@ -121,7 +123,7 @@ export default function AdminContestTagsPage() {
                     {filteredTags.length === 0 ? (
                         <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
                             <Tag size={48} className="mx-auto text-muted-foreground opacity-20" />
-                            <p className="text-muted-foreground mt-4">No tags found</p>
+                            <p className="text-muted-foreground mt-4">{t('contestTags.noTagsFound')}</p>
                         </div>
                     ) : (
                         filteredTags.map((tag) => (
@@ -142,7 +144,7 @@ export default function AdminContestTagsPage() {
                                                 #{tag.name}
                                             </h3>
                                             <p className="text-sm text-muted-foreground mt-1">
-                                                {tag.description || 'No description'}
+                                                {tag.description || t('contestTags.noDescription')}
                                             </p>
                                         </div>
                                     </div>
@@ -157,18 +159,18 @@ export default function AdminContestTagsPage() {
                                         <button
                                             onClick={() => setEditingTag(tag)}
                                             className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                            title="Edit tag"
+                                            title={t('contestTags.editTitle')}
                                         >
                                             <Edit size={18} />
                                         </button>
                                         <button
                                             onClick={() => {
-                                                if (confirm(`Are you sure you want to delete tag "${tag.name}"?`)) {
+                                                if (confirm(t('contestTags.deleteConfirm', { name: tag.name }))) {
                                                     deleteMutation.mutate(tag.id);
                                                 }
                                             }}
                                             className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                            title="Delete tag"
+                                            title={t('contestTags.deleteTitle')}
                                         >
                                             <Trash2 size={18} />
                                         </button>
@@ -229,13 +231,14 @@ const PRESET_COLORS = [
 ];
 
 function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTagModalProps) {
+    const t = useTranslations('Admin');
     const [name, setName] = useState(tag?.name || '');
     const [color, setColor] = useState(tag?.color || '#3b82f6');
     const [description, setDescription] = useState(tag?.description || '');
 
     const handleSubmit = () => {
         if (!name.trim()) {
-            alert('Tag name is required');
+            alert(t('contestTags.nameRequiredAlert'));
             return;
         }
         onSubmit({
@@ -249,27 +252,27 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-card rounded-2xl w-full max-w-md p-6">
                 <h2 className="text-xl font-bold mb-4">
-                    {tag ? 'Edit Tag' : 'Create Tag'}
+                    {tag ? t('contestTags.editModalTitle') : t('contestTags.createModalTitle')}
                 </h2>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Tag Name *</label>
+                        <label className="text-sm font-medium mb-2 block">{t('contestTags.nameLabel')}</label>
                         <input
                             type="text"
                             className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                            placeholder="e.g., icpc, monthly, rated"
+                            placeholder={t('contestTags.namePlaceholder')}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             maxLength={20}
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Alphanumeric, underscore, and hyphen only. Max 20 characters.
+                            {t('contestTags.nameHint')}
                         </p>
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Color</label>
+                        <label className="text-sm font-medium mb-2 block">{t('contestTags.colorLabel')}</label>
                         <div className="flex items-center gap-3 mb-3">
                             <input
                                 type="color"
@@ -282,7 +285,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                                 value={color}
                                 onChange={(e) => setColor(e.target.value)}
                                 className="flex-1 px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none font-mono"
-                                placeholder="#3b82f6"
+                                placeholder={t('contestTags.colorPlaceholder')}
                             />
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -300,10 +303,10 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Description</label>
+                        <label className="text-sm font-medium mb-2 block">{t('contestTags.descriptionLabel')}</label>
                         <textarea
                             className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[80px]"
-                            placeholder="Optional description for this tag..."
+                            placeholder={t('contestTags.descriptionPlaceholder')}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                         />
@@ -311,7 +314,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
 
                     {/* Preview */}
                     <div className="pt-2">
-                        <label className="text-sm font-medium mb-2 block">Preview</label>
+                        <label className="text-sm font-medium mb-2 block">{t('contestTags.previewLabel')}</label>
                         <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/30">
                             <div
                                 className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -321,10 +324,10 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                             </div>
                             <div>
                                 <div className="font-bold" style={{ color: color }}>
-                                    #{name || 'tag-name'}
+                                    #{name || t('contestTags.previewNameFallback')}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                    {description || 'Tag description'}
+                                    {description || t('contestTags.previewDescFallback')}
                                 </div>
                             </div>
                         </div>
@@ -336,14 +339,14 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                         onClick={onClose}
                         className="px-4 py-2 rounded-xl hover:bg-muted transition-colors"
                     >
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isLoading || !name.trim()}
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
-                        {isLoading ? 'Saving...' : (tag ? 'Update' : 'Create')}
+                        {isLoading ? t('contestTags.savingButton') : (tag ? t('common.update') : t('common.create'))}
                     </button>
                 </div>
             </div>

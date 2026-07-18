@@ -5,6 +5,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminContest } from '@/types';
 import { adminContestApi } from '@/lib/adminApi';
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminContestPage() {
+    const t = useTranslations('Admin');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
@@ -68,9 +70,9 @@ export default function AdminContestPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Trophy className="text-primary" size={32} />
-                        Contests
+                        {t('contests.title')}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage contests and their settings</p>
+                    <p className="text-muted-foreground mt-1">{t('contests.subtitle')}</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -78,7 +80,7 @@ export default function AdminContestPage() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
-                            placeholder="Search contests..."
+                            placeholder={t('contests.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -90,14 +92,14 @@ export default function AdminContestPage() {
                             className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
                         >
                             <Tag size={18} />
-                            Tags
+                            {t('contests.tagsLink')}
                         </Link>
                         <Link
                             href="/admin/contests/create"
                             className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                         >
                             <Play size={18} />
-                            Create
+                            {t('common.create')}
                         </Link>
                     </div>
                 </div>
@@ -113,17 +115,17 @@ export default function AdminContestPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Contest</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Time</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Settings</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">Actions</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colContest')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colSettings')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {filteredContests.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                                            No contests found
+                                            {t('contests.noContestsFound')}
                                         </td>
                                     </tr>
                                 ) : (
@@ -134,10 +136,10 @@ export default function AdminContestPage() {
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <span className="font-mono">{contest.key}</span>
                                                     {contest.is_rated && (
-                                                        <Badge variant="warning" className="text-[10px]">Rated</Badge>
+                                                        <Badge variant="warning" className="text-[10px]">{t('contests.rated')}</Badge>
                                                     )}
                                                     {contest.is_organization_private && (
-                                                        <Badge variant="secondary" className="text-[10px]">Private</Badge>
+                                                        <Badge variant="secondary" className="text-[10px]">{t('contests.private')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
@@ -156,15 +158,15 @@ export default function AdminContestPage() {
                                                 <div className="flex items-center gap-2">
                                                     {contest.is_visible ? (
                                                         <Badge variant="success" className="flex items-center gap-1 text-xs">
-                                                            Visible
+                                                            {t('contests.visible')}
                                                         </Badge>
                                                     ) : (
                                                         <Badge variant="destructive" className="flex items-center text-xs">
-                                                            Hidden
+                                                            {t('contests.hidden')}
                                                         </Badge>
                                                     )}
                                                     <span className="text-xs text-muted-foreground">
-                                                        {contest.user_count} users
+                                                        {t('contests.userCount', { count: contest.user_count })}
                                                     </span>
                                                 </div>
                                             </td>
@@ -176,14 +178,14 @@ export default function AdminContestPage() {
                                                             setCloneModalOpen(true);
                                                         }}
                                                         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                                        title="Clone contest"
+                                                        title={t('contests.cloneTitle')}
                                                     >
                                                         <CopyIcon size={18} />
                                                     </button>
                                                     <Link
                                                         href={`/admin/contests/${contest.key}/edit`}
                                                         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                                        title="Edit contest"
+                                                        title={t('contests.editTitle')}
                                                     >
                                                         <Edit size={18} />
                                                     </Link>
@@ -191,7 +193,7 @@ export default function AdminContestPage() {
                                                         onClick={() => deleteMutation.mutate(contest.key)}
                                                         disabled={deleteMutation.isPending}
                                                         className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                                        title="Delete contest"
+                                                        title={t('contests.deleteTitle')}
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -208,7 +210,7 @@ export default function AdminContestPage() {
                     {filteredContests.length > 0 && (
                         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
                             <div className="text-sm text-muted-foreground">
-                                Showing {filteredContests.length} of {data?.total || 0} contests
+                                {t('contests.showingCount', { shown: filteredContests.length, total: data?.total || 0 })}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -216,7 +218,7 @@ export default function AdminContestPage() {
                                     disabled={page === 1}
                                     className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
                                 >
-                                    Previous
+                                    {t('common.previous')}
                                 </button>
                                 <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
                                     {page}
@@ -226,7 +228,7 @@ export default function AdminContestPage() {
                                     disabled={filteredContests.length < 50}
                                     className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
                                 >
-                                    Next
+                                    {t('common.next')}
                                 </button>
                             </div>
                         </div>
@@ -260,6 +262,7 @@ interface CloneContestModalProps {
 }
 
 function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSuccess }: CloneContestModalProps) {
+    const t = useTranslations('Admin');
     const [newKey, setNewKey] = useState('');
     const [newName, setNewName] = useState('');
     const [copyProblems, setCopyProblems] = useState(true);
@@ -277,10 +280,10 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
             onOpenChange(false);
             setNewKey('');
             setNewName('');
-            alert(`Contest cloned successfully! New contest: ${data.data.new_contest.name} (${data.data.new_contest.key})`);
+            alert(t('contests.cloneSuccess', { name: data.data.new_contest.name, key: data.data.new_contest.key }));
         },
         onError: (err: any) => {
-            alert(err.response?.data?.error || 'Failed to clone contest');
+            alert(err.response?.data?.error || t('contests.cloneError'));
         },
     });
 
@@ -296,32 +299,32 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
                 <div className="bg-card rounded-2xl border shadow-2xl w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
-                            <h2 className="text-xl font-bold">Clone Contest</h2>
+                            <h2 className="text-xl font-bold">{t('contests.cloneModalTitle')}</h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Creating a copy of &quot;{contestName}&quot;
+                                {t('contests.cloneModalSubtitle', { name: contestName })}
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">New Contest Key</label>
+                                <label className="block text-sm font-medium mb-2">{t('contests.newKeyLabel')}</label>
                                 <input
                                     type="text"
                                     value={newKey}
                                     onChange={(e) => setNewKey(e.target.value)}
-                                    placeholder="e.g., APLUSB-2024"
+                                    placeholder={t('contests.newKeyPlaceholder')}
                                     className="w-full px-4 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">New Contest Name</label>
+                                <label className="block text-sm font-medium mb-2">{t('contests.newNameLabel')}</label>
                                 <input
                                     type="text"
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
-                                    placeholder="e.g., A + B (Clone)"
+                                    placeholder={t('contests.newNamePlaceholder')}
                                     className="w-full px-4 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                                     required
                                 />
@@ -336,8 +339,8 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
                                         className="w-4 h-4"
                                     />
                                     <div>
-                                        <div className="text-sm font-medium">Copy Problems</div>
-                                        <div className="text-xs text-muted-foreground">Copy all problems with their order and points</div>
+                                        <div className="text-sm font-medium">{t('contests.copyProblemsLabel')}</div>
+                                        <div className="text-xs text-muted-foreground">{t('contests.copyProblemsDesc')}</div>
                                     </div>
                                 </label>
 
@@ -349,8 +352,8 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
                                         className="w-4 h-4"
                                     />
                                     <div>
-                                        <div className="text-sm font-medium">Copy Settings</div>
-                                        <div className="text-xs text-muted-foreground">Copy authors, curators, testers, and organizations</div>
+                                        <div className="text-sm font-medium">{t('contests.copySettingsLabel')}</div>
+                                        <div className="text-xs text-muted-foreground">{t('contests.copySettingsDesc')}</div>
                                     </div>
                                 </label>
                             </div>
@@ -363,7 +366,7 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
                                 onClick={() => onOpenChange(false)}
                                 className="flex-1"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </Button>
                             <Button
                                 type="submit"
@@ -371,7 +374,7 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
                                 disabled={cloneMutation.isPending}
                                 className="flex-1"
                             >
-                                {cloneMutation.isPending ? 'Cloning...' : 'Clone Contest'}
+                                {cloneMutation.isPending ? t('common.cloning') : t('contests.cloneModalTitle')}
                             </Button>
                         </div>
                     </form>

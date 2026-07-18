@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { adminContestApi } from '@/lib/adminApi';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
@@ -9,6 +10,7 @@ import { Trophy, ArrowLeft } from 'lucide-react';
 import { Link } from '@/navigation';
 
 export default function CreateContestPage() {
+    const t = useTranslations('Admin');
     const router = useRouter();
 
     const createMutation = useMutation({
@@ -37,10 +39,10 @@ export default function CreateContestPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Trophy className="text-primary" size={32} />
-                        Create Contest
+                        {t('contests.createTitle')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Create a new contest with problems and settings
+                        {t('contests.createSubtitle')}
                     </p>
                 </div>
             </div>
