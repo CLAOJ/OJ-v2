@@ -38,6 +38,16 @@ func main() {
 		log.Printf("warning: refresh sessions in-memory; logins reset on restart")
 	}
 
+	// 3c. Wire up one-time token storage (password reset / email
+	// verification) for the same reason: keep v2-only state out of the
+	// shared MySQL schema.
+	if cache.Client != nil {
+		authHandlers.OneTimeTokens = tokenstore.NewRedisOneTime(cache.Client)
+	} else {
+		authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
+		log.Printf("warning: one-time tokens in-memory; password-reset/email-verify links reset on restart")
+	}
+
 	// 4. Start the Judge Bridge TCP server
 	judgeBridge := bridge.NewServer()
 	go func() {

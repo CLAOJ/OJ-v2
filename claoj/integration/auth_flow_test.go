@@ -8,9 +8,9 @@ import (
 
 	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	v2 "github.com/CLAOJ/claoj/api/v2"
 	"github.com/CLAOJ/claoj/integration"
-	"github.com/CLAOJ/claoj/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -159,15 +159,10 @@ func TestAuthFlow_InactiveUser(t *testing.T) {
 	// Create inactive user (email not verified)
 	user := integration.CreateTestUser(testDB.DB, "unverified", "Password123!", false)
 
-	// Create verification token to simulate pending verification
-	token := models.EmailVerificationToken{
-		UserID:    user.ID,
-		Token:     "test-verification-token",
-		Email:     user.Email,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	testDB.DB.Create(&token)
+	// Issue a verification token in the store to simulate pending
+	// verification.
+	issueErr := authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, "test-verification-token", user.ID, 24*time.Hour)
+	assert.NoError(t, issueErr)
 
 	// Setup router
 	gin := integration.TestRouter()

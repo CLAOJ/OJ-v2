@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/email"
@@ -42,14 +43,9 @@ func PasswordResetRequest(c *gin.Context) {
 	}
 	tokenStr := hex.EncodeToString(token)
 
-	// Store token in database (using a simple key-value approach)
-	// We'll use a custom table for password reset tokens
-	resetToken := models.PasswordResetToken{
-		UserID:    user.ID,
-		Token:     tokenStr,
-		ExpiresAt: time.Now().Add(1 * time.Hour),
-	}
-	if err := db.DB.Create(&resetToken).Error; err != nil {
+	// Store the token in the one-time token store (Redis-backed, outside
+	// the shared MySQL schema) instead of a v2-only DB table.
+	if err := OneTimeTokens.Issue(tokenstore.KindPasswordReset, tokenStr, user.ID, 1*time.Hour); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create reset token"})
 		return
 	}
@@ -77,14 +73,16 @@ func PasswordResetConfirm(c *gin.Context) {
 		return
 	}
 
-	// Find valid reset token
-	var resetToken models.PasswordResetToken
-	if err := db.DB.Where("token = ? AND expires_at > ?", req.Token, time.Now()).First(&resetToken).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
-			return
-		}
+	// Atomically consume the reset token (single-use: GETDEL under the
+	// hood). ok=false covers both "never issued" and "already used /
+	// expired" - the caller doesn't need to distinguish.
+	uid, ok, err := OneTimeTokens.Consume(tokenstore.KindPasswordReset, req.Token)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
 		return
 	}
 
@@ -97,20 +95,19 @@ func PasswordResetConfirm(c *gin.Context) {
 
 	// Update user password
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		// Update user password
-		if err := tx.Model(&models.AuthUser{}).Where("id = ?", resetToken.UserID).Update("password", hashedPassword).Error; err != nil {
-			return err
-		}
-		// Invalidate all reset tokens for this user
-		if err := tx.Where("user_id = ?", resetToken.UserID).Delete(&models.PasswordResetToken{}).Error; err != nil {
-			return err
-		}
-		return nil
+		return tx.Model(&models.AuthUser{}).Where("id = ?", uid).Update("password", hashedPassword).Error
 	})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reset password"})
 		return
+	}
+
+	// Invalidate any other outstanding reset tokens for this user. The
+	// consumed token above is already gone; this is defense-in-depth in
+	// case multiple reset emails were requested.
+	if err := OneTimeTokens.Invalidate(tokenstore.KindPasswordReset, uid); err != nil {
+		// Best-effort: password already changed successfully.
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})

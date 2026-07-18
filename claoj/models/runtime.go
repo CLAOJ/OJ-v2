@@ -58,29 +58,6 @@ type RuntimeVersion struct {
 
 func (RuntimeVersion) TableName() string { return "judge_runtimeversion" }
 
-// PasswordResetToken stores password reset tokens
-type PasswordResetToken struct {
-	ID        uint      `gorm:"primaryKey;column:id"`
-	UserID    uint      `gorm:"column:user_id;not null;index"`
-	Token     string    `gorm:"column:token;size:64;not null;uniqueIndex"`
-	CreatedAt time.Time `gorm:"column:created_at;not null"`
-	ExpiresAt time.Time `gorm:"column:expires_at;not null;index"`
-}
-
-func (PasswordResetToken) TableName() string { return "password_reset_token" }
-
-// EmailVerificationToken stores email verification tokens
-type EmailVerificationToken struct {
-	ID        uint      `gorm:"primaryKey;column:id"`
-	UserID    uint      `gorm:"column:user_id;not null;index"`
-	Token     string    `gorm:"column:token;size:64;not null;uniqueIndex"`
-	Email     string    `gorm:"column:email;size:254;not null"`
-	CreatedAt time.Time `gorm:"column:created_at;not null"`
-	ExpiresAt time.Time `gorm:"column:expires_at;not null;index"`
-}
-
-func (EmailVerificationToken) TableName() string { return "email_verification_token" }
-
 // TotpDevice stores TOTP configuration for users
 type TotpDevice struct {
 	ID        uint      `gorm:"primaryKey;column:id"`

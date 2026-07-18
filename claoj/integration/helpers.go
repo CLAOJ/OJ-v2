@@ -73,7 +73,6 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 		&models.ContestProblem{},
 		&models.ContestParticipation{},
 		&models.ContestSubmission{},
-		&models.EmailVerificationToken{},
 		&models.TotpDevice{},
 		&models.Organization{},
 	)
@@ -89,6 +88,9 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 	// integration test a fresh in-memory store so Login/Refresh/Logout
 	// don't hit a nil RefreshStore.
 	authHandlers.RefreshStore = tokenstore.NewMemoryStore()
+
+	// Same for password-reset / email-verification tokens.
+	authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
 
 	// Set mock asynq client for jobs package
 	setupMockAsynq()
@@ -338,7 +340,6 @@ func CleanupDB(t *testing.T, testDB *TestDB) {
 	testDB.DB.Exec("DELETE FROM judge_submissionsource")
 	testDB.DB.Exec("DELETE FROM judge_submission")
 	testDB.DB.Exec("DELETE FROM judge_problem")
-	testDB.DB.Exec("DELETE FROM email_verification_token")
 	testDB.DB.Exec("DELETE FROM judge_profile")
 	testDB.DB.Exec("DELETE FROM auth_user")
 }

@@ -40,11 +40,12 @@ func setupLoginTestDB(t *testing.T) *gorm.DB {
 		&models.AuthUser{},
 		&models.Profile{},
 		&models.TotpDevice{},
-		&models.EmailVerificationToken{},
 	)
 
-	// Refresh tokens now live in a session store, not the DB.
+	// Refresh tokens and one-time tokens now live in session stores, not
+	// the DB.
 	authHandlers.RefreshStore = tokenstore.NewMemoryStore()
+	authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
 
 	return database
 }
@@ -316,15 +317,9 @@ func TestLogin_InactiveUser(t *testing.T) {
 	assert.Equal(t, "email not verified", response["error"])
 	assert.True(t, response["requires_email_verification"].(bool))
 
-	// Create a verification token for this user
-	token := models.EmailVerificationToken{
-		UserID:    user.ID,
-		Token:     "test-token",
-		Email:     user.Email,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	database.Create(&token)
+	// Issue a verification token for this user in the store
+	issueErr := authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, "test-token", user.ID, 24*time.Hour)
+	assert.NoError(t, issueErr)
 
 	// Try login again - should still get verification required
 	req2 := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(jsonBody))

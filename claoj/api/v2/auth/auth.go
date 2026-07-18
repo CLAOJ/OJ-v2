@@ -23,6 +23,15 @@ import (
 // in tests.
 var RefreshStore tokenstore.Store
 
+// OneTimeTokens issues and consumes single-use tokens (password reset,
+// email verification) outside the shared MySQL schema. It is set once at
+// startup in main.go (Redis-backed, or an in-memory fallback when Redis is
+// unavailable) and overridden with tokenstore.NewMemoryOneTime() in tests.
+// The sibling v2 package (api/v2/verify.go) also uses it via this exported
+// var — that package imports this one (not vice versa), so there's no
+// import cycle.
+var OneTimeTokens tokenstore.OneTimeStore
+
 // getLockoutRepo returns the lockout repository (nil if Redis not available)
 func getLockoutRepo() *lockout.Repository {
 	if cache.Client != nil {
@@ -90,9 +99,8 @@ func Login(c *gin.Context) {
 
 	if !user.IsActive {
 		// Check if user has pending email verification
-		var verificationToken models.EmailVerificationToken
-		err := db.DB.Where("user_id = ? AND expires_at > ?", user.ID, time.Now()).First(&verificationToken).Error
-		if err == nil {
+		hasPendingVerification, _ := OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
+		if hasPendingVerification {
 			// Token exists, user needs to verify email
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":                       "email not verified",
@@ -103,7 +111,7 @@ func Login(c *gin.Context) {
 		}
 		// Check if user is banned (profile has ban_reason)
 		var profile models.Profile
-		err = db.DB.Where("user_id = ?", user.ID).First(&profile).Error
+		err := db.DB.Where("user_id = ?", user.ID).First(&profile).Error
 		if err == nil && profile.BanReason != nil && *profile.BanReason != "" {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":      "account_banned",

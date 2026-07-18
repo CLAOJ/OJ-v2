@@ -8,9 +8,11 @@ import (
 
 	v2 "github.com/CLAOJ/claoj/api/v2"
 	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/integration"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRegistrationFlow_FullCycle_Success tests successful user registration
@@ -54,11 +56,10 @@ func TestRegistrationFlow_FullCycle_Success(t *testing.T) {
 	assert.Equal(t, "newuser@example.com", user.Email)
 	assert.False(t, user.IsActive) // Should be inactive until verified
 
-	// Verify verification token was created
-	var token models.EmailVerificationToken
-	err = testDB.DB.Where("user_id = ?", user.ID).First(&token).Error
+	// Verify a verification token was issued for the user
+	has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, token.Token)
+	assert.True(t, has)
 }
 
 // TestRegistrationFlow_DuplicateUsername tests registration with existing username
@@ -247,14 +248,24 @@ func TestRegistrationFlow_EmailVerification(t *testing.T) {
 	// Wait for async email verification token creation
 	time.Sleep(100 * time.Millisecond)
 
-	// Get verification token from database
+	// Get the registered user
 	var user models.AuthUser
 	testDB.DB.Where("username = ?", "verifyuser").First(&user)
 	assert.False(t, user.IsActive) // Should be inactive
 
-	var token models.EmailVerificationToken
-	testDB.DB.Where("user_id = ?", user.ID).First(&token)
-	assert.NotEmpty(t, token.Token)
+	// Registration should have issued a verification token for this user.
+	has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
+	assert.NoError(t, err)
+	assert.True(t, has, "registration should issue an email verification token")
+
+	// The plaintext token is only ever known to whoever received the
+	// email - the store only keeps its hash, so it can't be read back
+	// from here. Issue a fresh known token for the user to drive the
+	// verify-email call below, exactly as if it were the one delivered
+	// by email.
+	verifyToken := "flow-test-verification-token"
+	require.NoError(t, authHandlers.OneTimeTokens.Invalidate(tokenstore.KindEmailVerify, user.ID))
+	require.NoError(t, authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, verifyToken, user.ID, 24*time.Hour))
 
 	// 2. Try to login before verification (should fail)
 	loginResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
@@ -274,7 +285,7 @@ func TestRegistrationFlow_EmailVerification(t *testing.T) {
 		Method: "POST",
 		Path:   "/auth/verify-email",
 		Body: map[string]interface{}{
-			"token": token.Token,
+			"token": verifyToken,
 		},
 	})
 
@@ -346,10 +357,10 @@ func TestRegistrationFlow_ResendVerification(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Contains(t, resp.JSONBody["message"], "verification")
 
-	// Verify new token was created
-	var tokenCount int64
-	testDB.DB.Model(&models.EmailVerificationToken{}).Where("user_id = ?", user.ID).Count(&tokenCount)
-	assert.Equal(t, int64(1), tokenCount)
+	// Verify a new token was issued
+	has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
+	assert.NoError(t, err)
+	assert.True(t, has)
 }
 
 // TestRegistrationFlow_LoginAfterVerification tests the full flow: register -> verify -> login
@@ -379,20 +390,29 @@ func TestRegistrationFlow_LoginAfterVerification(t *testing.T) {
 	// Wait for async email verification token creation
 	time.Sleep(100 * time.Millisecond)
 
-	// Get user and token
+	// Get user
 	var user models.AuthUser
 	testDB.DB.Where("username = ?", "fullflowuser").First(&user)
 
-	var token models.EmailVerificationToken
-	testDB.DB.Where("user_id = ?", user.ID).First(&token)
-	assert.NotEmpty(t, token.Token)
+	// Registration should have issued a verification token for this user.
+	has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
+	assert.NoError(t, err)
+	assert.True(t, has, "registration should issue an email verification token")
+
+	// The plaintext token is only ever known to whoever received the
+	// email - issue a fresh known token for the user to drive the
+	// verify-email call below, exactly as if it were the one delivered by
+	// email.
+	verifyToken := "flow-test-login-after-verification-token"
+	require.NoError(t, authHandlers.OneTimeTokens.Invalidate(tokenstore.KindEmailVerify, user.ID))
+	require.NoError(t, authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, verifyToken, user.ID, 24*time.Hour))
 
 	// 2. Verify email
 	verifyResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
 		Method: "POST",
 		Path:   "/auth/verify-email",
 		Body: map[string]interface{}{
-			"token": token.Token,
+			"token": verifyToken,
 		},
 	})
 

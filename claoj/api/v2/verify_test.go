@@ -10,11 +10,14 @@ import (
 	"testing"
 	"time"
 
+	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -36,8 +39,11 @@ func setupVerifyTestDB(t *testing.T) *gorm.DB {
 	// Migrate the schema
 	database.AutoMigrate(
 		&models.AuthUser{},
-		&models.EmailVerificationToken{},
 	)
+
+	// Email-verification tokens now live in a session store, not the DB —
+	// give every test a fresh in-memory store.
+	authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
 
 	return database
 }
@@ -208,22 +214,19 @@ func TestResendVerification_CreatesToken(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	// Check that a token was created in the database
+	// Check that a token was issued in the store
 	// First check the response code and body
 	t.Logf("Response code: %d", w.Code)
 	t.Logf("Response body: %s", w.Body.String())
 
-	var token models.EmailVerificationToken
-	err := database.Where("user_id = ?", user.ID).First(&token).Error
+	has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
 
 	// If email config is not set up, it might fail, but token should still be created
 	// or the endpoint might return success
 	if w.Code == http.StatusOK {
 		// Token should exist
 		assert.NoError(t, err)
-		assert.NotEmpty(t, token.Token)
-		assert.Equal(t, user.Email, token.Email)
-		assert.True(t, token.ExpiresAt.After(time.Now()))
+		assert.True(t, has)
 	}
 }
 
@@ -247,15 +250,8 @@ func TestResendVerification_ReplacesOldToken(t *testing.T) {
 	// GORM ignores boolean zero values, so explicitly update is_active
 	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
-	// Create an old token
-	oldToken := models.EmailVerificationToken{
-		UserID:    user.ID,
-		Token:     "old-token-123",
-		Email:     user.Email,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	database.Create(&oldToken)
+	// Issue an old token in the store
+	require.NoError(t, authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, "old-token-123", user.ID, 24*time.Hour))
 
 	router := gin.New()
 	router.POST("/auth/resend-verification", ResendVerification)
@@ -269,16 +265,15 @@ func TestResendVerification_ReplacesOldToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code == http.StatusOK {
-		// Old token should be deleted
-		var count int64
-		database.Model(&models.EmailVerificationToken{}).Where("token = ?", "old-token-123").Count(&count)
-		assert.Equal(t, int64(0), count)
-
-		// New token should exist
-		var newToken models.EmailVerificationToken
-		err := database.Where("user_id = ?", user.ID).First(&newToken).Error
+		// Old token should have been invalidated - no longer consumable.
+		_, ok, err := authHandlers.OneTimeTokens.Consume(tokenstore.KindEmailVerify, "old-token-123")
 		assert.NoError(t, err)
-		assert.NotEqual(t, "old-token-123", newToken.Token)
+		assert.False(t, ok, "old token should have been invalidated")
+
+		// A new token should exist for the user.
+		has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
+		assert.NoError(t, err)
+		assert.True(t, has, "a new token should have been issued")
 	}
 }
 
@@ -302,15 +297,8 @@ func TestVerifyEmail(t *testing.T) {
 	// GORM ignores boolean zero values, so explicitly update is_active
 	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
-	// Create a valid verification token
-	token := models.EmailVerificationToken{
-		UserID:    user.ID,
-		Token:     "valid-verification-token",
-		Email:     user.Email,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	database.Create(&token)
+	// Issue a valid verification token in the store
+	require.NoError(t, authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, "valid-verification-token", user.ID, 24*time.Hour))
 
 	router := gin.New()
 	router.POST("/auth/verify-email", VerifyEmail)
@@ -349,9 +337,9 @@ func TestVerifyEmail(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset user state for each test
 			database.Model(&user).Update("is_active", false)
-			// Delete old tokens and create fresh one
-			database.Where("user_id = ?", user.ID).Delete(&models.EmailVerificationToken{})
-			database.Create(&token)
+			// Invalidate old tokens and issue a fresh one
+			require.NoError(t, authHandlers.OneTimeTokens.Invalidate(tokenstore.KindEmailVerify, user.ID))
+			require.NoError(t, authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, "valid-verification-token", user.ID, 24*time.Hour))
 
 			jsonBody, _ := json.Marshal(tt.body)
 			req := httptest.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(jsonBody))
@@ -373,10 +361,10 @@ func TestVerifyEmail(t *testing.T) {
 				database.First(&updatedUser, user.ID)
 				assert.True(t, updatedUser.IsActive)
 
-				// Token should be deleted
-				var count int64
-				database.Model(&models.EmailVerificationToken{}).Where("user_id = ?", user.ID).Count(&count)
-				assert.Equal(t, int64(0), count)
+				// Token should have been consumed (single-use)
+				has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, user.ID)
+				assert.NoError(t, err)
+				assert.False(t, has)
 			}
 		})
 	}
@@ -402,15 +390,8 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 	// GORM ignores boolean zero values, so explicitly update is_active
 	database.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false)
 
-	// Create an expired token
-	expiredToken := models.EmailVerificationToken{
-		UserID:    user.ID,
-		Token:     "expired-token",
-		Email:     user.Email,
-		CreatedAt: time.Now().Add(-48 * time.Hour),
-		ExpiresAt: time.Now().Add(-24 * time.Hour), // Expired
-	}
-	database.Create(&expiredToken)
+	// Issue an already-expired token directly in the store (negative TTL).
+	require.NoError(t, authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, "expired-token", user.ID, -24*time.Hour))
 
 	router := gin.New()
 	router.POST("/auth/verify-email", VerifyEmail)

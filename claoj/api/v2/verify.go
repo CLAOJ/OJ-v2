@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/email"
@@ -28,37 +30,35 @@ func VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	// Find valid verification token
-	var verificationToken models.EmailVerificationToken
-	if err := db.DB.Where("token = ? AND expires_at > ?", req.Token, time.Now()).First(&verificationToken).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, apiError("invalid or expired verification token"))
-			return
-		}
+	// Atomically consume the verification token (single-use: GETDEL under
+	// the hood). ok=false covers both "never issued" and "already used /
+	// expired".
+	uid, ok, err := authHandlers.OneTimeTokens.Consume(tokenstore.KindEmailVerify, req.Token)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusBadRequest, apiError("invalid or expired verification token"))
 		return
 	}
 
 	// Mark user as having verified email
-	err := db.DB.Transaction(func(tx *gorm.DB) error {
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		// Update user's email verification status
 		// Note: Django uses is_active for this purpose in some configurations
 		// We'll update a profile field or set is_active to true
-		if err := tx.Model(&models.AuthUser{}).Where("id = ?", verificationToken.UserID).Update("is_active", true).Error; err != nil {
-			return err
-		}
-
-		// Delete all verification tokens for this user
-		if err := tx.Where("user_id = ?", verificationToken.UserID).Delete(&models.EmailVerificationToken{}).Error; err != nil {
-			return err
-		}
-
-		return nil
+		return tx.Model(&models.AuthUser{}).Where("id = ?", uid).Update("is_active", true).Error
 	})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to verify email"))
 		return
+	}
+
+	// Invalidate any other outstanding verification tokens for this user.
+	if err := authHandlers.OneTimeTokens.Invalidate(tokenstore.KindEmailVerify, uid); err != nil {
+		// Best-effort: user already verified successfully.
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Email verified successfully"})
@@ -108,8 +108,10 @@ func ResendVerification(c *gin.Context) {
 		return
 	}
 
-	// Delete any existing tokens for this user
-	db.DB.Where("user_id = ?", user.ID).Delete(&models.EmailVerificationToken{})
+	// Invalidate any existing tokens for this user
+	if err := authHandlers.OneTimeTokens.Invalidate(tokenstore.KindEmailVerify, user.ID); err != nil {
+		// Best-effort cleanup; proceed to issue a new token regardless.
+	}
 
 	// Generate new verification token
 	token := make([]byte, 32)
@@ -119,15 +121,9 @@ func ResendVerification(c *gin.Context) {
 	}
 	tokenStr := hex.EncodeToString(token)
 
-	// Store token in database
-	verificationToken := models.EmailVerificationToken{
-		UserID:    user.ID,
-		Token:     tokenStr,
-		Email:     user.Email,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	if err := db.DB.Create(&verificationToken).Error; err != nil {
+	// Store the token in the one-time token store (Redis-backed, outside
+	// the shared MySQL schema) instead of a v2-only DB table.
+	if err := authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, tokenStr, user.ID, 24*time.Hour); err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to create verification token"))
 		return
 	}
@@ -147,8 +143,10 @@ func ResendVerification(c *gin.Context) {
 
 // SendVerificationEmailOnRegistration sends verification email to newly registered user
 func SendVerificationEmailOnRegistration(userID uint, emailAddr, username string) error {
-	// Delete any existing tokens for this user
-	db.DB.Where("user_id = ?", userID).Delete(&models.EmailVerificationToken{})
+	// Invalidate any existing tokens for this user
+	if err := authHandlers.OneTimeTokens.Invalidate(tokenstore.KindEmailVerify, userID); err != nil {
+		// Best-effort cleanup; proceed to issue a new token regardless.
+	}
 
 	// Generate verification token
 	token := make([]byte, 32)
@@ -157,15 +155,9 @@ func SendVerificationEmailOnRegistration(userID uint, emailAddr, username string
 	}
 	tokenStr := hex.EncodeToString(token)
 
-	// Store token in database
-	verificationToken := models.EmailVerificationToken{
-		UserID:    userID,
-		Token:     tokenStr,
-		Email:     emailAddr,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	if err := db.DB.Create(&verificationToken).Error; err != nil {
+	// Store the token in the one-time token store (Redis-backed, outside
+	// the shared MySQL schema) instead of a v2-only DB table.
+	if err := authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, tokenStr, userID, 24*time.Hour); err != nil {
 		return err
 	}
 
