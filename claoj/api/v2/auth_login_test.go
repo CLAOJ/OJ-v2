@@ -11,6 +11,7 @@ import (
 
 	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -38,10 +39,12 @@ func setupLoginTestDB(t *testing.T) *gorm.DB {
 	database.AutoMigrate(
 		&models.AuthUser{},
 		&models.Profile{},
-		&models.RefreshToken{},
 		&models.TotpDevice{},
 		&models.EmailVerificationToken{},
 	)
+
+	// Refresh tokens now live in a session store, not the DB.
+	authHandlers.RefreshStore = tokenstore.NewMemoryStore()
 
 	return database
 }
@@ -381,7 +384,7 @@ func TestLogin_StoresRefreshToken(t *testing.T) {
 	db.DB = database
 
 	// Create active user
-	user := createTestUser(t, database, "testuser", "password123", true)
+	createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
 	router.POST("/auth/login", authHandlers.Login)
@@ -400,17 +403,22 @@ func TestLogin_StoresRefreshToken(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Check that refresh token was stored in database
-	var refreshToken models.RefreshToken
-	err := database.Where("user_id = ?", user.ID).First(&refreshToken).Error
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, refreshToken.Token)
-	assert.NotEmpty(t, refreshToken.FamilyID)
+	refreshToken, _ := response["refresh_token"].(string)
+	assert.NotEmpty(t, refreshToken)
+
+	// Check that refresh token was saved in the refresh-token store
+	entry, found, err := authHandlers.RefreshStore.Get(refreshToken)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.NotEmpty(t, entry.FamilyID)
 
 	// With remember_me, expiry should be ~30 days from now
 	expectedExpiryMin := time.Now().Add(29 * 24 * time.Hour)
 	expectedExpiryMax := time.Now().Add(31 * 24 * time.Hour)
-	assert.True(t, refreshToken.ExpiresAt.After(expectedExpiryMin) && refreshToken.ExpiresAt.Before(expectedExpiryMax),
+	assert.True(t, entry.ExpiresAt.After(expectedExpiryMin) && entry.ExpiresAt.Before(expectedExpiryMax),
 		"Refresh token expiry should be ~30 days from now")
 }
 
@@ -466,7 +474,7 @@ func TestLogin_UserAgentAndIP(t *testing.T) {
 	db.DB = database
 
 	// Create active user
-	user := createTestUser(t, database, "testuser", "password123", true)
+	createTestUser(t, database, "testuser", "password123", true)
 
 	router := gin.New()
 	router.POST("/auth/login", authHandlers.Login)
@@ -486,10 +494,15 @@ func TestLogin_UserAgentAndIP(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Check that user agent was stored
-	var refreshToken models.RefreshToken
-	err := database.Where("user_id = ?", user.ID).First(&refreshToken).Error
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.NotNil(t, refreshToken.UserAgent)
-	assert.True(t, strings.Contains(*refreshToken.UserAgent, "TestBrowser"))
+	refreshToken, _ := response["refresh_token"].(string)
+	assert.NotEmpty(t, refreshToken)
+
+	// Check that user agent was stored in the refresh-token store
+	entry, found, err := authHandlers.RefreshStore.Get(refreshToken)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.True(t, strings.Contains(entry.UserAgent, "TestBrowser"))
 }

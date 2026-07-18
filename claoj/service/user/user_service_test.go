@@ -29,7 +29,6 @@ func (s *UserServiceTestSuite) SetupTest() {
 		&models.AuthUser{},
 		&models.Profile{},
 		&models.Organization{},
-		&models.RefreshToken{},
 	)
 	s.Require().NoError(err)
 

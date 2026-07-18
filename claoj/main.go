@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/CLAOJ/claoj/api"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/bridge"
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/config"
@@ -11,6 +12,7 @@ import (
 	"github.com/CLAOJ/claoj/events"
 	"github.com/CLAOJ/claoj/jobs"
 	v2 "github.com/CLAOJ/claoj/api/v2"
+	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +26,17 @@ func main() {
 	// 3. Connect to dependencies
 	db.Connect()
 	cache.Connect()
+
+	// 3b. Wire up refresh-token session storage. Redis-backed when
+	// available so rotation-reuse detection survives restarts and works
+	// across multiple API instances; falls back to an in-memory store
+	// (single-process, resets on restart) if Redis isn't up.
+	if cache.Client != nil {
+		authHandlers.RefreshStore = tokenstore.NewRedisStore(cache.Client)
+	} else {
+		authHandlers.RefreshStore = tokenstore.NewMemoryStore()
+		log.Printf("warning: refresh sessions in-memory; logins reset on restart")
+	}
 
 	// 4. Start the Judge Bridge TCP server
 	judgeBridge := bridge.NewServer()

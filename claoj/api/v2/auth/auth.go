@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/cookie"
@@ -14,6 +15,13 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 )
+
+// RefreshStore persists refresh-token sessions (outside the shared MySQL
+// schema) so token rotation-reuse detection works across requests. It is
+// set once at startup in main.go (Redis-backed, or an in-memory fallback
+// when Redis is unavailable) and overridden with tokenstore.NewMemoryStore()
+// in tests.
+var RefreshStore tokenstore.Store
 
 // getLockoutRepo returns the lockout repository (nil if Redis not available)
 func getLockoutRepo() *lockout.Repository {
@@ -168,7 +176,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Store refresh token in database for revocation tracking
+	// Store refresh token for revocation tracking (rotation-reuse detection)
 	userAgent := c.Request.UserAgent()
 	clientIP := c.ClientIP()
 	refreshTokenTTL := 7 * 24 * time.Hour
@@ -177,15 +185,14 @@ func Login(c *gin.Context) {
 		refreshTokenTTL = 30 * 24 * time.Hour
 		cookieMaxAge = 30 * 24 * 60 * 60 // 30 days in seconds
 	}
-	refreshTokenModel := models.RefreshToken{
+	if err := RefreshStore.Save(refreshToken, tokenstore.Entry{
 		UserID:    user.ID,
-		Token:     refreshToken,
-		ExpiresAt: time.Now().Add(refreshTokenTTL),
-		UserAgent: &userAgent,
-		ClientIP:  &clientIP,
 		FamilyID:  familyID,
-	}
-	if err := db.DB.Create(&refreshTokenModel).Error; err != nil {
+		ExpiresAt: time.Now().Add(refreshTokenTTL),
+		CreatedAt: time.Now(),
+		UserAgent: userAgent,
+		ClientIP:  clientIP,
+	}); err != nil {
 		// Don't fail the login, just log the error
 	}
 
@@ -227,34 +234,45 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	// Check if token has been revoked
-	var refreshTokenModel models.RefreshToken
-	if err := db.DB.Where("token = ? AND user_id = ?", refreshToken, claims.UserID).First(&refreshTokenModel).Error; err != nil {
+	// Look up the session for this token.
+	entry, found, err := RefreshStore.Get(refreshToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to look up refresh token"})
+		return
+	}
+	if !found {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token not found"})
 		return
 	}
 
-	if refreshTokenModel.RevokedAt != nil {
+	if entry.Revoked {
+		// Token-reuse detected: this refresh token was already rotated out
+		// (or explicitly revoked) but is being presented again. That means
+		// either an attacker has a copy of an old token, or a legitimate
+		// client is replaying a stale one — either way we can't trust any
+		// token in this family anymore, so kill the whole family.
+		if err := RefreshStore.RevokeFamily(entry.FamilyID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token family"})
+			return
+		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token has been revoked"})
 		return
 	}
 
-	if refreshTokenModel.ExpiresAt.Before(time.Now()) {
+	if entry.ExpiresAt.Before(time.Now()) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token has expired"})
 		return
 	}
 
 	// Generate new token pair with same family ID (maintain original remember_me setting via family)
-	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, refreshTokenModel.FamilyID, false)
+	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, entry.FamilyID, false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
 	}
 
 	// Revoke old token and store new one
-	tx := db.DB.Begin()
-	if err := tx.Model(&refreshTokenModel).Update("revoked_at", time.Now()).Error; err != nil {
-		tx.Rollback()
+	if err := RefreshStore.Revoke(refreshToken); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token"})
 		return
 	}
@@ -262,25 +280,22 @@ func Refresh(c *gin.Context) {
 	// Store new refresh token - maintain same TTL as original
 	userAgent := c.Request.UserAgent()
 	clientIP := c.ClientIP()
-	newRefreshTokenModel := models.RefreshToken{
+	if err := RefreshStore.Save(newRefreshToken, tokenstore.Entry{
 		UserID:    claims.UserID,
-		Token:     newRefreshToken,
-		ExpiresAt: refreshTokenModel.ExpiresAt, // Maintain original expiration
-		UserAgent: &userAgent,
-		ClientIP:  &clientIP,
 		FamilyID:  familyID,
-	}
-	if err := tx.Create(&newRefreshTokenModel).Error; err != nil {
-		tx.Rollback()
+		ExpiresAt: entry.ExpiresAt, // Maintain original expiration
+		CreatedAt: time.Now(),
+		UserAgent: userAgent,
+		ClientIP:  clientIP,
+	}); err != nil {
 		// Don't fail the request, just log the error
 	}
-	tx.Commit()
 
 	// Set httpOnly cookies for tokens
 	cookieHelper := cookie.Helper()
 
 	// Calculate remaining time for refresh token cookie based on original expiration
-	remainingSeconds := int(refreshTokenModel.ExpiresAt.Sub(time.Now()).Seconds())
+	remainingSeconds := int(entry.ExpiresAt.Sub(time.Now()).Seconds())
 	if remainingSeconds < 0 {
 		remainingSeconds = cookie.RefreshTokenDuration // Fallback to 7 days if somehow expired
 	}
@@ -322,21 +337,9 @@ func Logout(c *gin.Context) {
 		return
 	}
 
-	// Verify the token first
-	claims, err := auth.VerifyToken(refreshToken, "refresh")
-	if err != nil {
-		// Token is invalid/expired, but still try to revoke it
-		revokedNow := time.Now()
-		db.DB.Model(&models.RefreshToken{}).
-			Where("token = ?", refreshToken).
-			Update("revoked_at", &revokedNow)
-	} else {
-		// Revoke the refresh token in database
-		revokedNow := time.Now()
-		db.DB.Model(&models.RefreshToken{}).
-			Where("token = ? AND user_id = ?", refreshToken, claims.UserID).
-			Update("revoked_at", &revokedNow)
-	}
+	// Revoke the refresh token (best-effort: logout still succeeds and
+	// clears cookies even if the token was already gone/unknown).
+	RefreshStore.Revoke(refreshToken)
 
 	// Clear cookies
 	cookieHelper.ClearAuthTokens(c)
@@ -347,20 +350,27 @@ func Logout(c *gin.Context) {
 // RevokeAllSessions - POST /api/v2/auth/revoke-all-sessions
 // Revokes all refresh tokens for the current user (force logout all devices)
 func RevokeAllSessions(c *gin.Context) {
-	userID := c.GetUint("userID")
-	if userID == 0 {
+	// BUG FIX: the auth middleware sets "user_id" on the context (see
+	// auth/middleware.go), not "userID" — the old c.GetUint("userID") read
+	// always returned the zero value, so this handler 401'd for everyone.
+	rawUserID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID, ok := rawUserID.(uint)
+	if !ok || userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	revokedNow := time.Now()
-	result := db.DB.Model(&models.RefreshToken{}).
-		Where("user_id = ? AND revoked_at IS NULL", userID).
-		Update("revoked_at", &revokedNow)
+	if err := RefreshStore.RevokeAllForUser(userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke sessions"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":          "all sessions revoked",
-		"sessions_revoked": result.RowsAffected,
+		"message": "all sessions revoked",
 	})
 }
 

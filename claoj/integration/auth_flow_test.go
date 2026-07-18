@@ -238,6 +238,71 @@ func TestAuthFlow_TokenRefresh(t *testing.T) {
 	assert.NotEqual(t, newRefreshToken, refreshToken)
 }
 
+// TestAuthFlow_RefreshTokenReuse_RevokesWholeFamily is the regression test
+// for rotation-reuse detection: replaying a refresh token that has already
+// been rotated out must not just be rejected — it must burn the entire
+// token family (including the live successor token issued during the
+// legitimate rotation), since a replayed token is the signature of a
+// leaked/stolen refresh token.
+func TestAuthFlow_RefreshTokenReuse_RevokesWholeFamily(t *testing.T) {
+	testDB := integration.SetupIntegrationDB(t)
+	defer CleanupDB(testDB)
+
+	integration.CreateTestUser(testDB.DB, "testuser", "Password123!", true)
+
+	gin := integration.TestRouter()
+	gin.POST("/auth/login", authHandlers.Login)
+	gin.POST("/auth/refresh", authHandlers.Refresh)
+
+	// 1. Login to get the original refresh token.
+	loginResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method: "POST",
+		Path:   "/auth/login",
+		Body: map[string]interface{}{
+			"username": "testuser",
+			"password": "Password123!",
+		},
+	})
+	assert.Equal(t, http.StatusOK, loginResp.Code)
+	originalRefreshToken := loginResp.JSONBody["refresh_token"].(string)
+
+	// JWT `iat` has second precision, so wait out the second before
+	// rotating or the newly-minted token would be byte-identical to the
+	// original (same claims, same second) instead of a distinct token.
+	time.Sleep(1100 * time.Millisecond)
+
+	// 2. Rotate it once — this revokes originalRefreshToken and issues a
+	// live successor token in the same family.
+	firstRefresh := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + originalRefreshToken},
+	})
+	assert.Equal(t, http.StatusOK, firstRefresh.Code)
+	liveSuccessorToken := firstRefresh.JSONBody["refresh_token"].(string)
+	assert.NotEqual(t, originalRefreshToken, liveSuccessorToken)
+
+	// 3. Replay the now-revoked original token — this must be rejected...
+	reuseResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + originalRefreshToken},
+	})
+	assert.Equal(t, http.StatusUnauthorized, reuseResp.Code)
+
+	// ...AND must revoke the live successor token too, even though it was
+	// never itself replayed. If reuse detection only revoked the replayed
+	// token, the successor below would still refresh successfully — which
+	// is exactly the gap rotation-reuse detection exists to close.
+	successorAfterReuse := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + liveSuccessorToken},
+	})
+	assert.Equal(t, http.StatusUnauthorized, successorAfterReuse.Code,
+		"replaying a revoked token must revoke its whole family, including the live successor token")
+}
+
 // TestAuthFlow_RememberMe tests login with remember_me option
 func TestAuthFlow_RememberMe(t *testing.T) {
 	testDB := integration.SetupIntegrationDB(t)
@@ -309,11 +374,11 @@ func TestAuthFlow_LogoutRevokesToken(t *testing.T) {
 	assert.Equal(t, http.StatusOK, logoutResp.Code)
 	assert.Equal(t, "logged out successfully", logoutResp.JSONBody["message"])
 
-	// Verify that the token was revoked in the database
-	var dbToken models.RefreshToken
-	err := testDB.DB.Where("token = ?", refreshToken).First(&dbToken).Error
-	assert.NoError(t, err, "Token should exist in database")
-	assert.NotNil(t, dbToken.RevokedAt, "Token should be revoked after logout")
+	// Verify that the token was revoked in the refresh-token store
+	entry, found, err := authHandlers.RefreshStore.Get(refreshToken)
+	assert.NoError(t, err)
+	assert.True(t, found, "Token should still be present in the store")
+	assert.True(t, entry.Revoked, "Token should be revoked after logout")
 }
 
 // Helper to clean up database

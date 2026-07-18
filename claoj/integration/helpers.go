@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/jobs"
@@ -71,7 +73,6 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 		&models.ContestProblem{},
 		&models.ContestParticipation{},
 		&models.ContestSubmission{},
-		&models.RefreshToken{},
 		&models.EmailVerificationToken{},
 		&models.TotpDevice{},
 		&models.Organization{},
@@ -83,6 +84,11 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 
 	// Set global DB for handlers
 	db.DB = database
+
+	// Refresh tokens now live in a session store, not the DB — give every
+	// integration test a fresh in-memory store so Login/Refresh/Logout
+	// don't hit a nil RefreshStore.
+	authHandlers.RefreshStore = tokenstore.NewMemoryStore()
 
 	// Set mock asynq client for jobs package
 	setupMockAsynq()
@@ -332,7 +338,6 @@ func CleanupDB(t *testing.T, testDB *TestDB) {
 	testDB.DB.Exec("DELETE FROM judge_submissionsource")
 	testDB.DB.Exec("DELETE FROM judge_submission")
 	testDB.DB.Exec("DELETE FROM judge_problem")
-	testDB.DB.Exec("DELETE FROM refresh_token")
 	testDB.DB.Exec("DELETE FROM email_verification_token")
 	testDB.DB.Exec("DELETE FROM judge_profile")
 	testDB.DB.Exec("DELETE FROM auth_user")
