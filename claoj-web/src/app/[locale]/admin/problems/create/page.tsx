@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { adminProblemApi } from '@/lib/adminApi';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
@@ -9,6 +10,7 @@ import { Code2, ArrowLeft } from 'lucide-react';
 import { Link } from '@/navigation';
 
 export default function CreateProblemPage() {
+    const t = useTranslations('Admin');
     const router = useRouter();
 
     const createMutation = useMutation({
@@ -37,10 +39,10 @@ export default function CreateProblemPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Code2 className="text-primary" size={32} />
-                        Create Problem
+                        {t('problems.createTitle')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Create a new problem with test cases
+                        {t('problems.createSubtitle')}
                     </p>
                 </div>
             </div>

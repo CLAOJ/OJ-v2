@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { adminProblemApi } from '@/lib/adminApi';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
@@ -9,6 +10,7 @@ import { Code2, ArrowLeft, Database, MessageSquare } from 'lucide-react';
 import { Link } from '@/navigation';
 
 export default function EditProblemPage() {
+    const t = useTranslations('Admin');
     const params = useParams();
     const router = useRouter();
     const code = params.code as string;
@@ -36,7 +38,7 @@ export default function EditProblemPage() {
     if (isLoadingProblem) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading problem...</div>
+                <div className="text-muted-foreground">{t('problems.loadingProblem')}</div>
             </div>
         );
     }
@@ -71,7 +73,7 @@ export default function EditProblemPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Code2 className="text-primary" size={32} />
-                        Edit Problem
+                        {t('problems.editProblemTitle')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {problemData?.name} ({code})
@@ -82,14 +84,14 @@ export default function EditProblemPage() {
                     className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                 >
                     <Database size={18} />
-                    Manage Data
+                    {t('problems.manageDataLink')}
                 </Link>
                 <Link
                     href={`/admin/problems/${code}/clarifications`}
                     className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
                 >
                     <MessageSquare size={18} />
-                    Clarifications
+                    {t('problems.clarificationsLink')}
                 </Link>
             </div>
 

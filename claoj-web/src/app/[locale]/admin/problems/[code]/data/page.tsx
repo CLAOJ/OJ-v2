@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { adminProblemDataApi, adminProblemApi } from '@/lib/adminApi';
 import { ArrowLeft, Database, Upload, Trash2, Edit2, FileText, Check, X, Loader2, Eye } from 'lucide-react';
 import { Link } from '@/navigation';
@@ -36,6 +37,7 @@ interface NewTestCase {
 }
 
 export default function ProblemDataPage() {
+    const t = useTranslations('Admin');
     const params = useParams();
     const code = params.code as string;
     const queryClient = useQueryClient();
@@ -107,10 +109,10 @@ export default function ProblemDataPage() {
     });
 
     const handleDelete = useCallback((testCaseId: number) => {
-        if (confirm('Are you sure you want to delete this test case? This action cannot be undone.')) {
+        if (confirm(t('problemData.deleteConfirm'))) {
             deleteMutation.mutate(testCaseId);
         }
-    }, [deleteMutation]);
+    }, [deleteMutation, t]);
 
     const handleReorder = useCallback((newOrder: number[]) => {
         if (!problemData?.test_cases) return;
@@ -124,7 +126,7 @@ export default function ProblemDataPage() {
 
     const handleSingleUpload = useCallback(() => {
         if (!newTestCase.input.trim() || !newTestCase.output.trim()) {
-            alert('Please provide both input and output data');
+            alert(t('problemData.missingInputOutputAlert'));
             return;
         }
 
@@ -134,7 +136,7 @@ export default function ProblemDataPage() {
         formData.append('type', 'single');
 
         uploadMutation.mutate(formData);
-    }, [newTestCase, uploadMutation]);
+    }, [newTestCase, uploadMutation, t]);
 
     const handleBatchUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -184,7 +186,7 @@ export default function ProblemDataPage() {
                 <div className="flex-1">
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Database className="text-primary" size={32} />
-                        Problem Data Management
+                        {t('problemData.title')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {problem?.name} ({code})
@@ -195,7 +197,7 @@ export default function ProblemDataPage() {
                     className="px-4 py-2 rounded-xl border hover:bg-muted transition-colors flex items-center gap-2"
                 >
                     <Edit2 size={18} />
-                    Edit Problem
+                    {t('problems.editProblemTitle')}
                 </Link>
             </div>
 
@@ -204,22 +206,22 @@ export default function ProblemDataPage() {
                 <TabButton
                     active={activeTab === 'testcases'}
                     onClick={() => setActiveTab('testcases')}
-                    label={`Test Cases (${testCases.length})`}
+                    label={t('problemData.testCasesTab', { count: testCases.length })}
                 />
                 <TabButton
                     active={activeTab === 'files'}
                     onClick={() => setActiveTab('files')}
-                    label="Files"
+                    label={t('problemData.filesTab')}
                 />
                 <TabButton
                     active={activeTab === 'config'}
                     onClick={() => setActiveTab('config')}
-                    label="Configuration"
+                    label={t('problemData.configTab')}
                 />
                 <TabButton
                     active={activeTab === 'pdf'}
                     onClick={() => setActiveTab('pdf')}
-                    label="PDF Statement"
+                    label={t('problemData.pdfTab')}
                 />
             </div>
 
@@ -271,7 +273,10 @@ export default function ProblemDataPage() {
                         >
                             <div className="flex items-center justify-between p-4 border-b">
                                 <h3 className="font-bold text-lg">
-                                    Test Case #{selectedTestCase?.order} - {viewingContent.type === 'input' ? 'Input' : 'Output'} Data
+                                    {t('problemData.testCaseContentTitle', {
+                                        order: selectedTestCase?.order ?? '',
+                                        type: viewingContent.type === 'input' ? t('problemData.inputLabel') : t('problemData.outputLabel')
+                                    })}
                                 </h3>
                                 <div className="flex items-center gap-2">
                                     <button
@@ -284,7 +289,7 @@ export default function ProblemDataPage() {
                                         ) : (
                                             <Check size={16} />
                                         )}
-                                        Save Changes
+                                        {t('common.saveChanges')}
                                     </button>
                                     <button
                                         onClick={() => setViewingContent(null)}
@@ -364,46 +369,47 @@ function TestCasesTab({
     isUploading,
     isDeleting
 }: TestCasesTabProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="space-y-4">
             {/* Upload Section */}
             <div className="p-6 border rounded-xl bg-muted/30">
                 <div className="flex items-center gap-2 mb-4">
                     <Upload size={20} className="text-primary" />
-                    <h2 className="font-semibold text-lg">Upload Test Cases</h2>
+                    <h2 className="font-semibold text-lg">{t('problemData.uploadSectionTitle')}</h2>
                 </div>
 
                 <div className="flex gap-4 mb-4">
                     <UploadModeButton
                         active={uploadMode === 'single'}
                         onClick={() => setUploadMode('single')}
-                        label="Single Test Case"
+                        label={t('problemData.singleModeButton')}
                     />
                     <UploadModeButton
                         active={uploadMode === 'batch'}
                         onClick={() => setUploadMode('batch')}
-                        label="Batch Upload (ZIP)"
+                        label={t('problemData.batchModeButton')}
                     />
                 </div>
 
                 {uploadMode === 'single' ? (
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium mb-2">Input Data</label>
+                            <label className="block text-sm font-medium mb-2">{t('problemData.inputDataLabel')}</label>
                             <textarea
                                 value={newTestCase.input}
                                 onChange={(e) => setNewTestCase({ ...newTestCase, input: e.target.value })}
                                 className="w-full min-h-[150px] p-3 border rounded-lg font-mono text-sm bg-background"
-                                placeholder="Enter input data..."
+                                placeholder={t('problemData.inputDataPlaceholder')}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-2">Output Data</label>
+                            <label className="block text-sm font-medium mb-2">{t('problemData.outputDataLabel')}</label>
                             <textarea
                                 value={newTestCase.output}
                                 onChange={(e) => setNewTestCase({ ...newTestCase, output: e.target.value })}
                                 className="w-full min-h-[150px] p-3 border rounded-lg font-mono text-sm bg-background"
-                                placeholder="Enter output data..."
+                                placeholder={t('problemData.outputDataPlaceholder')}
                             />
                         </div>
                         <button
@@ -412,7 +418,7 @@ function TestCasesTab({
                             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
                             {isUploading && <Loader2 size={16} className="animate-spin" />}
-                            Upload Test Case
+                            {t('problemData.uploadTestCaseButton')}
                         </button>
                     </div>
                 ) : (
@@ -432,14 +438,14 @@ function TestCasesTab({
                             >
                                 <Upload size={48} className="text-muted-foreground" />
                                 <span className="text-sm text-muted-foreground">
-                                    Click to select files or drag and drop
+                                    {t('problemData.dragDropHint')}
                                 </span>
                             </label>
                         </div>
                         {isUploading && (
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <Loader2 size={16} className="animate-spin" />
-                                Uploading files...
+                                {t('problemData.uploadingFilesMsg')}
                             </div>
                         )}
                     </div>
@@ -449,7 +455,7 @@ function TestCasesTab({
             {/* Test Cases List */}
             <div className="border rounded-xl overflow-hidden">
                 <div className="bg-muted/30 px-4 py-3 border-b font-medium">
-                    Test Cases ({testCases.length})
+                    {t('problemData.testCasesTab', { count: testCases.length })}
                 </div>
                 <div className="divide-y">
                     <AnimatePresence>
@@ -466,25 +472,25 @@ function TestCasesTab({
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-medium">Test Case #{testCase.order}</span>
-                                        <span className="text-xs text-muted-foreground">ID: {testCase.id}</span>
+                                        <span className="font-medium">{t('problemData.testCaseNumber', { order: testCase.order })}</span>
+                                        <span className="text-xs text-muted-foreground">{t('problemData.idLabel', { id: testCase.id })}</span>
                                     </div>
                                     <div className="text-sm text-muted-foreground mt-1">
-                                        Input: {testCase.input_file} | Output: {testCase.output_file}
+                                        {t('problemData.inputOutputFiles', { input: testCase.input_file, output: testCase.output_file })}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => onView(testCase, 'input')}
                                         className="p-2 hover:bg-muted rounded-lg transition-colors"
-                                        title="View/Edit Input"
+                                        title={t('problemData.viewEditInputTitle')}
                                     >
                                         <Eye size={18} />
                                     </button>
                                     <button
                                         onClick={() => onView(testCase, 'output')}
                                         className="p-2 hover:bg-muted rounded-lg transition-colors"
-                                        title="View/Edit Output"
+                                        title={t('problemData.viewEditOutputTitle')}
                                     >
                                         <FileText size={18} />
                                     </button>
@@ -492,7 +498,7 @@ function TestCasesTab({
                                         onClick={() => onDelete(testCase.id)}
                                         disabled={isDeleting}
                                         className="p-2 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
-                                        title="Delete"
+                                        title={t('common.delete')}
                                     >
                                         <Trash2 size={18} />
                                     </button>
@@ -503,8 +509,8 @@ function TestCasesTab({
                     {testCases.length === 0 && (
                         <div className="p-8 text-center text-muted-foreground">
                             <Database size={48} className="mx-auto mb-4 opacity-50" />
-                            <p className="font-medium">No test cases yet</p>
-                            <p className="text-sm mt-1">Upload test cases using the form above</p>
+                            <p className="font-medium">{t('problemData.noTestCases')}</p>
+                            <p className="text-sm mt-1">{t('problemData.noTestCasesHint')}</p>
                         </div>
                     )}
                 </div>

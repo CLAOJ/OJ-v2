@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminProblem } from '@/types';
 import { adminProblemApi } from '@/lib/adminApi';
@@ -22,6 +23,7 @@ import {
 import { Dialog } from '@/components/ui/Dialog';
 
 export default function AdminProblemPage() {
+    const t = useTranslations('Admin');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
@@ -62,9 +64,9 @@ export default function AdminProblemPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Code2 className="text-primary" size={32} />
-                        Problems
+                        {t('problems.title')}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage problems and their settings</p>
+                    <p className="text-muted-foreground mt-1">{t('problems.subtitle')}</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -72,7 +74,7 @@ export default function AdminProblemPage() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
-                            placeholder="Search problems..."
+                            placeholder={t('problems.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -83,7 +85,7 @@ export default function AdminProblemPage() {
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                     >
                         <Plus size={18} />
-                        Create
+                        {t('common.create')}
                     </Link>
                 </div>
             </div>
@@ -98,17 +100,17 @@ export default function AdminProblemPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Problem</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Stats</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Group</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">Actions</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colProblem')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colStats')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colGroup')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {filteredProblems.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                                            No problems found
+                                            {t('problems.noProblemsFound')}
                                         </td>
                                     </tr>
                                 ) : (
@@ -123,37 +125,37 @@ export default function AdminProblemPage() {
                                                         {problem.name}
                                                     </Link>
                                                     {problem.partial && (
-                                                        <Badge variant="secondary" className="text-[10px]">Partial</Badge>
+                                                        <Badge variant="secondary" className="text-[10px]">{t('problems.partialBadge')}</Badge>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <span className="font-mono">{problem.code}</span>
                                                     {problem.is_public ? (
-                                                        <Badge variant="success" className="text-[10px]">Public</Badge>
+                                                        <Badge variant="success" className="text-[10px]">{t('problems.publicBadge')}</Badge>
                                                     ) : (
-                                                        <Badge variant="destructive" className="text-[10px]">Private</Badge>
+                                                        <Badge variant="destructive" className="text-[10px]">{t('problems.privateBadge')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1 text-sm">
                                                     <span className="text-muted-foreground font-bold">
-                                                        {problem.points.toFixed(1)} Points
+                                                        {t('problems.pointsLabel', { count: problem.points.toFixed(1) })}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
-                                                        {Math.round(problem.ac_rate * 100)}% AC Rate
+                                                        {t('problems.acRateLabel', { rate: Math.round(problem.ac_rate * 100) })}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
-                                                        {problem.user_count} Users
+                                                        {t('problems.usersLabel', { count: problem.user_count })}
                                                     </span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-muted-foreground">
-                                                    {problem.group_name || 'Uncategorized'}
+                                                    {problem.group_name || t('problems.uncategorized')}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground mt-1">
-                                                    {problem.is_manually_managed ? 'Manually Managed' : 'Auto'}
+                                                    {problem.is_manually_managed ? t('problems.manuallyManaged') : t('problems.autoManaged')}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -161,14 +163,14 @@ export default function AdminProblemPage() {
                                                     <Link
                                                         href={`/admin/problems/${problem.code}/edit`}
                                                         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                                        title="Edit problem"
+                                                        title={t('problems.editTitle')}
                                                     >
                                                         <Edit size={18} />
                                                     </Link>
                                                     <Link
                                                         href={`/admin/problems/${problem.code}/data`}
                                                         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                                        title="Manage data"
+                                                        title={t('problems.manageDataTitle')}
                                                     >
                                                         <Database size={18} />
                                                     </Link>
@@ -178,7 +180,7 @@ export default function AdminProblemPage() {
                                                             setCloneModalOpen(true);
                                                         }}
                                                         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                                        title="Clone problem"
+                                                        title={t('problems.cloneTitle')}
                                                     >
                                                         <Copy size={18} />
                                                     </button>
@@ -186,7 +188,7 @@ export default function AdminProblemPage() {
                                                         onClick={() => deleteMutation.mutate(problem.code)}
                                                         disabled={deleteMutation.isPending}
                                                         className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                                        title="Delete problem"
+                                                        title={t('problems.deleteTitle')}
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -203,7 +205,7 @@ export default function AdminProblemPage() {
                     {filteredProblems.length > 0 && (
                         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
                             <div className="text-sm text-muted-foreground">
-                                Showing {filteredProblems.length} of {data?.total || 0} problems
+                                {t('problems.showingCount', { shown: filteredProblems.length, total: data?.total || 0 })}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -211,7 +213,7 @@ export default function AdminProblemPage() {
                                     disabled={page === 1}
                                     className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
                                 >
-                                    Previous
+                                    {t('common.previous')}
                                 </button>
                                 <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
                                     {page}
@@ -221,7 +223,7 @@ export default function AdminProblemPage() {
                                     disabled={filteredProblems.length < 50}
                                     className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
                                 >
-                                    Next
+                                    {t('common.next')}
                                 </button>
                             </div>
                         </div>
@@ -241,6 +243,7 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
     problemName: string;
     onSuccess: () => void;
 }) {
+    const t = useTranslations('Admin');
     const [newCode, setNewCode] = useState('');
     const [newName, setNewName] = useState('');
     const [copyData, setCopyData] = useState(false);
@@ -260,10 +263,10 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
             onOpenChange(false);
             setNewCode('');
             setNewName('');
-            alert(`Problem cloned successfully! New problem: ${data.data.new_problem.name} (${data.data.new_problem.code})`);
+            alert(t('problems.cloneSuccess', { name: data.data.new_problem.name, code: data.data.new_problem.code }));
         },
         onError: (err: any) => {
-            alert(err.response?.data?.error || 'Failed to clone problem');
+            alert(err.response?.data?.error || t('problems.cloneError'));
         },
     });
 
@@ -279,32 +282,32 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
                 <div className="bg-card rounded-2xl border shadow-2xl w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
-                            <h2 className="text-xl font-bold">Clone Problem</h2>
+                            <h2 className="text-xl font-bold">{t('problems.cloneModalTitle')}</h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Creating a copy of &quot;{problemName}&quot;
+                                {t('problems.cloneModalSubtitle', { name: problemName })}
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">New Problem Code</label>
+                                <label className="block text-sm font-medium mb-2">{t('problems.newCodeLabel')}</label>
                                 <input
                                     type="text"
                                     value={newCode}
                                     onChange={(e) => setNewCode(e.target.value)}
-                                    placeholder="e.g., APLUSB2"
+                                    placeholder={t('problems.newCodePlaceholder')}
                                     className="w-full px-4 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">New Problem Name</label>
+                                <label className="block text-sm font-medium mb-2">{t('problems.newNameLabel')}</label>
                                 <input
                                     type="text"
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
-                                    placeholder="e.g., A + B (Clone)"
+                                    placeholder={t('problems.newNamePlaceholder')}
                                     className="w-full px-4 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                                     required
                                 />
@@ -318,7 +321,7 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
                                         onChange={(e) => setCopyAuthors(e.target.checked)}
                                         className="rounded"
                                     />
-                                    <span className="text-sm">Copy authors, curators, and testers</span>
+                                    <span className="text-sm">{t('problems.copyAuthorsLabel')}</span>
                                 </label>
 
                                 <label className="flex items-center gap-2 cursor-pointer">
@@ -328,7 +331,7 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
                                         onChange={(e) => setCopySettings(e.target.checked)}
                                         className="rounded"
                                     />
-                                    <span className="text-sm">Copy allowed languages, types, and organizations</span>
+                                    <span className="text-sm">{t('problems.copySettingsLabel')}</span>
                                 </label>
 
                                 <label className="flex items-center gap-2 cursor-pointer">
@@ -338,7 +341,7 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
                                         onChange={(e) => setCopyData(e.target.checked)}
                                         className="rounded"
                                     />
-                                    <span className="text-sm">Copy test cases and data files (requires manual verification)</span>
+                                    <span className="text-sm">{t('problems.copyDataLabel')}</span>
                                 </label>
                             </div>
                         </div>
@@ -349,14 +352,14 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
                                 onClick={() => onOpenChange(false)}
                                 className="flex-1 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors font-medium"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 disabled={cloneMutation.isPending}
                                 className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
                             >
-                                {cloneMutation.isPending ? 'Cloning...' : 'Clone Problem'}
+                                {cloneMutation.isPending ? t('common.cloning') : t('problems.cloneModalTitle')}
                             </button>
                         </div>
                     </form>
