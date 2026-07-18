@@ -53,3 +53,4 @@ data/
 tmp/
 temp/
 *.tmp
+.superpowers/
