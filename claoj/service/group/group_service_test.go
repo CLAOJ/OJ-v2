@@ -81,6 +81,77 @@ func TestCreateGroup_DuplicateName_ReturnsErrGroupNameExists(t *testing.T) {
 	require.ErrorIs(t, err, ErrGroupNameExists)
 }
 
+func TestCreateGroup_UnknownPermissionID_ReturnsErrUnknownPermissionID(t *testing.T) {
+	setupGroupDB(t)
+	svc := NewGroupService()
+
+	p1 := seedPermission(t, "judge", "edit_all_problem")
+
+	_, err := svc.CreateGroup("Judges", []uint{p1, 9999})
+	require.ErrorIs(t, err, ErrUnknownPermissionID)
+
+	var groupCount int64
+	require.NoError(t, db.DB.Model(&models.AuthGroup{}).Count(&groupCount).Error)
+	require.Equal(t, int64(0), groupCount, "no group row should have been created")
+
+	var permCount int64
+	require.NoError(t, db.DB.Model(&models.AuthPermission{}).Count(&permCount).Error)
+	require.Equal(t, int64(1), permCount, "no phantom auth_permission row should have been created")
+}
+
+func TestCreateGroup_DuplicateValidPermissionIDs_DoesNotError(t *testing.T) {
+	setupGroupDB(t)
+	svc := NewGroupService()
+
+	p1 := seedPermission(t, "judge", "edit_all_problem")
+
+	created, err := svc.CreateGroup("Judges", []uint{p1, p1})
+	require.NoError(t, err)
+
+	detail, err := svc.GetGroup(created.ID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []uint{p1}, detail.PermissionIDs)
+}
+
+func TestUpdateGroup_UnknownPermissionID_ReturnsErrUnknownPermissionIDAndLeavesPermissionsUnchanged(t *testing.T) {
+	setupGroupDB(t)
+	svc := NewGroupService()
+
+	p1 := seedPermission(t, "judge", "edit_all_problem")
+
+	created, err := svc.CreateGroup("Judges", []uint{p1})
+	require.NoError(t, err)
+
+	badPerms := []uint{9999}
+	err = svc.UpdateGroup(created.ID, nil, &badPerms)
+	require.ErrorIs(t, err, ErrUnknownPermissionID)
+
+	detail, err := svc.GetGroup(created.ID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []uint{p1}, detail.PermissionIDs, "existing permission set must be unchanged")
+
+	var permCount int64
+	require.NoError(t, db.DB.Model(&models.AuthPermission{}).Count(&permCount).Error)
+	require.Equal(t, int64(1), permCount, "no phantom auth_permission row should have been created")
+}
+
+func TestUpdateGroup_DuplicateValidPermissionIDs_DoesNotError(t *testing.T) {
+	setupGroupDB(t)
+	svc := NewGroupService()
+
+	p1 := seedPermission(t, "judge", "edit_all_problem")
+
+	created, err := svc.CreateGroup("Judges", nil)
+	require.NoError(t, err)
+
+	dupPerms := []uint{p1, p1}
+	require.NoError(t, svc.UpdateGroup(created.ID, nil, &dupPerms))
+
+	detail, err := svc.GetGroup(created.ID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []uint{p1}, detail.PermissionIDs)
+}
+
 func TestUpdateGroup_ReplacesPermissionSet(t *testing.T) {
 	setupGroupDB(t)
 	svc := NewGroupService()

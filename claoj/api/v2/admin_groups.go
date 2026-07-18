@@ -101,6 +101,10 @@ func AdminGroupCreate(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, apiError("group name cannot be empty"))
 			return
 		}
+		if errors.Is(err, group.ErrUnknownPermissionID) {
+			c.JSON(http.StatusBadRequest, apiError("one or more permission IDs do not exist"))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
@@ -141,6 +145,10 @@ func AdminGroupUpdate(c *gin.Context) {
 		}
 		if errors.Is(err, group.ErrEmptyGroupName) {
 			c.JSON(http.StatusBadRequest, apiError("group name cannot be empty"))
+			return
+		}
+		if errors.Is(err, group.ErrUnknownPermissionID) {
+			c.JSON(http.StatusBadRequest, apiError("one or more permission IDs do not exist"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

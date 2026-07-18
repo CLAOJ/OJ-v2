@@ -99,6 +99,12 @@ func (s *GroupService) CreateGroup(name string, permissionIDs []uint) (*GroupSum
 		return nil, ErrGroupNameExists
 	}
 
+	if len(permissionIDs) > 0 {
+		if err := validatePermissionIDs(permissionIDs); err != nil {
+			return nil, err
+		}
+	}
+
 	g := models.AuthGroup{Name: name}
 	if err := db.DB.Create(&g).Error; err != nil {
 		return nil, err
@@ -130,6 +136,12 @@ func (s *GroupService) UpdateGroup(id uint, name *string, permissionIDs *[]uint)
 			return ErrGroupNotFound
 		}
 		return err
+	}
+
+	if permissionIDs != nil && len(*permissionIDs) > 0 {
+		if err := validatePermissionIDs(*permissionIDs); err != nil {
+			return err
+		}
 	}
 
 	if name != nil && *name != g.Name {
@@ -253,13 +265,44 @@ func (s *GroupService) RemoveUserFromGroup(userID, groupID uint) error {
 	return nil
 }
 
+// validatePermissionIDs verifies that every ID in ids refers to an existing
+// auth_permission row. Without this check, GORM's Association("Permissions").
+// Replace happily INSERTs a phantom near-empty auth_permission row for any
+// unknown ID (on schemas without FK enforcement) or throws a 500 (where FKs
+// are enforced), instead of failing cleanly. Duplicate IDs in the input are
+// de-duplicated before comparing against the row count, so passing the same
+// valid ID twice is not falsely rejected.
+func validatePermissionIDs(ids []uint) error {
+	unique := make(map[uint]struct{}, len(ids))
+	for _, id := range ids {
+		unique[id] = struct{}{}
+	}
+
+	var count int64
+	if err := db.DB.Model(&models.AuthPermission{}).Where("id IN ?", ids).Count(&count).Error; err != nil {
+		return err
+	}
+	if int(count) != len(unique) {
+		return ErrUnknownPermissionID
+	}
+	return nil
+}
+
 // idsToPermissions builds the []models.AuthPermission slice GORM needs to
 // reference existing auth_permission rows by primary key for
-// Association("Permissions").Replace.
+// Association("Permissions").Replace. Duplicate IDs are collapsed to a
+// single entry: auth_group_permissions has no unique constraint on
+// (group_id, permission_id), so handing GORM the same ID twice would insert
+// two join rows for one permission.
 func idsToPermissions(ids []uint) []models.AuthPermission {
-	perms := make([]models.AuthPermission, len(ids))
-	for i, id := range ids {
-		perms[i] = models.AuthPermission{ID: id}
+	seen := make(map[uint]struct{}, len(ids))
+	perms := make([]models.AuthPermission, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		perms = append(perms, models.AuthPermission{ID: id})
 	}
 	return perms
 }
