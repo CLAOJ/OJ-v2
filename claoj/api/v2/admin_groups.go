@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/group"
@@ -76,6 +77,11 @@ func AdminGroupDetail(c *gin.Context) {
 
 // AdminGroupCreate - POST /api/admin/groups
 func AdminGroupCreate(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
 	var input struct {
 		Name          string `json:"name" binding:"required"`
 		PermissionIDs []uint `json:"permission_ids"`
@@ -104,6 +110,11 @@ func AdminGroupCreate(c *gin.Context) {
 
 // AdminGroupUpdate - PATCH /api/admin/group/:id
 func AdminGroupUpdate(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
 	var id uint
 	if err := parseUint(c.Param("id"), &id); err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
@@ -141,6 +152,11 @@ func AdminGroupUpdate(c *gin.Context) {
 
 // AdminGroupDelete - DELETE /api/admin/group/:id
 func AdminGroupDelete(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
 	var id uint
 	if err := parseUint(c.Param("id"), &id); err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
@@ -202,6 +218,11 @@ func resolveAuthUserID(c *gin.Context, profileID uint) (uint, bool) {
 
 // AdminUserAddGroup - POST /api/admin/user/:id/groups
 func AdminUserAddGroup(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
@@ -239,6 +260,11 @@ func AdminUserAddGroup(c *gin.Context) {
 
 // AdminUserRemoveGroup - DELETE /api/admin/user/:id/groups/:groupId
 func AdminUserRemoveGroup(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
