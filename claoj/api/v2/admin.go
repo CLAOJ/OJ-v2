@@ -11,6 +11,7 @@ import (
 	"github.com/CLAOJ/claoj/service/blogpost"
 	"github.com/CLAOJ/claoj/service/comment"
 	"github.com/CLAOJ/claoj/service/contest"
+	"github.com/CLAOJ/claoj/service/group"
 	"github.com/CLAOJ/claoj/service/language"
 	"github.com/CLAOJ/claoj/service/license"
 	"github.com/CLAOJ/claoj/service/miscconfig"
@@ -43,6 +44,7 @@ var (
 	submissionService   *submission.SubmissionService
 	contestService      *contest.ContestService
 	userService         *user.UserService
+	groupService        *group.GroupService
 )
 
 // getProblemService returns the problem service instance
@@ -163,6 +165,14 @@ func getUserService() *user.UserService {
 		userService = user.NewUserService()
 	}
 	return userService
+}
+
+// getGroupService returns the Django group (role) management service instance
+func getGroupService() *group.GroupService {
+	if groupService == nil {
+		groupService = group.NewGroupService()
+	}
+	return groupService
 }
 
 // countRecords counts the number of records in a table

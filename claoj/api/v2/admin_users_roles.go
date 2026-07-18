@@ -6,8 +6,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/user"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ============================================================
@@ -147,11 +151,48 @@ func AdminUserUpdate(c *gin.Context) {
 		AddOrganizationIDs       []uint  `json:"add_organization_ids,omitempty"`
 		RemoveOrganizationAdmin  []uint  `json:"remove_organization_admin,omitempty"`
 		AddOrganizationAdmin     []uint  `json:"add_organization_admin,omitempty"`
+		IsStaff                  *bool   `json:"is_staff"`
+		IsSuperuser              *bool   `json:"is_superuser"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
+	}
+
+	// is_staff / is_superuser changes are superuser-only. This writes
+	// directly to Django's auth_user row (id, is_staff, is_superuser),
+	// which is a different primary key than the judge_profile.id used as
+	// :id throughout this handler family -- resolve via the profile.
+	if input.IsStaff != nil || input.IsSuperuser != nil {
+		if !auth.GetAccess(c).IsSuperuser {
+			c.JSON(http.StatusForbidden, apiError("superuser access required to change staff/superuser status"))
+			return
+		}
+
+		var profile models.Profile
+		if err := db.DB.Select("user_id").First(&profile, uint(userID)).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, apiError("user not found"))
+				return
+			}
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+
+		authUserUpdates := make(map[string]interface{})
+		if input.IsStaff != nil {
+			authUserUpdates["is_staff"] = *input.IsStaff
+		}
+		if input.IsSuperuser != nil {
+			authUserUpdates["is_superuser"] = *input.IsSuperuser
+		}
+		if err := db.DB.Model(&models.AuthUser{}).Where("id = ?", profile.UserID).Updates(authUserUpdates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+
+		auth.BumpPermVersion()
 	}
 
 	if err := getUserService().UpdateUser(user.UpdateUserRequest{

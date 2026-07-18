@@ -98,6 +98,16 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/user/:id/ban", v2.AdminUserBan)
 			admin.POST("/admin/user/:id/unban", v2.AdminUserUnban)
 
+			// Django group (role) management — writes rows in Django's own auth tables
+			admin.GET("/admin/groups", v2.AdminGroupList)
+			admin.GET("/admin/group/:id", v2.AdminGroupDetail)
+			admin.POST("/admin/groups", v2.AdminGroupCreate)
+			admin.PATCH("/admin/group/:id", v2.AdminGroupUpdate)
+			admin.DELETE("/admin/group/:id", v2.AdminGroupDelete)
+			admin.GET("/admin/permissions", v2.AdminPermissionList)
+			admin.POST("/admin/user/:id/groups", v2.AdminUserAddGroup)
+			admin.DELETE("/admin/user/:id/groups/:groupId", v2.AdminUserRemoveGroup)
+
 			// Contests
 			admin.GET("/admin/contests", v2.AdminContestList)
 			admin.GET("/admin/contest/:key", v2.AdminContestDetail)
