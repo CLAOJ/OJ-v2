@@ -33,6 +33,7 @@ import {
     GitCompare
 } from 'lucide-react';
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
+import { statusKey } from '@/lib/submissionStatus';
 import dayjs from 'dayjs';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
@@ -66,64 +67,52 @@ interface SubmissionDetail {
     error?: string;
 }
 
-const STATUS_INFO: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+const STATUS_INFO: Record<string, { color: string; icon: React.ReactNode }> = {
     'AC': {
-        label: 'Accepted',
         color: 'text-emerald-500',
         icon: <CheckCircle2 size={20} />
     },
     'WA': {
-        label: 'Wrong Answer',
         color: 'text-red-500',
         icon: <XCircle size={20} />
     },
     'TLE': {
-        label: 'Time Limit Exceeded',
         color: 'text-amber-500',
         icon: <Timer size={20} />
     },
     'MLE': {
-        label: 'Memory Limit Exceeded',
         color: 'text-amber-500',
         icon: <MemoryStick size={20} />
     },
     'OLE': {
-        label: 'Output Limit Exceeded',
         color: 'text-amber-500',
         icon: <AlertCircle size={20} />
     },
     'RTE': {
-        label: 'Runtime Error',
         color: 'text-purple-500',
         icon: <AlertCircle size={20} />
     },
     'CE': {
-        label: 'Compilation Error',
         color: 'text-blue-500',
         icon: <FileCode size={20} />
     },
     'IE': {
-        label: 'Internal Error',
         color: 'text-zinc-500',
         icon: <AlertCircle size={20} />
     },
     'QU': {
-        label: 'Queued',
         color: 'text-zinc-400',
         icon: <Clock size={20} />
     },
     'P': {
-        label: 'Processing',
         color: 'text-blue-400',
         icon: <Loader2 size={20} className="animate-spin" />
     },
     'G': {
-        label: 'Grading',
         color: 'text-blue-400',
         icon: <Loader2 size={20} className="animate-spin" />
     },
     'D': {
-        label: 'Completed',
         color: 'text-emerald-500',
         icon: <CheckCircle2 size={20} />
     },
@@ -177,7 +166,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     }, [sub]);
 
     const handleRejudge = async () => {
-        if (!confirm('Are you sure you want to rejudge this submission?')) return;
+        if (!confirm(t('rejudgeConfirm'))) return;
 
         setIsRejudging(true);
         setRejudgeError(null);
@@ -186,7 +175,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
             // Refresh submission data
             queryClient.invalidateQueries({ queryKey: ['submission', id] });
         } catch (err: any) {
-            setRejudgeError(err.response?.data?.error || 'Failed to rejudge submission');
+            setRejudgeError(err.response?.data?.error || t('rejudgeError'));
         } finally {
             setIsRejudging(false);
         }
@@ -194,7 +183,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
 
     const isAdmin = user?.is_admin || user?.is_staff;
     const resultInfo = sub?.result ? STATUS_INFO[sub.result] : null;
-    const statusInfo = sub?.status ? STATUS_INFO[sub.status] || { label: sub.status, color: 'text-zinc-500', icon: <AlertCircle size={20} /> } : null;
+    const statusInfo = sub?.status ? STATUS_INFO[sub.status] || { color: 'text-zinc-500', icon: <AlertCircle size={20} /> } : null;
 
     if (isLoading) {
         return (
@@ -212,14 +201,14 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center space-y-4">
                 <AlertCircle size={48} className="mx-auto text-muted-foreground" />
-                <h2 className="text-2xl font-bold">Submission not found</h2>
-                <p className="text-muted-foreground">The submission you&apos;re looking for doesn&apos;t exist.</p>
+                <h2 className="text-2xl font-bold">{t('notFound')}</h2>
+                <p className="text-muted-foreground">{t('notFoundDesc')}</p>
                 <Link
                     href="/submissions"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
                 >
                     <ArrowLeft size={18} />
-                    Back to Submissions
+                    {t('backToSubmissions')}
                 </Link>
             </div>
         </div>
@@ -230,7 +219,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
             {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Link href="/submissions" className="hover:text-foreground transition-colors">
-                    Submissions
+                    {t('title')}
                 </Link>
                 <ChevronRight size={14} />
                 <span className="font-medium text-foreground">#{id}</span>
@@ -247,7 +236,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 flex-wrap">
                             <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-                                Submission #{id}
+                                {t('submissionNumber')}{id}
                             </h1>
                             {sub.result && (
                                 <Badge
@@ -256,7 +245,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                                 >
                                     <span className="flex items-center gap-1.5">
                                         {resultInfo?.icon}
-                                        {sub.result}
+                                        {t(`status.${statusKey(sub.result)}`)}
                                     </span>
                                 </Badge>
                             )}
@@ -264,7 +253,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             {['QU', 'P', 'G'].includes(sub.status || '') && (
                                 <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold animate-pulse">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    Live Updates
+                                    {t('liveUpdates')}
                                 </span>
                             )}
                         </div>
@@ -314,7 +303,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     {/* Right: Stats */}
                     <div className="flex gap-3 flex-wrap">
                         <div className="px-6 py-4 rounded-2xl bg-primary/5 border border-primary/10 text-center min-w-[100px]">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Score</span>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">{t('score')}</span>
                             <span className="text-2xl font-black text-primary">
                                 {sub.points !== null ? sub.points.toFixed(0) : '-'}
                                 {sub.case_total > 0 && (
@@ -323,13 +312,13 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             </span>
                         </div>
                         <div className="px-6 py-4 rounded-2xl bg-card border text-center min-w-[100px]">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Time</span>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">{t('time')}</span>
                             <span className="text-2xl font-black">
                                 {sub.time !== null ? `${sub.time.toFixed(2)}s` : '-'}
                             </span>
                         </div>
                         <div className="px-6 py-4 rounded-2xl bg-card border text-center min-w-[100px]">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Memory</span>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">{t('memory')}</span>
                             <span className="text-2xl font-black">
                                 {sub.memory !== null ? `${sub.memory.toFixed(1)}MB` : '-'}
                             </span>
@@ -340,7 +329,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                 {/* Admin Actions */}
                 {isAdmin && (
                     <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
-                        <span className="text-sm text-muted-foreground font-medium">Admin Actions:</span>
+                        <span className="text-sm text-muted-foreground font-medium">{t('adminActions')}:</span>
                         <button
                             onClick={handleRejudge}
                             disabled={isRejudging}
@@ -351,20 +340,20 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             ) : (
                                 <RefreshCw size={16} />
                             )}
-                            Rejudge
+                            {t('rejudge')}
                         </button>
                     </div>
                 )}
 
                 {/* Compare Actions */}
                 <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
-                    <span className="text-sm text-muted-foreground font-medium">Compare:</span>
+                    <span className="text-sm text-muted-foreground font-medium">{t('compare')}:</span>
                     <div className="flex items-center gap-2">
                         <input
                             type="text"
                             value={compareId}
                             onChange={(e) => setCompareId(e.target.value)}
-                            placeholder="Submission ID"
+                            placeholder={t('submissionIdPlaceholder')}
                             className="w-32 px-3 py-2 rounded-xl bg-muted border border-muted-foreground/20 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
                         />
                         <Link
@@ -377,7 +366,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             )}
                         >
                             <GitCompare size={16} />
-                            Compare
+                            {t('compare')}
                         </Link>
                     </div>
                 </div>
@@ -395,7 +384,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-bold flex items-center gap-2">
                             <FileCode size={20} className="text-primary" />
-                            Source Code
+                            {t('sourceCode')}
                         </h2>
                     </div>
                     <SubmissionSource
@@ -414,11 +403,11 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-bold flex items-center gap-2">
                             <Cpu size={20} className="text-primary" />
-                            Test Case Results
+                            {t('testCaseResults')}
                         </h2>
                         {sub.test_cases.length > 0 && (
                             <span className="text-sm text-muted-foreground">
-                                {sub.test_cases.filter(tc => tc.status === 'AC').length}/{sub.test_cases.length} passed
+                                {sub.test_cases.filter(tc => tc.status === 'AC').length}/{sub.test_cases.length} {t('passed')}
                             </span>
                         )}
                     </div>
@@ -428,11 +417,11 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     ) : (
                         <div className="p-8 rounded-2xl border bg-card text-center">
                             <Cpu size={40} className="mx-auto text-muted-foreground mb-4" />
-                            <p className="text-muted-foreground font-medium">No test case results available</p>
+                            <p className="text-muted-foreground font-medium">{t('noTestCaseResults')}</p>
                             <p className="text-sm text-muted-foreground/70 mt-1">
                                 {sub.status === 'CE'
-                                    ? 'Compilation failed before test cases could run'
-                                    : 'Test cases will appear once judging is complete'}
+                                    ? t('compilationFailedMsg')
+                                    : t('judgingPendingMsg')}
                             </p>
                         </div>
                     )}

@@ -23,6 +23,7 @@ import {
     Cpu
 } from 'lucide-react';
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
+import { statusKey } from '@/lib/submissionStatus';
 import { useState } from 'react';
 
 interface Submission {
@@ -50,19 +51,19 @@ interface SingleSubmissionWidgetProps {
     onClick?: () => void;
 }
 
-const STATUS_INFO: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    'AC': { label: 'Accepted', color: 'text-emerald-500', icon: <CheckCircle2 size={16} /> },
-    'WA': { label: 'Wrong Answer', color: 'text-red-500', icon: <XCircle size={16} /> },
-    'TLE': { label: 'Time Limit Exceeded', color: 'text-amber-500', icon: <Timer size={16} /> },
-    'MLE': { label: 'Memory Limit Exceeded', color: 'text-amber-500', icon: <MemoryStick size={16} /> },
-    'OLE': { label: 'Output Limit Exceeded', color: 'text-amber-500', icon: <AlertCircle size={16} /> },
-    'RTE': { label: 'Runtime Error', color: 'text-purple-500', icon: <AlertCircle size={16} /> },
-    'CE': { label: 'Compilation Error', color: 'text-blue-500', icon: <FileCode size={16} /> },
-    'IE': { label: 'Internal Error', color: 'text-zinc-500', icon: <AlertCircle size={16} /> },
-    'QU': { label: 'Queued', color: 'text-zinc-400', icon: <Clock size={16} /> },
-    'P': { label: 'Processing', color: 'text-blue-400', icon: <AlertCircle size={16} /> },
-    'G': { label: 'Grading', color: 'text-blue-400', icon: <AlertCircle size={16} /> },
-    'D': { label: 'Completed', color: 'text-emerald-500', icon: <CheckCircle2 size={16} /> },
+const STATUS_INFO: Record<string, { color: string; icon: React.ReactNode }> = {
+    'AC': { color: 'text-emerald-500', icon: <CheckCircle2 size={16} /> },
+    'WA': { color: 'text-red-500', icon: <XCircle size={16} /> },
+    'TLE': { color: 'text-amber-500', icon: <Timer size={16} /> },
+    'MLE': { color: 'text-amber-500', icon: <MemoryStick size={16} /> },
+    'OLE': { color: 'text-amber-500', icon: <AlertCircle size={16} /> },
+    'RTE': { color: 'text-purple-500', icon: <AlertCircle size={16} /> },
+    'CE': { color: 'text-blue-500', icon: <FileCode size={16} /> },
+    'IE': { color: 'text-zinc-500', icon: <AlertCircle size={16} /> },
+    'QU': { color: 'text-zinc-400', icon: <Clock size={16} /> },
+    'P': { color: 'text-blue-400', icon: <AlertCircle size={16} /> },
+    'G': { color: 'text-blue-400', icon: <AlertCircle size={16} /> },
+    'D': { color: 'text-emerald-500', icon: <CheckCircle2 size={16} /> },
 };
 
 export default function SingleSubmissionWidget({
@@ -108,7 +109,7 @@ export default function SingleSubmissionWidget({
                 "bg-card border rounded-2xl overflow-hidden p-6 text-center"
             )}>
                 <AlertCircle size={32} className="mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-muted-foreground">Submission not found</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('notFound')}</p>
             </div>
         );
     }
@@ -160,17 +161,17 @@ export default function SingleSubmissionWidget({
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-black">Submission #{sub.id}</h3>
+                    <h3 className="text-lg font-black">{t('submissionNumber')}{sub.id}</h3>
                     {sub.result && (
                         <Badge variant={getStatusVariant(sub.result)} className="font-bold">
                             {resultInfo?.icon}
-                            <span className="ml-1">{resultInfo?.label}</span>
+                            <span className="ml-1">{t(`status.${statusKey(sub.result)}`)}</span>
                         </Badge>
                     )}
                     {isGrading && (
                         <span className="flex items-center gap-1 text-xs font-bold text-primary">
                             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                            Live
+                            {t('live')}
                         </span>
                     )}
                 </div>
@@ -205,23 +206,23 @@ export default function SingleSubmissionWidget({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <StatBox
                     icon={<Cpu size={18} />}
-                    label="Score"
+                    label={t('score')}
                     value={sub.points !== null ? `${sub.points.toFixed(0)}/${sub.case_total}` : '-'}
                     highlight
                 />
                 <StatBox
                     icon={<Timer size={18} />}
-                    label="Time"
+                    label={t('time')}
                     value={sub.time !== null ? `${sub.time.toFixed(2)}s` : '-'}
                 />
                 <StatBox
                     icon={<MemoryStick size={18} />}
-                    label="Memory"
+                    label={t('memory')}
                     value={sub.memory !== null ? `${sub.memory.toFixed(1)}MB` : '-'}
                 />
                 <StatBox
                     icon={<FileCode size={18} />}
-                    label="Language"
+                    label={t('language')}
                     value={sub.language.toUpperCase()}
                     mono
                 />
@@ -231,9 +232,9 @@ export default function SingleSubmissionWidget({
             {sub.case_total > 0 && (
                 <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-muted-foreground font-medium">Test Cases</span>
+                        <span className="text-muted-foreground font-medium">{t('testCases')}</span>
                         <span className="font-bold">
-                            {sub.case_points}/{sub.case_total} passed
+                            {sub.case_points}/{sub.case_total} {t('passed')}
                         </span>
                     </div>
                     <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
@@ -244,7 +245,7 @@ export default function SingleSubmissionWidget({
                             aria-valuenow={(sub.case_points / sub.case_total) * 100}
                             aria-valuemin={0}
                             aria-valuemax={100}
-                            aria-label="Test cases passed"
+                            aria-label={t('testCasesPassedAria')}
                         />
                     </div>
                 </div>
