@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	authv2 "github.com/CLAOJ/claoj/api/v2/auth"
 	v2 "github.com/CLAOJ/claoj/api/v2"
+	authv2 "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
@@ -15,8 +15,8 @@ import (
 // TestSchemaParity verifies every GORM model SELECTs cleanly against a real
 // deployment database. A real deployment database is:
 //
-//	1. Django's schema, via:  cd OJ && python manage.py migrate  (against an empty MySQL db)
-//	2. PLUS the OJ-v2 additive schema, via: mysql < OJ-v2/scripts/v2_runtime_tables.sql
+//  1. Django's schema, via:  cd OJ && python manage.py migrate  (against an empty MySQL db)
+//  2. PLUS the OJ-v2 additive schema, via: mysql < OJ-v2/scripts/v2_runtime_tables.sql
 //
 // (2) is required because OJ-v2 retains several v2-only tables/columns on
 // top of the Django schema -- see docs/schema-audit.md section 3
