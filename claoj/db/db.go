@@ -41,5 +41,7 @@ func Connect() {
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
 
+	RegisterDDLGuard(DB)
+
 	log.Println("db: connected successfully")
 }

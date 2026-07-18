@@ -264,3 +264,79 @@ The old `auth/permissions.go` constant file and `DefaultPermissionSets` are dele
 - **Existing v2 deployments** already using judge_role data: group memberships
   must be recreated as Django groups by an admin (one-time manual step; the old
   tables remain readable until cleanup).
+
+## Amendments (implementation findings)
+
+Findings from Task 13 (DDL guard, schema audit, parity test, cleanup scripts)
+that refine or correct the design above.
+
+**(a) Retained-table exception.** The goal of "zero DDL, zero migrations,
+schema 100% owned by Django" holds for the Django-owned tables, but the
+column-by-column audit (`docs/schema-audit.md`) found that OJ-v2 also owns a
+set of **additive-only** objects that Django never creates, reads, or
+writes. Decision (2026-07-19, explicit user sign-off): keep all of them —
+none are deleted or renamed. The full retained set:
+
+- `notification`, `notification_preference` — in-app notifications and
+  per-user delivery preferences (live 2FA/notification data).
+- `totp_device`, `backup_code` — TOTP 2FA secret storage and backup codes.
+- `oauth_user_link` — Google/GitHub OAuth login linking. Not `judge_`-prefixed,
+  no collision risk.
+- `moss_result` — cached MOSS plagiarism-check results. Not `judge_`-prefixed,
+  no collision risk; distinct from Django's own `judge_contestmoss` table,
+  which OJ-v2 does not use.
+- `judge_commentrevision` — comment edit-history, backing a live API endpoint
+  (`GET /comment/:id/revisions`) and frontend feature. Uses the `judge_`
+  prefix Django reserves for its own migrations — not currently claimed by
+  any Django migration, but re-check before any future Django schema upgrade.
+  Kept as-is, not renamed, per the explicit decision.
+- `judge_contestclarification` — a v2-only, contest-scoped clarification Q&A
+  feature (distinct from Django's real "clarification" mechanism, which is
+  just `ProblemClarification` rows filtered by the contest's problems). Same
+  `judge_` prefix caveat as above. Kept as-is, not renamed.
+- 4 additive columns on the Django-owned `judge_solution` table:
+  `is_official`, `valid_until`, `summary`, `language` — v2 editorial
+  metadata (official badge, expiry, summary, language selection) read/written
+  by `api/v2/solution.go`. (The original decision request named 3 of these;
+  `summary` was found during finalization and included for completeness —
+  see `docs/schema-audit.md` section 3.)
+
+`scripts/v2_runtime_tables.sql` is the one-time, idempotent script that
+provisions this entire retained set on a Django-migrated database, for a
+side-by-side OJ-v2 deployment. `scripts/cleanup_v2_tables.sql` is unrelated
+and unchanged in intent — it only drops the genuinely-removed v2 objects
+(the old role/permission system, audit log, refresh/password-reset/email-
+verify tokens, `judge_contest.max_submissions`, `judge_problem.suggestion_*`).
+
+**(b) Mono font stays the system stack.** Section "Font swap" (line 224)
+assumed JetBrains Mono has Vietnamese glyph coverage; on closer check it does
+not ship a Vietnamese subset on Google Fonts. The code editor / monospace
+surfaces therefore keep the system monospace stack (Consolas on Windows,
+Menlo/SF Mono on macOS, etc.), which does cover Vietnamese diacritics, rather
+than switching to a Google-Fonts-hosted JetBrains Mono.
+
+**(c) One-time tokens also moved to Redis.** The "Redis durability" risk
+noted above for refresh tokens/audit log applies equally to
+`password_reset_token` and `email_verification_token` — both were also
+short-lived, single-use tokens with no legitimate reason to live in the
+Django-owned MySQL schema. Same principle, same trade-off: they moved to
+Redis alongside refresh tokens (accepted trade-off: re-login on Redis loss;
+enable AOF persistence in deployment if that matters).
+
+**(d) Task ordering.** Some of the Task-5-scoped deletions were pulled
+forward into Task 3. Mid-Task-3, `go build ./auth/...` failed with 8
+"redeclared in this block" errors: the pre-existing legacy authorization
+system (`claoj/auth/authorization.go`, `claoj/auth/permissions.go`) already
+defined `CanEditProblem`, `CanEditContest`, `CanViewProblem`,
+`CanViewContest` in the same package Task 3 needed to add Django-permission-
+mapped versions of those same functions to — an unresolvable name collision,
+not a design choice. The coordinator authorized deleting
+`claoj/auth/authorization.go`, `claoj/auth/permissions.go`,
+`claoj/auth/permissions_test.go`, and the whole `claoj/db/migrations/`
+directory (7 files) as part of Task 3 to unblock the build, ahead of Task 5
+where that deletion was originally scoped (`db/migrations` had no runner
+wired into any executable path, so removing it early had no runtime effect).
+Task 5 then deleted the remaining custom RBAC (`models.Role`,
+`service/role/`, the role/permission admin endpoints, etc.) on top of that.
+This is a sequencing note only — the net end state matches the original
+plan.
