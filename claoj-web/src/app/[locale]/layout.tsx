@@ -1,7 +1,7 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
+import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
@@ -12,9 +12,10 @@ import Footer from "@/components/layout/Footer";
 import { DEFAULT_SEO, SITE_URL, generateWebSiteJsonLd, generateOrganizationJsonLd } from '@/lib/seo';
 import JsonLd from '@/components/seo/JsonLd';
 
-const outfit = Outfit({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-outfit",
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-be-vietnam-pro",
 });
 
 const siteUrl = process.env.SITE_URL || "https://beta.claoj.edu.vn";
@@ -114,7 +115,7 @@ export default async function RootLayout({
         <JsonLd data={generateWebSiteJsonLd()} />
         <JsonLd data={generateOrganizationJsonLd()} />
       </head>
-      <body className={`${outfit.variable} font-sans antialiased min-h-screen flex flex-col`}>
+      <body className={`${beVietnamPro.variable} font-sans antialiased min-h-screen flex flex-col`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <QueryProvider>
