@@ -103,7 +103,6 @@ export interface UserDetail {
     organizations: { id: number; name: string }[];
     last_access: string;
     date_joined: string;
-    roles?: { id: number; name: string; display_name: string; color: string }[];
 }
 
 export interface Contest {
@@ -588,29 +587,29 @@ export interface UserListItem {
 }
 
 // ============================================================
-// ROLE & PERMISSION TYPES
+// GROUP & PERMISSION TYPES
 // ============================================================
 
-export interface Permission {
+export interface PermissionInfo {
     id: number;
-    code: string;
+    codename: string;
     name: string;
-    description?: string;
-    category: string;
+    app_label: string;
+    model: string;
 }
 
-export interface Role {
+export interface Group {
     id: number;
     name: string;
-    display_name: string;
-    description?: string;
-    color: string;
-    is_default: boolean;
-    permissions: Permission[];
-}
-
-export interface RoleWithUserCount extends Role {
     user_count: number;
+    permission_count: number;
+}
+
+export interface GroupDetail {
+    id: number;
+    name: string;
+    permission_ids: number[];
+    users: { id: number; username: string }[];
 }
 
 // ============================================================
@@ -1159,7 +1158,6 @@ export type AdminProblemListResponse = AdminListResponse<AdminProblem>;
 export type AdminJudgeListResponse = AdminListResponse<AdminJudge>;
 export type AdminOrganizationListResponse = AdminListResponse<AdminOrganization>;
 export type AdminSubmissionListResponse = AdminListResponse<AdminSubmission>;
-export type RoleListResponse = AdminListResponse<Role>;
 export type AdminSolutionListResponse = AdminListResponse<AdminSolution>;
 export type AdminTicketListResponse = AdminListResponse<AdminTicket>;
 

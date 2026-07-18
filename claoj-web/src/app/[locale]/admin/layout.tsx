@@ -101,8 +101,8 @@ const adminLinks = [
         icon: BarChart3
     },
     {
-        href: '/admin/roles',
-        label: 'Roles',
+        href: '/admin/groups',
+        label: 'Groups',
         icon: Shield
     },
     {

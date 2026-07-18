@@ -11,8 +11,9 @@ import type {
     AdminJudgeUpdateRequest,
     AdminOrganization,
     AdminSubmission,
-    Role,
-    Permission,
+    Group,
+    GroupDetail,
+    PermissionInfo,
     ProblemData,
     ProblemDataFile,
     ProblemDataUpdateRequest,
@@ -57,7 +58,6 @@ import type {
     AdminProblemGroupUpdateRequest,
     AdminProblemTypeCreateRequest,
     AdminProblemTypeUpdateRequest,
-    RoleListResponse,
     AdminSolutionListResponse,
     AdminTicketListResponse,
     AdminNavigationBar,
@@ -409,51 +409,44 @@ export const adminSubmissionApi = {
 };
 
 // ============================================================
-// ADMIN ROLES & PERMISSIONS API
+// ADMIN GROUPS & PERMISSIONS API
 // ============================================================
 
 
-export interface RoleCreateRequest {
+export interface GroupCreateRequest {
     name: string;
-    display_name: string;
-    description?: string;
-    color?: string;
-    is_default?: boolean;
+    permission_ids: number[];
+}
+
+export interface GroupUpdateRequest {
+    name?: string;
     permission_ids?: number[];
 }
 
-export interface RoleUpdateRequest {
-    display_name?: string;
-    description?: string;
-    color?: string;
-    is_default?: boolean;
-    permission_ids?: number[];
-}
-
-export const adminRolesApi = {
+export const adminGroupsApi = {
     list: () =>
-        api.get<RoleListResponse>('/admin/roles'),
+        api.get<{ data: Group[] }>('/admin/groups'),
 
     detail: (id: number) =>
-        api.get<Role>(`/admin/role/${id}`),
+        api.get<GroupDetail>(`/admin/group/${id}`),
 
-    create: (data: RoleCreateRequest) =>
-        api.post<{ success: boolean; role: Role }>('/admin/roles', data),
+    create: (data: GroupCreateRequest) =>
+        api.post<{ id: number; name: string }>('/admin/groups', data),
 
-    update: (id: number, data: RoleUpdateRequest) =>
-        api.patch<{ success: boolean; role: Role }>(`/admin/role/${id}`, data),
+    update: (id: number, data: GroupUpdateRequest) =>
+        api.patch<{ id: number; name: string }>(`/admin/group/${id}`, data),
 
     delete: (id: number) =>
-        api.delete(`/admin/role/${id}`),
+        api.delete(`/admin/group/${id}`),
 
     permissions: () =>
-        api.get<{ data: Permission[] }>('/admin/permissions'),
+        api.get<{ data: PermissionInfo[] }>('/admin/permissions'),
 
-    assignRole: (profileId: number, roleId: number) =>
-        api.post<{ success: boolean }>(`/admin/profile/${profileId}/roles`, { role_id: roleId }),
+    addUser: (profileId: number, groupId: number) =>
+        api.post<{ success: boolean }>(`/admin/user/${profileId}/groups`, { group_id: groupId }),
 
-    removeRole: (profileId: number, roleId: number) =>
-        api.delete(`/admin/profile/${profileId}/roles/${roleId}`),
+    removeUser: (profileId: number, groupId: number) =>
+        api.delete(`/admin/user/${profileId}/groups/${groupId}`),
 };
 
 // ============================================================
