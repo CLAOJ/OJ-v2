@@ -69,8 +69,9 @@ func (s *GroupService) GetGroup(id uint) (*GroupDetail, error) {
 
 	var users []GroupUser
 	if err := db.DB.Table("auth_user").
-		Select("auth_user.id AS id, auth_user.username AS username").
+		Select("judge_profile.id AS id, auth_user.username AS username").
 		Joins("JOIN auth_user_groups ON auth_user_groups.user_id = auth_user.id").
+		Joins("JOIN judge_profile ON judge_profile.user_id = auth_user.id").
 		Where("auth_user_groups.group_id = ?", id).
 		Order("auth_user.username ASC").
 		Scan(&users).Error; err != nil {

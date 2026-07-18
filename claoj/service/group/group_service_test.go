@@ -20,6 +20,7 @@ func setupGroupDB(t *testing.T) {
 	require.NoError(t, database.AutoMigrate(
 		&models.AuthUser{}, &models.AuthGroup{}, &models.DjangoContentType{},
 		&models.AuthPermission{}, &models.AuthUserGroup{}, &models.AuthGroupPermission{},
+		&models.Profile{},
 	))
 	db.DB = database
 }
@@ -40,6 +41,18 @@ func newUser(t *testing.T, username string) models.AuthUser {
 	u := models.AuthUser{Username: username, IsActive: true}
 	require.NoError(t, db.DB.Create(&u).Error)
 	return u
+}
+
+// newProfile creates a judge_profile row for the given auth_user, mirroring
+// the pattern in api/v2/admin_groups_test.go's newProfileForAdminGroups.
+// GetGroup's member list must return judge_profile.id (not auth_user.id) so
+// its output is consistent with the judge_profile.id the /admin/user/:id
+// route family expects.
+func newProfile(t *testing.T, userID uint) models.Profile {
+	t.Helper()
+	p := models.Profile{UserID: userID, Timezone: "UTC"}
+	require.NoError(t, db.DB.Create(&p).Error)
+	return p
 }
 
 func TestCreateGroup_WithPermissions_ListShowsCounts(t *testing.T) {
@@ -238,7 +251,14 @@ func TestAddRemoveUserFromGroup(t *testing.T) {
 
 	created, err := svc.CreateGroup("Judges", nil)
 	require.NoError(t, err)
+	// Seed a throwaway auth_user first so alice's auth_user.id and
+	// judge_profile.id diverge (both tables auto-increment from 1
+	// independently) -- otherwise this assertion would pass trivially
+	// against either id space.
+	_ = newUser(t, "offset")
 	user := newUser(t, "alice")
+	profile := newProfile(t, user.ID)
+	require.NotEqual(t, user.ID, profile.ID, "test setup must make auth_user.id and judge_profile.id diverge")
 
 	require.NoError(t, svc.AddUserToGroup(user.ID, created.ID))
 
@@ -246,7 +266,7 @@ func TestAddRemoveUserFromGroup(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, detail.Users, 1)
 	require.Equal(t, "alice", detail.Users[0].Username)
-	require.Equal(t, user.ID, detail.Users[0].ID)
+	require.Equal(t, profile.ID, detail.Users[0].ID, "GetGroup must return judge_profile.id, matching the id space the /admin/user/:id/groups routes expect")
 
 	list, err := svc.ListGroups()
 	require.NoError(t, err)
