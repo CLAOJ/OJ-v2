@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -225,7 +226,7 @@ func ProblemStatementPDF(c *gin.Context) {
 	code := c.Param("code")
 
 	var problem models.Problem
-	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").Where("code = ?", code).First(&problem).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
 		return
 	}
@@ -236,25 +237,11 @@ func ProblemStatementPDF(c *gin.Context) {
 		return
 	}
 
-	// Check if problem is public or user has access
-	if !problem.IsPublic {
-		userID := uint(0)
-		if uid, exists := c.Get("user_id"); exists {
-			userID = uid.(uint)
-		}
-		// Check if user is author, curator, or staff
-		var count int64
-		db.DB.Table("judge_problem_authors").Where("problem_id = ? AND profile_id IN (SELECT id FROM judge_profile WHERE user_id = ?)", problem.ID, userID).Count(&count)
-		if count == 0 {
-			db.DB.Table("judge_problem_curators").Where("problem_id = ? AND profile_id IN (SELECT id FROM judge_profile WHERE user_id = ?)", problem.ID, userID).Count(&count)
-		}
-		if count == 0 {
-			var user models.Profile
-			if err := db.DB.Preload("User").Where("user_id = ?", userID).First(&user).Error; err != nil || !user.User.IsStaff {
-				c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-				return
-			}
-		}
+	// Check if problem is public or the current user may view the hidden problem
+	// (Django parity: Problem.is_accessible_by).
+	if !auth.CanViewProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
 	}
 
 	// Determine PDF file path

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
@@ -16,7 +17,7 @@ import (
 // TicketList – GET /api/v2/tickets
 // Returns a list of tickets created by the authenticated user
 func TicketList(c *gin.Context) {
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
@@ -31,7 +32,7 @@ func TicketList(c *gin.Context) {
 	// Admins can see all tickets, regular users see only their own
 	query := db.DB.Model(&models.Ticket{}).Preload("Assignees")
 
-	if !user.IsSuperuser {
+	if !auth.HasPerm(c, "judge.change_ticket") {
 		query = query.Where("user_id = ?", profile.ID)
 	}
 
@@ -64,7 +65,7 @@ func TicketList(c *gin.Context) {
 	// Get total count with filters
 	var total int64
 	countQuery := db.DB.Model(&models.Ticket{})
-	if !user.IsSuperuser {
+	if !auth.HasPerm(c, "judge.change_ticket") {
 		countQuery = countQuery.Where("user_id = ?", profile.ID)
 	}
 	if search != "" {
@@ -164,7 +165,7 @@ func TicketCreate(c *gin.Context) {
 // Gets the contents of a ticket and its messages
 func TicketDetail(c *gin.Context) {
 	ticketID := c.Param("id")
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
@@ -173,7 +174,7 @@ func TicketDetail(c *gin.Context) {
 	query := db.DB.Preload("Messages.User.User").Preload("User.User")
 
 	// Access control
-	if !user.IsSuperuser {
+	if !auth.HasPerm(c, "judge.change_ticket") {
 		query = query.Where("user_id = ?", profile.ID)
 	}
 
@@ -186,8 +187,8 @@ func TicketDetail(c *gin.Context) {
 		return
 	}
 
-	// Preload assignees for admin users
-	if user.IsSuperuser {
+	// Preload assignees for ticket moderators
+	if auth.HasPerm(c, "judge.change_ticket") {
 		db.DB.Preload("Assignees.User").First(&ticket, ticketID)
 	}
 

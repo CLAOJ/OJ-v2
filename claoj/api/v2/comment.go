@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/contribution"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -314,7 +315,7 @@ type CommentUpdateRequest struct {
 // CommentUpdate - PATCH /api/v2/comment/:id
 // Update a comment (author or admin only). Creates revision history entry.
 func CommentUpdate(c *gin.Context) {
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
@@ -336,9 +337,9 @@ func CommentUpdate(c *gin.Context) {
 		return
 	}
 
-	// Check permission: author or admin
+	// Check permission: author or comment moderator (Django: judge.change_comment)
 	isAuthor := comment.AuthorID == profile.ID
-	isAdmin := user.IsStaff || user.IsSuperuser
+	isAdmin := auth.HasPerm(c, "judge.change_comment")
 
 	if !isAuthor && !isAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
@@ -435,13 +436,13 @@ type CommentHideRequest struct {
 // CommentHide - POST /api/v2/admin/comment/:id/hide
 // Admin-only: Hide or unhide a comment
 func CommentHide(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
+	_, _, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
 
-	// Check admin permission
-	if !user.IsStaff && !user.IsSuperuser {
+	// Django parity: hiding a comment requires judge.change_comment.
+	if !auth.HasPerm(c, "judge.change_comment") {
 		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 		return
 	}
@@ -484,7 +485,7 @@ func CommentHide(c *gin.Context) {
 // CommentDelete - DELETE /api/v2/comment/:id
 // Soft delete a comment (author or admin only)
 func CommentDelete(c *gin.Context) {
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
@@ -506,9 +507,9 @@ func CommentDelete(c *gin.Context) {
 		return
 	}
 
-	// Check permission: author or admin
+	// Check permission: author or comment moderator (Django: judge.change_comment)
 	isAuthor := comment.AuthorID == profile.ID
-	isAdmin := user.IsStaff || user.IsSuperuser
+	isAdmin := auth.HasPerm(c, "judge.change_comment")
 
 	if !isAuthor && !isAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -186,13 +187,8 @@ func SubmissionDiff(c *gin.Context) {
 		userID = uid.(uint)
 	}
 
-	isAdmin := false
-	if userID > 0 {
-		var profile models.Profile
-		if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err == nil {
-			isAdmin = profile.User.IsStaff || profile.User.IsSuperuser
-		}
-	}
+	// Django parity: seeing any submission's detail requires judge.view_all_submission.
+	isAdmin := auth.HasPerm(c, "judge.view_all_submission")
 
 	// Check access to submission 1
 	if !sub1.Problem.IsPublic && sub1.UserID != userID && !isAdmin {

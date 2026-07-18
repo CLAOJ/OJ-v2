@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/comment"
@@ -95,12 +96,12 @@ func AdminCommentList(c *gin.Context) {
 // AdminCommentUpdate - PATCH /api/v2/admin/comment/:id
 // Admin update comment (body, hidden status)
 func AdminCommentUpdate(c *gin.Context) {
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
 
-	if !user.IsStaff && !user.IsSuperuser {
+	if !auth.HasPerm(c, "judge.change_comment") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
@@ -146,12 +147,12 @@ func AdminCommentUpdate(c *gin.Context) {
 // AdminCommentDelete - DELETE /api/v2/admin/comment/:id
 // Hard delete a comment (admin only)
 func AdminCommentDelete(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
+	_, _, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
 
-	if !user.IsStaff && !user.IsSuperuser {
+	if !auth.HasPerm(c, "judge.change_comment") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}

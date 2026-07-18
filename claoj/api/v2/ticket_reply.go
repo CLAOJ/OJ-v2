@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
@@ -20,7 +21,7 @@ type TicketMessageRequest struct {
 // Adds a message to an existing ticket
 func TicketReply(c *gin.Context) {
 	ticketID := c.Param("id")
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
@@ -28,8 +29,8 @@ func TicketReply(c *gin.Context) {
 	var ticket models.Ticket
 	query := db.DB.Model(&models.Ticket{})
 
-	// Access control
-	if !user.IsSuperuser {
+	// Access control (Django parity: judge.change_ticket sees all tickets)
+	if !auth.HasPerm(c, "judge.change_ticket") {
 		query = query.Where("user_id = ?", profile.ID)
 	}
 

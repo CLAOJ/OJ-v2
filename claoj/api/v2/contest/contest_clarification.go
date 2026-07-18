@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -116,21 +117,9 @@ type ContestClarificationAnswerRequest struct {
 // ContestClarificationAnswer – POST /api/v2/contest/:key/clarification/:id/answer
 // Admin-only endpoint to answer a clarification
 func ContestClarificationAnswer(c *gin.Context) {
-	// Check if user is admin/staff
-	userID, exists := c.Get("user_id")
-	if !exists {
+	// Must be authenticated
+	if _, exists := c.Get("user_id"); !exists {
 		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
-		return
-	}
-
-	var user models.AuthUser
-	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
-		return
-	}
-
-	if !user.IsStaff && !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
 
@@ -143,8 +132,14 @@ func ContestClarificationAnswer(c *gin.Context) {
 	}
 
 	var contest models.Contest
-	if err := db.DB.Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	// Django parity: only contest editors may answer clarifications.
+	if !auth.CanEditContest(c, &contest) {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
 

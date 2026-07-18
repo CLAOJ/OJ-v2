@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/service/blogpost"
 	"github.com/gin-gonic/gin"
 )
@@ -118,12 +119,12 @@ type AdminBlogPostCreateRequest struct {
 // AdminBlogPostCreate - POST /api/v2/admin/blog-posts
 // Create a new blog post
 func AdminBlogPostCreate(c *gin.Context) {
-	user, profile, ok := resolveUserProfile(c)
+	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
 
-	if !user.IsSuperuser && !user.IsStaff {
+	if !auth.HasPerm(c, "judge.edit_all_post") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
@@ -185,12 +186,12 @@ type AdminBlogPostUpdateRequest struct {
 // AdminBlogPostUpdate - PATCH /api/v2/admin/blog-post/:id
 // Update a blog post
 func AdminBlogPostUpdate(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
+	_, _, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
 
-	if !user.IsSuperuser && !user.IsStaff {
+	if !auth.HasPerm(c, "judge.edit_all_post") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
@@ -244,12 +245,12 @@ func AdminBlogPostUpdate(c *gin.Context) {
 // AdminBlogPostDelete - DELETE /api/v2/admin/blog-post/:id
 // Delete a blog post
 func AdminBlogPostDelete(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
+	_, _, ok := resolveUserProfile(c)
 	if !ok {
 		return
 	}
 
-	if !user.IsSuperuser && !user.IsStaff {
+	if !auth.HasPerm(c, "judge.edit_all_post") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}

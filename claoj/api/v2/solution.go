@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
@@ -326,9 +327,9 @@ func AdminSolutionDelete(c *gin.Context) {
 func ProblemSolution(c *gin.Context) {
 	code := c.Param("code")
 
-	// Get problem
+	// Get problem (Authors/Curators preloaded for the access helper)
 	var problem models.Problem
-	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Where("code = ?", code).First(&problem).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("problem not found"))
 		return
 	}
@@ -340,43 +341,11 @@ func ProblemSolution(c *gin.Context) {
 		return
 	}
 
-	// Check if solution is public
-	if !solution.IsPublic {
-		// Check if user has permission (admin or author)
-		userID, exists := c.Get("user_id")
-		if !exists {
-			c.JSON(http.StatusForbidden, apiError("solution is not public"))
-			return
-		}
-
-		// Check if user is admin
-		var profile models.Profile
-		if err := db.DB.Preload("Roles").Where("user_id = ?", userID).First(&profile).Error; err != nil {
-			c.JSON(http.StatusForbidden, apiError("solution is not public"))
-			return
-		}
-
-		isAdmin := false
-		for _, role := range profile.Roles {
-			if role.Name == "admin" {
-				isAdmin = true
-				break
-			}
-		}
-
-		// Check if user is an author
-		isAuthor := false
-		for _, author := range solution.Authors {
-			if author.ID == profile.ID {
-				isAuthor = true
-				break
-			}
-		}
-
-		if !isAdmin && !isAuthor {
-			c.JSON(http.StatusForbidden, apiError("solution is not public"))
-			return
-		}
+	// Check if the current user may view this solution (Django parity:
+	// Solution.is_accessible_by).
+	if !auth.CanViewSolution(c, &solution, &problem) {
+		c.JSON(http.StatusForbidden, apiError("solution is not public"))
+		return
 	}
 
 	// Check publish_on date

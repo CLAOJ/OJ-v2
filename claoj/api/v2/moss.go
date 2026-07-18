@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/moss"
 	"github.com/CLAOJ/claoj/models"
@@ -20,20 +21,14 @@ type MossAnalysisRequest struct {
 // AdminSubmissionMossAnalysis - POST /api/v2/admin/submission/:id/moss
 // Initiates MOSS plagiarism detection for submissions
 func AdminSubmissionMossAnalysis(c *gin.Context) {
-	// Check admin access
-	userID, exists := c.Get("user_id")
-	if !exists {
+	// Check access
+	if _, exists := c.Get("user_id"); !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	var user models.AuthUser
-	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	if !user.IsStaff && !user.IsSuperuser {
+	// Django parity: running MOSS requires judge.moss_contest.
+	if !auth.HasPerm(c, "judge.moss_contest") {
 		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 		return
 	}

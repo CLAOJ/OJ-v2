@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/submission"
 	"github.com/gin-gonic/gin"
 )
@@ -196,20 +199,21 @@ func AdminSubmissionBatchRejudge(c *gin.Context) {
 // AdminSubmissionRescore - POST /api/v2/admin/submission/:id/rescore
 // Rescores a single submission (recalculates points based on current test cases)
 func AdminSubmissionRescore(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
-	if !ok {
-		return
-	}
-
-	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
-		return
-	}
-
 	submissionIDStr := c.Param("id")
 	var submissionID uint
 	if err := parseUint(submissionIDStr, &submissionID); err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		return
+	}
+
+	// Django parity: rescoring a submission requires being able to rejudge its problem.
+	var sub models.Submission
+	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if !auth.CanRejudge(c, &sub.Problem) {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
 
@@ -241,12 +245,8 @@ type AdminSubmissionBatchRescoreRequest struct {
 // AdminSubmissionBatchRescore - POST /api/v2/admin/submissions/batch-rescore
 // Rescores multiple submissions based on filters or specific IDs
 func AdminSubmissionBatchRescore(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
-	if !ok {
-		return
-	}
-
-	if !user.IsSuperuser {
+	// Django parity: a bulk rescore is a "lot" operation.
+	if !auth.HasPerm(c, "judge.rejudge_submission_lot") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
@@ -286,17 +286,19 @@ func AdminSubmissionBatchRescore(c *gin.Context) {
 // AdminProblemRescoreAll - POST /api/v2/admin/problem/:code/rescore-all
 // Rescores all submissions for a specific problem
 func AdminProblemRescoreAll(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
-	if !ok {
+	code := c.Param("code")
+
+	// Django parity: rescoring all submissions for a problem is a bulk rejudge
+	// scoped to that problem.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").Where("code = ?", code).First(&problem).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
 		return
 	}
-
-	if !user.IsSuperuser {
+	if !auth.CanRejudge(c, &problem) || !auth.HasPerm(c, "judge.rejudge_submission_lot") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
-
-	code := c.Param("code")
 
 	resp, err := getSubmissionService().RescoreAll(submission.RescoreAllRequest{
 		ProblemCode: code,
