@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:integration": "jest --testPathPattern=integration --coverage"
+    "test:integration": "jest --testPathPattern=integration --coverage",
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
