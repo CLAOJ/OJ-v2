@@ -100,8 +100,10 @@ func Audit() gin.HandlerFunc {
 
 // extractResourceInfo extracts resource name and ID from the URL path
 func extractResourceInfo(path string) (string, string) {
-	// Remove /api/v2/admin prefix
-	path = strings.TrimPrefix(path, "/api/v2/admin")
+	// Remove /api/admin prefix (see api/router.go: apiv2 := r.Group("/api"),
+	// admin routes mounted as "/admin/...", giving real paths like
+	// "/api/admin/users" or "/api/admin/user/42").
+	path = strings.TrimPrefix(path, "/api/admin")
 	path = strings.TrimPrefix(path, "/")
 
 	parts := strings.Split(path, "/")
