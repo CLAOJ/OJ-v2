@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/CLAOJ/claoj/api"
+	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/bridge"
 	"github.com/CLAOJ/claoj/cache"
@@ -46,6 +47,17 @@ func main() {
 	} else {
 		authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
 		log.Printf("warning: one-time tokens in-memory; password-reset/email-verify links reset on restart")
+	}
+
+	// 3d. Wire up the admin audit log. Redis-backed (a capped stream) when
+	// available so the shared MySQL schema stays 100% Django-owned; falls
+	// back to an in-memory store (single-process, resets on restart) if
+	// Redis isn't up.
+	if cache.Client != nil {
+		auditlog.Default = auditlog.NewRedisStore(cache.Client)
+	} else {
+		auditlog.Default = auditlog.NewMemoryStore()
+		log.Printf("warning: audit log in-memory; entries reset on restart")
 	}
 
 	// 4. Start the Judge Bridge TCP server

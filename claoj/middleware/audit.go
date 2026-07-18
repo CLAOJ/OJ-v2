@@ -8,20 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CLAOJ/claoj/db"
-	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/gin-gonic/gin"
 )
 
-// AuditMiddleware creates middleware that logs admin actions
+// AuditMiddleware creates middleware that logs admin actions. It is
+// mounted only on the admin route group (see api/router.go:
+// admin.Use(middleware.Audit())), so every request that reaches it is
+// already an admin request — no extra path guard is needed here.
 func Audit() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Only audit admin endpoints
-		if !strings.HasPrefix(c.Request.URL.Path, "/api/v2/admin") {
-			c.Next()
-			return
-		}
-
 		// Get user info from context
 		userID, userIDExists := c.Get("user_id")
 		username, _ := c.Get("username")
@@ -69,32 +65,32 @@ func Audit() gin.HandlerFunc {
 			"status_code":  c.Writer.Status(),
 		})
 
-		auditEntry := models.AuditLog{
-			UserID:    0,
-			Username:  "anonymous",
-			Action:    action,
-			Resource:  resource,
+		entry := auditlog.Entry{
+			UserID:     0,
+			Username:   "anonymous",
+			Action:     action,
+			Resource:   resource,
 			ResourceID: resourceID,
-			IPAddress: c.ClientIP(),
-			UserAgent: c.Request.UserAgent(),
-			Details:   string(details),
-			Status:    status,
-			CreatedAt: time.Now(),
+			IPAddress:  c.ClientIP(),
+			UserAgent:  c.Request.UserAgent(),
+			Details:    string(details),
+			Status:     status,
+			CreatedAt:  time.Now(),
 		}
 
 		// Add user info if authenticated
 		if userIDExists {
 			if id, ok := userID.(uint); ok {
-				auditEntry.UserID = id
+				entry.UserID = id
 			}
 			if uname, ok := username.(string); ok {
-				auditEntry.Username = uname
+				entry.Username = uname
 			}
 		}
 
 		// Save audit log asynchronously (don't block response)
 		go func() {
-			if err := db.DB.Create(&auditEntry).Error; err != nil {
+			if err := auditlog.Default.Write(entry); err != nil {
 				// Log error but don't fail the request
 				// In production, consider sending to error monitoring
 			}

@@ -26,7 +26,7 @@ func setupMiddlewareTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
-	database.AutoMigrate(&models.AuthUser{}, &models.Profile{}, &models.AuditLog{})
+	database.AutoMigrate(&models.AuthUser{}, &models.Profile{})
 	return database
 }
 

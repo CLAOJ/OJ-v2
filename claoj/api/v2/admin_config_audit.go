@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/CLAOJ/claoj/service/auditlog"
+	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/CLAOJ/claoj/service/miscconfig"
 	"github.com/gin-gonic/gin"
 )
@@ -177,10 +177,8 @@ func AdminAuditLogList(c *gin.Context) {
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 
-	// Build request
-	req := auditlog.ListAuditLogsRequest{
-		Page:     page,
-		PageSize: pageSize,
+	// Build filters
+	f := auditlog.Filters{
 		Action:   action,
 		Resource: resource,
 		Status:   status,
@@ -190,54 +188,52 @@ func AdminAuditLogList(c *gin.Context) {
 	if userIDStr != "" {
 		var userID uint
 		if err := parseUint(userIDStr, &userID); err == nil {
-			req.UserID = &userID
+			f.UserID = userID
 		}
 	}
 	if startDate != "" {
 		if t, err := time.Parse("2006-01-02", startDate); err == nil {
-			req.DateFrom = &t
+			f.Start = &t
 		}
 	}
 	if endDate != "" {
 		if t, err := time.Parse("2006-01-02", endDate); err == nil {
-			req.DateTo = &t
+			f.End = &t
 		}
 	}
 
-	resp, err := getAuditLogService().ListAuditLogs(req)
+	entries, total, err := auditlog.Default.List(f, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"results":   resp.Logs,
-		"total":     resp.Total,
-		"page":      resp.Page,
-		"page_size": resp.PageSize,
+		"results":   entries,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
 	})
 }
 
 // AdminAuditLogDetail - GET /api/v2/admin/audit-log/:id
+// id is the Redis stream ID (e.g. "1721300000000-0"), not a numeric row ID.
 func AdminAuditLogDetail(c *gin.Context) {
-	idStr := c.Param("id")
-	var id uint
-	if err := parseUint(idStr, &id); err != nil {
+	id := c.Param("id")
+	if id == "" {
 		c.JSON(http.StatusBadRequest, apiError("invalid log id"))
 		return
 	}
 
-	log, err := getAuditLogService().GetAuditLog(auditlog.GetAuditLogRequest{
-		LogID: id,
-	})
+	entry, err := auditlog.Default.Get(id)
 	if err != nil {
-		if errors.Is(err, auditlog.ErrLogNotFound) {
-			c.JSON(http.StatusNotFound, apiError("log not found"))
-			return
-		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
+	if entry == nil {
+		c.JSON(http.StatusNotFound, apiError("log not found"))
+		return
+	}
 
-	c.JSON(http.StatusOK, log)
+	c.JSON(http.StatusOK, entry)
 }

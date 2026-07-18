@@ -7,7 +7,6 @@ import (
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
-	"github.com/CLAOJ/claoj/service/auditlog"
 	"github.com/CLAOJ/claoj/service/blogpost"
 	"github.com/CLAOJ/claoj/service/comment"
 	"github.com/CLAOJ/claoj/service/contest"
@@ -37,7 +36,6 @@ var (
 	licenseService      *license.LicenseService
 	navigationService   *navigation.NavigationService
 	miscConfigService   *miscconfig.MiscConfigService
-	auditLogService     *auditlog.AuditLogService
 	languageService     *language.LanguageService
 	problemGroupService *problemgroup.ProblemGroupService
 	problemTypeService  *problemtype.ProblemTypeService
@@ -109,14 +107,6 @@ func getMiscConfigService() *miscconfig.MiscConfigService {
 		miscConfigService = miscconfig.NewMiscConfigService()
 	}
 	return miscConfigService
-}
-
-// getAuditLogService returns the audit log service instance
-func getAuditLogService() *auditlog.AuditLogService {
-	if auditLogService == nil {
-		auditLogService = auditlog.NewAuditLogService()
-	}
-	return auditLogService
 }
 
 // getLanguageService returns the language service instance
