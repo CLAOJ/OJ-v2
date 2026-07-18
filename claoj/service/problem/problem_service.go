@@ -38,7 +38,6 @@ type ProblemProfile struct {
 	TestcaseVisibilityMode         string
 	IsOrganizationPrivate          bool
 	SuggesterID                    *uint
-	SuggestionStatus               string
 	AuthorIDs                      []uint
 	TypeIDs                        []uint
 	AllowedLangIDs                 []uint
@@ -505,7 +504,6 @@ func problemToProfile(p models.Problem, groupName string) ProblemProfile {
 		TestcaseVisibilityMode:         p.TestcaseVisibilityMode,
 		IsOrganizationPrivate:          p.IsOrganizationPrivate,
 		SuggesterID:                    p.SuggesterID,
-		SuggestionStatus:               p.SuggestionStatus,
 		AuthorIDs:                      authorIDs,
 		TypeIDs:                        typeIDs,
 		AllowedLangIDs:                 langIDs,

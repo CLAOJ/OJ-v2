@@ -243,13 +243,6 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/ticket/:id/set-contributive", v2.AdminTicketSetContributive)
 			admin.PATCH("/admin/ticket/:id/notes", v2.AdminTicketUpdateNotes)
 
-			// Problem Suggestions (Admin)
-			admin.GET("/admin/problem-suggestions", v2.AdminProblemSuggestionList)
-			admin.GET("/admin/problem-suggestion/:id", v2.AdminProblemSuggestionDetail)
-			admin.POST("/admin/problem-suggestion/:id/approve", v2.AdminProblemSuggestionApprove)
-			admin.POST("/admin/problem-suggestion/:id/reject", v2.AdminProblemSuggestionReject)
-			admin.DELETE("/admin/problem-suggestion/:id", v2.AdminProblemSuggestionDelete)
-
 		// Navigation Bars
 		admin.GET("/admin/navigation-bars", v2.AdminNavigationBarList)
 		admin.GET("/admin/navigation-bar/:id", v2.AdminNavigationBarDetail)
@@ -404,10 +397,6 @@ func NewRouter() *gin.Engine {
 			protected.GET("/organization/:id/requests", v2.OrganizationRequestList)
 			protected.POST("/organization/request/:rid/handle", v2.HandleOrganizationRequest)
 			protected.POST("/organization/:id/kick", v2.KickUser)
-
-			// Problem Suggestions (Protected - users can submit and view their own)
-			protected.POST("/problems/suggest", v2.SuggestProblem)
-			protected.GET("/my-suggestions", v2.GetUserSuggestions)
 
 			// Notifications
 			protected.GET("/notifications", v2.NotificationList)

@@ -19,7 +19,6 @@ import (
 	"github.com/CLAOJ/claoj/service/problem"
 	"github.com/CLAOJ/claoj/service/problemgroup"
 	"github.com/CLAOJ/claoj/service/problemtype"
-	"github.com/CLAOJ/claoj/service/problemsuggestion"
 	"github.com/CLAOJ/claoj/service/submission"
 	"github.com/CLAOJ/claoj/service/user"
 	"github.com/gin-gonic/gin"
@@ -30,7 +29,6 @@ import (
 var (
 	problemService      *problem.ProblemService
 	orgService          *organization.OrganizationService
-	suggestionService   *problemsuggestion.ProblemSuggestionService
 	commentService      *comment.CommentService
 	blogPostService     *blogpost.BlogPostService
 	licenseService      *license.LicenseService
@@ -59,14 +57,6 @@ func getOrgService() *organization.OrganizationService {
 		orgService = organization.NewOrganizationService()
 	}
 	return orgService
-}
-
-// getSuggestionService returns the problem suggestion service instance
-func getSuggestionService() *problemsuggestion.ProblemSuggestionService {
-	if suggestionService == nil {
-		suggestionService = problemsuggestion.NewProblemSuggestionService()
-	}
-	return suggestionService
 }
 
 // getCommentService returns the comment service instance
@@ -263,7 +253,7 @@ func AdminProblemClone(c *gin.Context) {
 		SubmissionSourceVisibilityMode: sourceProblem.SubmissionSourceVisibilityMode,
 		TestcaseVisibilityMode:         sourceProblem.TestcaseVisibilityMode,
 		IsOrganizationPrivate:          sourceProblem.IsOrganizationPrivate,
-		// Don't copy: UserCount, AcRate, Date, SuggesterID, SuggestionStatus, etc.
+		// Don't copy: UserCount, AcRate, Date, SuggesterID, etc.
 	}
 
 	if err := db.DB.Create(&newProblem).Error; err != nil {

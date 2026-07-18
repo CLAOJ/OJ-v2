@@ -64,10 +64,12 @@ func CalculateProfileContributionPoints(profileID uint) (int, error) {
 	}
 	total += int(contributiveTicketCount) * ContributionConfig.TicketPointBase
 
-	// Calculate problem suggestion contribution (approved suggestions)
+	// Suggested problems that were accepted (suggester set, problem now public).
+	// Mirrors Django CLAOJ: a suggestion-in-progress has suggester != NULL and
+	// is_public = false (Problem.is_suggesting, OJ problem.py:226-227).
 	var approvedSuggestionCount int64
 	err = db.DB.Model(&models.Problem{}).
-		Where("suggester_id = ? AND suggestion_status = ?", profileID, "approved").
+		Where("suggester_id = ? AND is_public = ?", profileID, true).
 		Count(&approvedSuggestionCount).Error
 	if err != nil {
 		return 0, err

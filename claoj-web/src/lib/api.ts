@@ -220,59 +220,6 @@ export const webauthnApi = {
 };
 
 // ============================================================
-// PROBLEM SUGGESTION API (Task #31)
-// ============================================================
-
-import type {
-    ProblemSuggestion,
-    ProblemSuggestionAdmin,
-    ProblemSuggestionDetail,
-    ProblemSuggestRequest,
-    ApproveSuggestionRequest,
-    RejectSuggestionRequest
-} from '@/types';
-
-export const problemSuggestionApi = {
-    // Submit a new problem suggestion
-    suggestProblem: (data: ProblemSuggestRequest) =>
-        api.post<{ success: boolean; message: string; suggestion: ProblemSuggestion }>('/problems/suggest', data),
-
-    // Get current user's suggestions
-    getUserSuggestions: (page: number = 1, pageSize: number = 20) =>
-        api.get<{ data: ProblemSuggestion[]; total: number }>('/my-suggestions', {
-            params: { page, page_size: pageSize },
-        }),
-
-    // Admin: List all suggestions
-    listSuggestions: (page: number = 1, pageSize: number = 20, status?: string) =>
-        api.get<{ data: ProblemSuggestionAdmin[]; total: number }>('/admin/problem-suggestions', {
-            params: { page, page_size: pageSize, status },
-        }),
-
-    // Admin: Get suggestion detail
-    getSuggestion: (id: number) =>
-        api.get<ProblemSuggestionDetail>(`/admin/problem-suggestion/${id}`),
-
-    // Admin: Approve suggestion
-    approveSuggestion: (id: number, data: ApproveSuggestionRequest) =>
-        api.post<{ success: boolean; message: string; problem: { id: number; code: string; name: string } }>(
-            `/admin/problem-suggestion/${id}/approve`,
-            data
-        ),
-
-    // Admin: Reject suggestion
-    rejectSuggestion: (id: number, data: RejectSuggestionRequest) =>
-        api.post<{ success: boolean; message: string }>(
-            `/admin/problem-suggestion/${id}/reject`,
-            data
-        ),
-
-    // Admin: Delete suggestion
-    deleteSuggestion: (id: number) =>
-        api.delete<{ success: boolean; message: string }>(`/admin/problem-suggestion/${id}`),
-};
-
-// ============================================================
 // PROBLEM CLARIFICATION API (Task #33)
 // ============================================================
 
