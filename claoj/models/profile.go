@@ -109,6 +109,8 @@ type AuthUser struct {
 	IsActive    bool      `gorm:"column:is_active;not null;default:1"`
 	IsSuperuser bool      `gorm:"column:is_superuser;not null;default:0"`
 	DateJoined  time.Time `gorm:"column:date_joined;not null"`
+
+	Groups []AuthGroup `gorm:"many2many:auth_user_groups;joinForeignKey:user_id;joinReferences:group_id"`
 }
 
 func (AuthUser) TableName() string { return "auth_user" }
