@@ -29,8 +29,7 @@ const ticketSchema = z.object({
 type TicketFormValues = z.infer<typeof ticketSchema>;
 
 export default function CreateTicketPage() {
-    const t = useTranslations('Tickets');
-    const tt = useTranslations('Ticket');
+    const t = useTranslations('Ticket');
     const router = useRouter();
     const { user, loading } = useAuth();
     const [problemSearch, setProblemSearch] = useState('');
@@ -101,7 +100,7 @@ export default function CreateTicketPage() {
             {/* Header */}
             <div className="text-center space-y-2">
                 <TicketIcon className="mx-auto text-primary" size={48} />
-                <h1 className="text-4xl font-black tracking-tighter">Create New Ticket</h1>
+                <h1 className="text-4xl font-black tracking-tighter">{t('createTitle')}</h1>
                 <p className="text-muted-foreground font-black opacity-80">Describe your issue and we&apos;ll get back to you.</p>
             </div>
 
@@ -117,7 +116,7 @@ export default function CreateTicketPage() {
                         <input
                             {...register('title')}
                             type="text"
-                            placeholder={tt('subjectPlaceholder')}
+                            placeholder={t('subjectPlaceholder')}
                             className={cn(
                                 "w-full h-14 bg-muted/30 border rounded-2xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none",
                                 errors.title ? "border-destructive" : "border-muted-foreground/10"
@@ -135,7 +134,7 @@ export default function CreateTicketPage() {
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder={tt('searchProblemPlaceholder')}
+                                placeholder={t('searchProblemPlaceholder')}
                                 className="w-full h-14 bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
                                 value={selectedProblem ? `${selectedProblem.code} - ${selectedProblem.name}` : problemSearch}
                                 onChange={(e) => {
@@ -188,7 +187,7 @@ export default function CreateTicketPage() {
                         </label>
                         <textarea
                             {...register('body')}
-                            placeholder={tt('messagePlaceholder')}
+                            placeholder={t('messagePlaceholder')}
                             rows={8}
                             className={cn(
                                 "w-full bg-muted/30 border rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none",

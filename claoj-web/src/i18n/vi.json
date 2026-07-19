@@ -305,7 +305,21 @@
     "resendVerificationDesc": "Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn một liên kết xác thực mới.",
     "resendVerificationErrorDefault": "Gửi lại email xác thực thất bại",
     "sendVerificationEmail": "Gửi email xác thực",
-    "usernamePlaceholder": "Nhập tên đăng nhập của bạn"
+    "usernamePlaceholder": "Nhập tên đăng nhập của bạn",
+    "totpTitle": "Xác thực hai yếu tố",
+    "totpDesc": "Nhập mã TOTP để tiếp tục",
+    "passkeyTitle": "Đăng nhập bằng Passkey",
+    "passkeyDesc": "Sử dụng passkey của bạn để đăng nhập",
+    "back": "Quay lại",
+    "signInWithPasskey": "Đăng nhập bằng Passkey",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "orContinueWith": "Hoặc tiếp tục với",
+    "totpCodeLabel": "Mã TOTP",
+    "totpInstructions": "Nhập mã 6 chữ số từ ứng dụng xác thực của bạn",
+    "verify": "Xác nhận",
+    "invalidTotpCode": "Mã TOTP không hợp lệ",
+    "enterUsernameError": "Vui lòng nhập tên đăng nhập của bạn",
+    "webAuthnLoginFailed": "Đăng nhập WebAuthn thất bại"
   },
   "Comments": {
     "title": "Bình luận",
@@ -582,7 +596,7 @@
     "searchPlaceholder": "Tên tổ chức hoặc tên viết tắt..."
   },
   "Ticket": {
-    "title": "Ticket",
+    "title": "Ticket Hỗ Trợ",
     "new": "Ticket mới",
     "create": "Tạo ticket",
     "myTickets": "Ticket của tôi",
@@ -607,7 +621,14 @@
     "replyPlaceholder": "Viết phản hồi của bạn...",
     "subjectPlaceholder": "Tóm tắt ngắn gọn vấn đề của bạn",
     "searchProblemPlaceholder": "Tìm bài toán (vd: P01, APB)",
-    "messagePlaceholder": "Mô tả chi tiết vấn đề của bạn. Bao gồm các bước tái hiện, kết quả mong đợi và mọi thông tin liên quan."
+    "messagePlaceholder": "Mô tả chi tiết vấn đề của bạn. Bao gồm các bước tái hiện, kết quả mong đợi và mọi thông tin liên quan.",
+    "search": "Tìm kiếm",
+    "noTicketsFound": "Không tìm thấy ticket nào",
+    "notFound": "Không Tìm Thấy Ticket",
+    "noMessagesYet": "Chưa có tin nhắn nào",
+    "closedMessage": "Ticket này đã được đóng",
+    "noMoreReplies": "Không thể thêm phản hồi nữa",
+    "createTitle": "Tạo Ticket Mới"
   },
   "Settings": {
     "title": "Cài đặt",

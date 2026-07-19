@@ -95,7 +95,7 @@ export default function LoginPage() {
             // Redirect based on user type: admin -> /admin, normal -> previous page or home
             router.push(getRedirectUrl(user.is_staff));
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Invalid TOTP code');
+            setError(err.response?.data?.error || t('invalidTotpCode'));
         } finally {
             setIsLoading(false);
         }
@@ -103,7 +103,7 @@ export default function LoginPage() {
 
     const handleWebAuthnSubmit = async () => {
         if (!webAuthnUsername) {
-            setError('Please enter your username');
+            setError(t('enterUsernameError'));
             return;
         }
         setIsLoading(true);
@@ -113,7 +113,7 @@ export default function LoginPage() {
             // Redirect based on user type: admin -> /admin, normal -> previous page or home
             router.push(getRedirectUrl(user.is_staff));
         } catch (err: any) {
-            setError(err.response?.data?.error || 'WebAuthn login failed');
+            setError(err.response?.data?.error || t('webAuthnLoginFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -134,13 +134,13 @@ export default function LoginPage() {
                     <h1 className="text-3xl font-extrabold tracking-tight italic text-primary">CLAOJ</h1>
                     {requiresTotp ? (
                         <>
-                            <h2 className="text-2xl font-bold">Two-Factor Authentication</h2>
-                            <p className="text-muted-foreground">Enter your TOTP code to continue</p>
+                            <h2 className="text-2xl font-bold">{t('totpTitle')}</h2>
+                            <p className="text-muted-foreground">{t('totpDesc')}</p>
                         </>
                     ) : showWebAuthnForm ? (
                         <>
-                            <h2 className="text-2xl font-bold">Passkey Login</h2>
-                            <p className="text-muted-foreground">Use your passkey to sign in</p>
+                            <h2 className="text-2xl font-bold">{t('passkeyTitle')}</h2>
+                            <p className="text-muted-foreground">{t('passkeyDesc')}</p>
                         </>
                     ) : (
                         <>
@@ -177,7 +177,7 @@ export default function LoginPage() {
 
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none">Username</label>
+                                <label className="text-sm font-medium leading-none">{t('username')}</label>
                                 <div className="relative">
                                     <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                     <Input
@@ -196,7 +196,7 @@ export default function LoginPage() {
                                 onClick={() => setShowWebAuthnForm(false)}
                                 className="flex-1"
                             >
-                                Back
+                                {t('back')}
                             </Button>
                             <Button
                                 onClick={handleWebAuthnSubmit}
@@ -205,7 +205,7 @@ export default function LoginPage() {
                             >
                                 {isLoading && <Loader2 size={18} className="animate-spin" />}
                                 <Key size={18} className="mr-2" />
-                                Sign in with Passkey
+                                {t('signInWithPasskey')}
                             </Button>
                         </div>
                     </div>
@@ -264,13 +264,13 @@ export default function LoginPage() {
                                             {...register('rememberMe')}
                                             className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary"
                                         />
-                                        <span className="text-xs text-muted-foreground">Remember me</span>
+                                        <span className="text-xs text-muted-foreground">{t('rememberMe')}</span>
                                     </label>
                                     <Link
                                         href="/forgot-password"
                                         className="text-xs font-bold text-primary hover:underline underline-offset-4 transition-all"
                                     >
-                                        Forgot password?
+                                        {t('forgotPassword')}
                                     </Link>
                                 </div>
                             </div>
@@ -294,7 +294,7 @@ export default function LoginPage() {
                                 <div className="w-full border-t border-muted-foreground/20"></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">Or continue with</span>
+                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">{t('orContinueWith')}</span>
                             </div>
                         </div>
 
@@ -334,7 +334,7 @@ export default function LoginPage() {
                                 className="w-full h-12"
                             >
                                 <Key className="h-5 w-5 mr-2" />
-                                Sign in with Passkey
+                                {t('signInWithPasskey')}
                             </Button>
                         </div>
 
@@ -390,7 +390,7 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
 
             <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">
-                    TOTP Code
+                    {t('totpCodeLabel')}
                 </label>
                 <div className="relative">
                     <input
@@ -403,7 +403,7 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
                     />
                 </div>
                 <p className="text-xs text-muted-foreground text-center">
-                    Enter the 6-digit code from your authenticator app
+                    {t('totpInstructions')}
                 </p>
             </div>
 
@@ -414,7 +414,7 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
                     disabled={isLoading}
                     className="flex-1 h-12 rounded-xl border border-input bg-background hover:bg-muted/50 font-bold transition-all"
                 >
-                    Back
+                    {t('back')}
                 </button>
                 <button
                     type="submit"
@@ -422,7 +422,7 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
                     className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                     {isLoading && <Loader2 size={18} className="animate-spin" />}
-                    Verify
+                    {t('verify')}
                 </button>
             </div>
         </form>

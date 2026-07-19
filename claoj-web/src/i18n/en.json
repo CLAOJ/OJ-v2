@@ -305,7 +305,21 @@
     "resendVerificationDesc": "Enter your email address and we'll send you a new verification link.",
     "resendVerificationErrorDefault": "Failed to send verification email",
     "sendVerificationEmail": "Send Verification Email",
-    "usernamePlaceholder": "Enter your username"
+    "usernamePlaceholder": "Enter your username",
+    "totpTitle": "Two-Factor Authentication",
+    "totpDesc": "Enter your TOTP code to continue",
+    "passkeyTitle": "Passkey Login",
+    "passkeyDesc": "Use your passkey to sign in",
+    "back": "Back",
+    "signInWithPasskey": "Sign in with Passkey",
+    "rememberMe": "Remember me",
+    "orContinueWith": "Or continue with",
+    "totpCodeLabel": "TOTP Code",
+    "totpInstructions": "Enter the 6-digit code from your authenticator app",
+    "verify": "Verify",
+    "invalidTotpCode": "Invalid TOTP code",
+    "enterUsernameError": "Please enter your username",
+    "webAuthnLoginFailed": "WebAuthn login failed"
   },
   "Comments": {
     "title": "Comments",
@@ -582,7 +596,7 @@
     "searchPlaceholder": "Organization name or short name..."
   },
   "Ticket": {
-    "title": "Ticket",
+    "title": "Support Tickets",
     "new": "New Ticket",
     "create": "Create Ticket",
     "myTickets": "My Tickets",
@@ -607,7 +621,14 @@
     "replyPlaceholder": "Write your reply...",
     "subjectPlaceholder": "Brief summary of your issue",
     "searchProblemPlaceholder": "Search for a problem (e.g., P01, APB)",
-    "messagePlaceholder": "Describe your issue in detail. Include steps to reproduce, expected behavior, and any relevant information."
+    "messagePlaceholder": "Describe your issue in detail. Include steps to reproduce, expected behavior, and any relevant information.",
+    "search": "Search",
+    "noTicketsFound": "No tickets found",
+    "notFound": "Ticket Not Found",
+    "noMessagesYet": "No messages yet",
+    "closedMessage": "This ticket has been closed",
+    "noMoreReplies": "No further replies can be added",
+    "createTitle": "Create New Ticket"
   },
   "Settings": {
     "title": "Settings",

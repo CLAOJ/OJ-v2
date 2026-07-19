@@ -30,8 +30,7 @@ import { motion } from 'framer-motion';
 dayjs.extend(relativeTime);
 
 export default function TicketDetailPage() {
-    const t = useTranslations('Tickets');
-    const tt = useTranslations('Ticket');
+    const t = useTranslations('Ticket');
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
@@ -79,7 +78,7 @@ export default function TicketDetailPage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">Ticket Not Found</h2>
+                <h2 className="text-2xl font-black mb-2">{t('notFound')}</h2>
                 <p className="text-muted-foreground mb-6">The ticket you&apos;re looking for doesn&apos;t exist or has been removed.</p>
                 <Link
                     href="/tickets"
@@ -223,7 +222,7 @@ export default function TicketDetailPage() {
                 ) : (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                         <MessageSquare size={48} className="mx-auto mb-4 opacity-10" />
-                        <p className="font-bold">No messages yet</p>
+                        <p className="font-bold">{t('noMessagesYet')}</p>
                     </div>
                 )}
             </div>
@@ -239,7 +238,7 @@ export default function TicketDetailPage() {
                         <textarea
                             value={replyContent}
                             onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder={tt('replyPlaceholder')}
+                            placeholder={t('replyPlaceholder')}
                             rows={6}
                             className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />
@@ -264,8 +263,8 @@ export default function TicketDetailPage() {
             {ticket.is_closed && (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                     <CheckCircle2 size={32} className="mx-auto mb-2 opacity-20" />
-                    <p className="font-bold">This ticket has been closed</p>
-                    <p className="text-sm">No further replies can be added</p>
+                    <p className="font-bold">{t('closedMessage')}</p>
+                    <p className="text-sm">{t('noMoreReplies')}</p>
                 </div>
             )}
         </div>

@@ -29,8 +29,7 @@ import { useRouter } from '@/navigation';
 dayjs.extend(relativeTime);
 
 export default function TicketListPage() {
-    const t = useTranslations('Tickets');
-    const tt = useTranslations('Ticket');
+    const t = useTranslations('Ticket');
     const router = useRouter();
     const { user, loading } = useAuth();
     const [page, setPage] = useState(1);
@@ -84,12 +83,12 @@ export default function TicketListPage() {
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 rounded-[2.5rem] bg-card border shadow-sm">
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('search')}</label>
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
                             type="text"
-                            placeholder={tt('searchPlaceholder')}
+                            placeholder={t('searchPlaceholder')}
                             className="w-full h-12 bg-muted/30 border border-transparent rounded-2xl pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -98,7 +97,7 @@ export default function TicketListPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('status')}</label>
                     <div className="flex gap-2">
                         <button
                             onClick={() => setStatusFilter('all')}
@@ -215,7 +214,7 @@ export default function TicketListPage() {
             {!isLoading && tickets.length === 0 && (
                 <div className="text-center py-20 border-2 border-dashed rounded-[3rem]">
                     <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                    <h3 className="text-xl font-black mb-2">No tickets found</h3>
+                    <h3 className="text-xl font-black mb-2">{t('noTicketsFound')}</h3>
                     <p className="text-muted-foreground mb-6">Create a new ticket to get help from the team.</p>
                     <Link
                         href="/ticket/create"
