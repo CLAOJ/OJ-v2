@@ -68,7 +68,7 @@ export default function TicketListPage() {
                         <TicketIcon className="text-primary" size={48} />
                         {t('title') || 'Support Tickets'}
                     </h1>
-                    <p className="text-muted-foreground font-black opacity-80">Get help from the CLAOJ team.</p>
+                    <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
                 <Link
@@ -76,7 +76,7 @@ export default function TicketListPage() {
                     className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg shadow-primary/20"
                 >
                     <Plus size={18} />
-                    New Ticket
+                    {t('new')}
                 </Link>
             </div>
 
@@ -108,7 +108,7 @@ export default function TicketListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            All
+                            {t('allOption')}
                         </button>
                         <button
                             onClick={() => setStatusFilter('open')}
@@ -119,7 +119,7 @@ export default function TicketListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            Open
+                            {t('open')}
                         </button>
                         <button
                             onClick={() => setStatusFilter('closed')}
@@ -130,7 +130,7 @@ export default function TicketListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            Closed
+                            {t('closed')}
                         </button>
                     </div>
                 </div>
@@ -144,7 +144,7 @@ export default function TicketListPage() {
                         }}
                         className="w-full h-12 rounded-2xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
                     >
-                        <RefreshCw size={14} /> Reset
+                        <RefreshCw size={14} /> {t('resetButton')}
                     </button>
                 </div>
             </div>
@@ -186,22 +186,22 @@ export default function TicketListPage() {
                                         )}
                                         <div className="flex items-center gap-2 text-muted-foreground">
                                             <MessageSquare size={14} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{ticket.message_count} messages</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{t('messagesCount', { count: ticket.message_count })}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-muted-foreground">
                                             <Clock size={14} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Updated {dayjs(ticket.updated_on).fromNow()}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{t('updatedLabel', { time: dayjs(ticket.updated_on).fromNow() })}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0">
                                     {ticket.is_closed ? (
                                         <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
-                                            Closed
+                                            {t('closed')}
                                         </Badge>
                                     ) : (
                                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                            Open
+                                            {t('open')}
                                         </Badge>
                                     )}
                                 </div>
@@ -215,13 +215,13 @@ export default function TicketListPage() {
                 <div className="text-center py-20 border-2 border-dashed rounded-[3rem]">
                     <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
                     <h3 className="text-xl font-black mb-2">{t('noTicketsFound')}</h3>
-                    <p className="text-muted-foreground mb-6">Create a new ticket to get help from the team.</p>
+                    <p className="text-muted-foreground mb-6">{t('noTicketsDescription')}</p>
                     <Link
                         href="/ticket/create"
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
                     >
                         <Plus size={18} />
-                        Create Ticket
+                        {t('create')}
                     </Link>
                 </div>
             )}
@@ -234,17 +234,17 @@ export default function TicketListPage() {
                         disabled={page === 1}
                         className="px-6 h-12 rounded-xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
                     >
-                        Previous
+                        {t('previousButton')}
                     </button>
                     <div className="h-12 flex items-center px-6 rounded-xl bg-primary text-primary-foreground font-black text-xs">
-                        Page {page}
+                        {t('pageLabel', { page })}
                     </div>
                     <button
                         onClick={() => setPage(p => p + 1)}
                         disabled={tickets.length < 50}
                         className="px-6 h-12 rounded-xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
                     >
-                        Next
+                        {t('nextButton')}
                     </button>
                 </div>
             )}

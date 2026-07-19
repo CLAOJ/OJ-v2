@@ -94,14 +94,14 @@ export default function CreateTicketPage() {
                 className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
-                Back to Tickets
+                {t('backToTickets')}
             </Link>
 
             {/* Header */}
             <div className="text-center space-y-2">
                 <TicketIcon className="mx-auto text-primary" size={48} />
                 <h1 className="text-4xl font-black tracking-tighter">{t('createTitle')}</h1>
-                <p className="text-muted-foreground font-black opacity-80">Describe your issue and we&apos;ll get back to you.</p>
+                <p className="text-muted-foreground font-black opacity-80">{t('createDescription')}</p>
             </div>
 
             {/* Form */}
@@ -111,7 +111,7 @@ export default function CreateTicketPage() {
                     <div className="space-y-2">
                         <label className="text-sm font-bold ml-1 flex items-center gap-2">
                             <MessageSquare size={16} className="text-primary" />
-                            Title
+                            {t('titleLabel')}
                         </label>
                         <input
                             {...register('title')}
@@ -129,7 +129,7 @@ export default function CreateTicketPage() {
                     <div className="space-y-2">
                         <label className="text-sm font-bold ml-1 flex items-center gap-2">
                             <AlertCircle size={16} className="text-primary" />
-                            Related Problem (Optional)
+                            {t('relatedProblemOptional')}
                         </label>
                         <div className="relative">
                             <input
@@ -172,7 +172,7 @@ export default function CreateTicketPage() {
                                             <span className="font-mono font-black text-primary">{problem.code}</span>
                                             <span className="ml-2 font-bold">{problem.name}</span>
                                         </div>
-                                        <span className="text-xs font-bold text-muted-foreground">{problem.points} pts</span>
+                                        <span className="text-xs font-bold text-muted-foreground">{t('pointsLabel', { points: problem.points })}</span>
                                     </button>
                                 ))}
                             </div>
@@ -183,7 +183,7 @@ export default function CreateTicketPage() {
                     <div className="space-y-2">
                         <label className="text-sm font-bold ml-1 flex items-center gap-2">
                             <FileText size={16} className="text-primary" />
-                            Description
+                            {t('descriptionLabel')}
                         </label>
                         <textarea
                             {...register('body')}
@@ -204,7 +204,7 @@ export default function CreateTicketPage() {
                         href="/tickets"
                         className="px-8 h-14 rounded-2xl bg-muted text-muted-foreground font-bold hover:bg-muted/80 transition-all"
                     >
-                        Cancel
+                        {t('cancelButton')}
                     </Link>
                     <button
                         type="submit"
@@ -212,7 +212,7 @@ export default function CreateTicketPage() {
                         className="px-8 h-14 rounded-2xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/20"
                     >
                         {createMutation.isPending && <Loader2 size={18} className="animate-spin" />}
-                        Create Ticket
+                        {t('create')}
                     </button>
                 </div>
             </form>

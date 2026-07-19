@@ -79,13 +79,13 @@ export default function TicketDetailPage() {
             <div className="max-w-2xl mx-auto text-center py-20">
                 <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
                 <h2 className="text-2xl font-black mb-2">{t('notFound')}</h2>
-                <p className="text-muted-foreground mb-6">The ticket you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+                <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/tickets"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
-                    Back to Tickets
+                    {t('backToTickets')}
                 </Link>
             </div>
         );
@@ -122,12 +122,12 @@ export default function TicketDetailPage() {
                     <span className="font-black">{message.user.username}</span>
                     {isOP && (
                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/20">
-                            <User size={12} className="inline mr-1" /> Ticket Owner
+                            <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
                         </Badge>
                     )}
                     {message.user.is_staff && (
                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                            <Shield size={12} className="inline mr-1" /> Staff
+                            <Shield size={12} className="inline mr-1" /> {t('staffBadge')}
                         </Badge>
                     )}
                     <span className="text-[10px] text-muted-foreground font-mono ml-auto">
@@ -149,7 +149,7 @@ export default function TicketDetailPage() {
                 className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
-                Back to Tickets
+                {t('backToTickets')}
             </Link>
 
             {/* Header */}
@@ -173,13 +173,13 @@ export default function TicketDetailPage() {
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <Clock size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        Created {dayjs(ticket.created_on).fromNow()}
+                                        {t('createdLabel', { time: dayjs(ticket.created_on).fromNow() })}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <MessageSquare size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        {ticket.message_count} messages
+                                        {t('messagesCount', { count: ticket.message_count })}
                                     </span>
                                 </div>
                             </div>
@@ -188,11 +188,11 @@ export default function TicketDetailPage() {
                     <div className="flex-shrink-0">
                         {ticket.is_closed ? (
                             <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest px-4 py-2">
-                                Closed
+                                {t('closed')}
                             </Badge>
                         ) : (
                             <Badge className="text-[10px] font-black uppercase tracking-widest px-4 py-2 bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                Open
+                                {t('open')}
                             </Badge>
                         )}
                     </div>
@@ -232,7 +232,7 @@ export default function TicketDetailPage() {
                 <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
                     <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                         <MessageSquare size={20} className="text-primary" />
-                        Reply to Ticket
+                        {t('replyToTicket')}
                     </h3>
                     <div className="space-y-4">
                         <textarea
@@ -253,7 +253,7 @@ export default function TicketDetailPage() {
                                 ) : (
                                     <Send size={18} />
                                 )}
-                                Send Reply
+                                {t('sendReply')}
                             </button>
                         </div>
                     </div>
