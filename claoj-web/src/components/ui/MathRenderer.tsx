@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { cn } from '@/lib/utils';
+import { normalizeDmojMarkdown } from '@/lib/markdown';
 
 interface MathRendererProps {
     content: string;
@@ -18,10 +19,10 @@ export default function MathRenderer({ content, className, fullMarkup }: MathRen
     return (
         <div className={cn("prose prose-invert max-w-none prose-headings:font-bold prose-a:text-primary text-foreground", className)}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
+                remarkPlugins={[[remarkGfm, { singleTilde: false }], remarkMath]}
                 rehypePlugins={[...(fullMarkup ? [rehypeRaw] : []), rehypeKatex]}
             >
-                {content}
+                {normalizeDmojMarkdown(content)}
             </ReactMarkdown>
         </div>
     );

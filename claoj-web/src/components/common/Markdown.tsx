@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { normalizeDmojMarkdown } from '@/lib/markdown';
 
 interface MarkdownProps {
     content: string;
@@ -15,10 +16,10 @@ export default function Markdown({ content }: MarkdownProps) {
     return (
         <div className="prose prose-invert max-w-none text-foreground">
             <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
+                remarkPlugins={[[remarkGfm, { singleTilde: false }], remarkMath]}
                 rehypePlugins={[rehypeKatex]}
             >
-                {content}
+                {normalizeDmojMarkdown(content)}
             </ReactMarkdown>
         </div>
     );

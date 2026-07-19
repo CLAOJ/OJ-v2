@@ -112,7 +112,11 @@ func Register(c *gin.Context) {
 			LanguageID: lang.ID,
 			Timezone:   tz,
 			LastAccess: time.Now(),
-			MathEngine: "mathjax", // Default
+			// judge_profile.math_engine is varchar(4) with Django choices
+			// tex/svg/mml/jax/auto. "auto" is v1's MATHOID_DEFAULT_TYPE; the
+			// old "mathjax" value overflowed the column (Error 1406) and broke
+			// registration entirely.
+			MathEngine: "auto",
 		}
 		return tx.Create(&profile).Error
 	})
