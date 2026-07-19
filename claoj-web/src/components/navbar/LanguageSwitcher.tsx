@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import { useRouter, usePathname } from '@/navigation';
+import { usePathname } from '@/navigation';
 import { cn } from '@/lib/utils';
 import { GB_FLAG_SVG, VI_FLAG_SVG } from '@/lib/flag-icons';
 
@@ -11,11 +11,26 @@ interface LanguageSwitcherProps {
 
 export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitcherProps) {
     const locale = useLocale();
-    const router = useRouter();
     const pathname = usePathname();
 
     const handleLanguageChange = (newLocale: string) => {
-        router.push(pathname, { locale: newLocale });
+        if (newLocale === locale) return;
+        // Persist the choice. With localePrefix 'as-needed' the default
+        // locale's paths carry no /en prefix, so the middleware never sees a
+        // locale in the path, leaves NEXT_LOCALE at its old value, and every
+        // full page load then redirects back to the previous language.
+        document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+        // Hard navigation, not router.push: a soft switch leaves the old
+        // page's in-flight link prefetches alive, and their /vi-prefixed
+        // responses make the middleware re-set NEXT_LOCALE to the old locale,
+        // silently reverting the switch. A document navigation drops those
+        // requests, and the explicit locale prefix lets the middleware
+        // persist the cookie itself (it 307-normalizes /en/* to the
+        // unprefixed path). usePathname() strips the query string, so
+        // re-attach it (and any hash) to keep filters like
+        // /submissions?user=x intact.
+        const bare = pathname === '/' ? '' : pathname;
+        window.location.assign(`/${newLocale}${bare}${window.location.search}${window.location.hash}`);
     };
 
     if (variant === 'mobile') {
