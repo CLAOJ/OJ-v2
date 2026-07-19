@@ -351,7 +351,7 @@
     "noComments": "No comments yet. Be the first to discuss this editorial!",
     "guidelines": "Keep discussions focused on the editorial solution approach.",
     "commentingOn": "Commenting on Editorial",
-    "problemName": "Problem: {{problemName}}",
+    "problemName": "Problem: {problemName}",
     "icon": "Book"
   },
   "problemComments": {
@@ -360,7 +360,7 @@
     "noComments": "No comments yet. Be the first to comment!",
     "guidelines": "Please keep discussions respectful and on-topic.",
     "commentingOn": "Commenting on Problem",
-    "problemName": "{{problemName}}",
+    "problemName": "{problemName}",
     "icon": "FileText"
   },
   "Blog": {

@@ -44,7 +44,7 @@ export default function ContestsPageContent() {
     const { data: contestsData, isLoading } = useQuery({
         queryKey: ['contests'],
         queryFn: async () => {
-            const res = await api.get<APIResponse<Contest[]>>('/contests', {
+            const res = await api.get<{ results: Contest[] }>('/contests', {
                 params: { page_size: 1000 }
             });
             return res.data;

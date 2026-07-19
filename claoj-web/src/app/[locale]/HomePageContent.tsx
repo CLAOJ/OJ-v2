@@ -53,7 +53,7 @@ export default function HomePageContent() {
         queryKey: ['blog-posts'],
         queryFn: async ({ pageParam = 1 }) => {
             const res = await api.get<{ data: BlogPost[] }>('/blogs', {
-                params: { limit: BLOG_PAGE_SIZE, page: pageParam }
+                params: { page_size: BLOG_PAGE_SIZE, page: pageParam }
             });
             return { data: res.data.data, page: pageParam as number };
         },
@@ -67,12 +67,16 @@ export default function HomePageContent() {
     // Flatten infinite query data
     const posts = postsData?.pages.flatMap(page => page.data) || [];
 
-    // Fetch ongoing contests
+    // Fetch ongoing contests (the API has no status filter; it returns
+    // { results } sorted by recency — filter by time window client-side)
     const { data: ongoingContests } = useQuery({
         queryKey: ['ongoing-contests'],
         queryFn: async () => {
-            const res = await api.get<{ data: Contest[] }>('/contests?status=ongoing&limit=5');
-            return res.data.data;
+            const res = await api.get<{ results: Contest[] }>('/contests?page_size=100');
+            const now = Date.now();
+            return (res.data.results || []).filter(ct =>
+                new Date(ct.start_time).getTime() <= now && now <= new Date(ct.end_time).getTime()
+            ).slice(0, 5);
         }
     });
 
@@ -80,34 +84,42 @@ export default function HomePageContent() {
     const { data: upcomingContests } = useQuery({
         queryKey: ['upcoming-contests'],
         queryFn: async () => {
-            const res = await api.get<{ data: Contest[] }>('/contests?status=upcoming&limit=5');
-            return res.data.data;
+            const res = await api.get<{ results: Contest[] }>('/contests?page_size=100');
+            const now = Date.now();
+            return (res.data.results || []).filter(ct =>
+                new Date(ct.start_time).getTime() > now
+            ).slice(0, 5);
         }
     });
 
-    // Fetch top users by rating (limit 10)
+    // Fetch top users by rating (limit 10). The API has no order param and always
+    // sorts by performance points — sort by rating client-side.
     const { data: topRatingUsers } = useQuery({
         queryKey: ['top-rating-users'],
         queryFn: async () => {
-            const res = await api.get<{ data: User[] }>('/users?order=-rating&limit=10');
-            return res.data.data;
+            const res = await api.get<{ data: User[] }>('/users?page_size=100');
+            return (res.data.data || [])
+                .filter(u => u.rating != null)
+                .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+                .slice(0, 10);
         }
     });
 
-    // Fetch top scorers (limit 10)
+    // Fetch top scorers (limit 10). The API's default order is performance points DESC.
     const { data: topScorers } = useQuery({
         queryKey: ['top-scorers'],
         queryFn: async () => {
-            const res = await api.get<{ data: User[] }>('/users?order=-performance_points&limit=10');
+            const res = await api.get<{ data: User[] }>('/users?page_size=10');
             return res.data.data;
         }
     });
 
-    // Fetch new problems (limit 10)
+    // Fetch new problems (limit 10). The API has no date sort; code DESC is the
+    // closest available ordering (backend work needed for a true "newest" sort).
     const { data: newProblems } = useQuery({
         queryKey: ['new-problems'],
         queryFn: async () => {
-            const res = await api.get<{ data: Problem[] }>('/problems?sort=date&order=desc&limit=10');
+            const res = await api.get<{ data: Problem[] }>('/problems?sort=code&order=desc&page_size=10');
             return res.data.data;
         }
     });
@@ -116,7 +128,7 @@ export default function HomePageContent() {
     const { data: recentComments } = useQuery({
         queryKey: ['recent-comments'],
         queryFn: async () => {
-            const res = await api.get<{ data: any[] }>('/comments?page_type=blog&limit=10');
+            const res = await api.get<{ data: any[] }>('/comments?page_type=blog&page_size=10');
             return res.data.data;
         }
     });
@@ -278,7 +290,7 @@ export default function HomePageContent() {
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <h3 className="text-xl font-bold hover:text-primary transition-colors">
                                                         <Link href={`/blog/${post.id}`} className="hover:underline">
-                                                            {!post.visible && <Lock size={14} className="inline text-red-500 mr-1" />}
+                                                            {post.visible === false && <Lock size={14} className="inline text-red-500 mr-1" />}
                                                             {post.title}
                                                         </Link>
                                                     </h3>
@@ -462,7 +474,7 @@ export default function HomePageContent() {
                                 </thead>
                                 <tbody>
                                     {topRatingUsers.map((user, i) => (
-                                        <tr key={user.id} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
+                                        <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
                                             <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                                             <td className="px-3 py-2">
                                                 <Link href={`/user/${user.username}`} className={cn("font-bold hover:text-primary", getRatingClass(user.rating))}>
@@ -500,7 +512,7 @@ export default function HomePageContent() {
                                 </thead>
                                 <tbody>
                                     {topScorers.map((user, i) => (
-                                        <tr key={user.id} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
+                                        <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
                                             <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                                             <td className="px-3 py-2">
                                                 <Link href={`/user/${user.username}`} className="font-bold text-[#72ff72] hover:text-primary">

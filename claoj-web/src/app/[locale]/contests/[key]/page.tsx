@@ -10,7 +10,7 @@ const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 // Fetch contest data for metadata (server-side)
 async function fetchContest(key: string) {
   try {
-    const res = await api.get(`http://localhost:8080/api/v2/contest/${key}`);
+    const res = await api.get(`/contest/${key}`);
     return res.data;
   } catch (error) {
     return null;

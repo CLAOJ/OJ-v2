@@ -10,7 +10,7 @@ const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 // Fetch blog post data for metadata (server-side)
 async function fetchBlogPost(id: string) {
   try {
-    const res = await api.get(`http://localhost:8080/api/v2/blog/${id}`);
+    const res = await api.get(`/blog/${id}`);
     return res.data;
   } catch (error) {
     return null;

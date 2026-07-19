@@ -38,10 +38,11 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
     const { data: clarifications, isLoading } = useQuery({
         queryKey: ['contest-clarifications', contestKey],
         queryFn: async () => {
-            const res = await api.get<{ data: ContestClarification[] }>(
+            // contest clarifications return { results } (not { data })
+            const res = await api.get<{ results: ContestClarification[] }>(
                 `/contest/${contestKey}/clarifications`
             );
-            return res.data.data || [];
+            return res.data.results || [];
         }
     });
 

@@ -10,7 +10,7 @@ const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 // Fetch user data for metadata (server-side)
 async function fetchUser(username: string) {
   try {
-    const res = await api.get(`http://localhost:8080/api/v2/user/${username}`);
+    const res = await api.get(`/user/${username}`);
     return res.data;
   } catch (error) {
     return null;

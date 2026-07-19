@@ -28,22 +28,32 @@ export default function UsersListPage() {
     const [sortBy, setSortBy] = useState<'points' | 'rating' | 'problem_count'>('points');
     const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
+    // The /users API only supports page/page_size (always sorted by performance
+    // points DESC server-side) — search and sorting are applied client-side.
     const { data, isLoading } = useQuery({
-        queryKey: ['users', page, search, sortBy, order],
+        queryKey: ['users', page],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 page_size: '50',
-                search,
-                sort: sortBy,
-                order,
             });
             const res = await api.get<PaginatedList<UserListItem>>(`/users?${params.toString()}`);
             return res.data;
         }
     });
 
-    const users = data?.data || [];
+    const fetchedUsers = data?.data || [];
+    const users = fetchedUsers
+        .filter(u =>
+            !search ||
+            u.username.toLowerCase().includes(search.toLowerCase()) ||
+            (u.display_name || '').toLowerCase().includes(search.toLowerCase())
+        )
+        .sort((a, b) => {
+            const av = a[sortBy] ?? 0;
+            const bv = b[sortBy] ?? 0;
+            return order === 'asc' ? Number(av) - Number(bv) : Number(bv) - Number(av);
+        });
 
     const toggleSort = (field: 'points' | 'rating' | 'problem_count') => {
         if (sortBy === field) {
@@ -81,7 +91,7 @@ export default function UsersListPage() {
                             </div>
                             <button
                                 onClick={() => setPage(p => p + 1)}
-                                disabled={users.length < 50}
+                                disabled={fetchedUsers.length < 50}
                                 className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
                             >
                                 <ChevronRight size={18} />
@@ -219,7 +229,7 @@ export default function UsersListPage() {
                                 ))
                             ) : (
                                 users.map((user, index) => (
-                                    <tr key={user.id} className="hover:bg-muted/10 transition-colors group">
+                                    <tr key={user.username} className="hover:bg-muted/10 transition-colors group">
                                         <td className="px-10 py-8 text-center">
                                             <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-muted font-black text-sm text-muted-foreground">
                                                 {(page - 1) * 50 + index + 1}

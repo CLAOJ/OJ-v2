@@ -38,15 +38,17 @@ export default function BlogListPage() {
     const { data: contests, isLoading: isContestsLoading } = useQuery({
         queryKey: ['sidebar-contests'],
         queryFn: async () => {
-            const res = await api.get<PaginatedList<Contest>>('/contests?limit=5');
-            return res.data.data;
+            // /contests returns { results } (not { data }) and paginates via page_size
+            const res = await api.get<{ results: Contest[] }>('/contests?page_size=5');
+            return res.data.results;
         }
     });
 
     const { data: topUsers, isLoading: isUsersLoading } = useQuery({
         queryKey: ['sidebar-users'],
         queryFn: async () => {
-            const res = await api.get<PaginatedList<UserDetail>>('/users?limit=5');
+            // /users paginates via page_size (no limit param)
+            const res = await api.get<PaginatedList<UserDetail>>('/users?page_size=5');
             return res.data.data;
         }
     });

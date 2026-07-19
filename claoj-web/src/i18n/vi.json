@@ -351,7 +351,7 @@
     "noComments": "Chưa có bình luận. Hãy là người đầu tiên thảo luận editorial này!",
     "guidelines": "Giữ thảo luận tập trung vào cách tiếp cận giải pháp editorial.",
     "commentingOn": "Đang bình luận Editorial",
-    "problemName": "Bài: {{problemName}}",
+    "problemName": "Bài: {problemName}",
     "icon": "Book"
   },
   "problemComments": {
@@ -360,7 +360,7 @@
     "noComments": "Chưa có bình luận. Hãy là người đầu tiên bình luận!",
     "guidelines": "Vui lòng giữ thảo luận tôn trọng và đúng chủ đề.",
     "commentingOn": "Đang bình luận Problem",
-    "problemName": "{{problemName}}",
+    "problemName": "{problemName}",
     "icon": "FileText"
   },
   "Blog": {

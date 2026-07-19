@@ -24,11 +24,27 @@ export function getApiUrl(): string {
     return api.defaults.baseURL as string;
 }
 
+function getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
 // Interceptor to add access token from httpOnly cookie
 // NOTE: Tokens are stored in httpOnly cookies only - never in localStorage for security
 api.interceptors.request.use((config) => {
     // Token is automatically sent via httpOnly cookie
     // No need to manually add Authorization header - backend reads from cookie
+
+    // Double-submit CSRF: echo the csrf_token cookie (planted by the backend
+    // on authenticated GETs) as a header on every mutating request.
+    const method = (config.method || 'get').toLowerCase();
+    if (method !== 'get' && method !== 'head' && method !== 'options') {
+        const csrfToken = getCookie('csrf_token');
+        if (csrfToken) {
+            config.headers['X-CSRF-Token'] = csrfToken;
+        }
+    }
     return config;
 });
 
@@ -226,9 +242,9 @@ export const webauthnApi = {
 import type { ProblemClarification } from '@/types';
 
 export const problemClarificationApi = {
-    // Public: List clarifications for a problem
+    // Public: List clarifications for a problem (backend returns { data } with no total)
     getClarifications: (problemCode: string) =>
-        api.get<{ data: ProblemClarification[]; total: number }>(`/problem/${problemCode}/clarifications`),
+        api.get<{ data: ProblemClarification[] }>(`/problem/${problemCode}/clarifications`),
 
     // Admin: Create a new clarification
     createClarification: (problemCode: string, description: string) =>
@@ -336,9 +352,9 @@ export interface SubmissionDiffResponse {
 }
 
 export const submissionDiffApi = {
-    // Get diff between two submissions
+    // Get diff between two submissions (backend route: /submissions/:id1/diff/:id2)
     getDiff: (id1: number, id2: number) =>
-        api.get<SubmissionDiffResponse>(`/submissions/diff/${id1}?compare=${id2}`),
+        api.get<SubmissionDiffResponse>(`/submissions/${id1}/diff/${id2}`),
 };
 
 export default api;

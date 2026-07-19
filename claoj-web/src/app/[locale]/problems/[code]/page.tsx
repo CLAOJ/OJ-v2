@@ -10,7 +10,7 @@ const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 // Fetch problem data for metadata (server-side)
 async function fetchProblem(code: string) {
   try {
-    const res = await api.get(`http://localhost:8080/api/v2/problem/${code}`);
+    const res = await api.get(`/problem/${code}`);
     return res.data;
   } catch (error) {
     return null;

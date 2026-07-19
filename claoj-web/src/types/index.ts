@@ -498,26 +498,19 @@ export interface OrganizationMember {
 // TICKET TYPES
 // ============================================================
 
+// Matches GET /api/tickets item shape: { id, title, is_open, is_contributive, created, assignees }
 export interface Ticket {
     id: number;
     title: string;
-    created_on: string;
-    updated_on: string;
-    is_closed: boolean;
+    is_open: boolean;
     is_contributive?: boolean;
-    user: {
-        id: number;
-        username: string;
-    };
-    problem?: {
-        code: string;
-        name: string;
-    };
-    message_count: number;
+    created: string;
     assignees?: string[];
 }
 
+// Matches GET /api/ticket/:id: flat object with creator (username string) and messages
 export interface TicketDetail extends Ticket {
+    creator: string;
     messages: TicketMessage[];
     notes?: string;
     linked_item?: {
@@ -528,15 +521,12 @@ export interface TicketDetail extends Ticket {
     };
 }
 
+// Matches ticket message shape: { id, body, time, username }
 export interface TicketMessage {
     id: number;
     body: string;
     time: string;
-    user: {
-        id: number;
-        username: string;
-        is_staff?: boolean;
-    };
+    username: string;
 }
 
 export interface TicketCreateRequest {
@@ -572,8 +562,8 @@ export interface AdminTicketDetail {
 // USER LIST TYPES
 // ============================================================
 
+// Matches GET /api/users item shape (no id/display_name/organizations in the payload)
 export interface UserListItem {
-    id: number;
     username: string;
     display_name?: string;
     points: number;
@@ -581,7 +571,8 @@ export interface UserListItem {
     rating?: number | null;
     problem_count: number;
     display_rank: string;
-    organizations: { id: number; name: string }[];
+    avatar_url?: string;
+    organizations?: { id: number; name: string }[];
 }
 
 // ============================================================
@@ -1069,7 +1060,11 @@ export type AdminJudgeListResponse = AdminListResponse<AdminJudge>;
 export type AdminOrganizationListResponse = AdminListResponse<AdminOrganization>;
 export type AdminSubmissionListResponse = AdminListResponse<AdminSubmission>;
 export type AdminSolutionListResponse = AdminListResponse<AdminSolution>;
-export type AdminTicketListResponse = AdminListResponse<AdminTicket>;
+// GET /api/admin/tickets returns { items, total } (not { data, total })
+export interface AdminTicketListResponse {
+    items: AdminTicket[];
+    total: number;
+}
 
 // ============================================================
 // NAVIGATION BAR TYPES (Task #51)
