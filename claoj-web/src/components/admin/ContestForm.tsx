@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { BasicInfoSection } from './contest-form/BasicInfoSection';
 import { ScheduleSection } from './contest-form/ScheduleSection';
@@ -60,6 +61,7 @@ interface ContestTag {
 }
 
 export default function ContestForm({ initialData, onSubmit, isLoading }: ContestFormProps) {
+    const t = useTranslations('Admin');
     const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ContestFormData>({
         defaultValues: {
             key: initialData?.key || '',
@@ -213,7 +215,7 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
                     disabled={isLoading}
                     className="px-6 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
-                    {isLoading ? 'Saving...' : (initialData?.key ? 'Update Contest' : 'Create Contest')}
+                    {isLoading ? t('contestForm.savingButton') : (initialData?.key ? t('contestForm.updateContestButton') : t('contestForm.createContestButton'))}
                 </button>
             </div>
         </form>

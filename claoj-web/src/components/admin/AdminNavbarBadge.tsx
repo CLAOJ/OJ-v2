@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ interface AdminNavbarBadgeProps {
 
 export function AdminNavbarBadge({ onClick }: AdminNavbarBadgeProps) {
     const { user } = useAuth();
+    const t = useTranslations('Admin');
 
     if (!user?.is_staff) return null;
 
@@ -30,7 +32,7 @@ export function AdminNavbarBadge({ onClick }: AdminNavbarBadgeProps) {
             )}
         >
             <Shield className="w-3.5 h-3.5" />
-            <span>Admin</span>
+            <span>{t('layout.adminLabel')}</span>
         </motion.button>
     );
 }

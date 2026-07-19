@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface UserProfile {
     id: number;
     username: string;
@@ -14,13 +16,14 @@ interface StaffSectionProps {
 }
 
 export function StaffSection({ users, selectedAuthors, selectedCurators, selectedTesters, onUserToggle }: StaffSectionProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Contest Staff</h3>
+            <h3 className="text-lg font-bold">{t('contestForm.staffTitle')}</h3>
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Authors
+                    {t('contestForm.authorsLabel')}
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto">
                     {users?.data.map(u => (
@@ -39,7 +42,7 @@ export function StaffSection({ users, selectedAuthors, selectedCurators, selecte
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Curators
+                    {t('contestForm.curatorsLabel')}
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto">
                     {users?.data.map(u => (
@@ -58,7 +61,7 @@ export function StaffSection({ users, selectedAuthors, selectedCurators, selecte
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Testers
+                    {t('contestForm.testersLabel')}
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto">
                     {users?.data.map(u => (

@@ -97,14 +97,14 @@ export const ADMIN_SECTIONS: AdminSection[] = [
 ];
 
 export const QUICK_ACTIONS = [
-    { icon: Code, label: 'New Problem', href: '/admin/problems/create', color: 'text-blue-400' },
-    { icon: Trophy, label: 'New Contest', href: '/admin/contests/create', color: 'text-amber-400' },
-    { icon: Users, label: 'Manage Users', href: '/admin/users', color: 'text-violet-400' },
-    { icon: BarChart3, label: 'Analytics', href: '/admin', color: 'text-emerald-400' },
+    { id: 'newProblem', icon: Code, label: 'New Problem', href: '/admin/problems/create', color: 'text-blue-400' },
+    { id: 'newContest', icon: Trophy, label: 'New Contest', href: '/admin/contests/create', color: 'text-amber-400' },
+    { id: 'manageUsers', icon: Users, label: 'Manage Users', href: '/admin/users', color: 'text-violet-400' },
+    { id: 'analytics', icon: BarChart3, label: 'Analytics', href: '/admin', color: 'text-emerald-400' },
 ];
 
 export const ADMIN_STATS = [
-    { label: 'System Status', value: 'Operational', color: 'text-emerald-400' },
-    { label: 'Active Users', value: 'View Analytics', color: 'text-blue-400', href: '/admin/users' },
-    { label: 'Pending Tickets', value: 'Check Now', color: 'text-amber-400', href: '/admin/tickets' },
+    { id: 'systemStatus', label: 'System Status', value: 'Operational', color: 'text-emerald-400' },
+    { id: 'activeUsers', label: 'Active Users', value: 'View Analytics', color: 'text-blue-400', href: '/admin/users' },
+    { id: 'pendingTickets', label: 'Pending Tickets', value: 'Check Now', color: 'text-amber-400', href: '/admin/tickets' },
 ];

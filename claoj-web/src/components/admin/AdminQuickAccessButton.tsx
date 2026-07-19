@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ interface AdminQuickAccessButtonProps {
 
 export function AdminQuickAccessButton({ onClick }: AdminQuickAccessButtonProps) {
     const { user } = useAuth();
+    const t = useTranslations('Admin');
     const [isHovered, setIsHovered] = useState(false);
     const [showPulse, setShowPulse] = useState(true);
 
@@ -58,7 +60,7 @@ export function AdminQuickAccessButton({ onClick }: AdminQuickAccessButtonProps)
                 animate={{ x: isHovered ? 2 : 0 }}
                 className="text-sm font-semibold text-amber-400"
             >
-                Admin
+                {t('layout.adminLabel')}
             </motion.span>
         </motion.button>
     );

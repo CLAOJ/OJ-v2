@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Link } from '@/navigation';
 import {
@@ -19,6 +20,7 @@ interface AdminWelcomeBannerProps {
 
 export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
     const { user } = useAuth();
+    const t = useTranslations('Admin');
     const [isVisible, setIsVisible] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -83,14 +85,14 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <h2 className="text-2xl font-bold text-slate-100">
-                                    Welcome back, {user.username}
+                                    {t('shell.welcomeBack', { username: user.username })}
                                 </h2>
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">
-                                    {user.is_admin ? 'Super Admin' : 'Admin'}
+                                    {user.is_admin ? t('shell.superAdmin') : t('layout.adminLabel')}
                                 </span>
                             </div>
                             <p className="text-slate-400">
-                                You have elevated privileges. Manage the platform wisely.
+                                {t('shell.elevatedPrivileges')}
                             </p>
                         </div>
                     </div>
@@ -134,7 +136,7 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
                             >
                                 <action.icon className={cn('w-5 h-5', action.color)} />
                                 <span className="text-sm font-medium text-slate-300 group-hover:text-slate-200">
-                                    {action.label}
+                                    {t(`shell.quickActions.${action.id}`)}
                                 </span>
                                 <ChevronRight className="w-4 h-4 text-slate-600 ml-auto group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
                             </Link>
@@ -147,15 +149,15 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
                     {ADMIN_STATS.map((stat) => (
                         <div key={stat.label} className="text-center">
                             <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-                                {stat.label}
+                                {t(`shell.stats.${stat.id}Label`)}
                             </p>
                             {stat.href ? (
                                 <Link href={stat.href} className={cn('text-sm font-semibold hover:underline', stat.color)}>
-                                    {stat.value}
+                                    {t(`shell.stats.${stat.id}Value`)}
                                 </Link>
                             ) : (
                                 <p className={cn('text-sm font-semibold', stat.color)}>
-                                    {stat.value}
+                                    {t(`shell.stats.${stat.id}Value`)}
                                 </p>
                             )}
                         </div>

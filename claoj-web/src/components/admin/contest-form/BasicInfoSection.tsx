@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormRegister, RegisterOptions } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Trophy } from 'lucide-react';
 
@@ -55,17 +56,18 @@ export function BasicInfoSection({
     onDescriptionChange,
     isEditMode
 }: BasicInfoSectionProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
                 <Trophy size={20} className="text-primary" />
-                Basic Information
+                {t('contestForm.basicInfoTitle')}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
-                        Contest Key *
+                        {t('contestForm.keyLabel')}
                     </label>
                     <input
                         type="text"
@@ -73,8 +75,8 @@ export function BasicInfoSection({
                             "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none font-mono",
                             errors.key && "border-destructive"
                         )}
-                        placeholder="e.g., SAMPLE2026"
-                        {...register('key', { required: 'Contest key is required' })}
+                        placeholder={t('contestForm.keyPlaceholder')}
+                        {...register('key', { required: t('contestForm.keyRequired') })}
                         disabled={isEditMode}
                     />
                     {errors.key && (
@@ -84,7 +86,7 @@ export function BasicInfoSection({
 
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
-                        Contest Name *
+                        {t('contestForm.nameLabel')}
                     </label>
                     <input
                         type="text"
@@ -92,8 +94,8 @@ export function BasicInfoSection({
                             "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                             errors.name && "border-destructive"
                         )}
-                        placeholder="e.g., Sample Contest 2026"
-                        {...register('name', { required: 'Contest name is required' })}
+                        placeholder={t('contestForm.namePlaceholder')}
+                        {...register('name', { required: t('contestForm.nameRequired') })}
                     />
                     {errors.name && (
                         <p className="text-destructive text-xs mt-1">{errors.name.message}</p>
@@ -103,14 +105,14 @@ export function BasicInfoSection({
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Description *
+                    {t('contestForm.descriptionLabel')}
                 </label>
                 <textarea
                     className={cn(
                         "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[200px] font-mono text-sm",
                         errors.description && "border-destructive"
                     )}
-                    placeholder="Contest description in Markdown..."
+                    placeholder={t('contestForm.descriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => onDescriptionChange(e.target.value)}
                     required
@@ -122,11 +124,11 @@ export function BasicInfoSection({
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Summary (optional)
+                    {t('contestForm.summaryLabel')}
                 </label>
                 <textarea
                     className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[100px] text-sm"
-                    placeholder="Short summary for contest list..."
+                    placeholder={t('contestForm.summaryPlaceholder')}
                     {...register('summary')}
                 />
             </div>

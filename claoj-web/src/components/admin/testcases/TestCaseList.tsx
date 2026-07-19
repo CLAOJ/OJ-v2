@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useMutation } from '@tanstack/react-query';
 import { adminProblemDataApi, type ProblemTestCase } from '@/lib/adminApi';
 import { FileText, Trash2 } from 'lucide-react';
@@ -12,6 +13,7 @@ interface TestCaseListProps {
 }
 
 export function TestCaseList({ problemCode, testCases, onTestCaseDeleted }: TestCaseListProps) {
+    const t = useTranslations('Admin');
     const deleteMutation = useMutation({
         mutationFn: (testCaseId: number) => adminProblemDataApi.deleteTestCase(problemCode, testCaseId),
         onSuccess: onTestCaseDeleted
@@ -25,7 +27,7 @@ export function TestCaseList({ problemCode, testCases, onTestCaseDeleted }: Test
         <div className="bg-card rounded-2xl border p-6 space-y-4">
             <h4 className="font-bold flex items-center gap-2">
                 <FileText size={20} />
-                Existing Test Cases ({testCases.length})
+                {t('testcaseUpload.existingTestCases', { count: testCases.length })}
             </h4>
             <div className="space-y-2">
                 {testCases.map((tc) => (
@@ -33,10 +35,10 @@ export function TestCaseList({ problemCode, testCases, onTestCaseDeleted }: Test
                         <div className="flex items-center gap-3">
                             <Badge variant="secondary">#{tc.order}</Badge>
                             <div className="text-sm">
-                                <span className="text-muted-foreground">Input:</span>{' '}
+                                <span className="text-muted-foreground">{t('testcaseUpload.inputPrefix')}</span>{' '}
                                 <span className="font-mono">{tc.input_file}</span>
                                 {' → '}
-                                <span className="text-muted-foreground">Output:</span>{' '}
+                                <span className="text-muted-foreground">{t('testcaseUpload.outputPrefix')}</span>{' '}
                                 <span className="font-mono">{tc.output_file}</span>
                             </div>
                         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface UploadModeToggleProps {
@@ -8,6 +9,7 @@ interface UploadModeToggleProps {
 }
 
 export function UploadModeToggle({ mode, onModeChange }: UploadModeToggleProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="flex gap-2">
             <button
@@ -20,7 +22,7 @@ export function UploadModeToggle({ mode, onModeChange }: UploadModeToggleProps) 
                         : "bg-card border hover:bg-muted"
                 )}
             >
-                Single Test Case
+                {t('testcaseUpload.singleModeButton')}
             </button>
             <button
                 type="button"
@@ -32,7 +34,7 @@ export function UploadModeToggle({ mode, onModeChange }: UploadModeToggleProps) 
                         : "bg-card border hover:bg-muted"
                 )}
             >
-                Batch Upload
+                {t('testcaseUpload.batchModeButton')}
             </button>
         </div>
     );

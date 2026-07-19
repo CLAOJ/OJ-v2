@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Upload, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
@@ -15,6 +16,7 @@ interface BatchUploadProps {
 }
 
 export function BatchUpload({ onFilesSelected }: BatchUploadProps) {
+    const t = useTranslations('Admin');
     const handleBatchFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         const newTestFiles: TestCaseFile[] = [];
@@ -52,10 +54,9 @@ export function BatchUpload({ onFilesSelected }: BatchUploadProps) {
 
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h4 className="font-bold">Batch Upload Test Cases</h4>
+            <h4 className="font-bold">{t('testcaseUpload.batchUploadTitle')}</h4>
             <p className="text-sm text-muted-foreground">
-                Select multiple input (.in, .input, .txt) and output (.out, .output, .ans) files.
-                Files with matching base names will be paired automatically.
+                {t('testcaseUpload.batchUploadDesc')}
             </p>
             <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
                 <input
@@ -69,31 +70,31 @@ export function BatchUpload({ onFilesSelected }: BatchUploadProps) {
                 <label htmlFor="batch-files" className="cursor-pointer">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <Upload size={32} />
-                        <span>Click to select files or drag and drop</span>
+                        <span>{t('testcaseUpload.clickSelectFiles')}</span>
                     </div>
                 </label>
             </div>
 
             {testFiles.length > 0 && (
                 <div className="space-y-2">
-                    <h5 className="font-medium text-sm">Selected Files ({testFiles.length} test cases)</h5>
+                    <h5 className="font-medium text-sm">{t('testcaseUpload.selectedFilesCount', { count: testFiles.length })}</h5>
                     <div className="max-h-64 overflow-y-auto space-y-2">
                         {testFiles.map((file, idx) => (
                             <div key={idx} className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
                                 <FileText size={16} className="text-muted-foreground" />
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm truncate">
-                                        {file.inputName || 'No input'} → {file.outputName || 'No output'}
+                                        {file.inputName || t('testcaseUpload.noInput')} → {file.outputName || t('testcaseUpload.noOutput')}
                                     </div>
                                 </div>
                                 {!file.input && (
-                                    <Badge variant="destructive">Missing input</Badge>
+                                    <Badge variant="destructive">{t('testcaseUpload.missingInputBadge')}</Badge>
                                 )}
                                 {!file.output && (
-                                    <Badge variant="destructive">Missing output</Badge>
+                                    <Badge variant="destructive">{t('testcaseUpload.missingOutputBadge')}</Badge>
                                 )}
                                 {file.input && file.output && (
-                                    <Badge variant="success">Ready</Badge>
+                                    <Badge variant="success">{t('testcaseUpload.readyBadge')}</Badge>
                                 )}
                             </div>
                         ))}

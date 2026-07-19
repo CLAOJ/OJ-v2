@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface Problem {
     id: number;
     code: string;
@@ -14,11 +16,12 @@ interface ProblemsSectionProps {
 }
 
 export function ProblemsSection({ problems, selectedProblems, onProblemToggle }: ProblemsSectionProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Problems</h3>
+            <h3 className="text-lg font-bold">{t('contestForm.problemsTitle')}</h3>
             <p className="text-sm text-muted-foreground">
-                Select problems to include in the contest. You can reorder them after creation.
+                {t('contestForm.problemsDesc')}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
                 {problems?.data.map(p => (
@@ -40,7 +43,7 @@ export function ProblemsSection({ problems, selectedProblems, onProblemToggle }:
             </div>
             {selectedProblems.length > 0 && (
                 <div className="text-sm text-muted-foreground">
-                    Selected: {selectedProblems.length} problem(s)
+                    {t('contestForm.selectedProblemsCount', { count: selectedProblems.length })}
                 </div>
             )}
         </div>

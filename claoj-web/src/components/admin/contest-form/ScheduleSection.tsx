@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormRegister } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Clock, Calendar } from 'lucide-react';
 
@@ -45,18 +46,19 @@ interface ScheduleSectionProps {
 }
 
 export function ScheduleSection({ formData, errors, register }: ScheduleSectionProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
                 <Clock size={20} className="text-primary" />
-                Schedule
+                {t('contestForm.scheduleTitle')}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
                         <Calendar size={14} className="inline mr-1" />
-                        Start Time *
+                        {t('contestForm.startTimeLabel')}
                     </label>
                     <input
                         type="datetime-local"
@@ -64,7 +66,7 @@ export function ScheduleSection({ formData, errors, register }: ScheduleSectionP
                             "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                             errors.start_time && "border-destructive"
                         )}
-                        {...register('start_time', { required: 'Start time is required' })}
+                        {...register('start_time', { required: t('contestForm.startTimeRequired') })}
                     />
                     {errors.start_time && (
                         <p className="text-destructive text-xs mt-1">{errors.start_time.message}</p>
@@ -74,7 +76,7 @@ export function ScheduleSection({ formData, errors, register }: ScheduleSectionP
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
                         <Calendar size={14} className="inline mr-1" />
-                        End Time *
+                        {t('contestForm.endTimeLabel')}
                     </label>
                     <input
                         type="datetime-local"
@@ -82,7 +84,7 @@ export function ScheduleSection({ formData, errors, register }: ScheduleSectionP
                             "w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                             errors.end_time && "border-destructive"
                         )}
-                        {...register('end_time', { required: 'End time is required' })}
+                        {...register('end_time', { required: t('contestForm.endTimeRequired') })}
                     />
                     {errors.end_time && (
                         <p className="text-destructive text-xs mt-1">{errors.end_time.message}</p>
@@ -92,14 +94,14 @@ export function ScheduleSection({ formData, errors, register }: ScheduleSectionP
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Time Limit per Problem (seconds, optional)
+                    {t('contestForm.timeLimitLabel')}
                 </label>
                 <input
                     type="number"
                     min="0.5"
                     step="0.5"
                     className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                    placeholder="Default: Use problem time limits"
+                    placeholder={t('contestForm.timeLimitPlaceholder')}
                     {...register('time_limit')}
                 />
             </div>

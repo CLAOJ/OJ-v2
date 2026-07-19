@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Link } from '@/navigation';
 import {
@@ -20,6 +21,7 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     const { user } = useAuth();
+    const t = useTranslations('Admin');
     const reduceMotion = useReducedMotion();
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
@@ -67,10 +69,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                                             </div>
                                             <div>
                                                 <h2 className="text-lg font-bold text-slate-100">
-                                                    Admin Panel
+                                                    {t('layout.panelTitle')}
                                                 </h2>
                                                 <p className="text-xs text-slate-400 font-medium">
-                                                    Command Center
+                                                    {t('shell.commandCenter')}
                                                 </p>
                                             </div>
                                         </div>
@@ -97,7 +99,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                                         <div className="flex items-center gap-1.5">
                                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                             <span className="text-xs text-slate-400">
-                                                {user.is_admin ? 'Super Admin' : 'Staff'}
+                                                {user.is_admin ? t('shell.superAdmin') : t('shell.staffRole')}
                                             </span>
                                         </div>
                                     </div>
@@ -153,13 +155,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
                                             {/* Label */}
                                             <span className="relative flex-1 text-sm font-medium text-slate-300 group-hover:text-slate-100">
-                                                {section.label}
+                                                {t(`shell.sections.${section.id}`)}
                                             </span>
 
                                             {/* Badge */}
                                             {section.badge && (
                                                 <span className="relative text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
-                                                    {section.badge}
+                                                    {t('shell.manageBadge')}
                                                 </span>
                                             )}
 
@@ -174,7 +176,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                             <div className="p-4 border-t border-slate-800/50">
                                 <div className="flex items-center gap-2 text-xs text-slate-500">
                                     <Shield className="w-3.5 h-3.5" />
-                                    <span>Secure Admin Session</span>
+                                    <span>{t('shell.secureSession')}</span>
                                 </div>
                             </div>
                         </div>

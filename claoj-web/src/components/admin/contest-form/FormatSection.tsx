@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormRegister } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface FormatSettings {
@@ -51,14 +52,15 @@ const CONTEST_FORMATS = [
 ];
 
 export function FormatSection({ formData, selectedFormat, register, setValue }: FormatSectionProps) {
+    const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Format & Settings</h3>
+            <h3 className="text-lg font-bold">{t('contestForm.formatSettingsTitle')}</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
-                        Contest Format
+                        {t('contestForm.formatLabel')}
                     </label>
                     <select
                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
@@ -73,12 +75,12 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
 
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
-                        Access Code (for private contests)
+                        {t('contestForm.accessCodeLabel')}
                     </label>
                     <input
                         type="text"
                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        placeholder="Leave empty for public contest"
+                        placeholder={t('contestForm.accessCodePlaceholder')}
                         {...register('access_code')}
                     />
                 </div>
@@ -91,7 +93,7 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
                         className="rounded w-5 h-5"
                         {...register('is_visible')}
                     />
-                    <span className="text-sm font-medium">Visible (public)</span>
+                    <span className="text-sm font-medium">{t('contestForm.visiblePublicLabel')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -100,7 +102,7 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
                         className="rounded w-5 h-5"
                         {...register('is_rated')}
                     />
-                    <span className="text-sm font-medium">Rated contest</span>
+                    <span className="text-sm font-medium">{t('contestForm.ratedContestLabel')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -109,7 +111,7 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
                         className="rounded w-5 h-5"
                         {...register('hide_problem_tags')}
                     />
-                    <span className="text-sm font-medium">Hide problem tags</span>
+                    <span className="text-sm font-medium">{t('contestForm.hideProblemTagsLabel')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -118,7 +120,7 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
                         className="rounded w-5 h-5"
                         {...register('run_pretests_only')}
                     />
-                    <span className="text-sm font-medium">Pretests only</span>
+                    <span className="text-sm font-medium">{t('contestForm.pretestsOnlyLabel')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -127,7 +129,7 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
                         className="rounded w-5 h-5"
                         {...register('is_organization_private')}
                     />
-                    <span className="text-sm font-medium">Private to organization</span>
+                    <span className="text-sm font-medium">{t('contestForm.privateToOrgLabel')}</span>
                 </label>
             </div>
         </div>

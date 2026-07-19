@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProblemDataApi, type ProblemTestCase } from '@/lib/adminApi';
 import { Upload, Loader2 } from 'lucide-react';
@@ -23,6 +24,7 @@ interface TestCaseUploaderProps {
 }
 
 export default function TestCaseUploader({ problemCode, existingTestCases = [] }: TestCaseUploaderProps) {
+    const t = useTranslations('Admin');
     const [testFiles, setTestFiles] = useState<TestCaseFile[]>([]);
     const [uploadMode, setUploadMode] = useState<'single' | 'batch'>('single');
     const [currentInput, setCurrentInput] = useState<File | null>(null);
@@ -105,12 +107,12 @@ export default function TestCaseUploader({ problemCode, existingTestCases = [] }
                 {uploadMutation.isPending ? (
                     <>
                         <Loader2 className="animate-spin" size={20} />
-                        Uploading...
+                        {t('testcaseUpload.uploadingButton')}
                     </>
                 ) : (
                     <>
                         <Upload size={20} />
-                        Upload Test Case{uploadMode === 'batch' ? 's' : ''}
+                        {t('testcaseUpload.uploadButton', { suffix: uploadMode === 'batch' ? 's' : '' })}
                     </>
                 )}
             </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Upload, CheckCircle } from 'lucide-react';
 
 interface SingleUploadProps {
@@ -8,6 +9,7 @@ interface SingleUploadProps {
 }
 
 export function SingleUpload({ onFilesSelected }: SingleUploadProps) {
+    const t = useTranslations('Admin');
     const [currentInput, setCurrentInput] = useState<File | null>(null);
     const [currentOutput, setCurrentOutput] = useState<File | null>(null);
 
@@ -25,11 +27,11 @@ export function SingleUpload({ onFilesSelected }: SingleUploadProps) {
 
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h4 className="font-bold">Upload Single Test Case</h4>
+            <h4 className="font-bold">{t('testcaseUpload.singleUploadTitle')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
-                        Input File
+                        {t('testcaseUpload.inputFileLabel')}
                     </label>
                     <div className="border-2 border-dashed rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
                         <input
@@ -48,7 +50,7 @@ export function SingleUpload({ onFilesSelected }: SingleUploadProps) {
                             ) : (
                                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                     <Upload size={24} />
-                                    <span className="text-sm">Click to select input file</span>
+                                    <span className="text-sm">{t('testcaseUpload.clickSelectInput')}</span>
                                 </div>
                             )}
                         </label>
@@ -57,7 +59,7 @@ export function SingleUpload({ onFilesSelected }: SingleUploadProps) {
 
                 <div>
                     <label className="text-sm font-medium text-muted-foreground block mb-2">
-                        Output File
+                        {t('testcaseUpload.outputFileLabel')}
                     </label>
                     <div className="border-2 border-dashed rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
                         <input
@@ -76,7 +78,7 @@ export function SingleUpload({ onFilesSelected }: SingleUploadProps) {
                             ) : (
                                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                     <Upload size={24} />
-                                    <span className="text-sm">Click to select output file</span>
+                                    <span className="text-sm">{t('testcaseUpload.clickSelectOutput')}</span>
                                 </div>
                             )}
                         </label>
