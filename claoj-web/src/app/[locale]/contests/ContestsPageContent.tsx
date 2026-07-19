@@ -223,7 +223,7 @@ export default function ContestsPageContent() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search contests..."
+                                placeholder={t('searchPlaceholder')}
                                 className="w-full h-12 bg-card border rounded-[1.5rem] pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}

@@ -123,7 +123,7 @@ export default function SubmissionListPage() {
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
                             type="text"
-                            placeholder="Search user..."
+                            placeholder={t('searchUserPlaceholder')}
                             className="w-full h-12 bg-muted/30 border border-transparent rounded-2xl pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
                             value={userFilter}
                             onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
@@ -137,7 +137,7 @@ export default function SubmissionListPage() {
                         <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
                             type="text"
-                            placeholder="P01, APB..."
+                            placeholder={t('problemCodePlaceholder')}
                             className="w-full h-12 bg-muted/30 border border-transparent rounded-2xl pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
                             value={problemFilter}
                             onChange={(e) => { setProblemFilter(e.target.value); setPage(1); }}

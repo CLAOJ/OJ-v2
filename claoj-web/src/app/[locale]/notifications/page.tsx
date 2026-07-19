@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { Bell, Check, Trash2, Loader2, Inbox } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -18,19 +19,27 @@ interface Notification {
     created_at: string;
 }
 
-const NOTIFICATION_TYPES = [
-    { value: 'all', label: 'All' },
-    { value: 'unread', label: 'Unread' },
-    { value: 'submission', label: 'Submissions' },
-    { value: 'contest', label: 'Contests' },
-    { value: 'ticket', label: 'Tickets' },
-];
-
 export default function NotificationsPage() {
+    const t = useTranslations('Notification');
     const [filter, setFilter] = useState('all');
     const [page, setPage] = useState(1);
     const queryClient = useQueryClient();
     const pageSize = 20;
+
+    const NOTIFICATION_TYPES = [
+        { value: 'all', label: t('filterAll') },
+        { value: 'unread', label: t('filterUnread') },
+        { value: 'submission', label: t('filterSubmissions') },
+        { value: 'contest', label: t('filterContests') },
+        { value: 'ticket', label: t('filterTickets') },
+    ];
+
+    const typeLabels: Record<string, string> = {
+        unread: t('typeUnread'),
+        submission: t('typeSubmission'),
+        contest: t('typeContest'),
+        ticket: t('typeTicket'),
+    };
 
     // Fetch notifications
     const { data, isLoading } = useQuery({
@@ -100,10 +109,10 @@ export default function NotificationsPage() {
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
 
-        if (minutes < 1) return 'Just now';
-        if (minutes < 60) return `${minutes} minutes ago`;
-        if (hours < 24) return `${hours} hours ago`;
-        if (days < 7) return `${days} days ago`;
+        if (minutes < 1) return t('justNow');
+        if (minutes < 60) return t('minutesAgo', { minutes });
+        if (hours < 24) return t('hoursAgo', { hours });
+        if (days < 7) return t('daysAgo', { days });
         return date.toLocaleDateString();
     };
 
@@ -112,9 +121,9 @@ export default function NotificationsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Stay updated with your submissions, contests, and more.
+                        {t('subtitle')}
                     </p>
                 </div>
                 <button
@@ -127,7 +136,7 @@ export default function NotificationsPage() {
                     ) : (
                         <Check size={16} />
                     )}
-                    Mark all as read
+                    {t('markAllRead')}
                 </button>
             </div>
 
@@ -163,10 +172,11 @@ export default function NotificationsPage() {
                         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
                             <Inbox size={40} className="text-muted-foreground" />
                         </div>
-                        <h3 className="text-xl font-bold mb-2">No notifications</h3>
+                        <h3 className="text-xl font-bold mb-2">{t('noNotifications')}</h3>
                         <p className="text-muted-foreground max-w-md mx-auto">
-                            You don&apos;t have any {filter !== 'all' ? filter : ''} notifications yet.
-                            We&apos;ll notify you when something happens.
+                            {filter !== 'all'
+                                ? t('emptyStateFiltered', { filter: typeLabels[filter] ?? filter })
+                                : t('emptyStateAll')}
                         </p>
                     </div>
                 ) : (
@@ -217,7 +227,7 @@ export default function NotificationsPage() {
                                         onClick={() => markAsRead.mutate(notification.id)}
                                         disabled={markAsRead.isPending}
                                         className="p-2 rounded-xl hover:bg-primary/10 text-primary transition-colors"
-                                        title="Mark as read"
+                                        title={t('markAsRead')}
                                     >
                                         <Check size={18} />
                                     </button>
@@ -226,7 +236,7 @@ export default function NotificationsPage() {
                                     onClick={() => deleteNotification.mutate(notification.id)}
                                     disabled={deleteNotification.isPending}
                                     className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"
-                                    title="Delete"
+                                    title={t('delete')}
                                 >
                                     <Trash2 size={18} />
                                 </button>
@@ -244,17 +254,17 @@ export default function NotificationsPage() {
                         disabled={page === 1}
                         className="px-4 py-2 rounded-xl border font-bold hover:bg-muted transition-colors disabled:opacity-50"
                     >
-                        Previous
+                        {t('previous')}
                     </button>
                     <span className="px-4 py-2 font-medium text-muted-foreground">
-                        Page {page} of {totalPages}
+                        {t('pageOf', { page, totalPages })}
                     </span>
                     <button
                         onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
                         className="px-4 py-2 rounded-xl border font-bold hover:bg-muted transition-colors disabled:opacity-50"
                     >
-                        Next
+                        {t('next')}
                     </button>
                 </div>
             )}

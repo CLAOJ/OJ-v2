@@ -98,7 +98,7 @@ export default function ProblemsPageContent() {
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
                                 <input
                                     type="text"
-                                    placeholder="Code or Name..."
+                                    placeholder={t('searchPlaceholder')}
                                     className="w-full h-12 bg-muted/30 border border-muted-foreground/10 rounded-2xl pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}

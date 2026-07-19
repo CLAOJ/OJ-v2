@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
@@ -11,6 +12,7 @@ import Link from 'next/link';
 export default function VerifyEmailPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const t = useTranslations('Auth');
     const token = searchParams.get('token');
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState('');
@@ -18,7 +20,7 @@ export default function VerifyEmailPage() {
     useEffect(() => {
         if (!token) {
             setStatus('error');
-            setMessage('No verification token provided');
+            setMessage(t('noTokenError'));
             return;
         }
 
@@ -26,18 +28,19 @@ export default function VerifyEmailPage() {
             try {
                 const res = await api.post('/auth/verify-email', { token });
                 setStatus('success');
-                setMessage(res.data.message || 'Email verified successfully!');
+                setMessage(res.data.message || t('verifiedSuccessDefault'));
                 // Redirect to login after 3 seconds
                 setTimeout(() => {
                     router.push('/login');
                 }, 3000);
             } catch (err: any) {
                 setStatus('error');
-                setMessage(err.response?.data?.error || 'Failed to verify email');
+                setMessage(err.response?.data?.error || t('verifyEmailErrorDefault'));
             }
         };
 
         verifyEmail();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, router]);
 
     return (
@@ -53,8 +56,8 @@ export default function VerifyEmailPage() {
                             <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                                 <Loader2 size={40} className="text-primary animate-spin" />
                             </div>
-                            <h2 className="text-2xl font-bold">Verifying your email...</h2>
-                            <p className="text-muted-foreground">Please wait while we verify your email address.</p>
+                            <h2 className="text-2xl font-bold">{t('verifyingTitle')}</h2>
+                            <p className="text-muted-foreground">{t('verifyingDesc')}</p>
                         </>
                     )}
 
@@ -63,9 +66,9 @@ export default function VerifyEmailPage() {
                             <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
                                 <CheckCircle size={40} className="text-emerald-500" />
                             </div>
-                            <h2 className="text-2xl font-bold text-emerald-500">Email Verified!</h2>
+                            <h2 className="text-2xl font-bold text-emerald-500">{t('emailVerifiedTitle')}</h2>
                             <p className="text-muted-foreground">{message}</p>
-                            <p className="text-sm text-muted-foreground">Redirecting to login page...</p>
+                            <p className="text-sm text-muted-foreground">{t('redirectingToLogin')}</p>
                         </>
                     )}
 
@@ -74,14 +77,14 @@ export default function VerifyEmailPage() {
                             <div className="mx-auto w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
                                 <XCircle size={40} className="text-destructive" />
                             </div>
-                            <h2 className="text-2xl font-bold text-destructive">Verification Failed</h2>
+                            <h2 className="text-2xl font-bold text-destructive">{t('verificationFailedTitle')}</h2>
                             <p className="text-muted-foreground">{message}</p>
                             <div className="pt-4 space-y-3">
                                 <Link
                                     href="/login"
                                     className="inline-block px-6 py-2 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all"
                                 >
-                                    Go to Login
+                                    {t('goToLogin')}
                                 </Link>
                             </div>
                         </>

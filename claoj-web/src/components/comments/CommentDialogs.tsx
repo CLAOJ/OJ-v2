@@ -79,7 +79,7 @@ function EditCommentDialog({ editingComment, onEditCancel, onEditSubmit, isEditi
                 <DialogHeader>
                     <DialogTitle>{t('edit')}</DialogTitle>
                     <DialogDescription>
-                        Edit your comment. A revision history entry will be created.
+                        {t('editCommentDesc')}
                     </DialogDescription>
                 </DialogHeader>
                 <textarea
@@ -89,7 +89,7 @@ function EditCommentDialog({ editingComment, onEditCancel, onEditSubmit, isEditi
                 />
                 <input
                     type="text"
-                    placeholder="Edit reason (optional)"
+                    placeholder={t('editReason')}
                     className="w-full p-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary/20"
                     onKeyDown={(e) => editingComment && handleKeyDown(e, e.currentTarget.value)}
                 />
@@ -122,9 +122,9 @@ function DeleteCommentDialog({ deletingComment, onDeleteCancel, onDeleteConfirm,
         <Dialog open={!!deletingComment} onOpenChange={onDeleteCancel}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Delete Comment</DialogTitle>
+                    <DialogTitle>{t('deleteCommentTitle')}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete this comment? This action will soft delete the comment.
+                        {t('deleteConfirm')}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -136,7 +136,7 @@ function DeleteCommentDialog({ deletingComment, onDeleteCancel, onDeleteConfirm,
                         onClick={() => deletingComment && onDeleteConfirm(deletingComment)}
                     >
                         <Trash2 className="mr-2" size={16} />
-                        Delete
+                        {t('delete')}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -168,10 +168,10 @@ function RevisionHistoryDialog({ revisionHistory, onRevisionClose, t }: Revision
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <History className="text-primary" size={20} />
-                        Comment Revision History
+                        {t('revisionHistory')}
                     </DialogTitle>
                     <DialogDescription>
-                        View all edits made to this comment
+                        {t('viewAllEditsDesc')}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -189,7 +189,7 @@ function RevisionHistoryDialog({ revisionHistory, onRevisionClose, t }: Revision
                             </div>
                             {rev.reason && (
                                 <Badge variant="outline" className="mb-2">
-                                    Reason: {rev.reason}
+                                    {t('reasonLabel', { reason: rev.reason })}
                                 </Badge>
                             )}
                             <pre className="whitespace-pre-wrap text-sm font-medium bg-card p-3 rounded border">

@@ -26,6 +26,7 @@ interface ProfileSettingsTabProps {
 
 export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProps) {
     const t = useTranslations('Settings');
+    const tc = useTranslations('Common');
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [success, setSuccess] = useState(false);
@@ -70,12 +71,12 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to update profile');
+            alert(error.response?.data?.error || t('updateProfileError'));
         }
     });
 
     if (isLoading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
+        return <div className="p-8 text-center text-muted-foreground">{tc('loading')}</div>;
     }
 
     return (
@@ -83,26 +84,26 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
             <section className="space-y-6">
                 <div className="flex items-center gap-2 text-primary font-bold">
                     <Info size={18} />
-                    Basic Info
+                    {t('basicInfo')}
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
                     <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
                         <img
                             src={profile?.avatar_url || `https://www.gravatar.com/avatar/${user?.username}?s=80&d=mp`}
-                            alt="Avatar"
+                            alt={t('avatar')}
                             className="w-16 h-16 rounded-full object-cover border-2 border-primary/20"
                         />
                         <div>
-                            <p className="text-sm font-bold">Avatar</p>
-                            <p className="text-xs text-muted-foreground">Avatar is managed via Gravatar</p>
+                            <p className="text-sm font-bold">{t('avatar')}</p>
+                            <p className="text-xs text-muted-foreground">{t('avatarManagedGravatar')}</p>
                             <a
                                 href="https://gravatar.com"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-primary hover:underline"
                             >
-                                Manage at Gravatar
+                                {t('manageAtGravatar')}
                             </a>
                         </div>
                     </div>
@@ -117,17 +118,17 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Avatar URL (optional)</label>
+                        <label className="text-sm font-medium">{t('avatarUrlLabel')}</label>
                         <input
                             {...register('avatar_url')}
-                            placeholder="https://example.com/avatar.jpg"
+                            placeholder={t('avatarUrlPlaceholder')}
                             className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium"
                         />
                         {errors.avatar_url && <p className="text-xs text-destructive">{errors.avatar_url.message}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">About</label>
+                        <label className="text-sm font-medium">{t('about')}</label>
                         <textarea
                             {...register('about')}
                             placeholder={t('aboutPlaceholder')}

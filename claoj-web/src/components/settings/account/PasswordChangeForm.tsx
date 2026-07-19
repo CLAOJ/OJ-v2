@@ -4,24 +4,30 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Loader2, CheckCircle, Lock, Key } from 'lucide-react';
 import api from '@/lib/api';
 import { useMutation } from '@tanstack/react-query';
 
-const passwordSchema = z.object({
-    current_password: z.string().min(1, 'Current password is required'),
-    new_password: z.string().min(6, 'New password must be at least 6 characters'),
-    confirm_password: z.string().min(6, 'Please confirm your new password'),
-}).refine((data) => data.new_password === data.confirm_password, {
-    message: "Passwords don't match",
-    path: ['confirm_password'],
-});
-
-type PasswordFormValues = z.infer<typeof passwordSchema>;
+type PasswordFormValues = {
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
+};
 
 export function PasswordChangeForm() {
+    const t = useTranslations('Settings');
     const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+    const passwordSchema = z.object({
+        current_password: z.string().min(1, t('currentPasswordRequired')),
+        new_password: z.string().min(6, t('newPasswordMinLength')),
+        confirm_password: z.string().min(6, t('confirmPasswordRequired')),
+    }).refine((data) => data.new_password === data.confirm_password, {
+        message: t('passwordsDontMatch'),
+        path: ['confirm_password'],
+    });
 
     const {
         register,
@@ -46,7 +52,7 @@ export function PasswordChangeForm() {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to change password');
+            alert(error.response?.data?.error || t('changePasswordError'));
         },
     });
 
@@ -55,12 +61,12 @@ export function PasswordChangeForm() {
             <section className="space-y-6">
                 <div className="flex items-center gap-2 text-primary font-bold">
                     <Lock size={18} />
-                    Change Password
+                    {t('changePassword')}
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Current Password</label>
+                        <label className="text-sm font-medium">{t('oldPassword')}</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <input
@@ -75,7 +81,7 @@ export function PasswordChangeForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">New Password</label>
+                        <label className="text-sm font-medium">{t('newPassword')}</label>
                         <div className="relative">
                             <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <input
@@ -90,7 +96,7 @@ export function PasswordChangeForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Confirm New Password</label>
+                        <label className="text-sm font-medium">{t('confirmNewPassword')}</label>
                         <div className="relative">
                             <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <input
@@ -113,7 +119,7 @@ export function PasswordChangeForm() {
                     className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm flex items-center gap-3 font-medium"
                 >
                     <CheckCircle size={18} />
-                    Password changed successfully
+                    {t('passwordChangeSuccess')}
                 </motion.div>
             )}
 
@@ -123,7 +129,7 @@ export function PasswordChangeForm() {
                 className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
                 {isChangingPassword && <Loader2 size={18} className="animate-spin" />}
-                Change Password
+                {t('changePassword')}
             </button>
         </form>
     );

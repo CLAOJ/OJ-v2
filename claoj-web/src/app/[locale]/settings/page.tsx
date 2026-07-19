@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { User, Shield, Bell, Key, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProfileSettingsTab from '@/components/settings/ProfileSettingsTab';
@@ -16,25 +17,26 @@ type ActiveTab = 'profile' | 'account' | 'oauth' | 'notifications' | 'api-token'
 
 export default function SettingsPage() {
     const { user } = useAuth();
+    const t = useTranslations('Settings');
     const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
             <header>
-                <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground mt-1">Manage your profile and account settings.</p>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
             </header>
 
             <div className="flex flex-col md:flex-row gap-8">
                 {/* Sidebar Tabs */}
                 <aside className="w-full md:w-64 space-y-1">
-                    <TabButton icon={User} label="Profile" active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
-                    <TabButton icon={Shield} label="Account" active={activeTab === 'account'} onClick={() => setActiveTab('account')} />
-                    <TabButton icon={Globe} label="OAuth" active={activeTab === 'oauth'} onClick={() => setActiveTab('oauth')} />
-                    <TabButton icon={Bell} label="Notifications" active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} />
-                    <TabButton icon={Key} label="API Token" active={activeTab === 'api-token'} onClick={() => setActiveTab('api-token')} />
-                    <TabButton icon={Download} label="Data Export" active={activeTab === 'data-export'} onClick={() => setActiveTab('data-export')} />
-                    <TabButton icon={Shield} label="Passkey" active={activeTab === 'webauthn'} onClick={() => setActiveTab('webauthn')} />
+                    <TabButton icon={User} label={t('profile')} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                    <TabButton icon={Shield} label={t('account')} active={activeTab === 'account'} onClick={() => setActiveTab('account')} />
+                    <TabButton icon={Globe} label={t('oauth')} active={activeTab === 'oauth'} onClick={() => setActiveTab('oauth')} />
+                    <TabButton icon={Bell} label={t('notifications')} active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} />
+                    <TabButton icon={Key} label={t('apiToken')} active={activeTab === 'api-token'} onClick={() => setActiveTab('api-token')} />
+                    <TabButton icon={Download} label={t('dataExport')} active={activeTab === 'data-export'} onClick={() => setActiveTab('data-export')} />
+                    <TabButton icon={Shield} label={t('passkey')} active={activeTab === 'webauthn'} onClick={() => setActiveTab('webauthn')} />
                 </aside>
 
                 {/* Content Area */}

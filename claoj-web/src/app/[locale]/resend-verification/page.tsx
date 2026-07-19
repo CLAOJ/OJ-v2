@@ -4,22 +4,24 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import Link from 'next/link';
 
-const resendSchema = z.object({
-    email: z.string().email('Please enter a valid email address'),
-});
-
-type ResendFormValues = z.infer<typeof resendSchema>;
-
 export default function ResendVerificationPage() {
+    const t = useTranslations('Auth');
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const resendSchema = z.object({
+        email: z.string().email(t('invalidEmailError')),
+    });
+
+    type ResendFormValues = z.infer<typeof resendSchema>;
 
     const {
         register,
@@ -36,7 +38,7 @@ export default function ResendVerificationPage() {
             await api.post('/auth/resend-verification', { email: data.email });
             setSuccess(true);
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to send verification email');
+            setError(err.response?.data?.error || t('resendVerificationErrorDefault'));
         } finally {
             setIsLoading(false);
         }
@@ -53,16 +55,15 @@ export default function ResendVerificationPage() {
                     <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle size={40} className="text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-bold">Verification Email Sent!</h2>
+                    <h2 className="text-2xl font-bold">{t('resendEmailSentTitle')}</h2>
                     <p className="text-muted-foreground">
-                        If the email address exists and is not verified, a verification link has been sent.
-                        Please check your inbox and spam folder.
+                        {t('resendEmailSentDesc')}
                     </p>
                     <Link
                         href="/login"
                         className="inline-block px-8 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all"
                     >
-                        Go to Login
+                        {t('goToLogin')}
                     </Link>
                 </motion.div>
             </div>
@@ -80,9 +81,9 @@ export default function ResendVerificationPage() {
                     <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         <Mail size={32} className="text-primary" />
                     </div>
-                    <h2 className="text-2xl font-bold">Resend Verification Email</h2>
+                    <h2 className="text-2xl font-bold">{t('resendVerificationTitle')}</h2>
                     <p className="text-muted-foreground">
-                        Enter your email address and we&apos;ll send you a new verification link.
+                        {t('resendVerificationDesc')}
                     </p>
                 </div>
 
@@ -98,7 +99,7 @@ export default function ResendVerificationPage() {
                     )}
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Email Address</label>
+                        <label className="text-sm font-medium">{t('email')}</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <input
@@ -120,7 +121,7 @@ export default function ResendVerificationPage() {
                         className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                     >
                         {isLoading && <Loader2 size={18} className="animate-spin" />}
-                        Send Verification Email
+                        {t('sendVerificationEmail')}
                     </button>
                 </form>
 
@@ -129,7 +130,7 @@ export default function ResendVerificationPage() {
                     className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
                     <ArrowLeft size={16} />
-                    Back to Login
+                    {t('backToLogin')}
                 </Link>
             </motion.div>
         </div>

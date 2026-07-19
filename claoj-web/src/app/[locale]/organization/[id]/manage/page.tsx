@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { OrganizationDetail, OrganizationMember } from '@/types';
 import { Link } from '@/navigation';
@@ -28,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dayjs from 'dayjs';
 
 export default function OrganizationManagePage() {
+    const t = useTranslations('Organization');
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -297,6 +299,7 @@ interface OrganizationRequest {
 }
 
 function EditOrganizationForm({ organization, onSuccess }: { organization: OrganizationDetail; onSuccess: () => void }) {
+    const t = useTranslations('Organization');
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState({
         name: organization.name,
@@ -349,7 +352,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                         value={formData.short_name}
                         onChange={(e) => setFormData(prev => ({ ...prev, short_name: e.target.value }))}
                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        placeholder="e.g., CLA"
+                        placeholder={t('shortNamePlaceholder')}
                     />
                 </div>
 
@@ -359,7 +362,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                         value={formData.about}
                         onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[150px]"
-                        placeholder="Describe your organization..."
+                        placeholder={t('aboutPlaceholder')}
                     />
                 </div>
             </div>

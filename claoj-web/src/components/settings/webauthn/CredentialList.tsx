@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { webauthnApi } from '@/lib/api';
 import { Trash2, Edit2, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +14,8 @@ interface CredentialListProps {
 }
 
 export function CredentialList({ credentials }: CredentialListProps) {
+    const t = useTranslations('Settings');
+    const tc = useTranslations('Common');
     const queryClient = useQueryClient();
     const [editingId, setEditingId] = useState<number | null>(null);
     const [newName, setNewName] = useState('');
@@ -41,13 +44,13 @@ export function CredentialList({ credentials }: CredentialListProps) {
             setDeletePassword('');
         },
         onError: (error: any) => {
-            alert(error.response?.data?.error || 'Delete failed');
+            alert(error.response?.data?.error || t('deleteFailedError'));
         },
     });
 
     const handleUpdate = (id: number) => {
         if (!newName) {
-            alert('Please enter a name');
+            alert(t('enterNameError'));
             return;
         }
         updateMutation.mutate({ id: id.toString(), name: newName });
@@ -55,7 +58,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
 
     const handleDelete = (id: number) => {
         if (!deletePassword) {
-            alert('Please enter your password');
+            alert(t('enterPasswordError'));
             return;
         }
         setDeletingId(id);
@@ -65,7 +68,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
     return (
         <div className="space-y-4">
             <div className="space-y-2">
-                <h4 className="font-medium">Registered Credentials</h4>
+                <h4 className="font-medium">{t('registeredCredentials')}</h4>
                 {credentials.map((cred) => (
                     <div
                         key={cred.id}
@@ -101,7 +104,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
                                 <div>
                                     <p className="font-medium">{cred.name}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        ID: {cred.cred_id.slice(0, 20)}...
+                                        {t('credentialId', { id: `${cred.cred_id.slice(0, 20)}...` })}
                                     </p>
                                 </div>
                                 <div className="flex gap-2">
@@ -124,7 +127,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
 
             {deletingId !== null ? (
                 <div className="space-y-3 p-4 border rounded-lg bg-destructive/10">
-                    <p className="text-sm font-medium">Enter your password to confirm deletion:</p>
+                    <p className="text-sm font-medium">{t('enterPasswordConfirmDeletion')}</p>
                     <Input
                         type="password"
                         value={deletePassword}
@@ -137,7 +140,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
                             disabled={deleteMutation.isPending}
                         >
                             {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Confirm Delete
+                            {t('confirmDelete')}
                         </Button>
                         <Button
                             variant="outline"
@@ -146,7 +149,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
                                 setDeletePassword('');
                             }}
                         >
-                            Cancel
+                            {tc('cancel')}
                         </Button>
                     </div>
                 </div>
@@ -156,7 +159,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
                     onClick={() => setDeletingId(credentials?.[0]?.id ?? null)}
                 >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Credential
+                    {t('deleteCredential')}
                 </Button>
             )}
         </div>

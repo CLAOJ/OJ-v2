@@ -31,6 +31,7 @@ dayjs.extend(relativeTime);
 
 export default function TicketDetailPage() {
     const t = useTranslations('Tickets');
+    const tt = useTranslations('Ticket');
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
@@ -238,7 +239,7 @@ export default function TicketDetailPage() {
                         <textarea
                             value={replyContent}
                             onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder="Write your reply..."
+                            placeholder={tt('replyPlaceholder')}
                             rows={6}
                             className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />

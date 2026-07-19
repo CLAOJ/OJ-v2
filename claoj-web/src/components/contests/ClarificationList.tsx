@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { MessageSquare, MessageSquarePlus, ChevronDown, ChevronUp, Send, Loader2 } from 'lucide-react';
@@ -25,6 +26,8 @@ interface ContestClarificationListProps {
 }
 
 export function ContestClarificationList({ contestKey, canCreate, isAdmin, onClarificationCreated }: ContestClarificationListProps) {
+    const t = useTranslations('admin');
+    const tc = useTranslations('Common');
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [newQuestion, setNewQuestion] = useState('');
@@ -99,17 +102,17 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2"
                     >
                         <MessageSquarePlus size={18} />
-                        Ask Clarification
+                        {t('ask_clarification')}
                     </button>
                 </div>
             )}
 
             {showCreateForm && (
                 <div className="bg-card border rounded-xl p-4 space-y-3">
-                    <h3 className="font-bold">New Clarification Question</h3>
+                    <h3 className="font-bold">{t('new_clarification_question')}</h3>
                     <textarea
                         className="w-full p-3 rounded-xl bg-muted border min-h-[100px] focus:ring-2 focus:ring-primary/20 outline-none resize-none"
-                        placeholder="Enter your question about a problem..."
+                        placeholder={t('clarification_question_placeholder')}
                         value={newQuestion}
                         onChange={(e) => setNewQuestion(e.target.value)}
                         disabled={createMutation.isPending}
@@ -122,14 +125,14 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                             }}
                             className="px-4 py-2 rounded-xl hover:bg-muted transition-colors"
                         >
-                            Cancel
+                            {tc('cancel')}
                         </button>
                         <button
                             onClick={handleCreate}
                             disabled={!newQuestion.trim() || createMutation.isPending}
                             className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
                         >
-                            Submit Question
+                            {t('submit_question')}
                         </button>
                     </div>
                 </div>
@@ -139,7 +142,7 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                 {!clarifications || clarifications.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                         <MessageSquare className="mx-auto mb-2 opacity-50" size={48} />
-                        <p>No clarifications yet</p>
+                        <p>{t('no_clarifications')}</p>
                     </div>
                 ) : (
                     clarifications.map((clarification) => (
@@ -153,14 +156,14 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                             >
                                 <div className="flex items-center gap-3">
                                     <Badge variant={clarification.is_answered ? 'success' : 'warning'}>
-                                        {clarification.is_answered ? 'Answered' : 'Pending'}
+                                        {clarification.is_answered ? t('answered') : t('pending')}
                                     </Badge>
                                     <span className="text-muted-foreground text-sm">
                                         {new Date(clarification.create_time).toLocaleString()}
                                     </span>
                                     {clarification.author && (
                                         <span className="text-muted-foreground text-sm">
-                                            by {clarification.author.username}
+                                            {t('authored_by', { username: clarification.author.username })}
                                         </span>
                                     )}
                                 </div>
@@ -175,12 +178,12 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                                 <div className="px-4 pb-4 border-t">
                                     <div className="mt-4 space-y-4">
                                         <div>
-                                            <div className="text-xs text-muted-foreground mb-1">Question:</div>
+                                            <div className="text-xs text-muted-foreground mb-1">{t('clarification_question')}:</div>
                                             <p className="text-sm">{clarification.question}</p>
                                         </div>
                                         {clarification.answer && (
                                             <div>
-                                                <div className="text-xs text-muted-foreground mb-1">Answer:</div>
+                                                <div className="text-xs text-muted-foreground mb-1">{t('clarification_answer')}:</div>
                                                 <p className="text-sm font-medium bg-success/10 p-3 rounded-lg">
                                                     {clarification.answer}
                                                 </p>
@@ -190,11 +193,11 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                                             <div className="mt-4 p-4 bg-muted rounded-xl space-y-3">
                                                 <h4 className="font-bold text-sm flex items-center gap-2">
                                                     <Send size={16} />
-                                                    Answer Clarification
+                                                    {t('answer_clarification')}
                                                 </h4>
                                                 <textarea
                                                     className="w-full p-3 rounded-xl bg-background border min-h-[80px] focus:ring-2 focus:ring-primary/20 outline-none resize-none"
-                                                    placeholder="Enter your answer..."
+                                                    placeholder={t('clarification_answer_placeholder')}
                                                     value={answerText}
                                                     onChange={(e) => setAnswerText(e.target.value)}
                                                     disabled={answerMutation.isPending}
@@ -207,7 +210,7 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                                                             onChange={(e) => setIsPublic(e.target.checked)}
                                                             className="rounded"
                                                         />
-                                                        Make answer public (visible to all contestants)
+                                                        {t('make_public')}
                                                     </label>
                                                 </div>
                                                 <div className="flex justify-end">
@@ -217,7 +220,7 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                                                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
                                                     >
                                                         {answerMutation.isPending && <Loader2 size={16} className="animate-spin" />}
-                                                        Submit Answer
+                                                        {t('submit_answer')}
                                                     </button>
                                                 </div>
                                             </div>

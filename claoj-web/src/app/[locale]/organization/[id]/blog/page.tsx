@@ -131,7 +131,7 @@ export default function OrganizationBlogPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
                 <input
                     type="text"
-                    placeholder="Search blog posts..."
+                    placeholder={t('searchPlaceholder')}
                     className="w-full h-14 pl-14 pr-6 rounded-2xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none text-base font-medium"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}

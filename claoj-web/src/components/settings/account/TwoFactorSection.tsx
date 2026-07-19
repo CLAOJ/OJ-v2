@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Loader2, CheckCircle, Smartphone, Lock, Key, Copy, Download } from 'lucide-react';
 import api from '@/lib/api';
@@ -24,6 +25,8 @@ interface TwoFactorSectionProps {
 }
 
 export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
+    const t = useTranslations('Settings');
+    const tc = useTranslations('Common');
     const [twoFactorStep, setTwoFactorStep] = useState<'disabled' | 'setup' | 'confirm' | 'enabled'>('disabled');
     const [twoFactorSecret, setTwoFactorSecret] = useState<TwoFactorSetup | null>(null);
     const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -60,7 +63,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to setup 2FA');
+            alert(error.response?.data?.error || t('setupFailedError'));
         }
     });
 
@@ -76,7 +79,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Invalid code');
+            alert(error.response?.data?.error || t('invalidCodeError'));
         }
     });
 
@@ -92,7 +95,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to disable 2FA');
+            alert(error.response?.data?.error || t('disableFailedError'));
         }
     });
 
@@ -106,22 +109,22 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to regenerate backup codes');
+            alert(error.response?.data?.error || t('regenerateBackupCodesError'));
         }
     });
 
     const copyToClipboard = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
-            alert('Copied to clipboard!');
+            alert(t('copiedToClipboard'));
         } catch {
-            alert('Failed to copy');
+            alert(t('copyFailed'));
         }
     };
 
     const downloadBackupCodes = () => {
         if (!backupCodes) return;
-        const content = `CLAOJ Backup Codes\n==================\n\nSave these codes in a safe place. Each code can only be used once.\n\n${backupCodes.join('\n')}\n\nGenerated on: ${new Date().toLocaleString()}`;
+        const content = `${t('backupCodesFileHeader')}\n==================\n\n${t('saveBackupCodesWarning')}\n\n${backupCodes.join('\n')}\n\n${t('backupCodesFileGeneratedOn', { date: new Date().toLocaleString() })}`;
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -135,23 +138,23 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         <section className="space-y-6">
             <div className="flex items-center gap-2 text-primary font-bold">
                 <Smartphone size={18} />
-                Two-Factor Authentication
+                {t('twoFactor')}
             </div>
 
             {twoFactorStep === 'disabled' && (
                 <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                        Add an extra layer of security to your account by enabling two-factor authentication.
+                        {t('twoFactorDesc')}
                     </p>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Password</label>
+                        <label className="text-sm font-medium">{t('passwordLabel')}</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <input
                                 type="password"
                                 value={twoFactorPassword}
                                 onChange={(e) => setTwoFactorPassword(e.target.value)}
-                                placeholder="Enter your password to continue"
+                                placeholder={t('enterPasswordContinue')}
                                 className="flex h-12 w-full rounded-xl border border-input bg-background px-10 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium"
                             />
                         </div>
@@ -162,7 +165,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                         className="px-6 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-2"
                     >
                         {isSettingUpTwoFactor && <Loader2 size={18} className="animate-spin" />}
-                        Setup 2FA
+                        {t('setup2FA')}
                     </button>
                 </div>
             )}
@@ -170,27 +173,27 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
             {twoFactorStep === 'setup' && twoFactorSecret && (
                 <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-muted/50 border text-center">
-                        <p className="text-sm font-medium mb-4">Scan this QR code with your authenticator app</p>
+                        <p className="text-sm font-medium mb-4">{t('scanQrCode')}</p>
                         <div className="w-48 h-48 mx-auto bg-white rounded-xl overflow-hidden flex items-center justify-center">
-                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(twoFactorSecret.url)}`} alt="QR Code" className="w-full h-full object-contain" />
+                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(twoFactorSecret.url)}`} alt={t('qrCodeAlt')} className="w-full h-full object-contain" />
                         </div>
                         <p className="text-xs text-muted-foreground mt-4 font-mono">
-                            Secret: <span className="select-all">{twoFactorSecret.secret}</span>
+                            {t('secretLabel')} <span className="select-all">{twoFactorSecret.secret}</span>
                         </p>
                         <button
                             onClick={() => copyToClipboard(twoFactorSecret.secret)}
                             className="mt-2 text-xs text-primary hover:underline flex items-center gap-1"
                         >
-                            <Copy size={12} /> Copy secret
+                            <Copy size={12} /> {t('copySecret')}
                         </button>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Verification Code</label>
+                        <label className="text-sm font-medium">{t('verificationCodeLabel')}</label>
                         <input
                             type="text"
                             value={twoFactorCode}
                             onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            placeholder="Enter 6-digit code from your app"
+                            placeholder={t('enterCodeFromApp')}
                             className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium text-center tracking-widest"
                             maxLength={6}
                         />
@@ -202,13 +205,13 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                             className="flex-1 px-6 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {isConfirmingTwoFactor && <Loader2 size={18} className="animate-spin" />}
-                            Confirm
+                            {tc('confirm')}
                         </button>
                         <button
                             onClick={() => { setTwoFactorStep('disabled'); setTwoFactorPassword(''); }}
                             className="px-6 h-12 rounded-xl border font-bold hover:bg-muted transition-all"
                         >
-                            Cancel
+                            {tc('cancel')}
                         </button>
                     </div>
                 </div>
@@ -219,12 +222,12 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                         <p className="text-sm font-bold text-emerald-600 flex items-center gap-2">
                             <CheckCircle size={16} />
-                            2FA Enabled Successfully!
+                            {t('twoFactorEnabledSuccess')}
                         </p>
                     </div>
                     <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                         <p className="text-sm font-medium text-amber-700 mb-2">
-                            <strong>Important:</strong> Save these backup codes in a safe place. Each code can only be used once.
+                            <strong>{t('importantLabel')}</strong> {t('saveBackupCodesWarning')}
                         </p>
                         <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-white p-3 rounded-lg border">
                             {backupCodes.map((code, i) => (
@@ -240,7 +243,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                             onClick={downloadBackupCodes}
                             className="mt-3 text-sm text-primary hover:underline flex items-center gap-2"
                         >
-                            <Download size={14} /> Download backup codes
+                            <Download size={14} /> {t('downloadBackupCodesButton')}
                         </button>
                     </div>
                 </div>
@@ -251,14 +254,14 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                         <p className="text-sm font-medium text-emerald-700 flex items-center gap-2">
                             <CheckCircle size={16} />
-                            Two-factor authentication is enabled
+                            {t('twoFactorEnabledMsg')}
                         </p>
                         <Badge variant="default" className="bg-emerald-500 text-white">
-                            Active
+                            {tc('active')}
                         </Badge>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Disable 2FA</label>
+                        <label className="text-sm font-medium">{t('disable2FA')}</label>
                         <div className="space-y-2">
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -266,7 +269,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                                     type="password"
                                     value={disableCode}
                                     onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                    placeholder="Enter 6-digit code"
+                                    placeholder={t('enter6DigitCode')}
                                     className="flex h-12 w-full rounded-xl border border-input bg-background px-10 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium"
                                     maxLength={6}
                                 />
@@ -277,7 +280,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                                     type="password"
                                     value={disablePassword}
                                     onChange={(e) => setDisablePassword(e.target.value)}
-                                    placeholder="Enter your password"
+                                    placeholder={t('enterYourPasswordPlaceholder')}
                                     className="flex h-12 w-full rounded-xl border border-input bg-background px-10 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
@@ -288,12 +291,12 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                             className="px-6 h-12 rounded-xl border font-bold hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50 flex items-center gap-2"
                         >
                             {isDisablingTwoFactor && <Loader2 size={18} className="animate-spin" />}
-                            Disable 2FA
+                            {t('disable2FA')}
                         </button>
                     </div>
                     {twoFactorStatus?.backup_codes_remaining !== undefined && (
                         <p className="text-xs text-muted-foreground">
-                            Backup codes remaining: {twoFactorStatus.backup_codes_remaining}
+                            {t('backupCodesRemaining', { count: twoFactorStatus.backup_codes_remaining })}
                         </p>
                     )}
                 </div>

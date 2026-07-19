@@ -183,7 +183,7 @@ export default function LoginPage() {
                                     <Input
                                         value={webAuthnUsername}
                                         onChange={(e) => setWebAuthnUsername(e.target.value)}
-                                        placeholder="Enter your username"
+                                        placeholder={t('usernamePlaceholder')}
                                         className="pl-10"
                                     />
                                 </div>

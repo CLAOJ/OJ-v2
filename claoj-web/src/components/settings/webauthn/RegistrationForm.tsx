@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { webauthnApi } from '@/lib/api';
 import { Loader2, Key } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +14,8 @@ interface WebAuthnRegistrationFormProps {
 }
 
 export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationFormProps) {
+    const t = useTranslations('Settings');
+    const tc = useTranslations('Common');
     const [credentialName, setCredentialName] = useState('');
     const [password, setPassword] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
@@ -66,13 +69,13 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
             onSuccess?.();
         },
         onError: (error: any) => {
-            alert(error.response?.data?.error || 'Registration failed');
+            alert(error.response?.data?.error || t('registrationFailedError'));
         },
     });
 
     const handleRegister = () => {
         if (!credentialName || !password) {
-            alert('Please enter a credential name and password');
+            alert(t('enterCredentialNameAndPassword'));
             return;
         }
         setIsRegistering(true);
@@ -84,12 +87,12 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
             <div className="space-y-4">
                 <Alert>
                     <AlertDescription>
-                        WebAuthn is not enabled on your account. Register a credential to enable passwordless login.
+                        {t('webauthnNotEnabled')}
                     </AlertDescription>
                 </Alert>
                 <Button onClick={() => setIsRegistering(true)}>
                     <Key className="h-4 w-4 mr-2" />
-                    Register WebAuthn Credential
+                    {t('registerWebauthnCredential')}
                 </Button>
             </div>
         );
@@ -97,16 +100,16 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
 
     return (
         <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-            <h4 className="font-medium">Register New Credential</h4>
+            <h4 className="font-medium">{t('registerNewCredential')}</h4>
             <div className="space-y-3">
                 <Input
-                    placeholder="Credential name (e.g., 'My YubiKey')"
+                    placeholder={t('credentialNamePlaceholder')}
                     value={credentialName}
                     onChange={(e) => setCredentialName(e.target.value)}
                 />
                 <Input
                     type="password"
-                    placeholder="Enter your password to confirm"
+                    placeholder={t('confirmPasswordPlaceholder')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                 />
@@ -116,7 +119,7 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
                         disabled={registerMutation.isPending || !credentialName || !password}
                     >
                         {registerMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Register
+                        {t('register')}
                     </Button>
                     <Button
                         variant="outline"
@@ -126,7 +129,7 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
                             setPassword('');
                         }}
                     >
-                        Cancel
+                        {tc('cancel')}
                     </Button>
                 </div>
             </div>
