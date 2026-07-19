@@ -58,7 +58,7 @@ export default function RegisterPage() {
     };
 
     const handleOAuthLogin = (provider: string) => {
-        window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/auth/oauth/${provider}`;
+        window.location.href = `${process.env.NEXT_PUBLIC_API_URL || `${window.location.origin}/api`}/auth/oauth/${provider}`;
     };
 
     return (
