@@ -210,21 +210,21 @@ export default function SubmissionListPage() {
                                         <td className="px-6 py-8 text-center">
                                             <Link href={`/submissions/${s.id}`} className="outline-none">
                                                 <Badge
-                                                    variant={getStatusVariant(s.status)}
+                                                    variant={getStatusVariant(s.result || s.status)}
                                                     className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm hover:scale-105 transition-transform"
                                                 >
-                                                    {s.status}
+                                                    {s.result || s.status}
                                                 </Badge>
                                             </Link>
                                         </td>
                                         <td className="px-6 py-8 text-center">
                                             <div className={cn(
-                                                "inline-flex items-center justify-center w-12 h-8 rounded-xl font-black text-xs border tracking-tighter",
-                                                s.score === 100 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm" :
-                                                    s.score > 0 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                                                "inline-flex items-center justify-center min-w-12 h-8 px-2 rounded-xl font-black text-xs border tracking-tighter",
+                                                s.result === 'AC' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm" :
+                                                    (s.points ?? 0) > 0 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
                                                         "bg-muted/50 text-muted-foreground border-transparent"
                                             )}>
-                                                {s.score !== null ? Math.round(s.score) : '-'}
+                                                {s.points != null ? (Number.isInteger(s.points) ? s.points : s.points.toFixed(2)) : '-'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-8 text-center">

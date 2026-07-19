@@ -40,10 +40,16 @@ export interface Submission {
     problem: string;
     problem_name: string;
     language: string;
+    // Lifecycle state from the judge: 'QU' | 'P' | 'G' | 'D' | 'CE' | 'IE' | 'AB'.
+    // 'D' ("done") is not a verdict — the verdict lives in `result`.
     status: string;
-    score: number;
-    time: number;
-    memory: number;
+    // Verdict once graded: 'AC' | 'WA' | 'TLE' | ... — null while still queued/grading.
+    result: string | null;
+    // Points earned (may be fractional); null while ungraded. The API returns
+    // `points`, not `score`.
+    points: number | null;
+    time: number | null;
+    memory: number | null;
     date: string;
 }
 

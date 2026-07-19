@@ -302,8 +302,8 @@ export default function AdminSubmissionPage() {
                                             </Link>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <Badge variant={getStatusVariant(s.status)} className="px-4 py-1.5 rounded-full text-xs font-bold uppercase shadow-sm">
-                                                {s.status}
+                                            <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded-full text-xs font-bold uppercase shadow-sm">
+                                                {s.result || s.status}
                                             </Badge>
                                         </td>
                                         <td className="px-6 py-4 text-center">

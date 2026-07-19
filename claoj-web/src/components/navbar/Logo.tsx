@@ -1,29 +1,31 @@
-'use client';
-
-import { useTheme } from 'next-themes';
-import { useState, useEffect } from 'react';
-
+// Theme-aware logo.
+//
+// The site theme is class-based and *inverted* from the usual convention:
+// `:root` holds the dark palette (the default) and a `.light` class on <html>
+// overrides it for light mode (see globals.css). next-themes sets that class in
+// a blocking script before first paint, so the correct logo can be chosen purely
+// in CSS — no `useTheme`/mounted gate, which previously rendered the dark logo
+// on a dark background for a frame before hydration (the "invisible logo" flash).
+//
+// Both images are always in the DOM; CSS shows exactly one. Keying off `.light`
+// (not Tailwind's `dark:` variant, which is unconfigured here and would follow
+// prefers-color-scheme instead of the toggle) keeps it correct when a user
+// overrides their OS theme.
 export default function Logo() {
-    const { theme, resolvedTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    // Use resolvedTheme to handle 'system' theme correctly
-    const currentTheme = mounted ? (resolvedTheme || theme) : 'light';
-
-    // Use dark logo for light theme, light logo for dark theme
-    const logoSrc = currentTheme === 'dark'
-        ? '/static/claoj-logo-light.png'
-        : '/static/claoj-logo-dark.png';
-
     return (
-        <img
-            src={logoSrc}
-            alt="CLAOJ"
-            className="h-8 w-auto object-contain"
-        />
+        <>
+            {/* Light/white logo — default (dark theme); hidden when .light is active */}
+            <img
+                src="/static/claoj-logo-light.png"
+                alt="CLAOJ"
+                className="h-8 w-auto object-contain block [.light_&]:hidden"
+            />
+            {/* Dark/black logo — shown only in light theme */}
+            <img
+                src="/static/claoj-logo-dark.png"
+                alt="CLAOJ"
+                className="h-8 w-auto object-contain hidden [.light_&]:block"
+            />
+        </>
     );
 }
