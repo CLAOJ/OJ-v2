@@ -58,6 +58,13 @@ func (h *CookieHelper) isSecureCookie() bool {
 // getSameSite returns the SameSite mode based on secure flag
 func (h *CookieHelper) getSameSite(mode SameSiteMode) http.SameSite {
 	if mode == SameSiteNone {
+		// SameSite=None is only valid with Secure; browsers silently
+		// reject None+insecure cookies. Over plain HTTP (local/dev,
+		// http:// SITE_URL) fall back to Lax, which still sends cookies
+		// on same-site XHR (e.g. localhost:3000 -> localhost:8081).
+		if !h.isSecureCookie() {
+			return http.SameSiteLaxMode
+		}
 		return http.SameSiteNoneMode
 	}
 	if mode == SameSiteStrict {

@@ -52,13 +52,13 @@ func DefaultConfig() Config {
 		Domain: "",
 		Path:   "/",
 		ExcludedPaths: []string{
-			"/api/v2/auth/login",
-			"/api/v2/auth/register",
-			"/api/v2/auth/password/reset",
-			"/api/v2/auth/password/reset/confirm",
-			"/api/v2/auth/verify-email",
-			"/api/v2/auth/resend-verification",
-			"/api/v2/auth/oauth/",
+			"/api/auth/login",
+			"/api/auth/register",
+			"/api/auth/password/reset",
+			"/api/auth/password/reset/confirm",
+			"/api/auth/verify-email",
+			"/api/auth/resend-verification",
+			"/api/auth/oauth/",
 			"/health",
 		},
 	}
@@ -133,7 +133,11 @@ func setCSRFCookie(c *gin.Context, token string, config Config) {
 		Path:     config.Path,
 		Domain:   config.Domain,
 		Secure:   config.Secure,
-		HttpOnly: true,
+		// Double-submit pattern: the client must read this cookie to echo
+		// it in the X-CSRF-Token header, so it cannot be HttpOnly. Its
+		// value is not a secret from same-origin JS — the protection comes
+		// from cross-origin pages being unable to read it.
+		HttpOnly: false,
 		SameSite: http.SameSiteStrictMode,
 	})
 }

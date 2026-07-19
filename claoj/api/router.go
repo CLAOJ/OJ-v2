@@ -33,7 +33,7 @@ func NewRouter() *gin.Engine {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{config.C.App.SiteFullURL}
 	corsConfig.AllowCredentials = true
-	corsConfig.AllowHeaders = []string{"Authorization", "Content-Type", "X-Requested-With", "X-CSRFToken"}
+	corsConfig.AllowHeaders = []string{"Authorization", "Content-Type", "X-Requested-With", "X-CSRFToken", "X-CSRF-Token"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	r.Use(cors.New(corsConfig))
 
