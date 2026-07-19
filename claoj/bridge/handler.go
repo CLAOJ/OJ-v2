@@ -163,11 +163,7 @@ func (h *Handler) onHandshake(pkt Packet) error {
 	h.authKey = key
 	h.manager.Add(judgeID, h)
 
-	if problems, ok := pkt["problems"].(map[string]interface{}); ok {
-		for code := range problems {
-			h.problems[code] = true
-		}
-	}
+	h.problems = parseProblemsPayload(pkt["problems"])
 	if executors, ok := pkt["executors"].(map[string]interface{}); ok {
 		h.executors = executors
 	}
@@ -200,8 +196,31 @@ func (h *Handler) cleanup() {
 	}
 }
 
+// parseProblemsPayload decodes the judge's problem list. The DMOJ judge
+// sends a JSON array of [code, mtime] pairs (see packet.py
+// supported_problems_packet); a map form is also accepted for safety.
+func parseProblemsPayload(raw interface{}) map[string]bool {
+	problems := make(map[string]bool)
+	switch v := raw.(type) {
+	case []interface{}:
+		for _, entry := range v {
+			if pair, ok := entry.([]interface{}); ok && len(pair) > 0 {
+				if code, ok := pair[0].(string); ok {
+					problems[code] = true
+				}
+			}
+		}
+	case map[string]interface{}:
+		for code := range v {
+			problems[code] = true
+		}
+	}
+	return problems
+}
+
 func (h *Handler) onSupportedProblems(pkt Packet) error {
-	log.Printf("bridge [%s]: updated problems list", h.name)
+	h.problems = parseProblemsPayload(pkt["problems"])
+	log.Printf("bridge [%s]: updated problems list (%d problems)", h.name, len(h.problems))
 	return nil
 }
 
@@ -346,6 +365,14 @@ func (h *Handler) onTestCase(pkt Packet) error {
 	return nil
 }
 
+// free releases the judge for the next submission. Mirrors Django
+// bridged's _free_self: called on every terminal grading packet, or the
+// judge stays "working" forever and dispatch never selects it again.
+func (h *Handler) free() {
+	h.working = false
+	h.workingSub = 0
+}
+
 func (h *Handler) onGradingEnd(pkt Packet) error {
 	subIDVal, ok := pkt["submission-id"].(float64)
 	if !ok {
@@ -353,6 +380,7 @@ func (h *Handler) onGradingEnd(pkt Packet) error {
 	}
 	subID := uint(subIDVal)
 	log.Printf("bridge [%s]: grading end for sub %d", h.name, subID)
+	h.free()
 
 	var cases []models.SubmissionTestCase
 	db.DB.Where("submission_id = ?", subID).Find(&cases)
@@ -384,7 +412,7 @@ func (h *Handler) onGradingEnd(pkt Packet) error {
 	}
 
 	var sub models.Submission
-	db.DB.Preload("Problem").Where("id = ?", subID).First(&sub)
+	db.DB.Preload("Problem").Preload("User").Where("id = ?", subID).First(&sub)
 
 	finalPts := 0.0
 	if total > 0 {
@@ -409,9 +437,12 @@ func (h *Handler) onGradingEnd(pkt Packet) error {
 	})
 	PostGlobalSubmissionUpdate(subID, "grading-end", true)
 
-	// Create notification for submission result
+	// Create notification for submission result.
+	// notification.user_id is keyed by auth_user.id, while sub.UserID is a
+	// judge_profile.id FK — pass the profile's owning auth user id.
+	authUserID := sub.User.UserID
 	go func() {
-		_, _ = v2.CreateSubmissionResultNotification(sub.UserID, int(subID), sub.Problem.Code, sub.Problem.Name, worstStatus)
+		_, _ = v2.CreateSubmissionResultNotification(authUserID, int(subID), sub.Problem.Code, sub.Problem.Name, worstStatus)
 	}()
 
 	// ---------------------------------------------------------
@@ -439,6 +470,7 @@ func (h *Handler) onCompileError(pkt Packet) error {
 		return errors.New("invalid submission-id: must be a number")
 	}
 	subID := uint(subIDVal)
+	h.free()
 
 	// Safe type assertion with default
 	var logRaw string
@@ -460,6 +492,7 @@ func (h *Handler) onInternalError(pkt Packet) error {
 		return errors.New("invalid submission-id: must be a number")
 	}
 	subID := uint(subIDVal)
+	h.free()
 
 	// Safe type assertion with default
 	var msg string

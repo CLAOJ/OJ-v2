@@ -3,6 +3,8 @@ package bridge
 import (
 	"log"
 	"net"
+
+	"github.com/CLAOJ/claoj/config"
 )
 
 // Server accepts incoming TCP connections from judge workers.
@@ -12,8 +14,12 @@ type Server struct {
 }
 
 func NewServer() *Server {
+	addr := config.C.Bridge.Addr
+	if addr == "" {
+		addr = ":9999" // Default DMOJ bridge port
+	}
 	return &Server{
-		addr:    ":9999", // Default DMOJ bridge port
+		addr:    addr,
 		manager: NewManager(),
 	}
 }
