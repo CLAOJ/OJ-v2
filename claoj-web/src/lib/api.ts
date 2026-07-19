@@ -7,7 +7,12 @@ interface AxiosRequestConfigWithRetry extends InternalAxiosRequestConfig {
 }
 
 function getApiBaseUrl(): string {
-    if (typeof window === 'undefined') return 'http://localhost:8080/api';
+    if (typeof window === 'undefined') {
+        // Server-side (SSR metadata fetchers): reach the backend over the
+        // internal network. Read at runtime — NOT inlined at build — so one
+        // image works in every environment.
+        return process.env.API_URL_INTERNAL || 'http://localhost:8081/api';
+    }
     return `${window.location.origin}/api`;
 }
 
