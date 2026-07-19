@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminJudge } from '@/types';
 import { adminJudgeApi } from '@/lib/adminApi';
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminJudgesPage() {
+    const t = useTranslations('Admin');
     const [search, setSearch] = useState('');
 
     const queryClient = useQueryClient();
@@ -80,9 +82,9 @@ export default function AdminJudgesPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Server className="text-primary" size={32} />
-                        Judges
+                        {t('judges.title')}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage judging nodes and monitor status</p>
+                    <p className="text-muted-foreground mt-1">{t('judges.subtitle')}</p>
                 </div>
 
                 <div className="flex gap-2">
@@ -90,13 +92,13 @@ export default function AdminJudgesPage() {
                         onClick={() => refetch()}
                         className="px-4 py-2 rounded-xl bg-card border hover:bg-primary/5 flex items-center gap-2 font-medium"
                     >
-                        <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} /> Refresh
+                        <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} /> {t('judges.refreshButton')}
                     </button>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
-                            placeholder="Search judges..."
+                            placeholder={t('judges.searchPlaceholder')}
                             className="w-full md:w-64 h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -114,7 +116,7 @@ export default function AdminJudgesPage() {
                         </div>
                         <div>
                             <div className="text-2xl font-bold">{judges.filter(j => j.online).length}</div>
-                            <div className="text-sm text-muted-foreground">Online</div>
+                            <div className="text-sm text-muted-foreground">{t('judges.online')}</div>
                         </div>
                     </div>
                 </div>
@@ -125,7 +127,7 @@ export default function AdminJudgesPage() {
                         </div>
                         <div>
                             <div className="text-2xl font-bold">{judges.filter(j => !j.online).length}</div>
-                            <div className="text-sm text-muted-foreground">Offline</div>
+                            <div className="text-sm text-muted-foreground">{t('judges.offline')}</div>
                         </div>
                     </div>
                 </div>
@@ -136,7 +138,7 @@ export default function AdminJudgesPage() {
                         </div>
                         <div>
                             <div className="text-2xl font-bold">{judges.filter(j => j.is_blocked).length}</div>
-                            <div className="text-sm text-muted-foreground">Blocked</div>
+                            <div className="text-sm text-muted-foreground">{t('judges.blocked')}</div>
                         </div>
                     </div>
                 </div>
@@ -147,7 +149,7 @@ export default function AdminJudgesPage() {
                         </div>
                         <div>
                             <div className="text-2xl font-bold">{judges.filter(j => j.is_disabled).length}</div>
-                            <div className="text-sm text-muted-foreground">Disabled</div>
+                            <div className="text-sm text-muted-foreground">{t('judges.disabled')}</div>
                         </div>
                     </div>
                 </div>
@@ -162,7 +164,7 @@ export default function AdminJudgesPage() {
                     {filteredJudges.length === 0 ? (
                         <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
                             <Server size={48} className="mx-auto text-muted-foreground opacity-20" />
-                            <p className="text-muted-foreground mt-4">No judges found</p>
+                            <p className="text-muted-foreground mt-4">{t('judges.noJudgesFound')}</p>
                         </div>
                     ) : (
                         filteredJudges.map((judge) => (
@@ -180,19 +182,19 @@ export default function AdminJudgesPage() {
                                                 <div className="flex gap-1">
                                                     {judge.online ? (
                                                         <Badge variant="success" className="flex items-center gap-1 text-xs">
-                                                            <CheckCircle size={12} /> Online
+                                                            <CheckCircle size={12} /> {t('judges.online')}
                                                         </Badge>
                                                     ) : (
-                                                        <Badge variant="secondary" className="text-xs">Offline</Badge>
+                                                        <Badge variant="secondary" className="text-xs">{t('judges.offline')}</Badge>
                                                     )}
                                                     {judge.is_blocked && (
                                                         <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                                                            <ShieldOff size={12} /> Blocked
+                                                            <ShieldOff size={12} /> {t('judges.blocked')}
                                                         </Badge>
                                                     )}
                                                     {judge.is_disabled && (
                                                         <Badge variant="warning" className="text-xs flex items-center gap-1">
-                                                            <Power size={12} /> Disabled
+                                                            <Power size={12} /> {t('judges.disabled')}
                                                         </Badge>
                                                     )}
                                                 </div>
@@ -200,11 +202,11 @@ export default function AdminJudgesPage() {
                                             <div className="flex flex-wrap gap-4 text-sm">
                                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                                     <Activity size={14} />
-                                                    <span>Load: <span className="font-medium text-foreground">{judge.load?.toFixed(2) ?? 'N/A'}</span></span>
+                                                    <span>{t('judges.loadPrefix')} <span className="font-medium text-foreground">{judge.load?.toFixed(2) ?? t('common.notAvailable')}</span></span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                                     <Wifi size={14} />
-                                                    <span>Ping: <span className="font-medium text-foreground">{judge.ping?.toFixed(0) ?? 'N/A'}ms</span></span>
+                                                    <span>{t('judges.pingPrefix')} <span className="font-medium text-foreground">{judge.ping?.toFixed(0) ?? t('common.notAvailable')}ms</span></span>
                                                 </div>
                                                 {judge.last_ip && (
                                                     <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -220,7 +222,7 @@ export default function AdminJudgesPage() {
                                             href={`/admin/judges/${judge.id}`}
                                             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 font-medium text-sm whitespace-nowrap"
                                         >
-                                            <Server size={16} /> Details
+                                            <Server size={16} /> {t('judges.detailsButton')}
                                         </Link>
                                         <div className="flex gap-2">
                                             {judge.is_blocked ? (
@@ -228,7 +230,7 @@ export default function AdminJudgesPage() {
                                                     onClick={() => unblockMutation.mutate(judge.id)}
                                                     disabled={unblockMutation.isPending}
                                                     className="px-3 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 flex items-center gap-1.5 font-medium text-sm"
-                                                    title="Unblock judge"
+                                                    title={t('judges.unblockTitle')}
                                                 >
                                                     <Shield size={16} />
                                                 </button>
@@ -237,7 +239,7 @@ export default function AdminJudgesPage() {
                                                     onClick={() => blockMutation.mutate(judge.id)}
                                                     disabled={blockMutation.isPending}
                                                     className="px-3 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-1.5 font-medium text-sm"
-                                                    title="Block judge"
+                                                    title={t('judges.blockTitle')}
                                                 >
                                                     <ShieldOff size={16} />
                                                 </button>
@@ -247,7 +249,7 @@ export default function AdminJudgesPage() {
                                                     onClick={() => enableMutation.mutate(judge.id)}
                                                     disabled={enableMutation.isPending}
                                                     className="px-3 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 flex items-center gap-1.5 font-medium text-sm"
-                                                    title="Enable judge"
+                                                    title={t('judges.enableTitle')}
                                                 >
                                                     <Power size={16} />
                                                 </button>
@@ -256,7 +258,7 @@ export default function AdminJudgesPage() {
                                                     onClick={() => disableMutation.mutate(judge.id)}
                                                     disabled={disableMutation.isPending}
                                                     className="px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 flex items-center gap-1.5 font-medium text-sm"
-                                                    title="Disable judge"
+                                                    title={t('judges.disableTitle')}
                                                 >
                                                     <Power size={16} className="rotate-180" />
                                                 </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { adminLanguageApi } from '@/lib/adminApi';
 import { AdminLanguage, AdminLanguageCreateRequest, AdminLanguageUpdateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -29,6 +30,7 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 
 export default function LanguageAdminPage() {
+    const t = useTranslations('Admin');
     const [languages, setLanguages] = useState<AdminLanguage[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -65,7 +67,7 @@ export default function LanguageAdminPage() {
             setLanguages(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load languages');
+            toast.error(t('languages.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -115,18 +117,18 @@ export default function LanguageAdminPage() {
             setEditingLanguage(lang);
             setIsEditDialogOpen(true);
         } catch (error) {
-            toast.error('Failed to load language details');
+            toast.error(t('languages.loadDetailFailed'));
         }
     };
 
     const handleCreate = async () => {
         try {
             await adminLanguageApi.create(formData);
-            toast.success('Language created');
+            toast.success(t('languages.createSuccess'));
             setIsCreateDialogOpen(false);
             loadLanguages();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to create language');
+            toast.error(error.response?.data?.error || t('languages.createError'));
         }
     };
 
@@ -149,22 +151,22 @@ export default function LanguageAdminPage() {
                 description: formData.description,
             };
             await adminLanguageApi.update(editingLanguage.id, updateData);
-            toast.success('Language updated');
+            toast.success(t('languages.updateSuccess'));
             setIsEditDialogOpen(false);
             loadLanguages();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to update language');
+            toast.error(error.response?.data?.error || t('languages.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await adminLanguageApi.delete(id);
-            toast.success('Language deleted');
+            toast.success(t('languages.deleteSuccess'));
             setDeleteConfirmId(null);
             loadLanguages();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to delete language');
+            toast.error(error.response?.data?.error || t('languages.deleteError'));
         }
     };
 
@@ -174,107 +176,107 @@ export default function LanguageAdminPage() {
         <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="key">Language Key</Label>
+                    <Label htmlFor="key">{t('languages.keyLabel')}</Label>
                     <Input
                         id="key"
                         value={formData.key}
                         onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                        placeholder="e.g., CPP17"
+                        placeholder={t('languages.keyPlaceholder')}
                         disabled={editingLanguage !== null}
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="name">Display Name</Label>
+                    <Label htmlFor="name">{t('languages.nameLabel')}</Label>
                     <Input
                         id="name"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g., C++17"
+                        placeholder={t('languages.namePlaceholder')}
                     />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="short_name">Short Name</Label>
+                    <Label htmlFor="short_name">{t('languages.shortNameLabel')}</Label>
                     <Input
                         id="short_name"
                         value={formData.short_name}
                         onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
-                        placeholder="e.g., C++17"
+                        placeholder={t('languages.shortNamePlaceholder')}
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="common_name">Common Name</Label>
+                    <Label htmlFor="common_name">{t('languages.commonNameLabel')}</Label>
                     <Input
                         id="common_name"
                         value={formData.common_name}
                         onChange={(e) => setFormData({ ...formData, common_name: e.target.value })}
-                        placeholder="e.g., C++"
+                        placeholder={t('languages.commonNamePlaceholder')}
                     />
                 </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="ace">ACE Mode</Label>
+                    <Label htmlFor="ace">{t('languages.aceLabel')}</Label>
                     <Input
                         id="ace"
                         value={formData.ace}
                         onChange={(e) => setFormData({ ...formData, ace: e.target.value })}
-                        placeholder="e.g., c_cpp"
+                        placeholder={t('languages.acePlaceholder')}
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="pygments">Pygments Lexer</Label>
+                    <Label htmlFor="pygments">{t('languages.pygmentsLabel')}</Label>
                     <Input
                         id="pygments"
                         value={formData.pygments}
                         onChange={(e) => setFormData({ ...formData, pygments: e.target.value })}
-                        placeholder="e.g., cpp"
+                        placeholder={t('languages.pygmentsPlaceholder')}
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="extension">File Extension</Label>
+                    <Label htmlFor="extension">{t('languages.extensionLabel')}</Label>
                     <Input
                         id="extension"
                         value={formData.extension}
                         onChange={(e) => setFormData({ ...formData, extension: e.target.value })}
-                        placeholder="e.g., cpp"
+                        placeholder={t('languages.extensionPlaceholder')}
                     />
                 </div>
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="info">Info</Label>
+                <Label htmlFor="info">{t('languages.infoLabel')}</Label>
                 <Input
                     id="info"
                     value={formData.info}
                     onChange={(e) => setFormData({ ...formData, info: e.target.value })}
-                    placeholder="Version info, etc."
+                    placeholder={t('languages.infoPlaceholder')}
                 />
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('languages.descriptionLabel')}</Label>
                 <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
-                    placeholder="Language description"
+                    placeholder={t('languages.descriptionPlaceholder')}
                 />
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="template">Default Template</Label>
+                <Label htmlFor="template">{t('languages.templateLabel')}</Label>
                 <Textarea
                     id="template"
                     value={formData.template}
                     onChange={(e) => setFormData({ ...formData, template: e.target.value })}
                     rows={6}
                     className="font-mono text-sm"
-                    placeholder="// Default code template"
+                    placeholder={t('languages.templatePlaceholder')}
                 />
             </div>
 
@@ -285,7 +287,7 @@ export default function LanguageAdminPage() {
                         checked={formData.file_only}
                         onCheckedChange={(checked) => setFormData({ ...formData, file_only: checked })}
                     />
-                    <Label htmlFor="file_only">File Only</Label>
+                    <Label htmlFor="file_only">{t('languages.fileOnlyLabel')}</Label>
                 </div>
                 <div className="flex items-center gap-2">
                     <Switch
@@ -293,12 +295,12 @@ export default function LanguageAdminPage() {
                         checked={formData.include_in_problem}
                         onCheckedChange={(checked) => setFormData({ ...formData, include_in_problem: checked })}
                     />
-                    <Label htmlFor="include_in_problem">Include in Problem</Label>
+                    <Label htmlFor="include_in_problem">{t('languages.includeInProblemLabel')}</Label>
                 </div>
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="file_size_limit">File Size Limit (bytes)</Label>
+                <Label htmlFor="file_size_limit">{t('languages.fileSizeLimitLabel')}</Label>
                 <Input
                     id="file_size_limit"
                     type="number"
@@ -313,14 +315,14 @@ export default function LanguageAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Languages</h1>
+                    <h1 className="text-3xl font-bold">{t('languages.title')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage programming languages
+                        {t('languages.subtitle')}
                     </p>
                 </div>
                 <Button onClick={openCreateDialog}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Language
+                    {t('languages.addButton')}
                 </Button>
             </div>
 
@@ -328,7 +330,7 @@ export default function LanguageAdminPage() {
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search languages..."
+                    placeholder={t('languages.searchPlaceholder')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-10"
@@ -340,27 +342,27 @@ export default function LanguageAdminPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Key</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Common Name</TableHead>
-                            <TableHead>ACE Mode</TableHead>
-                            <TableHead>Extension</TableHead>
-                            <TableHead>File Only</TableHead>
-                            <TableHead>Inc. Problem</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>{t('languages.colKey')}</TableHead>
+                            <TableHead>{t('languages.colName')}</TableHead>
+                            <TableHead>{t('languages.colCommonName')}</TableHead>
+                            <TableHead>{t('languages.colAce')}</TableHead>
+                            <TableHead>{t('languages.colExtension')}</TableHead>
+                            <TableHead>{t('languages.colFileOnly')}</TableHead>
+                            <TableHead>{t('languages.colIncludeInProblem')}</TableHead>
+                            <TableHead className="text-right">{t('common.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center py-8">
-                                    Loading...
+                                    {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : languages.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                                    No languages found
+                                    {t('languages.noLanguagesFound')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -380,12 +382,12 @@ export default function LanguageAdminPage() {
                                     <TableCell><code className="text-xs">.{lang.extension}</code></TableCell>
                                     <TableCell>
                                         <Badge variant={lang.file_only ? 'default' : 'secondary'}>
-                                            {lang.file_only ? 'Yes' : 'No'}
+                                            {lang.file_only ? t('common.yes') : t('common.no')}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={lang.include_in_problem ? 'default' : 'secondary'}>
-                                            {lang.include_in_problem ? 'Yes' : 'No'}
+                                            {lang.include_in_problem ? t('common.yes') : t('common.no')}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -417,7 +419,7 @@ export default function LanguageAdminPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}
+                    {t('common.showingRange', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, total), total })}
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -426,7 +428,7 @@ export default function LanguageAdminPage() {
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
                     >
-                        Previous
+                        {t('common.previous')}
                     </Button>
                     <Button
                         variant="outline"
@@ -434,7 +436,7 @@ export default function LanguageAdminPage() {
                         disabled={page >= totalPages}
                         onClick={() => setPage(page + 1)}
                     >
-                        Next
+                        {t('common.next')}
                     </Button>
                 </div>
             </div>
@@ -443,18 +445,18 @@ export default function LanguageAdminPage() {
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Create Language</DialogTitle>
+                        <DialogTitle>{t('languages.createDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Add a new programming language to the system.
+                            {t('languages.createDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     {renderFormFields()}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={handleCreate}>
-                            Create
+                            {t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -464,18 +466,18 @@ export default function LanguageAdminPage() {
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Edit Language</DialogTitle>
+                        <DialogTitle>{t('languages.editDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Update language configuration.
+                            {t('languages.editDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     {renderFormFields()}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={handleUpdate}>
-                            Save Changes
+                            {t('common.saveChanges')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -485,20 +487,20 @@ export default function LanguageAdminPage() {
             <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Language</DialogTitle>
+                        <DialogTitle>{t('languages.deleteDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this language? This cannot be undone if the language has no submissions.
+                            {t('languages.deleteDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

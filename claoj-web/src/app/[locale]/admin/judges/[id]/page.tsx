@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { adminJudgeApi } from '@/lib/adminApi';
 import { AdminJudgeDetail } from '@/types';
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminJudgeDetailPage() {
+    const t = useTranslations('Admin');
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -80,9 +82,9 @@ export default function AdminJudgeDetailPage() {
         return (
             <div className="text-center py-12">
                 <Server size={48} className="mx-auto text-muted-foreground opacity-20" />
-                <h2 className="text-xl font-semibold mt-4">Judge not found</h2>
+                <h2 className="text-xl font-semibold mt-4">{t('judgeDetail.notFoundTitle')}</h2>
                 <Link href="/admin/judges" className="text-blue-600 dark:text-blue-400 hover:underline mt-2 inline-block">
-                    Back to judges
+                    {t('judgeDetail.backToJudges')}
                 </Link>
             </div>
         );
@@ -103,26 +105,26 @@ export default function AdminJudgeDetailPage() {
                         <Server className="text-primary" size={32} />
                         {judge.name}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Judge details and configuration</p>
+                    <p className="text-muted-foreground mt-1">{t('judgeDetail.subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
                     {judge.online ? (
                         <Badge variant="success" className="flex items-center gap-1">
-                            <CheckCircle size={14} /> Online
+                            <CheckCircle size={14} /> {t('judges.online')}
                         </Badge>
                     ) : (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                            <WifiOff size={14} /> Offline
+                            <WifiOff size={14} /> {t('judges.offline')}
                         </Badge>
                     )}
                     {judge.is_blocked && (
                         <Badge variant="destructive" className="flex items-center gap-1">
-                            <ShieldOff size={14} /> Blocked
+                            <ShieldOff size={14} /> {t('judges.blocked')}
                         </Badge>
                     )}
                     {judge.is_disabled && (
                         <Badge variant="warning" className="flex items-center gap-1">
-                            <Power size={14} /> Disabled
+                            <Power size={14} /> {t('judges.disabled')}
                         </Badge>
                     )}
                 </div>
@@ -136,8 +138,8 @@ export default function AdminJudgeDetailPage() {
                             {judge.online ? <Wifi size={20} /> : <WifiOff size={20} />}
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Status</div>
-                            <div className="font-semibold">{judge.online ? 'Online' : 'Offline'}</div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.statusLabel')}</div>
+                            <div className="font-semibold">{judge.online ? t('judges.online') : t('judges.offline')}</div>
                         </div>
                     </div>
                 </div>
@@ -147,8 +149,8 @@ export default function AdminJudgeDetailPage() {
                             <Activity size={20} />
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Load</div>
-                            <div className="font-semibold">{judge.load?.toFixed(2) ?? 'N/A'}</div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.loadLabel')}</div>
+                            <div className="font-semibold">{judge.load?.toFixed(2) ?? t('common.notAvailable')}</div>
                         </div>
                     </div>
                 </div>
@@ -158,8 +160,8 @@ export default function AdminJudgeDetailPage() {
                             <Wifi size={20} />
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Ping</div>
-                            <div className="font-semibold">{judge.ping?.toFixed(0) ?? 'N/A'}ms</div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.pingLabel')}</div>
+                            <div className="font-semibold">{judge.ping?.toFixed(0) ?? t('common.notAvailable')}ms</div>
                         </div>
                     </div>
                 </div>
@@ -169,9 +171,9 @@ export default function AdminJudgeDetailPage() {
                             <Clock size={20} />
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Start Time</div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.startTimeLabel')}</div>
                             <div className="font-semibold text-sm">
-                                {judge.start_time ? new Date(judge.start_time).toLocaleString() : 'N/A'}
+                                {judge.start_time ? new Date(judge.start_time).toLocaleString() : t('common.notAvailable')}
                             </div>
                         </div>
                     </div>
@@ -184,10 +186,10 @@ export default function AdminJudgeDetailPage() {
                 <div className="bg-card rounded-2xl p-6 border">
                     <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
                         <FileText size={20} className="text-primary" />
-                        Assigned Problems ({judge.problems.length})
+                        {t('judgeDetail.assignedProblems', { count: judge.problems.length })}
                     </h3>
                     {judge.problems.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No problems assigned - this judge can handle all problems</p>
+                        <p className="text-muted-foreground text-sm">{t('judgeDetail.noProblemsAssigned')}</p>
                     ) : (
                         <div className="space-y-2 max-h-64 overflow-y-auto">
                             {judge.problems.map((problem) => (
@@ -209,10 +211,10 @@ export default function AdminJudgeDetailPage() {
                 <div className="bg-card rounded-2xl p-6 border">
                     <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
                         <Code size={20} className="text-primary" />
-                        Supported Languages ({judge.runtimes.length})
+                        {t('judgeDetail.supportedLanguages', { count: judge.runtimes.length })}
                     </h3>
                     {judge.runtimes.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No language versions reported</p>
+                        <p className="text-muted-foreground text-sm">{t('judgeDetail.noLanguagesReported')}</p>
                     ) : (
                         <div className="space-y-2 max-h-64 overflow-y-auto">
                             {judge.runtimes.map((runtime) => (
@@ -229,22 +231,22 @@ export default function AdminJudgeDetailPage() {
             {/* Description */}
             {judge.description && (
                 <div className="bg-card rounded-2xl p-6 border">
-                    <h3 className="font-bold text-lg mb-3">Description</h3>
+                    <h3 className="font-bold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</h3>
                     <p className="text-muted-foreground whitespace-pre-wrap">{judge.description}</p>
                 </div>
             )}
 
             {/* Additional Info */}
             <div className="bg-card rounded-2xl p-6 border">
-                <h3 className="font-bold text-lg mb-4">Additional Information</h3>
+                <h3 className="font-bold text-lg mb-4">{t('judgeDetail.additionalInfoTitle')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-muted/50">
                             <MapPin size={18} />
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Last IP</div>
-                            <div className="font-mono text-sm">{judge.last_ip || 'N/A'}</div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.lastIpLabel')}</div>
+                            <div className="font-mono text-sm">{judge.last_ip || t('common.notAvailable')}</div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -252,7 +254,7 @@ export default function AdminJudgeDetailPage() {
                             <Shield size={18} />
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Auth Key</div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.authKeyLabel')}</div>
                             <div className="font-mono text-sm truncate max-w-[200px]">{judge.auth_key}</div>
                         </div>
                     </div>
@@ -267,7 +269,7 @@ export default function AdminJudgeDetailPage() {
                         disabled={unblockMutation.isPending}
                         className="px-4 py-2 rounded-xl bg-success/10 text-success hover:bg-success/20 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
-                        <Shield size={18} /> Unblock Judge
+                        <Shield size={18} /> {t('judgeDetail.unblockButton')}
                     </button>
                 ) : (
                     <button
@@ -275,7 +277,7 @@ export default function AdminJudgeDetailPage() {
                         disabled={blockMutation.isPending}
                         className="px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
-                        <ShieldOff size={18} /> Block Judge
+                        <ShieldOff size={18} /> {t('judgeDetail.blockButton')}
                     </button>
                 )}
                 {judge.is_disabled ? (
@@ -284,7 +286,7 @@ export default function AdminJudgeDetailPage() {
                         disabled={enableMutation.isPending}
                         className="px-4 py-2 rounded-xl bg-success/10 text-success hover:bg-success/20 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
-                        <Power size={18} /> Enable Judge
+                        <Power size={18} /> {t('judgeDetail.enableButton')}
                     </button>
                 ) : (
                     <button
@@ -292,7 +294,7 @@ export default function AdminJudgeDetailPage() {
                         disabled={disableMutation.isPending}
                         className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
-                        <Power size={18} className="rotate-180" /> Disable Judge
+                        <Power size={18} className="rotate-180" /> {t('judgeDetail.disableButton')}
                     </button>
                 )}
             </div>

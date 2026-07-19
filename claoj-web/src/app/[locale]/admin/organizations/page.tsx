@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminOrganization } from '@/types';
 import { adminOrganizationApi } from '@/lib/adminApi';
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminOrganizationsPage() {
+    const t = useTranslations('Admin');
     const [search, setSearch] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingOrg, setEditingOrg] = useState<any>(null);
@@ -59,9 +61,9 @@ export default function AdminOrganizationsPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Database className="text-primary" size={32} />
-                        Organizations
+                        {t('organizations.title')}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage contest organizations</p>
+                    <p className="text-muted-foreground mt-1">{t('organizations.subtitle')}</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -69,7 +71,7 @@ export default function AdminOrganizationsPage() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
-                            placeholder="Search organizations..."
+                            placeholder={t('organizations.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -79,7 +81,7 @@ export default function AdminOrganizationsPage() {
                         onClick={() => setShowCreateModal(true)}
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                     >
-                        <Plus size={18} /> Create
+                        <Plus size={18} /> {t('common.create')}
                     </button>
                 </div>
             </div>
@@ -93,7 +95,7 @@ export default function AdminOrganizationsPage() {
                     {filteredOrgs.length === 0 ? (
                         <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
                             <Database size={48} className="mx-auto text-muted-foreground opacity-20" />
-                            <p className="text-muted-foreground mt-4">No organizations found</p>
+                            <p className="text-muted-foreground mt-4">{t('organizations.noOrgsFound')}</p>
                         </div>
                     ) : (
                         filteredOrgs.map((org) => (
@@ -110,17 +112,17 @@ export default function AdminOrganizationsPage() {
                                                 <span className="text-muted-foreground">|</span>
                                                 <div className="flex items-center gap-1">
                                                     <Users size={14} />
-                                                    {org.member_count} members
+                                                    {t('organizations.memberCount', { count: org.member_count })}
                                                 </div>
                                             </div>
                                         </div>
                                     </Link>
                                     <div className="flex items-center gap-2">
                                         {org.is_open && (
-                                            <Badge variant="success" className="text-xs">Open</Badge>
+                                            <Badge variant="success" className="text-xs">{t('organizations.openBadge')}</Badge>
                                         )}
                                         {org.is_unlisted && (
-                                            <Badge variant="secondary" className="text-xs">Unlisted</Badge>
+                                            <Badge variant="secondary" className="text-xs">{t('organizations.unlistedBadge')}</Badge>
                                         )}
                                         <button
                                             onClick={(e) => {
@@ -128,7 +130,7 @@ export default function AdminOrganizationsPage() {
                                                 setEditingOrg(org);
                                             }}
                                             className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                            title="Edit organization"
+                                            title={t('organizations.editTitle')}
                                         >
                                             <Edit size={18} />
                                         </button>
@@ -144,11 +146,11 @@ export default function AdminOrganizationsPage() {
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-card rounded-2xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4">Create Organization</h2>
+                        <h2 className="text-xl font-bold mb-4">{t('organizations.createModalTitle')}</h2>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium mb-2 block">Name</label>
+                                <label className="text-sm font-medium mb-2 block">{t('organizations.nameLabel')}</label>
                                 <input
                                     type="text"
                                     className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
@@ -158,7 +160,7 @@ export default function AdminOrganizationsPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium mb-2 block">Slug</label>
+                                    <label className="text-sm font-medium mb-2 block">{t('organizations.slugLabel')}</label>
                                     <input
                                         type="text"
                                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
@@ -167,7 +169,7 @@ export default function AdminOrganizationsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium mb-2 block">Short Name</label>
+                                    <label className="text-sm font-medium mb-2 block">{t('organizations.shortNameLabel')}</label>
                                     <input
                                         type="text"
                                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
@@ -183,7 +185,7 @@ export default function AdminOrganizationsPage() {
                                 onClick={() => setShowCreateModal(false)}
                                 className="px-4 py-2 rounded-xl hover:bg-muted transition-colors"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={() => {
@@ -194,7 +196,7 @@ export default function AdminOrganizationsPage() {
                                 disabled={createMutation.isPending}
                                 className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors"
                             >
-                                Create
+                                {t('common.create')}
                             </button>
                         </div>
                     </div>
