@@ -35,6 +35,7 @@ Django; a permission granted in Django's admin is enforced by v2.
 | Port | Service | Owner |
 |------|---------|-------|
 | 8080 | nginx → Django site | v1 |
+| 8090 | `v2_nginx` → v2 web + `/api` (same-origin) | v2, combined compose (§4) |
 | 3306 | MariaDB | shared |
 | 6379 | Redis | shared |
 | 9999 / 9998 | v1 judge bridge | v1 |
@@ -44,6 +45,12 @@ Django; a permission granted in Django's admin is enforced by v2.
 
 v2's judge bridge listens on **:9997** specifically so it does not collide with
 the v1 bridge on :9999. This is configurable — see `BRIDGE_ADDR` below.
+
+Under the **combined-compose** path (§4, the primary way to run v2 locally),
+8081/3000/9997 are internal to the Compose network — nothing outside
+`v2_nginx`'s **8090** is published to the host. Those three ports only bind
+directly to `localhost` when you run the Go backend / Next.js dev server /
+a standalone judge on the host instead, for fast iteration (§4.1/§5/§6).
 
 ---
 
@@ -104,6 +111,11 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/    # 200
 
 Visit <http://localhost:8080> — the Django site loads with production data.
 
+> This starts v1 alone. §4 brings up v2 (backend + web + nginx + both judges)
+> layered on top of it with one combined command — you don't need to run v1
+> and v2 as two separate steps day-to-day, this section just covers the
+> one-time v1 image/DB setup that has to happen first either way.
+
 **3.4 Provision the v2-only tables** (once per database). These are additive
 tables/columns that Django never touches (refresh-token bookkeeping lives in
 Redis, but notifications, 2FA, OAuth links, MOSS cache, comment revisions,
@@ -121,9 +133,62 @@ behind every object this script creates.
 
 ---
 
-## 4. Run the v2 Go backend
+## 4. Run v2 (combined compose — primary)
 
-**4.1 Configure** `claoj/.env` (gitignored — never commit it):
+The verified way to run v2 locally is as Docker Compose services in v1's
+**same** Compose project (`name: claoj`), sharing v1's `db`/`redis` containers
+by hostname. One command brings up the Go backend, the Next.js web app, the
+same-origin nginx front, and both judges (§6), layered on top of the v1 stack
+from §3. See `docs/deployment.md` §9 for the full env-file contract and the
+production equivalent.
+
+**4.0 Configure** the two gitignored env files under
+`CLAOJ/claoj-docker/claoj/` once (`.env` for `CLAOJ_DATA`/`V2_HTTP_PORT`/judge
+keys, `local/v2.local.env` for the backend's `DATABASE_DSN`/`REDIS_DB=2`/fresh
+secrets — see `docs/deployment.md` §9.2 for the exact keys and where the
+values come from).
+
+**Bring it up**, from `CLAOJ/claoj-docker/claoj/`:
+
+```bash
+docker compose -f docker-compose.local.yml -f docker-compose.v2.yml up -d
+```
+
+Visit **<http://localhost:8090>** — same-origin web app + `/api`, served
+through `claoj_v2_nginx`. v1 is unaffected and stays at
+<http://localhost:8080>.
+
+```bash
+docker ps --format '{{.Names}}\t{{.Status}}'
+# claoj_v2_backend  Up (healthy)
+# claoj_v2_web      Up (healthy)
+# claoj_v2_nginx    Up
+# claoj_v1_judge    Up
+# claoj_v2_judge    Up
+# ...plus the six v1 containers from §3
+```
+
+Rebuild after a source change (Go or web):
+
+```bash
+docker compose -f docker-compose.local.yml -f docker-compose.v2.yml \
+  up -d --build v2_backend v2_web
+```
+
+`docker compose ... down` and re-`up` is clean and idempotent — v1's data
+lives in its own named volumes, untouched by v2 coming and going.
+
+### 4.1 Fast iteration: run the Go backend on the host
+
+For a tight edit/rebuild/test loop on Go code, a host binary beats a
+container rebuild. Point it at the same `db`/`redis` v1 already publishes on
+`127.0.0.1:3306`/`127.0.0.1:6379` (§3.3). Use `REDIS_DB=0` (not `2`) and keep
+`BRIDGE_ADDR=:9997` so a locally-run backend doesn't collide with the
+compose-managed `v2_backend` if both happen to be up — though normally you'd
+stop `v2_backend` (and `v2_judge`, see §6) in compose before running this to
+avoid two processes fighting over the same judge bridge port.
+
+**Configure** `claoj/.env` (gitignored — never commit it):
 
 ```dotenv
 DATABASE_DSN=claoj:<MYSQL_PASSWORD>@tcp(127.0.0.1:3306)/claoj?charset=utf8mb4&parseTime=True&loc=UTC
@@ -138,7 +203,7 @@ EMAIL_NO_REPLY=true
 BRIDGE_ADDR=:9997
 ```
 
-**4.2 Build and run:**
+**Build and run:**
 
 ```bash
 cd OJ-v2/claoj
@@ -149,7 +214,7 @@ go build -o claoj-server.exe .
 Expected log lines: `db: connected successfully`, `cache: connected to Redis`,
 `claoj-go HTTP API starting on :8081`, `bridge: TCP server listening on :9997`.
 
-**4.3 Verify against the live schema.** The env-gated parity test confirms every
+**Verify against the live schema.** The env-gated parity test confirms every
 GORM model maps cleanly onto the real Django schema:
 
 ```bash
@@ -160,6 +225,13 @@ CLAOJ_DJANGO_DB_DSN="claoj:<MYSQL_PASSWORD>@tcp(127.0.0.1:3306)/claoj?parseTime=
 ---
 
 ## 5. Run the v2 frontend
+
+The §4 combined-compose command already runs the built `v2_web` container
+against the whole stack — nothing extra to do for the primary path.
+
+**Fast iteration (hot reload):** run Next.js on the host, pointed at the
+host-run backend from §4.1 (the compose-managed backend's `:8081` isn't
+published to the host — see the port-map note in §1).
 
 **5.1 Configure** `claoj-web/.env.local` (gitignored):
 
@@ -186,29 +258,54 @@ The app is locale-prefixed: <http://localhost:3000/vi> (Vietnamese) or `/en`.
 Submissions stay in state `QU` (queued) until a judge is connected. The judge is
 a separate Docker image built from `CLAOJ/claoj-docker/judge/tiervnoj`.
 
-**6.1 Build** (once, ~6 GB, downloads all language runtimes):
+**Combined compose (primary):** the `docker compose ... up -d` in §4 already
+starts both judges — nothing extra to run:
+
+- `claoj_v1_judge`, identity `Vịt Con`, dials `bridged:9999` and grades v1
+  (Django) submissions.
+- `claoj_v2_judge`, identity `Vịt Toàn Năng`, dials `v2_backend:9997` and
+  grades v2 (Go) submissions.
+
+Confirm they're online:
+
+```bash
+docker logs claoj_v2_backend | grep -i authenticated
+# bridge [...]: authenticated as Vịt Toàn Năng
+curl -s http://localhost:8090/api/judges   # both judges report "online": true
+```
+
+**6.1 Build the judge image** (once, ~6 GB, downloads all language runtimes —
+needed before either compose judge or a standalone one can run):
 
 ```bash
 cd CLAOJ/claoj-docker/judge
 docker build -t claoj/judge-tiervnoj ./tiervnoj
 ```
 
-**6.2 Run**, pointing it at v2's bridge on the host (`host.docker.internal`
-resolves to the host from inside the container). The judge name/key must match a
-row in `judge_judge`:
+### Fast iteration: a standalone judge for the host-run backend (§4.1)
+
+When running the Go backend directly on the host instead of in compose, point
+a standalone judge container at the host instead of at `v2_backend`
+(`host.docker.internal` resolves to the host from inside the container).
+Stop the compose-managed `v2_judge` first — otherwise two processes present
+the same `Vịt Toàn Năng` identity to two different bridges and flap.
+
+**6.2 Run**, passing the identity explicitly (overrides the id/key baked into
+`judge.yml`, which defaults to v1's `Vịt Con` — the same override pattern
+`v1_judge`/`v2_judge` use in `docker-compose.v2.yml`):
 
 ```bash
 docker run -d --name claoj_judge_local --cap-add SYS_PTRACE \
   -v "F:\Coding\CLAOJ\CLAOJ\claoj-data\problems:/problems" \
   claoj/judge-tiervnoj \
-  run -p 9997 -A 0.0.0.0 -a 9998 -c /problems/judge.yml host.docker.internal
+  run -p 9997 -A 0.0.0.0 -a 9998 -c /problems/judge.yml host.docker.internal \
+  "Vịt Toàn Năng" <V2_JUDGE_KEY, from .env>
 ```
 
-`/problems/judge.yml` carries the judge id (`Vịt Con`) and auth key. On connect
-you'll see `bridge [...]: authenticated as Vịt Con` in the v2 log, and
-`GET /api/judges` reports it `online`.
+On connect you'll see `bridge [...]: authenticated as Vịt Toàn Năng` in the
+host-run backend's log, and `GET /api/judges` reports it `online`.
 
-**6.3 Submit and watch it grade:**
+**6.3 Submit and watch it grade** (against the host-run backend on `:8081`):
 
 ```bash
 # (after logging in and obtaining the csrf_token cookie — see §7.2)
@@ -217,6 +314,9 @@ curl -b cookies.txt -X POST http://localhost:8081/api/problem/aplusb/submit \
   -d '{"source":"...","language":"PY3"}'
 # poll GET /api/submission/<id> — status goes QU → P → G → D, result AC/WA/...
 ```
+
+Against the combined-compose stack, submit through `localhost:8090` instead
+(same shape, same-origin through `v2_nginx`).
 
 > **Judge note:** the runtimes base image ships Python 3.14, which changed the
 > default multiprocessing start method from `fork` to `forkserver`. The judge's

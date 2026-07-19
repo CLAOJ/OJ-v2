@@ -9,6 +9,13 @@ migrations.
 > any `CREATE/ALTER/DROP` is ever attempted. The only one-time, out-of-band DDL
 > is `scripts/v2_runtime_tables.sql`, which you run manually and review first.
 
+**Two deployment paths:** §§1–8 below cover v2 as a bare binary/systemd
+service running alongside Django. §9 covers the verified alternative — v2 as
+Docker Compose services inside v1's **existing** Compose project, which is
+the path used for both local development and the `beta.claoj.edu.vn` staging
+deploy. Both share the same DB/Redis guarantees above; pick whichever fits
+your ops model.
+
 ---
 
 ## 1. Pre-flight
@@ -264,3 +271,142 @@ v2 is additive, so rollback is low-risk:
   Django (verified by the parity test and the identity-handling rules in
   `docs/development.md` §7.1). There is no dual-write reconciliation to manage —
   it is one database with two application front-ends.
+
+---
+
+## 9. Combined compose (v1+v2, one project)
+
+Instead of the bare-binary flow in §§3–5, v2 can run as Docker Compose
+services **inside v1's existing Compose project** (`name: claoj`), sharing
+v1's `db`/`redis` containers by hostname instead of `127.0.0.1:<port>`. This
+is the path validated end-to-end (Go build, web build, both judges grading,
+Redis/DB isolation, same-origin auth) and is the recommended way to run v2
+both locally and for the `beta.claoj.edu.vn` staging deploy — see
+`docs/development.md` §§4–6 for the local walkthrough.
+
+All commands below run from `CLAOJ/claoj-docker/claoj/` (a separate git repo
+from `OJ-v2`; v1's own compose files are never edited). A single override,
+`docker-compose.v2.yml`, adds five `claoj_v2_*` services and layers onto
+either base file unchanged:
+
+```bash
+# Local — layers onto docker-compose.local.yml
+docker compose -f docker-compose.local.yml -f docker-compose.v2.yml up -d
+
+# Production — layers onto docker-compose.yml
+docker compose -f docker-compose.yml -f docker-compose.v2.yml up -d
+```
+
+Local: v1 stays at `http://localhost:8080`; v2 comes up same-origin (web +
+`/api` through `v2_nginx`) at **`http://localhost:8090`**. Both stacks serve
+off the one shared database and Redis instance — nothing about v1 changes.
+
+### 9.1 Services added
+
+| Service | Container | Image | Role | Host port |
+|---|---|---|---|---|
+| `v2_backend` | `claoj_v2_backend` | `claoj/claoj-go` | Go API (`:8081`) + judge bridge (`:9997`), internal only | none |
+| `v2_web` | `claoj_v2_web` | `claoj/claoj-web` | Next.js (`:3000`), internal only | none |
+| `v2_nginx` | `claoj_v2_nginx` | `nginx:alpine` | same-origin front: `/` → web, `/api` (+ `/api/events`) → backend | local `127.0.0.1:8090:80`; prod none |
+| `v1_judge` | `claoj_v1_judge` | `claoj/judge-tiervnoj` | grades v1 submissions, dials `bridged:9999`, identity `Vịt Con` | none |
+| `v2_judge` | `claoj_v2_judge` | `claoj/judge-tiervnoj` | grades v2 submissions, dials `v2_backend:9997`, identity `Vịt Toàn Năng` | none |
+
+Both judges are the **same image** (`claoj/judge-tiervnoj`) — only the target
+host and the `judge_judge` identity differ. Conflict isolation is by
+construction:
+
+- **Database:** additive only — the DDL guard + `scripts/v2_runtime_tables.sql`
+  from §2. Both apps write the same tables.
+- **Redis:** v2 is pinned to **DB index 2** for everything it uses (permission
+  cache, refresh/one-time tokens, audit-log stream, Asynq queue); v1's Django
+  cache (DB 0) and Celery (DB 1) are untouched.
+- **Judge bridges:** v2's bridge listens on `:9997`, distinct from v1's
+  `bridged` on `:9999`/`:9998`.
+- **Judge identities:** `v1_judge` and `v2_judge` authenticate as different
+  `judge_judge` rows, so dispatch never crosses: a Django-created submission is
+  always graded by `Vịt Con`, a Go-created one by `Vịt Toàn Năng`.
+
+### 9.2 Env contract
+
+Two gitignored env files under `CLAOJ/claoj-docker/claoj/` carry everything
+that differs between local and prod — the override file itself never changes.
+
+**`.env`** — read directly by `docker-compose.v2.yml` for interpolation:
+
+| Var | Local | Prod |
+|---|---|---|
+| `CLAOJ_DATA` | `F:\Coding\CLAOJ\CLAOJ\claoj-data` | `/root/claoj-data` |
+| `V2_HTTP_PORT` | `8090` | unused (no host port in prod) |
+| `V1_JUDGE_KEY` | `<judge_judge.auth_key for "Vịt Con">` | same, queried live from prod DB |
+| `V2_JUDGE_KEY` | `<judge_judge.auth_key for "Vịt Toàn Năng">` | same, queried live from prod DB |
+
+**`local/v2.local.env`** (local) / **`local/v2.prod.env`** (prod) — the
+`v2_backend` container's env; which file is used follows which base compose
+file you deploy against:
+
+| Var | Local | Prod |
+|---|---|---|
+| `DATABASE_DSN` | `claoj:<pw>@tcp(db:3306)/claoj?charset=utf8mb4&parseTime=True&loc=UTC` (local snapshot creds) | same shape, live DSN + live creds |
+| `REDIS_ADDR` | `redis:6379` | `redis:6379` |
+| `REDIS_DB` | `2` | `2` |
+| `SERVER_PORT` | `8081` | `8081` |
+| `BRIDGE_ADDR` | `:9997` | `:9997` |
+| `SECRET_KEY` / `JWT_SECRET_KEY` | fresh (`openssl rand -base64 48`) | fresh, distinct from local's |
+| `SITE_URL` | `http://localhost:8090` | `https://beta.claoj.edu.vn` |
+
+Never commit either file. Query the judge keys from `judge_judge` rather than
+inventing them; generate fresh `SECRET_KEY`/`JWT_SECRET_KEY` per environment —
+never reuse Django's, and never reuse local's in prod.
+
+### 9.3 Production ingress (manual Cloudflare step)
+
+v1's `cloudflared` container uses a token-based tunnel that's configured
+remotely, not in compose — a new hostname is added in the dashboard, not in
+a YAML file:
+
+1. Cloudflare Zero Trust dashboard → the existing tunnel → **Public
+   hostname** → add `beta.claoj.edu.vn` → service `http://claoj_v2_nginx:80`.
+2. Add the corresponding DNS record.
+3. v1's `claoj.edu.vn` route is untouched — this only adds a hostname.
+
+`v2_nginx` already joins v1's `nginx` network (the same one `cloudflared`
+sits on), so no extra network wiring is needed once the tunnel routes to it.
+The prod nginx conf needs one change from the local one:
+
+```nginx
+# local/v2-nginx/conf.d/v2.conf — prod
+server_name beta.claoj.edu.vn;   # the local conf uses `server_name _;`
+```
+
+### 9.4 Production bring-up and smoke test
+
+v1's services (`db`, `redis`, `site`, `celery`, `bridged`, `wsevent`,
+`nginx`, `cloudflared`) are already running on the VPS — start only the v2
+services:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.v2.yml up -d \
+  v2_backend v2_web v2_nginx v2_judge
+```
+
+Add `v1_judge` too if this VPS should also grade v1 submissions with the
+`claoj/judge-tiervnoj` image (v1's existing judge setup is otherwise
+untouched by this deploy):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.v2.yml up -d v1_judge
+```
+
+Then run the §6 smoke test against `https://beta.claoj.edu.vn` (public
+reads, auth round-trip, permission parity, a graded submission).
+
+### 9.5 Rollback
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.v2.yml \
+  stop v2_backend v2_web v2_nginx v1_judge v2_judge
+```
+
+v1 is unaffected — it never depended on any v2 service, the v2-only tables,
+or the Redis DB-2 keys. The additive tables can stay (Django ignores them) or
+be removed with `cleanup_v2_tables.sql` per §7.
