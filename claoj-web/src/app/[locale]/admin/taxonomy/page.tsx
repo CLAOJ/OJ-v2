@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { adminProblemGroupApi, adminProblemTypeApi } from '@/lib/adminApi';
 import { AdminProblemGroup, AdminProblemType, AdminProblemGroupCreateRequest, AdminProblemTypeCreateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -29,6 +30,7 @@ import { Plus, Edit, Trash2, Search, Folder, Tag } from 'lucide-react';
 type TabType = 'groups' | 'types';
 
 export default function ProblemTaxonomyAdminPage() {
+    const t = useTranslations('Admin');
     const [activeTab, setActiveTab] = useState<TabType>('groups');
 
     // Problem Groups state
@@ -66,7 +68,7 @@ export default function ProblemTaxonomyAdminPage() {
             setGroups(response.data.data);
             setGroupTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load problem groups');
+            toast.error(t('taxonomy.loadGroupsFailed'));
         } finally {
             setGroupLoading(false);
         }
@@ -79,7 +81,7 @@ export default function ProblemTaxonomyAdminPage() {
             setTypes(response.data.data);
             setTypeTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load problem types');
+            toast.error(t('taxonomy.loadTypesFailed'));
         } finally {
             setTypeLoading(false);
         }
@@ -112,11 +114,11 @@ export default function ProblemTaxonomyAdminPage() {
     const handleCreateGroup = async () => {
         try {
             await adminProblemGroupApi.create(groupFormData);
-            toast.success('Problem group created');
+            toast.success(t('taxonomy.groupCreated'));
             setIsCreateGroupDialogOpen(false);
             loadGroups();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to create problem group');
+            toast.error(error.response?.data?.error || t('taxonomy.groupCreateFailed'));
         }
     };
 
@@ -124,22 +126,22 @@ export default function ProblemTaxonomyAdminPage() {
         if (!editingGroup) return;
         try {
             await adminProblemGroupApi.update(editingGroup.id, { full_name: groupFormData.full_name });
-            toast.success('Problem group updated');
+            toast.success(t('taxonomy.groupUpdated'));
             setIsEditGroupDialogOpen(false);
             loadGroups();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to update problem group');
+            toast.error(error.response?.data?.error || t('taxonomy.groupUpdateFailed'));
         }
     };
 
     const handleDeleteGroup = async (id: number) => {
         try {
             await adminProblemGroupApi.delete(id);
-            toast.success('Problem group deleted');
+            toast.success(t('taxonomy.groupDeleted'));
             setDeleteGroupConfirmId(null);
             loadGroups();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to delete problem group');
+            toast.error(error.response?.data?.error || t('taxonomy.groupDeleteFailed'));
         }
     };
 
@@ -162,11 +164,11 @@ export default function ProblemTaxonomyAdminPage() {
     const handleCreateType = async () => {
         try {
             await adminProblemTypeApi.create(typeFormData);
-            toast.success('Problem type created');
+            toast.success(t('taxonomy.typeCreated'));
             setIsCreateTypeDialogOpen(false);
             loadTypes();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to create problem type');
+            toast.error(error.response?.data?.error || t('taxonomy.typeCreateFailed'));
         }
     };
 
@@ -174,22 +176,22 @@ export default function ProblemTaxonomyAdminPage() {
         if (!editingType) return;
         try {
             await adminProblemTypeApi.update(editingType.id, { full_name: typeFormData.full_name });
-            toast.success('Problem type updated');
+            toast.success(t('taxonomy.typeUpdated'));
             setIsEditTypeDialogOpen(false);
             loadTypes();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to update problem type');
+            toast.error(error.response?.data?.error || t('taxonomy.typeUpdateFailed'));
         }
     };
 
     const handleDeleteType = async (id: number) => {
         try {
             await adminProblemTypeApi.delete(id);
-            toast.success('Problem type deleted');
+            toast.success(t('taxonomy.typeDeleted'));
             setDeleteTypeConfirmId(null);
             loadTypes();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to delete problem type');
+            toast.error(error.response?.data?.error || t('taxonomy.typeDeleteFailed'));
         }
     };
 
@@ -200,9 +202,9 @@ export default function ProblemTaxonomyAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Problem Taxonomy</h1>
+                    <h1 className="text-3xl font-bold">{t('taxonomy.title')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage problem groups and types
+                        {t('taxonomy.subtitle')}
                     </p>
                 </div>
             </div>
@@ -215,7 +217,7 @@ export default function ProblemTaxonomyAdminPage() {
                     className="gap-2 rounded-t-lg"
                 >
                     <Folder className="h-4 w-4" />
-                    Problem Groups ({groupTotal})
+                    {t('taxonomy.groupsTab', { count: groupTotal })}
                 </Button>
                 <Button
                     variant={activeTab === 'types' ? 'default' : 'ghost'}
@@ -223,7 +225,7 @@ export default function ProblemTaxonomyAdminPage() {
                     className="gap-2 rounded-t-lg"
                 >
                     <Tag className="h-4 w-4" />
-                    Problem Types ({typeTotal})
+                    {t('taxonomy.typesTab', { count: typeTotal })}
                 </Button>
             </div>
 
@@ -233,7 +235,7 @@ export default function ProblemTaxonomyAdminPage() {
                     <div className="flex justify-end">
                         <Button onClick={openCreateGroupDialog}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Group
+                            {t('taxonomy.addGroupButton')}
                         </Button>
                     </div>
 
@@ -241,22 +243,22 @@ export default function ProblemTaxonomyAdminPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Full Name</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead>{t('taxonomy.colName')}</TableHead>
+                                    <TableHead>{t('taxonomy.colFullName')}</TableHead>
+                                    <TableHead className="text-right">{t('common.actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {groupLoading ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-8">
-                                            Loading...
+                                            {t('common.loading')}
                                         </TableCell>
                                     </TableRow>
                                 ) : groups.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                            No problem groups found
+                                            {t('taxonomy.noGroupsFound')}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -293,7 +295,7 @@ export default function ProblemTaxonomyAdminPage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between">
                         <div className="text-sm text-muted-foreground">
-                            Showing {(groupPage - 1) * 20 + 1} to {Math.min(groupPage * 20, groupTotal)} of {groupTotal}
+                            {t('common.showingRange', { from: (groupPage - 1) * 20 + 1, to: Math.min(groupPage * 20, groupTotal), total: groupTotal })}
                         </div>
                         <div className="flex gap-2">
                             <Button
@@ -302,7 +304,7 @@ export default function ProblemTaxonomyAdminPage() {
                                 disabled={groupPage === 1}
                                 onClick={() => setGroupPage(groupPage - 1)}
                             >
-                                Previous
+                                {t('common.previous')}
                             </Button>
                             <Button
                                 variant="outline"
@@ -310,7 +312,7 @@ export default function ProblemTaxonomyAdminPage() {
                                 disabled={groupPage >= groupTotalPages}
                                 onClick={() => setGroupPage(groupPage + 1)}
                             >
-                                Next
+                                {t('common.next')}
                             </Button>
                         </div>
                     </div>
@@ -323,7 +325,7 @@ export default function ProblemTaxonomyAdminPage() {
                     <div className="flex justify-end">
                         <Button onClick={openCreateTypeDialog}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Type
+                            {t('taxonomy.addTypeButton')}
                         </Button>
                     </div>
 
@@ -331,22 +333,22 @@ export default function ProblemTaxonomyAdminPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Full Name</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead>{t('taxonomy.colName')}</TableHead>
+                                    <TableHead>{t('taxonomy.colFullName')}</TableHead>
+                                    <TableHead className="text-right">{t('common.actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {typeLoading ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-8">
-                                            Loading...
+                                            {t('common.loading')}
                                         </TableCell>
                                     </TableRow>
                                 ) : types.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                            No problem types found
+                                            {t('taxonomy.noTypesFound')}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -383,7 +385,7 @@ export default function ProblemTaxonomyAdminPage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between">
                         <div className="text-sm text-muted-foreground">
-                            Showing {(typePage - 1) * 20 + 1} to {Math.min(typePage * 20, typeTotal)} of {typeTotal}
+                            {t('common.showingRange', { from: (typePage - 1) * 20 + 1, to: Math.min(typePage * 20, typeTotal), total: typeTotal })}
                         </div>
                         <div className="flex gap-2">
                             <Button
@@ -392,7 +394,7 @@ export default function ProblemTaxonomyAdminPage() {
                                 disabled={typePage === 1}
                                 onClick={() => setTypePage(typePage - 1)}
                             >
-                                Previous
+                                {t('common.previous')}
                             </Button>
                             <Button
                                 variant="outline"
@@ -400,7 +402,7 @@ export default function ProblemTaxonomyAdminPage() {
                                 disabled={typePage >= typeTotalPages}
                                 onClick={() => setTypePage(typePage + 1)}
                             >
-                                Next
+                                {t('common.next')}
                             </Button>
                         </div>
                     </div>
@@ -415,30 +417,30 @@ export default function ProblemTaxonomyAdminPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {editingGroup ? 'Edit Problem Group' : 'Create Problem Group'}
+                            {editingGroup ? t('taxonomy.editGroupTitle') : t('taxonomy.createGroupTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingGroup ? 'Update problem group details.' : 'Create a new problem group.'}
+                            {editingGroup ? t('taxonomy.editGroupDesc') : t('taxonomy.createGroupDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="group_name">Name (Key)</Label>
+                            <Label htmlFor="group_name">{t('taxonomy.groupNameLabel')}</Label>
                             <Input
                                 id="group_name"
                                 value={groupFormData.name}
                                 onChange={(e) => setGroupFormData({ ...groupFormData, name: e.target.value })}
-                                placeholder="e.g., IOI"
+                                placeholder={t('taxonomy.groupNamePlaceholder')}
                                 disabled={editingGroup !== null}
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="group_full_name">Full Name</Label>
+                            <Label htmlFor="group_full_name">{t('taxonomy.groupFullNameLabel')}</Label>
                             <Input
                                 id="group_full_name"
                                 value={groupFormData.full_name}
                                 onChange={(e) => setGroupFormData({ ...groupFormData, full_name: e.target.value })}
-                                placeholder="e.g., International Olympiad in Informatics"
+                                placeholder={t('taxonomy.groupFullNamePlaceholder')}
                             />
                         </div>
                     </div>
@@ -447,10 +449,10 @@ export default function ProblemTaxonomyAdminPage() {
                             setIsCreateGroupDialogOpen(false);
                             setIsEditGroupDialogOpen(false);
                         }}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={editingGroup ? handleUpdateGroup : handleCreateGroup}>
-                            {editingGroup ? 'Save Changes' : 'Create'}
+                            {editingGroup ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -464,30 +466,30 @@ export default function ProblemTaxonomyAdminPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {editingType ? 'Edit Problem Type' : 'Create Problem Type'}
+                            {editingType ? t('taxonomy.editTypeTitle') : t('taxonomy.createTypeTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingType ? 'Update problem type details.' : 'Create a new problem type.'}
+                            {editingType ? t('taxonomy.editTypeDesc') : t('taxonomy.createTypeDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="type_name">Name (Key)</Label>
+                            <Label htmlFor="type_name">{t('taxonomy.typeNameLabel')}</Label>
                             <Input
                                 id="type_name"
                                 value={typeFormData.name}
                                 onChange={(e) => setTypeFormData({ ...typeFormData, name: e.target.value })}
-                                placeholder="e.g., DP"
+                                placeholder={t('taxonomy.typeNamePlaceholder')}
                                 disabled={editingType !== null}
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="type_full_name">Full Name</Label>
+                            <Label htmlFor="type_full_name">{t('taxonomy.typeFullNameLabel')}</Label>
                             <Input
                                 id="type_full_name"
                                 value={typeFormData.full_name}
                                 onChange={(e) => setTypeFormData({ ...typeFormData, full_name: e.target.value })}
-                                placeholder="e.g., Dynamic Programming"
+                                placeholder={t('taxonomy.typeFullNamePlaceholder')}
                             />
                         </div>
                     </div>
@@ -496,10 +498,10 @@ export default function ProblemTaxonomyAdminPage() {
                             setIsCreateTypeDialogOpen(false);
                             setIsEditTypeDialogOpen(false);
                         }}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={editingType ? handleUpdateType : handleCreateType}>
-                            {editingType ? 'Save Changes' : 'Create'}
+                            {editingType ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -509,20 +511,20 @@ export default function ProblemTaxonomyAdminPage() {
             <Dialog open={deleteGroupConfirmId !== null} onOpenChange={() => setDeleteGroupConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Problem Group</DialogTitle>
+                        <DialogTitle>{t('taxonomy.deleteGroupTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this problem group? This cannot be undone if the group is used by problems.
+                            {t('taxonomy.deleteGroupDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteGroupConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteGroupConfirmId && handleDeleteGroup(deleteGroupConfirmId)}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -531,20 +533,20 @@ export default function ProblemTaxonomyAdminPage() {
             <Dialog open={deleteTypeConfirmId !== null} onOpenChange={() => setDeleteTypeConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Problem Type</DialogTitle>
+                        <DialogTitle>{t('taxonomy.deleteTypeTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this problem type? This cannot be undone.
+                            {t('taxonomy.deleteTypeDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteTypeConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteTypeConfirmId && handleDeleteType(deleteTypeConfirmId)}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

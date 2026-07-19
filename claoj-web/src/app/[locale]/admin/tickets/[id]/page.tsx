@@ -35,6 +35,7 @@ dayjs.extend(relativeTime);
 
 export default function AdminTicketDetailPage() {
     const t = useTranslations('Admin.Tickets');
+    const tc = useTranslations('Admin');
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
@@ -135,14 +136,14 @@ export default function AdminTicketDetailPage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">Ticket Not Found</h2>
-                <p className="text-muted-foreground mb-6">The ticket you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+                <h2 className="text-2xl font-black mb-2">{t('notFoundTitle')}</h2>
+                <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/admin/tickets"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
-                    Back to Tickets
+                    {t('backToTickets')}
                 </Link>
             </div>
         );
@@ -186,12 +187,12 @@ export default function AdminTicketDetailPage() {
                     <span className="font-black">{message.user.username}</span>
                     {isOP && (
                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/20">
-                            <User size={12} className="inline mr-1" /> Ticket Owner
+                            <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
                         </Badge>
                     )}
                     {message.user.is_staff && (
                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                            <Shield size={12} className="inline mr-1" /> Staff
+                            <Shield size={12} className="inline mr-1" /> {t('staffBadge')}
                         </Badge>
                     )}
                     <span className="text-[10px] text-muted-foreground font-mono ml-auto">
@@ -213,7 +214,7 @@ export default function AdminTicketDetailPage() {
                 className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
-                Back to Admin Tickets
+                {t('backToAdminTickets')}
             </Link>
 
             {/* Header */}
@@ -237,13 +238,13 @@ export default function AdminTicketDetailPage() {
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <Clock size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        Created {dayjs(ticket.created).fromNow()}
+                                        {t('createdLabel', { time: dayjs(ticket.created).fromNow() })}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <MessageSquare size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        {ticket.messages.length} messages
+                                        {t('messagesCount', { count: ticket.messages.length })}
                                     </span>
                                 </div>
                             </div>
@@ -260,7 +261,7 @@ export default function AdminTicketDetailPage() {
                             )}
                         >
                             <ToggleLeft size={16} />
-                            {ticket.is_open ? 'Close' : 'Reopen'}
+                            {ticket.is_open ? t('closeButton') : t('reopenButton')}
                         </button>
                         <button
                             onClick={() => setContributiveMutation.mutate(!ticket.is_contributive)}
@@ -272,7 +273,7 @@ export default function AdminTicketDetailPage() {
                             )}
                         >
                             <Star size={16} />
-                            Contributive
+                            {t('contributiveButton')}
                         </button>
                     </div>
                 </div>
@@ -281,7 +282,7 @@ export default function AdminTicketDetailPage() {
                 <div className="flex items-center gap-4 mb-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Users size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Assignees:</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('assigneesLabel')}</span>
                     </div>
                     {ticket.assignees.length > 0 ? (
                         <div className="flex gap-2">
@@ -292,7 +293,7 @@ export default function AdminTicketDetailPage() {
                             ))}
                         </div>
                     ) : (
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Unassigned</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">{t('unassigned')}</span>
                     )}
                     <button
                         onClick={() => {
@@ -302,7 +303,7 @@ export default function AdminTicketDetailPage() {
                         className="ml-auto px-4 py-2 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all flex items-center gap-2"
                     >
                         <UserPlus size={14} />
-                        Manage Assignees
+                        {t('manageAssigneesButton')}
                     </button>
                 </div>
             </div>
@@ -311,18 +312,18 @@ export default function AdminTicketDetailPage() {
             <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
                 <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                     <FileText size={20} className="text-primary" />
-                    Internal Notes
+                    {t('internalNotesTitle')}
                 </h3>
                 <textarea
                     value={notesContent}
                     onChange={(e) => setNotesContent(e.target.value)}
                     onBlur={handleNotesBlur}
-                    placeholder="Add internal notes (only visible to staff)..."
+                    placeholder={t('notesPlaceholder')}
                     rows={4}
                     className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                 />
                 {updateNotesMutation.isPending && (
-                    <p className="text-xs text-muted-foreground mt-2">Saving...</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t('savingIndicator')}</p>
                 )}
             </div>
 
@@ -339,7 +340,7 @@ export default function AdminTicketDetailPage() {
                 ) : (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                         <MessageSquare size={48} className="mx-auto mb-4 opacity-10" />
-                        <p className="font-bold">No messages yet</p>
+                        <p className="font-bold">{t('noMessagesYet')}</p>
                     </div>
                 )}
             </div>
@@ -349,13 +350,13 @@ export default function AdminTicketDetailPage() {
                 <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
                     <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                         <MessageSquare size={20} className="text-primary" />
-                        Reply to Ticket
+                        {t('replyTitle')}
                     </h3>
                     <div className="space-y-4">
                         <textarea
                             value={replyContent}
                             onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder="Write your reply..."
+                            placeholder={t('replyPlaceholder')}
                             rows={6}
                             className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />
@@ -370,7 +371,7 @@ export default function AdminTicketDetailPage() {
                                 ) : (
                                     <Send size={18} />
                                 )}
-                                Send Reply
+                                {t('sendReplyButton')}
                             </button>
                         </div>
                     </div>
@@ -383,11 +384,11 @@ export default function AdminTicketDetailPage() {
                     <div className="bg-card border rounded-[3rem] p-8 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
                         <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                             <Users size={20} className="text-primary" />
-                            Assign Ticket
+                            {t('assignModalTitle')}
                         </h3>
                         <input
                             type="text"
-                            placeholder="Search users..."
+                            placeholder={t('searchUsersPlaceholder')}
                             className="w-full h-12 bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none mb-4"
                             value={userSearch}
                             onChange={(e) => setUserSearch(e.target.value)}
@@ -418,7 +419,7 @@ export default function AdminTicketDetailPage() {
                                     <span className="font-black">{user.username}</span>
                                     {user.is_staff && (
                                         <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
-                                            Staff
+                                            {t('staffBadge')}
                                         </Badge>
                                     )}
                                 </label>
@@ -429,7 +430,7 @@ export default function AdminTicketDetailPage() {
                                 onClick={() => setShowAssignModal(false)}
                                 className="px-6 py-3 rounded-xl bg-muted text-muted-foreground font-bold hover:bg-muted/80 transition-all"
                             >
-                                Cancel
+                                {tc('common.cancel')}
                             </button>
                             <button
                                 onClick={handleAssign}
@@ -437,7 +438,7 @@ export default function AdminTicketDetailPage() {
                                 className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
                             >
                                 {assignMutation.isPending && <Loader2 size={18} className="animate-spin" />}
-                                Assign
+                                {t('assignButton')}
                             </button>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { adminBlogPostApi } from '@/lib/adminApi';
 import { AdminBlogPost, AdminBlogPostCreateRequest, AdminBlogPostUpdateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -30,6 +31,7 @@ import { Plus, Edit, Trash2, Search, Eye, EyeOff, Pin } from 'lucide-react';
 import { formatDateTime } from '@/lib/date';
 
 export default function BlogPostAdminPage() {
+    const t = useTranslations('Admin');
     const [posts, setPosts] = useState<AdminBlogPost[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -62,7 +64,7 @@ export default function BlogPostAdminPage() {
             setPosts(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load blog posts');
+            toast.error(t('blogPosts.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -106,18 +108,18 @@ export default function BlogPostAdminPage() {
             setEditingPost(post);
             setIsEditDialogOpen(true);
         } catch (error) {
-            toast.error('Failed to load blog post details');
+            toast.error(t('blogPosts.loadDetailFailed'));
         }
     };
 
     const handleCreate = async () => {
         try {
             await adminBlogPostApi.create(formData);
-            toast.success('Blog post created');
+            toast.success(t('blogPosts.createSuccess'));
             setIsCreateDialogOpen(false);
             loadPosts();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to create blog post');
+            toast.error(error.response?.data?.error || t('blogPosts.createError'));
         }
     };
 
@@ -138,42 +140,42 @@ export default function BlogPostAdminPage() {
                 organization_id: formData.organization_id,
             };
             await adminBlogPostApi.update(editingPost.id, updateData);
-            toast.success('Blog post updated');
+            toast.success(t('blogPosts.updateSuccess'));
             setIsEditDialogOpen(false);
             loadPosts();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to update blog post');
+            toast.error(error.response?.data?.error || t('blogPosts.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await adminBlogPostApi.delete(id);
-            toast.success('Blog post deleted');
+            toast.success(t('blogPosts.deleteSuccess'));
             setDeleteConfirmId(null);
             loadPosts();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to delete blog post');
+            toast.error(error.response?.data?.error || t('blogPosts.deleteError'));
         }
     };
 
     const handleToggleVisibility = async (post: AdminBlogPost) => {
         try {
             await adminBlogPostApi.update(post.id, { visible: !post.visible });
-            toast.success(post.visible ? 'Blog post hidden' : 'Blog post made visible');
+            toast.success(post.visible ? t('blogPosts.hiddenToast') : t('blogPosts.visibleToast'));
             loadPosts();
         } catch (error) {
-            toast.error('Failed to update blog post');
+            toast.error(t('blogPosts.updateError'));
         }
     };
 
     const handleToggleSticky = async (post: AdminBlogPost) => {
         try {
             await adminBlogPostApi.update(post.id, { sticky: !post.sticky });
-            toast.success(post.sticky ? 'Blog post unsticky' : 'Blog post made sticky');
+            toast.success(post.sticky ? t('blogPosts.unstickyToast') : t('blogPosts.stickyToast'));
             loadPosts();
         } catch (error) {
-            toast.error('Failed to update blog post');
+            toast.error(t('blogPosts.updateError'));
         }
     };
 
@@ -183,14 +185,14 @@ export default function BlogPostAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Blog Posts</h1>
+                    <h1 className="text-3xl font-bold">{t('blogPosts.title')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage blog posts and announcements
+                        {t('blogPosts.subtitle')}
                     </p>
                 </div>
                 <Button onClick={openCreateDialog}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Post
+                    {t('blogPosts.addButton')}
                 </Button>
             </div>
 
@@ -198,7 +200,7 @@ export default function BlogPostAdminPage() {
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search posts..."
+                    placeholder={t('blogPosts.searchPlaceholder')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-10"
@@ -210,24 +212,24 @@ export default function BlogPostAdminPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Authors</TableHead>
-                            <TableHead>Publish Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>{t('blogPosts.colTitle')}</TableHead>
+                            <TableHead>{t('blogPosts.colAuthors')}</TableHead>
+                            <TableHead>{t('blogPosts.colPublishDate')}</TableHead>
+                            <TableHead>{t('blogPosts.colStatus')}</TableHead>
+                            <TableHead className="text-right">{t('common.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-8">
-                                    Loading...
+                                    {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : posts.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                    No blog posts found
+                                    {t('blogPosts.noPostsFound')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -241,12 +243,12 @@ export default function BlogPostAdminPage() {
                                                 {post.sticky && (
                                                     <Badge variant="default" className="text-xs">
                                                         <Pin className="h-3 w-3 mr-1" />
-                                                        Sticky
+                                                        {t('blogPosts.stickyBadge')}
                                                     </Badge>
                                                 )}
                                                 {post.global_post && (
                                                     <Badge variant="outline" className="text-xs">
-                                                        Global
+                                                        {t('blogPosts.globalBadge')}
                                                     </Badge>
                                                 )}
                                                 {post.organization && (
@@ -270,7 +272,7 @@ export default function BlogPostAdminPage() {
                                     <TableCell>
                                         <div className="flex gap-2">
                                             <Badge variant={post.visible ? 'default' : 'secondary'}>
-                                                {post.visible ? 'Visible' : 'Hidden'}
+                                                {post.visible ? t('contests.visible') : t('contests.hidden')}
                                             </Badge>
                                         </div>
                                     </TableCell>
@@ -280,7 +282,7 @@ export default function BlogPostAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => handleToggleVisibility(post)}
-                                                title={post.visible ? 'Hide' : 'Show'}
+                                                title={post.visible ? t('blogPosts.hideTitle') : t('blogPosts.showTitle')}
                                             >
                                                 {post.visible ? (
                                                     <Eye className="h-4 w-4" />
@@ -292,7 +294,7 @@ export default function BlogPostAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => handleToggleSticky(post)}
-                                                title={post.sticky ? 'Unsticky' : 'Sticky'}
+                                                title={post.sticky ? t('blogPosts.unstickyTitle') : t('blogPosts.stickyTitle')}
                                             >
                                                 <Pin className={`h-4 w-4 ${post.sticky ? 'fill-current' : ''}`} />
                                             </Button>
@@ -323,7 +325,7 @@ export default function BlogPostAdminPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}
+                    {t('common.showingRange', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, total), total })}
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -332,7 +334,7 @@ export default function BlogPostAdminPage() {
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
                     >
-                        Previous
+                        {t('common.previous')}
                     </Button>
                     <Button
                         variant="outline"
@@ -340,7 +342,7 @@ export default function BlogPostAdminPage() {
                         disabled={page >= totalPages}
                         onClick={() => setPage(page + 1)}
                     >
-                        Next
+                        {t('common.next')}
                     </Button>
                 </div>
             </div>
@@ -353,60 +355,60 @@ export default function BlogPostAdminPage() {
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingPost ? 'Edit Blog Post' : 'Create Blog Post'}
+                            {editingPost ? t('blogPosts.editDialogTitle') : t('blogPosts.createDialogTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingPost ? 'Update blog post details.' : 'Create a new blog post.'}
+                            {editingPost ? t('blogPosts.editDialogDesc') : t('blogPosts.createDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="title">Title</Label>
+                                <Label htmlFor="title">{t('blogPosts.titleLabel')}</Label>
                                 <Input
                                     id="title"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    placeholder="Post title"
+                                    placeholder={t('blogPosts.titlePlaceholder')}
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="slug">Slug</Label>
+                                <Label htmlFor="slug">{t('blogPosts.slugLabel')}</Label>
                                 <Input
                                     id="slug"
                                     value={formData.slug}
                                     onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                    placeholder="post-slug"
+                                    placeholder={t('blogPosts.slugPlaceholder')}
                                 />
                             </div>
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="summary">Summary</Label>
+                            <Label htmlFor="summary">{t('blogPosts.summaryLabel')}</Label>
                             <Textarea
                                 id="summary"
                                 value={formData.summary}
                                 onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
                                 rows={3}
-                                placeholder="Brief summary"
+                                placeholder={t('blogPosts.summaryPlaceholder')}
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="content">Content</Label>
+                            <Label htmlFor="content">{t('blogPosts.contentLabel')}</Label>
                             <Textarea
                                 id="content"
                                 value={formData.content}
                                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                                 rows={12}
                                 className="font-mono text-sm"
-                                placeholder="Markdown content"
+                                placeholder={t('blogPosts.contentPlaceholder')}
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="publish_on">Publish Date</Label>
+                                <Label htmlFor="publish_on">{t('blogPosts.publishDateLabel')}</Label>
                                 <Input
                                     id="publish_on"
                                     type="datetime-local"
@@ -415,12 +417,12 @@ export default function BlogPostAdminPage() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="og_image">OG Image URL</Label>
+                                <Label htmlFor="og_image">{t('blogPosts.ogImageLabel')}</Label>
                                 <Input
                                     id="og_image"
                                     value={formData.og_image}
                                     onChange={(e) => setFormData({ ...formData, og_image: e.target.value })}
-                                    placeholder="https://..."
+                                    placeholder={t('blogPosts.ogImagePlaceholder')}
                                 />
                             </div>
                         </div>
@@ -432,7 +434,7 @@ export default function BlogPostAdminPage() {
                                     checked={formData.visible}
                                     onCheckedChange={(checked) => setFormData({ ...formData, visible: checked })}
                                 />
-                                <Label htmlFor="visible">Visible</Label>
+                                <Label htmlFor="visible">{t('blogPosts.visibleLabel')}</Label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Switch
@@ -440,7 +442,7 @@ export default function BlogPostAdminPage() {
                                     checked={formData.sticky}
                                     onCheckedChange={(checked) => setFormData({ ...formData, sticky: checked })}
                                 />
-                                <Label htmlFor="sticky">Sticky</Label>
+                                <Label htmlFor="sticky">{t('blogPosts.stickyLabel')}</Label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Switch
@@ -448,7 +450,7 @@ export default function BlogPostAdminPage() {
                                     checked={formData.global_post}
                                     onCheckedChange={(checked) => setFormData({ ...formData, global_post: checked })}
                                 />
-                                <Label htmlFor="global_post">Global Post</Label>
+                                <Label htmlFor="global_post">{t('blogPosts.globalPostLabel')}</Label>
                             </div>
                         </div>
                     </div>
@@ -457,10 +459,10 @@ export default function BlogPostAdminPage() {
                             setIsCreateDialogOpen(false);
                             setIsEditDialogOpen(false);
                         }}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={editingPost ? handleUpdate : handleCreate}>
-                            {editingPost ? 'Save Changes' : 'Create'}
+                            {editingPost ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -470,20 +472,20 @@ export default function BlogPostAdminPage() {
             <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Blog Post</DialogTitle>
+                        <DialogTitle>{t('blogPosts.deleteDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this blog post? This action cannot be undone.
+                            {t('blogPosts.deleteDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

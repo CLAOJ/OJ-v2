@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { adminLicenseApi } from '@/lib/adminApi';
 import { AdminLicense, AdminLicenseCreateRequest, AdminLicenseUpdateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -28,6 +29,7 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Scale } from 'lucide-react';
 
 export default function LicenseAdminPage() {
+    const t = useTranslations('Admin');
     const [licenses, setLicenses] = useState<AdminLicense[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -56,7 +58,7 @@ export default function LicenseAdminPage() {
             setLicenses(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load licenses');
+            toast.error(t('licenses.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -92,18 +94,18 @@ export default function LicenseAdminPage() {
             setEditingLicense(license);
             setIsEditDialogOpen(true);
         } catch (error) {
-            toast.error('Failed to load license details');
+            toast.error(t('licenses.loadDetailFailed'));
         }
     };
 
     const handleCreate = async () => {
         try {
             await adminLicenseApi.create(formData);
-            toast.success('License created');
+            toast.success(t('licenses.createSuccess'));
             setIsCreateDialogOpen(false);
             loadLicenses();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to create license');
+            toast.error(error.response?.data?.error || t('licenses.createError'));
         }
     };
 
@@ -119,22 +121,22 @@ export default function LicenseAdminPage() {
                 text: formData.text,
             };
             await adminLicenseApi.update(editingLicense.id, updateData);
-            toast.success('License updated');
+            toast.success(t('licenses.updateSuccess'));
             setIsEditDialogOpen(false);
             loadLicenses();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to update license');
+            toast.error(error.response?.data?.error || t('licenses.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await adminLicenseApi.delete(id);
-            toast.success('License deleted');
+            toast.success(t('licenses.deleteSuccess'));
             setDeleteConfirmId(null);
             loadLicenses();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to delete license');
+            toast.error(error.response?.data?.error || t('licenses.deleteError'));
         }
     };
 
@@ -144,14 +146,14 @@ export default function LicenseAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Licenses</h1>
+                    <h1 className="text-3xl font-bold">{t('licenses.title')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage software licenses for problems
+                        {t('licenses.subtitle')}
                     </p>
                 </div>
                 <Button onClick={openCreateDialog}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add License
+                    {t('licenses.addButton')}
                 </Button>
             </div>
 
@@ -159,7 +161,7 @@ export default function LicenseAdminPage() {
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search licenses..."
+                    placeholder={t('licenses.searchPlaceholder')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-10"
@@ -171,24 +173,24 @@ export default function LicenseAdminPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Key</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Display</TableHead>
-                            <TableHead>Link</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>{t('licenses.colKey')}</TableHead>
+                            <TableHead>{t('licenses.colName')}</TableHead>
+                            <TableHead>{t('licenses.colDisplay')}</TableHead>
+                            <TableHead>{t('licenses.colLink')}</TableHead>
+                            <TableHead className="text-right">{t('common.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-8">
-                                    Loading...
+                                    {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : licenses.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                    No licenses found
+                                    {t('licenses.noLicensesFound')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -218,7 +220,7 @@ export default function LicenseAdminPage() {
                                             className="text-primary hover:underline text-sm"
                                         >
                                             <Scale className="inline h-3 w-3 mr-1" />
-                                            Link
+                                            {t('licenses.linkText')}
                                         </a>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -250,7 +252,7 @@ export default function LicenseAdminPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}
+                    {t('common.showingRange', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, total), total })}
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -259,7 +261,7 @@ export default function LicenseAdminPage() {
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
                     >
-                        Previous
+                        {t('common.previous')}
                     </Button>
                     <Button
                         variant="outline"
@@ -267,7 +269,7 @@ export default function LicenseAdminPage() {
                         disabled={page >= totalPages}
                         onClick={() => setPage(page + 1)}
                     >
-                        Next
+                        {t('common.next')}
                     </Button>
                 </div>
             </div>
@@ -280,75 +282,75 @@ export default function LicenseAdminPage() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingLicense ? 'Edit License' : 'Create License'}
+                            {editingLicense ? t('licenses.editDialogTitle') : t('licenses.createDialogTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingLicense ? 'Update license details.' : 'Create a new software license.'}
+                            {editingLicense ? t('licenses.editDialogDesc') : t('licenses.createDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="key">License Key</Label>
+                                <Label htmlFor="key">{t('licenses.keyLabel')}</Label>
                                 <Input
                                     id="key"
                                     value={formData.key}
                                     onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                                    placeholder="e.g., MIT"
+                                    placeholder={t('licenses.keyPlaceholder')}
                                     disabled={editingLicense !== null}
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">{t('licenses.nameLabel')}</Label>
                                 <Input
                                     id="name"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g., MIT License"
+                                    placeholder={t('licenses.namePlaceholder')}
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="display">Display Text</Label>
+                                <Label htmlFor="display">{t('licenses.displayLabel')}</Label>
                                 <Input
                                     id="display"
                                     value={formData.display}
                                     onChange={(e) => setFormData({ ...formData, display: e.target.value })}
-                                    placeholder="Short display text"
+                                    placeholder={t('licenses.displayPlaceholder')}
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="icon">Icon URL</Label>
+                                <Label htmlFor="icon">{t('licenses.iconLabel')}</Label>
                                 <Input
                                     id="icon"
                                     value={formData.icon}
                                     onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                                    placeholder="https://..."
+                                    placeholder={t('licenses.iconPlaceholder')}
                                 />
                             </div>
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="link">License Link</Label>
+                            <Label htmlFor="link">{t('licenses.linkLabel')}</Label>
                             <Input
                                 id="link"
                                 value={formData.link}
                                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                                placeholder="https://opensource.org/licenses/MIT"
+                                placeholder={t('licenses.linkPlaceholder')}
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="text">License Text</Label>
+                            <Label htmlFor="text">{t('licenses.textLabel')}</Label>
                             <Textarea
                                 id="text"
                                 value={formData.text}
                                 onChange={(e) => setFormData({ ...formData, text: e.target.value })}
                                 rows={10}
                                 className="font-mono text-sm"
-                                placeholder="Full license text"
+                                placeholder={t('licenses.textPlaceholder')}
                             />
                         </div>
                     </div>
@@ -357,10 +359,10 @@ export default function LicenseAdminPage() {
                             setIsCreateDialogOpen(false);
                             setIsEditDialogOpen(false);
                         }}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={editingLicense ? handleUpdate : handleCreate}>
-                            {editingLicense ? 'Save Changes' : 'Create'}
+                            {editingLicense ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -370,20 +372,20 @@ export default function LicenseAdminPage() {
             <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete License</DialogTitle>
+                        <DialogTitle>{t('licenses.deleteDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this license? This cannot be undone if the license is used by problems.
+                            {t('licenses.deleteDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

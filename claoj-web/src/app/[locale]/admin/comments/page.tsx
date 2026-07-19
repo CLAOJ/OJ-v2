@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { adminCommentApi } from '@/lib/adminApi';
 import { AdminComment } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -30,6 +31,7 @@ import { Link } from '@/navigation';
 import { formatDateTime } from '@/lib/date';
 
 export default function CommentAdminPage() {
+    const t = useTranslations('Admin');
     const [comments, setComments] = useState<AdminComment[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -57,7 +59,7 @@ export default function CommentAdminPage() {
             setComments(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load comments');
+            toast.error(t('comments.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -90,11 +92,11 @@ export default function CommentAdminPage() {
                 hidden: editHidden,
                 reason: editReason,
             });
-            toast.success('Comment updated');
+            toast.success(t('comments.updateSuccess'));
             setIsEditDialogOpen(false);
             loadComments();
         } catch (error) {
-            toast.error('Failed to update comment');
+            toast.error(t('comments.updateError'));
         }
     };
 
@@ -103,21 +105,21 @@ export default function CommentAdminPage() {
             await adminCommentApi.update(comment.id, {
                 hidden: !comment.hidden,
             });
-            toast.success(comment.hidden ? 'Comment unhidden' : 'Comment hidden');
+            toast.success(comment.hidden ? t('comments.unhiddenToast') : t('comments.hiddenToast'));
             loadComments();
         } catch (error) {
-            toast.error('Failed to update comment');
+            toast.error(t('comments.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await adminCommentApi.delete(id);
-            toast.success('Comment deleted');
+            toast.success(t('comments.deleteSuccess'));
             setDeleteConfirmId(null);
             loadComments();
         } catch (error) {
-            toast.error('Failed to delete comment');
+            toast.error(t('comments.deleteError'));
         }
     };
 
@@ -127,12 +129,12 @@ export default function CommentAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Comments</h1>
+                    <h1 className="text-3xl font-bold">{t('comments.title')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage and moderate user comments
+                        {t('comments.subtitle')}
                     </p>
                 </div>
-                <Badge variant="secondary">{total} total</Badge>
+                <Badge variant="secondary">{t('comments.totalBadge', { total })}</Badge>
             </div>
 
             {/* Filters */}
@@ -140,7 +142,7 @@ export default function CommentAdminPage() {
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by body, username, or page..."
+                        placeholder={t('comments.searchPlaceholder')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="pl-10"
@@ -154,10 +156,10 @@ export default function CommentAdminPage() {
                     }}
                     className="px-4 py-2 border rounded-lg bg-background"
                 >
-                    <option value="all">All Types</option>
-                    <option value="problem">Problem Comments</option>
-                    <option value="editorial">Editorial Comments</option>
-                    <option value="blog">Blog Comments</option>
+                    <option value="all">{t('comments.allTypesOption')}</option>
+                    <option value="problem">{t('comments.problemCommentsOption')}</option>
+                    <option value="editorial">{t('comments.editorialCommentsOption')}</option>
+                    <option value="blog">{t('comments.blogCommentsOption')}</option>
                 </select>
                 <select
                     value={hiddenFilter}
@@ -167,13 +169,13 @@ export default function CommentAdminPage() {
                     }}
                     className="px-4 py-2 border rounded-lg bg-background"
                 >
-                    <option value="all">All Comments</option>
-                    <option value="false">Visible</option>
-                    <option value="true">Hidden</option>
+                    <option value="all">{t('comments.allCommentsOption')}</option>
+                    <option value="false">{t('comments.visibleOption')}</option>
+                    <option value="true">{t('comments.hiddenOption')}</option>
                 </select>
                 <Button type="submit">
                     <Filter className="h-4 w-4 mr-2" />
-                    Filter
+                    {t('comments.filterButton')}
                 </Button>
             </form>
 
@@ -182,27 +184,27 @@ export default function CommentAdminPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Author</TableHead>
-                            <TableHead>Page</TableHead>
-                            <TableHead className="max-w-md">Body</TableHead>
-                            <TableHead>Score</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Time</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>{t('comments.colId')}</TableHead>
+                            <TableHead>{t('comments.colAuthor')}</TableHead>
+                            <TableHead>{t('comments.colPage')}</TableHead>
+                            <TableHead className="max-w-md">{t('comments.colBody')}</TableHead>
+                            <TableHead>{t('comments.colScore')}</TableHead>
+                            <TableHead>{t('comments.colStatus')}</TableHead>
+                            <TableHead>{t('comments.colTime')}</TableHead>
+                            <TableHead className="text-right">{t('common.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center py-8">
-                                    Loading...
+                                    {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : comments.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                                    No comments found
+                                    {t('comments.noCommentsFound')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -237,12 +239,12 @@ export default function CommentAdminPage() {
                                         {comment.hidden ? (
                                             <Badge variant="secondary" className="gap-1">
                                                 <EyeOff className="h-3 w-3" />
-                                                Hidden
+                                                {t('comments.hiddenBadge')}
                                             </Badge>
                                         ) : (
                                             <Badge variant="outline" className="gap-1">
                                                 <Eye className="h-3 w-3" />
-                                                Visible
+                                                {t('comments.visibleBadge')}
                                             </Badge>
                                         )}
                                     </TableCell>
@@ -255,7 +257,7 @@ export default function CommentAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => handleToggleHidden(comment)}
-                                                title={comment.hidden ? 'Unhide' : 'Hide'}
+                                                title={comment.hidden ? t('comments.unhideTitle') : t('comments.hideTitle')}
                                             >
                                                 {comment.hidden ? (
                                                     <Eye className="h-4 w-4" />
@@ -290,7 +292,7 @@ export default function CommentAdminPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}
+                    {t('common.showingRange', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, total), total })}
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -299,7 +301,7 @@ export default function CommentAdminPage() {
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
                     >
-                        Previous
+                        {t('common.previous')}
                     </Button>
                     <Button
                         variant="outline"
@@ -307,7 +309,7 @@ export default function CommentAdminPage() {
                         disabled={page >= totalPages}
                         onClick={() => setPage(page + 1)}
                     >
-                        Next
+                        {t('common.next')}
                     </Button>
                 </div>
             </div>
@@ -316,14 +318,14 @@ export default function CommentAdminPage() {
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Edit Comment</DialogTitle>
+                        <DialogTitle>{t('comments.editDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Modify comment content and visibility. Changes will be logged with a reason.
+                            {t('comments.editDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="body">Comment Body</Label>
+                            <Label htmlFor="body">{t('comments.bodyLabel')}</Label>
                             <Textarea
                                 id="body"
                                 value={editBody}
@@ -333,12 +335,12 @@ export default function CommentAdminPage() {
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="reason">Edit Reason (optional)</Label>
+                            <Label htmlFor="reason">{t('comments.reasonLabel')}</Label>
                             <Input
                                 id="reason"
                                 value={editReason}
                                 onChange={(e) => setEditReason(e.target.value)}
-                                placeholder="Why are you editing this comment?"
+                                placeholder={t('comments.reasonPlaceholder')}
                             />
                         </div>
                         <div className="flex items-center gap-2">
@@ -350,16 +352,16 @@ export default function CommentAdminPage() {
                                 className="h-4 w-4"
                             />
                             <Label htmlFor="hidden" className="cursor-pointer">
-                                Hide comment (only visible to admins)
+                                {t('comments.hideCheckboxLabel')}
                             </Label>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={handleUpdateComment}>
-                            Save Changes
+                            {t('common.saveChanges')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -369,17 +371,17 @@ export default function CommentAdminPage() {
             <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Comment</DialogTitle>
+                        <DialogTitle>{t('comments.deleteDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this comment? This action cannot be undone.
+                            {t('comments.deleteDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button variant="destructive" onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}>
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

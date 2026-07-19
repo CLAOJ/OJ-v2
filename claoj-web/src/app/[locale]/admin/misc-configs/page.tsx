@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { adminMiscConfigApi } from '@/lib/adminApi';
 import { AdminMiscConfig, AdminMiscConfigUpdateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -24,6 +25,7 @@ interface FormData {
 }
 
 export default function MiscConfigsAdminPage() {
+    const t = useTranslations('Admin');
     const [miscConfigs, setMiscConfigs] = useState<AdminMiscConfig[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -47,7 +49,7 @@ export default function MiscConfigsAdminPage() {
             setMiscConfigs(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error('Failed to load misc configs');
+            toast.error(t('miscConfigs.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -75,18 +77,18 @@ export default function MiscConfigsAdminPage() {
             setEditingConfig(config);
             setIsCreateDialogOpen(true);
         } catch (error) {
-            toast.error('Failed to load config details');
+            toast.error(t('miscConfigs.loadDetailFailed'));
         }
     };
 
     const handleCreate = async () => {
         try {
             await adminMiscConfigApi.create(formData);
-            toast.success('Config created');
+            toast.success(t('miscConfigs.createSuccess'));
             setIsCreateDialogOpen(false);
             loadMiscConfigs();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to create config');
+            toast.error(error.response?.data?.error || t('miscConfigs.createError'));
         }
     };
 
@@ -98,22 +100,22 @@ export default function MiscConfigsAdminPage() {
                 value: formData.value || '',
             };
             await adminMiscConfigApi.update(editingConfig.id, updateData);
-            toast.success('Config updated');
+            toast.success(t('miscConfigs.updateSuccess'));
             setIsCreateDialogOpen(false);
             loadMiscConfigs();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to update config');
+            toast.error(error.response?.data?.error || t('miscConfigs.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await adminMiscConfigApi.delete(id);
-            toast.success('Config deleted');
+            toast.success(t('miscConfigs.deleteSuccess'));
             setDeleteConfirmId(null);
             loadMiscConfigs();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Failed to delete config');
+            toast.error(error.response?.data?.error || t('miscConfigs.deleteError'));
         }
     };
 
@@ -125,15 +127,15 @@ export default function MiscConfigsAdminPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Settings className="text-primary" size={32} />
-                        Misc Configs
+                        {t('miscConfigs.title')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage site-wide configuration key-value pairs
+                        {t('miscConfigs.subtitle')}
                     </p>
                 </div>
                 <Button onClick={openCreateDialog}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Config
+                    {t('miscConfigs.addButton')}
                 </Button>
             </div>
 
@@ -141,7 +143,7 @@ export default function MiscConfigsAdminPage() {
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search configs by key..."
+                    placeholder={t('miscConfigs.searchPlaceholder')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-10"
@@ -159,22 +161,22 @@ export default function MiscConfigsAdminPage() {
                 <table className="w-full text-left">
                     <thead className="bg-muted/50 border-b">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Key</th>
-                            <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Value</th>
-                            <th className="px-6 py-4 text-right text-xs font-bold uppercase text-muted-foreground">Actions</th>
+                            <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('miscConfigs.colKey')}</th>
+                            <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('miscConfigs.colValue')}</th>
+                            <th className="px-6 py-4 text-right text-xs font-bold uppercase text-muted-foreground">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
                             <tr>
                                 <td colSpan={3} className="text-center py-8">
-                                    Loading...
+                                    {t('common.loading')}
                                 </td>
                             </tr>
                         ) : miscConfigs.length === 0 ? (
                             <tr>
                                 <td colSpan={3} className="text-center py-8 text-muted-foreground">
-                                    No configs found
+                                    {t('miscConfigs.noConfigsFound')}
                                 </td>
                             </tr>
                         ) : (
@@ -184,7 +186,7 @@ export default function MiscConfigsAdminPage() {
                                         <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{config.key}</code>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-sm font-mono break-all">{config.value || <span className="text-muted-foreground italic">empty</span>}</span>
+                                        <span className="text-sm font-mono break-all">{config.value || <span className="text-muted-foreground italic">{t('miscConfigs.emptyValue')}</span>}</span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
@@ -215,7 +217,7 @@ export default function MiscConfigsAdminPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}
+                    {t('common.showingRange', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, total), total })}
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -224,7 +226,7 @@ export default function MiscConfigsAdminPage() {
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
                     >
-                        Previous
+                        {t('common.previous')}
                     </Button>
                     <Button
                         variant="outline"
@@ -232,7 +234,7 @@ export default function MiscConfigsAdminPage() {
                         disabled={page >= totalPages}
                         onClick={() => setPage(page + 1)}
                     >
-                        Next
+                        {t('common.next')}
                     </Button>
                 </div>
             </div>
@@ -245,32 +247,32 @@ export default function MiscConfigsAdminPage() {
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingConfig ? 'Edit Config' : 'Create Config'}
+                            {editingConfig ? t('miscConfigs.editDialogTitle') : t('miscConfigs.createDialogTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingConfig ? 'Update configuration value.' : 'Add a new configuration key-value pair.'}
+                            {editingConfig ? t('miscConfigs.editDialogDesc') : t('miscConfigs.createDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="key">Key</Label>
+                            <Label htmlFor="key">{t('miscConfigs.keyLabel')}</Label>
                             <Input
                                 id="key"
                                 value={formData.key}
                                 onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                                placeholder="e.g., site_name"
+                                placeholder={t('miscConfigs.keyPlaceholder')}
                                 disabled={!!editingConfig}
                             />
-                            <p className="text-xs text-muted-foreground">Unique identifier (cannot be changed after creation)</p>
+                            <p className="text-xs text-muted-foreground">{t('miscConfigs.keyHint')}</p>
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="value">Value</Label>
+                            <Label htmlFor="value">{t('miscConfigs.valueLabel')}</Label>
                             <Input
                                 id="value"
                                 value={formData.value}
                                 onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                                placeholder="e.g., My Online Judge"
+                                placeholder={t('miscConfigs.valuePlaceholder')}
                             />
                         </div>
                     </div>
@@ -279,10 +281,10 @@ export default function MiscConfigsAdminPage() {
                             setIsCreateDialogOpen(false);
                             setEditingConfig(null);
                         }}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={editingConfig ? handleUpdate : handleCreate}>
-                            {editingConfig ? 'Save Changes' : 'Create'}
+                            {editingConfig ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -292,20 +294,20 @@ export default function MiscConfigsAdminPage() {
             <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Config</DialogTitle>
+                        <DialogTitle>{t('miscConfigs.deleteDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this config? This action cannot be undone.
+                            {t('miscConfigs.deleteDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteConfirmId !== null && handleDelete(deleteConfirmId)}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
