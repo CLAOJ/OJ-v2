@@ -457,20 +457,20 @@ func WebAuthnFinishLogin(c *gin.Context) {
 		// Log error but don't fail login
 	}
 
-	// Generate tokens (WebAuthn login doesn't have remember_me, use default 7 days)
-	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
+	// Clear the WebAuthn login session cookie now that validation succeeded.
+	cookie.Helper().ClearWebAuthnLoginSession(c)
+
+	// Finalise the session: generate tokens, persist the refresh token, and
+	// plant the httpOnly auth cookies. Shared with the TOTP login paths so a
+	// passkey login is authenticated — and refreshable — exactly like a
+	// password login. Previously the refresh token was never stored, so
+	// /auth/refresh rotation failed and sessions broke once the ~15-minute
+	// access token expired.
+	accessToken, refreshToken, err := issueAuthSession(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return
 	}
-
-	cookieHelper := cookie.Helper()
-
-	// Clear session cookie
-	cookieHelper.ClearWebAuthnLoginSession(c)
-
-	// Set httpOnly cookies for tokens
-	cookieHelper.SetAuthTokens(c, accessToken, refreshToken, cookie.RefreshTokenDuration)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,

@@ -12,8 +12,11 @@ import (
 	"strings"
 	"time"
 
+	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
+	"github.com/CLAOJ/claoj/cookie"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -21,6 +24,39 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+// issueAuthSession finalises a login for a user who has cleared the second
+// factor. It mirrors the tail of auth.Login: generate a JWT pair, persist the
+// refresh token so /auth/refresh rotation-reuse detection works, and plant the
+// httpOnly auth cookies. The v2 frontend authenticates solely via those
+// cookies, so a login-completion path that skips this leaves the browser
+// effectively logged out. Returns the tokens (also echoed in the JSON body for
+// backwards compatibility).
+func issueAuthSession(c *gin.Context, user models.AuthUser) (accessToken, refreshToken string, err error) {
+	var familyID string
+	accessToken, refreshToken, familyID, err = auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Persist the refresh token (7-day TTL, matching a non-remember-me
+	// password login) for revocation tracking and rotation-reuse detection.
+	if saveErr := authHandlers.RefreshStore.Save(refreshToken, tokenstore.Entry{
+		UserID:    user.ID,
+		FamilyID:  familyID,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		CreatedAt: time.Now(),
+		UserAgent: c.Request.UserAgent(),
+		ClientIP:  c.ClientIP(),
+	}); saveErr != nil {
+		// Don't fail the login; the access token still works until it expires.
+	}
+
+	// Plant the httpOnly cookies the frontend reads on every request.
+	cookie.Helper().SetAuthTokens(c, accessToken, refreshToken, cookie.RefreshTokenDuration)
+
+	return accessToken, refreshToken, nil
+}
 
 // TOTPKey holds TOTP key information
 type TOTPKey struct {
@@ -346,8 +382,9 @@ func TotpVerify(c *gin.Context) {
 		return
 	}
 
-	// Generate tokens (TOTP verification doesn't have remember_me, use default 7 days)
-	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
+	// Finalise the session: generate tokens, persist the refresh token, and
+	// plant the httpOnly auth cookies the frontend authenticates with.
+	accessToken, refreshToken, err := issueAuthSession(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return
@@ -468,8 +505,9 @@ func TotpBackupVerify(c *gin.Context) {
 		return
 	}
 
-	// Generate tokens (backup code verification doesn't have remember_me, use default 7 days)
-	accessToken, refreshToken, _, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
+	// Finalise the session: generate tokens, persist the refresh token, and
+	// plant the httpOnly auth cookies the frontend authenticates with.
+	accessToken, refreshToken, err := issueAuthSession(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
 		return

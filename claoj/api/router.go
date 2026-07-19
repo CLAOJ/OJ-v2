@@ -60,13 +60,12 @@ func NewRouter() *gin.Engine {
 		// Email verification
 		apiv2.POST("/auth/verify-email", v2.VerifyEmail)
 		apiv2.POST("/auth/resend-verification", v2.ResendVerification)
-		// TOTP/2FA
-		apiv2.GET("/auth/totp/status", v2.TotpStatus)
-		apiv2.POST("/auth/totp/setup", v2.TotpSetup)
-		apiv2.POST("/auth/totp/confirm", v2.TotpConfirm)
-		apiv2.POST("/auth/totp/disable", v2.TotpDisable)
+		// TOTP/2FA — login-completion steps only. These run pre-session (the
+		// user has passed the password step but has no access token yet), so
+		// they must stay public. The management routes (status/setup/confirm/
+		// disable/backup-codes) require an authenticated session and live in
+		// the protected group below.
 		apiv2.POST("/auth/totp/verify", v2.TotpVerify)
-		apiv2.POST("/auth/totp/backup-codes", v2.TotpBackupCodesGenerate)
 		apiv2.POST("/auth/totp/verify-backup", v2.TotpBackupVerify)
 		// WebAuthn/2FA
 		apiv2.GET("/auth/webauthn/status", v2.WebAuthnStatus)
@@ -349,6 +348,16 @@ func NewRouter() *gin.Engine {
 		protected.Use(csrf.Middleware(csrf.DefaultConfig()))
 		{
 			protected.POST("/auth/revoke-all-sessions", authHandlers.RevokeAllSessions)
+
+			// TOTP/2FA management (requires an authenticated session).
+			// Previously mis-registered in the public group before the auth
+			// middleware, so these ran with user_id=0 — setup returned "user
+			// not found" and 2FA could never be enabled.
+			protected.GET("/auth/totp/status", v2.TotpStatus)
+			protected.POST("/auth/totp/setup", v2.TotpSetup)
+			protected.POST("/auth/totp/confirm", v2.TotpConfirm)
+			protected.POST("/auth/totp/disable", v2.TotpDisable)
+			protected.POST("/auth/totp/backup-codes", v2.TotpBackupCodesGenerate)
 			// WebAuthn Credential Management
 			protected.GET("/auth/webauthn/credentials", v2.WebAuthnCredentialsList)
 			protected.PATCH("/auth/webauthn/credentials/:id", v2.WebAuthnCredentialUpdate)
