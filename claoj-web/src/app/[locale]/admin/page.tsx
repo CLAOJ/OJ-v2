@@ -24,118 +24,10 @@ import {
 import { Link } from '@/navigation';
 import { cn } from '@/lib/utils';
 
-const ADMIN_CARDS = [
-    {
-        id: 'problems',
-        title: 'Problems',
-        description: 'Manage problem library, create new problems, and organize problem groups.',
-        icon: Code,
-        href: '/admin/problems',
-        color: 'from-blue-500 to-cyan-500',
-        bgColor: 'bg-blue-500/10',
-        borderColor: 'border-blue-500/20',
-        stats: 'View all problems',
-    },
-    {
-        id: 'contests',
-        title: 'Contests',
-        description: 'Create and manage contests, set up ratings, and monitor participation.',
-        icon: Trophy,
-        href: '/admin/contests',
-        color: 'from-amber-500 to-orange-500',
-        bgColor: 'bg-amber-500/10',
-        borderColor: 'border-amber-500/20',
-        stats: 'Manage contests',
-    },
-    {
-        id: 'users',
-        title: 'Users',
-        description: 'Manage user accounts, ban/unban users, and assign roles.',
-        icon: Users,
-        href: '/admin/users',
-        color: 'from-violet-500 to-purple-500',
-        bgColor: 'bg-violet-500/10',
-        borderColor: 'border-violet-500/20',
-        stats: 'View user list',
-    },
-    {
-        id: 'submissions',
-        title: 'Submissions',
-        description: 'Monitor submission queue, rejudge submissions, and view statistics.',
-        icon: Activity,
-        href: '/admin/submissions',
-        color: 'from-rose-500 to-pink-500',
-        bgColor: 'bg-rose-500/10',
-        borderColor: 'border-rose-500/20',
-        stats: 'View submissions',
-    },
-    {
-        id: 'blog',
-        title: 'Blog Posts',
-        description: 'Create, edit, and manage blog posts and announcements.',
-        icon: FileText,
-        href: '/admin/blog-posts',
-        color: 'from-indigo-500 to-blue-500',
-        bgColor: 'bg-indigo-500/10',
-        borderColor: 'border-indigo-500/20',
-        stats: 'Manage posts',
-    },
-    {
-        id: 'tickets',
-        title: 'Tickets',
-        description: 'Handle user support tickets, bug reports, and feature requests.',
-        icon: MessageSquare,
-        href: '/admin/tickets',
-        color: 'from-cyan-500 to-sky-500',
-        bgColor: 'bg-cyan-500/10',
-        borderColor: 'border-cyan-500/20',
-        stats: 'View tickets',
-    },
-    {
-        id: 'languages',
-        title: 'Languages',
-        description: 'Configure supported programming languages and their settings.',
-        icon: Globe,
-        href: '/admin/languages',
-        color: 'from-fuchsia-500 to-pink-500',
-        bgColor: 'bg-fuchsia-500/10',
-        borderColor: 'border-fuchsia-500/20',
-        stats: 'Manage languages',
-    },
-    {
-        id: 'navigation',
-        title: 'Navigation',
-        description: 'Customize navigation bars and menu structure.',
-        icon: LayoutDashboard,
-        href: '/admin/navigation-bars',
-        color: 'from-lime-500 to-green-500',
-        bgColor: 'bg-lime-500/10',
-        borderColor: 'border-lime-500/20',
-        stats: 'Edit navigation',
-    },
-    {
-        id: 'roles',
-        title: 'Groups',
-        description: 'Manage user groups, permissions, and access control.',
-        icon: Shield,
-        href: '/admin/groups',
-        color: 'from-red-500 to-rose-500',
-        bgColor: 'bg-red-500/10',
-        borderColor: 'border-red-500/20',
-        stats: 'Manage groups',
-    },
-];
-
-const QUICK_ACTIONS = [
-    { label: 'Create Problem', href: '/admin/problems/create', icon: Code, color: 'text-blue-400' },
-    { label: 'Create Contest', href: '/admin/contests/create', icon: Trophy, color: 'text-amber-400' },
-    { label: 'View Users', href: '/admin/users', icon: Users, color: 'text-violet-400' },
-    { label: 'System Stats', href: '/stats', icon: BarChart3, color: 'text-emerald-400' },
-];
-
 export default function AdminDashboardPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const t = useTranslations('Admin');
 
     useEffect(() => {
         if (!loading && !user?.is_staff) {
@@ -151,6 +43,115 @@ export default function AdminDashboardPage() {
             </div>
         );
     }
+
+    const ADMIN_CARDS = [
+        {
+            id: 'problems',
+            title: t('nav.problems'),
+            description: t('dashboard.problemsDesc'),
+            icon: Code,
+            href: '/admin/problems',
+            color: 'from-blue-500 to-cyan-500',
+            bgColor: 'bg-blue-500/10',
+            borderColor: 'border-blue-500/20',
+            stats: t('dashboard.problemsStat'),
+        },
+        {
+            id: 'contests',
+            title: t('nav.contests'),
+            description: t('dashboard.contestsDesc'),
+            icon: Trophy,
+            href: '/admin/contests',
+            color: 'from-amber-500 to-orange-500',
+            bgColor: 'bg-amber-500/10',
+            borderColor: 'border-amber-500/20',
+            stats: t('dashboard.contestsStat'),
+        },
+        {
+            id: 'users',
+            title: t('nav.users'),
+            description: t('dashboard.usersDesc'),
+            icon: Users,
+            href: '/admin/users',
+            color: 'from-violet-500 to-purple-500',
+            bgColor: 'bg-violet-500/10',
+            borderColor: 'border-violet-500/20',
+            stats: t('dashboard.usersStat'),
+        },
+        {
+            id: 'submissions',
+            title: t('nav.submissions'),
+            description: t('dashboard.submissionsDesc'),
+            icon: Activity,
+            href: '/admin/submissions',
+            color: 'from-rose-500 to-pink-500',
+            bgColor: 'bg-rose-500/10',
+            borderColor: 'border-rose-500/20',
+            stats: t('dashboard.submissionsStat'),
+        },
+        {
+            id: 'blog',
+            title: t('nav.blogPosts'),
+            description: t('dashboard.blogDesc'),
+            icon: FileText,
+            href: '/admin/blog-posts',
+            color: 'from-indigo-500 to-blue-500',
+            bgColor: 'bg-indigo-500/10',
+            borderColor: 'border-indigo-500/20',
+            stats: t('dashboard.blogStat'),
+        },
+        {
+            id: 'tickets',
+            title: t('nav.tickets'),
+            description: t('dashboard.ticketsDesc'),
+            icon: MessageSquare,
+            href: '/admin/tickets',
+            color: 'from-cyan-500 to-sky-500',
+            bgColor: 'bg-cyan-500/10',
+            borderColor: 'border-cyan-500/20',
+            stats: t('dashboard.ticketsStat'),
+        },
+        {
+            id: 'languages',
+            title: t('nav.languages'),
+            description: t('dashboard.languagesDesc'),
+            icon: Globe,
+            href: '/admin/languages',
+            color: 'from-fuchsia-500 to-pink-500',
+            bgColor: 'bg-fuchsia-500/10',
+            borderColor: 'border-fuchsia-500/20',
+            stats: t('dashboard.languagesStat'),
+        },
+        {
+            id: 'navigation',
+            title: t('nav.navigationBars'),
+            description: t('dashboard.navigationDesc'),
+            icon: LayoutDashboard,
+            href: '/admin/navigation-bars',
+            color: 'from-lime-500 to-green-500',
+            bgColor: 'bg-lime-500/10',
+            borderColor: 'border-lime-500/20',
+            stats: t('dashboard.navigationStat'),
+        },
+        {
+            id: 'roles',
+            title: t('nav.groups'),
+            description: t('dashboard.groupsDesc'),
+            icon: Shield,
+            href: '/admin/groups',
+            color: 'from-red-500 to-rose-500',
+            bgColor: 'bg-red-500/10',
+            borderColor: 'border-red-500/20',
+            stats: t('dashboard.groupsStat'),
+        },
+    ];
+
+    const QUICK_ACTIONS = [
+        { label: t('dashboard.createProblemAction'), href: '/admin/problems/create', icon: Code, color: 'text-blue-400' },
+        { label: t('dashboard.createContestAction'), href: '/admin/contests/create', icon: Trophy, color: 'text-amber-400' },
+        { label: t('dashboard.viewUsersAction'), href: '/admin/users', icon: Users, color: 'text-violet-400' },
+        { label: t('dashboard.systemStatsAction'), href: '/stats', icon: BarChart3, color: 'text-emerald-400' },
+    ];
 
     return (
         <div className="space-y-8"
@@ -179,10 +180,10 @@ export default function AdminDashboardPage() {
                                 <div>
                                     <h1 className="text-3xl font-bold text-slate-100"
                                     >
-                                        Admin Dashboard
+                                        {t('dashboard.title')}
                                     </h1>
                                     <p className="text-slate-400">
-                                        Welcome back, {user.username}
+                                        {t('dashboard.welcome', { username: user.username })}
                                     </p>
                                 </div>
                             </div>
@@ -192,7 +193,7 @@ export default function AdminDashboardPage() {
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-sm text-slate-400"
                             >
-                                System Operational
+                                {t('dashboard.systemOperational')}
                             </span>
                         </div>
                     </div>
@@ -296,7 +297,7 @@ export default function AdminDashboardPage() {
                     <Zap className="w-5 h-5 text-amber-500" />
                     <h2 className="text-lg font-bold text-slate-100"
                     >
-                        Platform Overview
+                        {t('dashboard.platformOverview')}
                     </h2>
                 </div>
 
@@ -308,11 +309,11 @@ export default function AdminDashboardPage() {
                         >
                             <TrendingUp className="w-4 h-4 text-emerald-400" />
                             <span className="text-sm text-slate-400"
-                            >System Status</span>
+                            >{t('dashboard.systemStatusLabel')}</span>
                         </div>
                         <p className="text-lg font-semibold text-emerald-400"
                         >
-                            All Systems Operational
+                            {t('dashboard.systemStatusValue')}
                         </p>
                     </div>
 
@@ -322,11 +323,11 @@ export default function AdminDashboardPage() {
                         >
                             <Users className="w-4 h-4 text-blue-400" />
                             <span className="text-sm text-slate-400"
-                            >User Activity</span>
+                            >{t('dashboard.userActivityLabel')}</span>
                         </div>
                         <p className="text-lg font-semibold text-slate-200"
                         >
-                            View detailed analytics in <Link href="/stats" className="text-primary hover:underline">Statistics</Link>
+                            {t('dashboard.userActivityDesc')} <Link href="/stats" className="text-primary hover:underline">{t('dashboard.statisticsLink')}</Link>
                         </p>
                     </div>
 
@@ -336,11 +337,11 @@ export default function AdminDashboardPage() {
                         >
                             <Shield className="w-4 h-4 text-violet-400" />
                             <span className="text-sm text-slate-400"
-                            >Admin Level</span>
+                            >{t('dashboard.adminLevelLabel')}</span>
                         </div>
                         <p className="text-lg font-semibold text-slate-200"
                         >
-                            {user.is_admin ? 'Super Administrator' : 'Staff Member'}
+                            {user.is_admin ? t('dashboard.superAdministrator') : t('dashboard.staffMember')}
                         </p>
                     </div>
                 </div>
