@@ -165,7 +165,7 @@ docker ps --format '{{.Names}}\t{{.Status}}'
 # claoj_v2_nginx    Up
 # claoj_v1_judge    Up
 # claoj_v2_judge    Up
-# ...plus the six v1 containers from §3
+# ...plus the seven v1 containers from §3
 ```
 
 Rebuild after a source change (Go or web):

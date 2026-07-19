@@ -307,9 +307,17 @@ off the one shared database and Redis instance — nothing about v1 changes.
 |---|---|---|---|---|
 | `v2_backend` | `claoj_v2_backend` | `claoj/claoj-go` | Go API (`:8081`) + judge bridge (`:9997`), internal only | none |
 | `v2_web` | `claoj_v2_web` | `claoj/claoj-web` | Next.js (`:3000`), internal only | none |
-| `v2_nginx` | `claoj_v2_nginx` | `nginx:alpine` | same-origin front: `/` → web, `/api` (+ `/api/events`) → backend | local `127.0.0.1:8090:80`; prod none |
+| `v2_nginx` | `claoj_v2_nginx` | `nginx:alpine` | same-origin front: `/` → web, `/api` (+ `/api/events`) → backend | `127.0.0.1:${V2_HTTP_PORT:-8090}:80` — published in **both** local and prod |
 | `v1_judge` | `claoj_v1_judge` | `claoj/judge-tiervnoj` | grades v1 submissions, dials `bridged:9999`, identity `Vịt Con` | none |
 | `v2_judge` | `claoj_v2_judge` | `claoj/judge-tiervnoj` | grades v2 submissions, dials `v2_backend:9997`, identity `Vịt Toàn Năng` | none |
+
+`v2_nginx`'s port mapping in `docker-compose.v2.yml` isn't gated on which base
+file you layer onto — it publishes `127.0.0.1:${V2_HTTP_PORT:-8090}:80`
+either way. In prod that's loopback-only, so it is **not** externally
+reachable (the public route is cloudflared → `claoj_v2_nginx` over the
+internal `nginx` network, §9.3); it's still bound on the VPS's own loopback,
+which is useful for debugging directly on the box (e.g. over an SSH tunnel)
+without going through the tunnel.
 
 Both judges are the **same image** (`claoj/judge-tiervnoj`) — only the target
 host and the `judge_judge` identity differ. Conflict isolation is by
@@ -336,7 +344,7 @@ that differs between local and prod — the override file itself never changes.
 | Var | Local | Prod |
 |---|---|---|
 | `CLAOJ_DATA` | `F:\Coding\CLAOJ\CLAOJ\claoj-data` | `/root/claoj-data` |
-| `V2_HTTP_PORT` | `8090` | unused (no host port in prod) |
+| `V2_HTTP_PORT` | `8090` | same var, default `8090` — also published on `127.0.0.1` on the VPS (see the `v2_nginx` note in §9.1: loopback-only, not externally reachable) |
 | `V1_JUDGE_KEY` | `<judge_judge.auth_key for "Vịt Con">` | same, queried live from prod DB |
 | `V2_JUDGE_KEY` | `<judge_judge.auth_key for "Vịt Toàn Năng">` | same, queried live from prod DB |
 
