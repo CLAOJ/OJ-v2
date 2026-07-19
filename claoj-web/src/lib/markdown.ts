@@ -22,7 +22,7 @@ export function normalizeDmojMarkdown(content: string): string {
 
     return content
         .split(codePattern)
-        .map((segment, i) => (i % 2 === 1 ? segment : convertInlineMath(segment)))
+        .map((segment, i) => (i % 2 === 1 ? segment : convertInlineMath(convertUserReferences(segment))))
         .join('');
 }
 
@@ -30,4 +30,12 @@ export function normalizeDmojMarkdown(content: string): string {
 // intact, and `[^~\n]+?` stops a span from swallowing newlines or a stray tilde.
 function convertInlineMath(text: string): string {
     return text.replace(/(?<!~)~(?!~)([^~\n]+?)~(?!~)/g, (_match, body) => `$${body}$`);
+}
+
+// DMOJ reference syntax `[user:name]` / `[ruser:name]` (see judge/jinja2/reference.py,
+// regex \[(r?user):(\w+)\]) -> a plain markdown link to the user's page. The rated
+// `ruser` badge is rendered as a normal link here; only `user`/`ruser` are recognized,
+// so `[problem:x]`, `[Link:x]`, etc. pass through untouched.
+function convertUserReferences(text: string): string {
+    return text.replace(/\[r?user:([\p{L}\p{N}_]+)\]/gu, (_match, name) => `[${name}](/user/${name})`);
 }
