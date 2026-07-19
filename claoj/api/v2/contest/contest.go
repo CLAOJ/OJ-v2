@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -89,13 +90,13 @@ func ContestList(c *gin.Context) {
 	}
 
 	// Get joined contests for the current user
+	// judge_contestparticipation.user_id is a judge_profile.id FK
 	joinedKeys := make(map[string]bool)
-	if uid, exists := c.Get("user_id"); exists {
-		userID := uid.(uint)
+	if profileID, ok := auth.CurrentProfileID(c); ok {
 		var joined []string
 		db.DB.Table("judge_contestparticipation").
 			Joins("JOIN judge_contest ON judge_contest.id = judge_contestparticipation.contest_id").
-			Where("judge_contestparticipation.user_id = ?", userID).
+			Where("judge_contestparticipation.user_id = ?", profileID).
 			Pluck("judge_contest.`key`", &joined)
 		for _, key := range joined {
 			joinedKeys[key] = true
@@ -162,10 +163,10 @@ func ContestDetail(c *gin.Context) {
 	canVirtual := hasEnded // Can only do virtual participation after contest ends
 	solvedCodes := make(map[string]bool)
 	var partID uint
-	if uid, exists := c.Get("user_id"); exists {
-		userID := uid.(uint)
+	// judge_contestparticipation.user_id is a judge_profile.id FK
+	if profileID, ok := auth.CurrentProfileID(c); ok {
 		db.DB.Table("judge_contestparticipation").
-			Where("contest_id = ? AND user_id = ?", ct.ID, userID).
+			Where("contest_id = ? AND user_id = ?", ct.ID, profileID).
 			Pluck("id", &partID)
 		if partID > 0 {
 			isJoined = true

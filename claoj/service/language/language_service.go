@@ -87,7 +87,7 @@ func (s *LanguageService) CreateLanguage(req CreateLanguageRequest) (*Language, 
 
 	// Check if key already exists
 	var existing models.Language
-	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&existing).Error; err == nil {
 		return nil, ErrLanguageKeyExists
 	}
 

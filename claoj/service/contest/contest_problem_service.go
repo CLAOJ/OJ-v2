@@ -29,7 +29,7 @@ type ContestProblemInfo struct {
 // GetContestProblems retrieves all problems for a contest.
 func (s *ContestProblemService) GetContestProblems(contestID uint) ([]ContestProblemInfo, error) {
 	var contestProblems []models.ContestProblem
-	if err := db.DB.Where("contest_id = ?", contestID).Order("order ASC").Find(&contestProblems).Error; err != nil {
+	if err := db.DB.Where("contest_id = ?", contestID).Order("`order` ASC").Find(&contestProblems).Error; err != nil {
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func (s *ContestProblemService) AddProblemsToContest(contestID uint, problemIDs 
 	var maxOrder uint
 	if err := db.DB.Table("judge_contestproblem").
 		Where("contest_id = ?", contestID).
-		Select("COALESCE(MAX(order), 0)").Scan(&maxOrder).Error; err != nil {
+		Select("COALESCE(MAX(`order`), 0)").Scan(&maxOrder).Error; err != nil {
 		return err
 	}
 
@@ -111,7 +111,7 @@ func (s *ContestProblemService) RemoveProblemsFromContest(contestID uint, proble
 func (s *ContestProblemService) CopyProblemsToContest(sourceContestID, targetContestID uint) error {
 	var contestProblems []models.ContestProblem
 	if err := db.DB.Where("contest_id = ?", sourceContestID).
-		Order("order ASC").
+		Order("`order` ASC").
 		Find(&contestProblems).Error; err != nil {
 		return err
 	}

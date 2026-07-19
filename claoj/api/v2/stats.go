@@ -114,14 +114,13 @@ func OverallStats(c *gin.Context) {
 	db.DB.Model(&models.Submission{}).Count(&stats.TotalSubmissions)
 
 	// Count contests
-	db.DB.Model(&models.Contest{}).Where("is_visible = ? OR is_public = ?", true, true).Count(&stats.TotalContests)
+	db.DB.Model(&models.Contest{}).Where("is_visible = ?", true).Count(&stats.TotalContests)
 
 	// Count organizations
-	db.DB.Model(&models.Organization{}).Where("is_public = ?", true).Count(&stats.TotalOrganizations)
+	db.DB.Model(&models.Organization{}).Where("is_unlisted = ?", false).Count(&stats.TotalOrganizations)
 
-	// Count active judges (online in last 5 minutes)
-	fiveMinAgo := time.Now().Add(-5 * time.Minute)
-	db.DB.Model(&models.Judge{}).Where("last_ping > ?", fiveMinAgo).Count(&stats.ActiveJudges)
+	// Count active judges (bridge maintains the online flag)
+	db.DB.Model(&models.Judge{}).Where("online = ?", true).Count(&stats.ActiveJudges)
 
 	c.JSON(http.StatusOK, stats)
 }
@@ -200,23 +199,20 @@ func ProblemStatsList(c *gin.Context) {
 // Returns judge queue statistics
 func JudgeStats(c *gin.Context) {
 	type JudgeStat struct {
-		Name      string    `json:"name"`
-		Online    bool      `json:"online"`
-		LastPing  time.Time `json:"last_ping"`
-		Load      int       `json:"load"`
-		Submissions int64   `json:"submissions_processed"`
+		Name      string   `json:"name"`
+		Online    bool     `json:"online"`
+		LastPing  *float64 `json:"last_ping"`
+		Load      *float64 `json:"load"`
+		Submissions int64  `json:"submissions_processed"`
 	}
-
-	fiveMinAgo := time.Now().Add(-5 * time.Minute)
 
 	var judges []JudgeStat
 	db.DB.Raw(`
-		SELECT name, last_ping, load,
-		       CASE WHEN last_ping > ? THEN true ELSE false END as online,
+		SELECT name, ping as last_ping, ` + "`load`" + `, online,
 		       0 as submissions_processed
 		FROM judge_judge
 		ORDER BY online DESC, name
-	`, fiveMinAgo).Scan(&judges)
+	`).Scan(&judges)
 
 	// Get queue size (pending submissions)
 	var queueSize int64
@@ -254,9 +250,9 @@ func UserStats(c *gin.Context) {
 		Where("is_active = ?", false).
 		Count(&stat.Banned)
 
-	// Unverified users
+	// Unverified users (Django keeps unactivated accounts with is_active = false)
 	db.DB.Table("auth_user").
-		Where("email_verified = ?", false).
+		Where("is_active = ?", false).
 		Count(&stat.Unverified)
 
 	c.JSON(http.StatusOK, stat)
@@ -278,11 +274,11 @@ func ContestStatsList(c *gin.Context) {
 	db.DB.Raw(`
 		SELECT c.key, c.name, c.start_time, c.end_time,
 		       COUNT(DISTINCT cp.id) as participants,
-		       COUNT(s.id) as submissions
+		       COUNT(cs.submission_id) as submissions
 		FROM judge_contest c
 		LEFT JOIN judge_contestparticipation cp ON c.id = cp.contest_id
-		LEFT JOIN judge_submission s ON cp.id = s.contest_participation_id
-		WHERE c.is_visible = true OR c.is_public = true
+		LEFT JOIN judge_contestsubmission cs ON cs.participation_id = cp.id
+		WHERE c.is_visible = true
 		GROUP BY c.id, c.key, c.name, c.start_time, c.end_time
 		ORDER BY c.start_time DESC
 		LIMIT 50

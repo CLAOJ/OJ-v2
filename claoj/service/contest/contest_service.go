@@ -76,7 +76,7 @@ func (s *ContestService) GetContest(req GetContestRequest) (*ContestDetailRespon
 		Preload("Curators").
 		Preload("Testers").
 		Preload("Tags").
-		Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+		Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrContestNotFound
 		}
@@ -162,7 +162,7 @@ func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfil
 // UpdateContest updates an existing contest.
 func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfile, error) {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrContestNotFound
 		}
@@ -245,7 +245,7 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 // DeleteContest performs a soft delete by hiding the contest.
 func (s *ContestService) DeleteContest(req DeleteContestRequest) error {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrContestNotFound
 		}
@@ -258,7 +258,7 @@ func (s *ContestService) DeleteContest(req DeleteContestRequest) error {
 // LockContest locks or unlocks a contest.
 func (s *ContestService) LockContest(req LockContestRequest) (bool, error) {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return false, ErrContestNotFound
 		}
@@ -290,7 +290,7 @@ func (s *ContestService) LockContest(req LockContestRequest) (bool, error) {
 func (s *ContestService) CloneContest(req CloneContestRequest) (*ContestProfile, error) {
 	// Get source contest
 	var sourceContest models.Contest
-	if err := db.DB.Where("key = ?", req.SourceKey).First(&sourceContest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.SourceKey).First(&sourceContest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrContestNotFound
 		}
@@ -299,7 +299,7 @@ func (s *ContestService) CloneContest(req CloneContestRequest) (*ContestProfile,
 
 	// Check if new key already exists
 	var existing models.Contest
-	if err := db.DB.Where("key = ?", req.NewKey).First(&existing).Error; err == nil {
+	if err := db.DB.Where("`key` = ?", req.NewKey).First(&existing).Error; err == nil {
 		return nil, ErrContestKeyExists
 	}
 
@@ -380,7 +380,7 @@ func (s *ContestService) CloneContest(req CloneContestRequest) (*ContestProfile,
 // DisqualifyParticipation disqualifies a contest participation.
 func (s *ContestService) DisqualifyParticipation(req DisqualifyParticipationRequest) error {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrContestNotFound
 		}
@@ -401,7 +401,7 @@ func (s *ContestService) DisqualifyParticipation(req DisqualifyParticipationRequ
 // UndisqualifyParticipation undisqualifies a contest participation.
 func (s *ContestService) UndisqualifyParticipation(req UndisqualifyParticipationRequest) error {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrContestNotFound
 		}
@@ -422,7 +422,7 @@ func (s *ContestService) UndisqualifyParticipation(req UndisqualifyParticipation
 // AddTag adds a tag to a contest.
 func (s *ContestService) AddTag(req AddTagRequest) error {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrContestNotFound
 		}
@@ -443,7 +443,7 @@ func (s *ContestService) AddTag(req AddTagRequest) error {
 // RemoveTag removes a tag from a contest.
 func (s *ContestService) RemoveTag(req RemoveTagRequest) error {
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", req.ContestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrContestNotFound
 		}

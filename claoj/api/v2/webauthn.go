@@ -78,10 +78,25 @@ func (u *webauthnUser) WebAuthnIcon() string {
 	return ""
 }
 
-// loadWebAuthnCredentials loads WebAuthn credentials for a user from the database
-func loadWebAuthnCredentials(userID uint) ([]webauthn.Credential, error) {
+// webauthnProfileID resolves an auth_user id to its judge_profile id.
+func webauthnProfileID(authUserID uint) (uint, error) {
+	var profile models.Profile
+	if err := db.DB.Select("id").Where("user_id = ?", authUserID).First(&profile).Error; err != nil {
+		return 0, err
+	}
+	return profile.ID, nil
+}
+
+// loadWebAuthnCredentials loads WebAuthn credentials for a user from the
+// database. Takes the auth_user id and resolves the profile internally:
+// judge_webauthncredential.user_id is a judge_profile.id FK (Django parity).
+func loadWebAuthnCredentials(authUserID uint) ([]webauthn.Credential, error) {
+	profileID, err := webauthnProfileID(authUserID)
+	if err != nil {
+		return nil, err
+	}
 	var creds []models.WebAuthnCredential
-	if err := db.DB.Where("user_id = ?", userID).Find(&creds).Error; err != nil {
+	if err := db.DB.Where("user_id = ?", profileID).Find(&creds).Error; err != nil {
 		return nil, err
 	}
 
@@ -120,7 +135,7 @@ type WebAuthnBeginRegistrationRequest struct {
 
 // WebAuthnBeginRegistration starts WebAuthn registration
 func WebAuthnBeginRegistration(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	username := c.GetString("username")
 	cookieHelper := cookie.Helper()
 
@@ -192,7 +207,7 @@ type WebAuthnFinishRegistrationRequest struct {
 
 // WebAuthnFinishRegistration completes WebAuthn registration
 func WebAuthnFinishRegistration(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	username := c.GetString("username")
 	cookieHelper := cookie.Helper()
 
@@ -249,9 +264,14 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 		return
 	}
 
-	// Store credential in database
+	// Store credential in database (user_id column is a judge_profile.id FK)
+	credProfileID, err := webauthnProfileID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("profile not found"))
+		return
+	}
 	newCred := models.WebAuthnCredential{
-		UserID:    userID,
+		UserID:    credProfileID,
 		Name:      req.Name,
 		CredID:    base64.URLEncoding.EncodeToString(credential.ID),
 		PublicKey: base64.URLEncoding.EncodeToString(credential.PublicKey),
@@ -465,10 +485,15 @@ func WebAuthnFinishLogin(c *gin.Context) {
 
 // WebAuthnCredentialsList returns list of user's WebAuthn credentials
 func WebAuthnCredentialsList(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
+	profileID, err := webauthnProfileID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
 
 	var creds []models.WebAuthnCredential
-	if err := db.DB.Where("user_id = ?", userID).Find(&creds).Error; err != nil {
+	if err := db.DB.Where("user_id = ?", profileID).Find(&creds).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("database error"))
 		return
 	}
@@ -495,7 +520,7 @@ type WebAuthnCredentialUpdateRequest struct {
 
 // WebAuthnCredentialUpdate updates a WebAuthn credential
 func WebAuthnCredentialUpdate(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	credID := c.Param("id")
 
 	var req WebAuthnCredentialUpdateRequest
@@ -504,9 +529,14 @@ func WebAuthnCredentialUpdate(c *gin.Context) {
 		return
 	}
 
-	// Find and update credential
+	// Find and update credential (user_id column is a judge_profile.id FK)
+	profileID, err := webauthnProfileID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
 	result := db.DB.Model(&models.WebAuthnCredential{}).
-		Where("id = ? AND user_id = ?", credID, userID).
+		Where("id = ? AND user_id = ?", credID, profileID).
 		Update("name", req.Name)
 
 	if result.RowsAffected == 0 {
@@ -521,7 +551,7 @@ func WebAuthnCredentialUpdate(c *gin.Context) {
 
 // WebAuthnCredentialDelete deletes a WebAuthn credential
 func WebAuthnCredentialDelete(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	credID := c.Param("id")
 
 	var req struct {
@@ -545,16 +575,23 @@ func WebAuthnCredentialDelete(c *gin.Context) {
 		return
 	}
 
+	// judge_webauthncredential.user_id is a judge_profile.id FK
+	delProfileID, err := webauthnProfileID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		// Delete credential
-		result := tx.Where("id = ? AND user_id = ?", credID, userID).Delete(&models.WebAuthnCredential{})
+		result := tx.Where("id = ? AND user_id = ?", credID, delProfileID).Delete(&models.WebAuthnCredential{})
 		if result.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
 
 		// Check if this was the last credential
 		var count int64
-		if err := tx.Model(&models.WebAuthnCredential{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		if err := tx.Model(&models.WebAuthnCredential{}).Where("user_id = ?", delProfileID).Count(&count).Error; err != nil {
 			return err
 		}
 
@@ -584,7 +621,7 @@ func WebAuthnCredentialDelete(c *gin.Context) {
 
 // WebAuthnStatus returns WebAuthn status for current user
 func WebAuthnStatus(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var profile models.Profile
 	if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
@@ -592,8 +629,9 @@ func WebAuthnStatus(c *gin.Context) {
 		return
 	}
 
+	// judge_webauthncredential.user_id is a judge_profile.id FK
 	var credCount int64
-	db.DB.Model(&models.WebAuthnCredential{}).Where("user_id = ?", userID).Count(&credCount)
+	db.DB.Model(&models.WebAuthnCredential{}).Where("user_id = ?", profile.ID).Count(&credCount)
 
 	c.JSON(http.StatusOK, gin.H{
 		"enabled":           profile.IsWebauthnEnabled,

@@ -190,8 +190,8 @@ func SitemapContests(c *gin.Context) {
 	baseURL := getBaseURL(c)
 
 	var contests []models.Contest
-	if err := db.DB.Where("is_visible = ? OR is_public = ?", true, true).
-		Select("key").
+	if err := db.DB.Where("is_visible = ?", true).
+		Select("`key`").
 		Find(&contests).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
@@ -326,7 +326,7 @@ func SitemapOrganizations(c *gin.Context) {
 	baseURL := getBaseURL(c)
 
 	var orgs []models.Organization
-	if err := db.DB.Where("is_public = ?", true).
+	if err := db.DB.Where("is_unlisted = ?", false).
 		Select("id, name").
 		Find(&orgs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

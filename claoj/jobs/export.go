@@ -127,28 +127,30 @@ func createUserExportZIP(userID uint, zipPath string) error {
 		return err
 	}
 
+	// The judge_* content tables key their user columns by judge_profile.id,
+	// not auth_user.id — pass the resolved profile id, not userID.
 	// 2. Submissions (submissions.json)
-	if err := exportSubmissions(w, userID); err != nil {
+	if err := exportSubmissions(w, profile.ID); err != nil {
 		return fmt.Errorf("failed to export submissions: %w", err)
 	}
 
 	// 3. Comments (comments.json)
-	if err := exportComments(w, userID); err != nil {
+	if err := exportComments(w, profile.ID); err != nil {
 		return fmt.Errorf("failed to export comments: %w", err)
 	}
 
 	// 4. Blog Posts (blogs.json)
-	if err := exportBlogs(w, userID); err != nil {
+	if err := exportBlogs(w, profile.ID); err != nil {
 		return fmt.Errorf("failed to export blogs: %w", err)
 	}
 
 	// 5. Tickets (tickets.json)
-	if err := exportTickets(w, userID); err != nil {
+	if err := exportTickets(w, profile.ID); err != nil {
 		return fmt.Errorf("failed to export tickets: %w", err)
 	}
 
 	// 6. Contest Participations (contests.json)
-	if err := exportContests(w, userID); err != nil {
+	if err := exportContests(w, profile.ID); err != nil {
 		return fmt.Errorf("failed to export contests: %w", err)
 	}
 
@@ -161,9 +163,9 @@ func createUserExportZIP(userID uint, zipPath string) error {
 }
 
 // exportSubmissions exports all user submissions.
-func exportSubmissions(w *zip.Writer, userID uint) error {
+func exportSubmissions(w *zip.Writer, profileID uint) error {
 	var submissions []models.Submission
-	if err := db.DB.Where("user_id = ?", userID).
+	if err := db.DB.Where("user_id = ?", profileID).
 		Preload("Problem").
 		Preload("Language").
 		Preload("Source").
@@ -220,9 +222,9 @@ func exportSubmissions(w *zip.Writer, userID uint) error {
 }
 
 // exportComments exports all user comments.
-func exportComments(w *zip.Writer, userID uint) error {
+func exportComments(w *zip.Writer, profileID uint) error {
 	var comments []models.Comment
-	if err := db.DB.Where("author_id = ?", userID).
+	if err := db.DB.Where("author_id = ?", profileID).
 		Order("time DESC").
 		Find(&comments).Error; err != nil {
 		return err
@@ -253,9 +255,13 @@ func exportComments(w *zip.Writer, userID uint) error {
 }
 
 // exportBlogs exports all user blog posts.
-func exportBlogs(w *zip.Writer, userID uint) error {
+func exportBlogs(w *zip.Writer, profileID uint) error {
+	// judge_blogpost has no author_id; authorship is the
+	// judge_blogpost_authors m2m (blogpost_id, profile_id).
 	var blogs []models.BlogPost
-	if err := db.DB.Where("author_id = ?", userID).
+	if err := db.DB.
+		Joins("JOIN judge_blogpost_authors ba ON ba.blogpost_id = judge_blogpost.id").
+		Where("ba.profile_id = ?", profileID).
 		Order("publish_on DESC").
 		Find(&blogs).Error; err != nil {
 		return err
@@ -292,11 +298,11 @@ func exportBlogs(w *zip.Writer, userID uint) error {
 }
 
 // exportTickets exports all user tickets.
-func exportTickets(w *zip.Writer, userID uint) error {
+func exportTickets(w *zip.Writer, profileID uint) error {
 	var tickets []models.Ticket
-	if err := db.DB.Where("user_id = ?", userID).
+	if err := db.DB.Where("user_id = ?", profileID).
 		Preload("Messages").
-		Order("created DESC").
+		Order("`time` DESC").
 		Find(&tickets).Error; err != nil {
 		return err
 	}
@@ -328,9 +334,9 @@ func exportTickets(w *zip.Writer, userID uint) error {
 }
 
 // exportContests exports all user contest participations.
-func exportContests(w *zip.Writer, userID uint) error {
+func exportContests(w *zip.Writer, profileID uint) error {
 	var participations []models.ContestParticipation
-	if err := db.DB.Where("user_id = ?", userID).
+	if err := db.DB.Where("user_id = ?", profileID).
 		Preload("Contest").
 		Order("id DESC").
 		Find(&participations).Error; err != nil {

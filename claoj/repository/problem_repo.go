@@ -256,7 +256,7 @@ func (r *GormContestRepo) GetByID(ctx context.Context, id uint) (*models.Contest
 // GetByKey retrieves a contest by its key.
 func (r *GormContestRepo) GetByKey(ctx context.Context, key string) (*models.Contest, error) {
 	var contest models.Contest
-	if err := r.db.WithContext(ctx).Where("key = ?", key).First(&contest).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("`key` = ?", key).First(&contest).Error; err != nil {
 		return nil, err
 	}
 	return &contest, nil

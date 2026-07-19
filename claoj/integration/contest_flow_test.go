@@ -26,7 +26,7 @@ func TestContestFlow_ViewContestList(t *testing.T) {
 	integration.CreateTestContest(testDB.DB, "contest2", "Contest 2", "Test contest 2", now.Add(-1*time.Hour), now.Add(2*time.Hour))
 	integration.CreateTestContest(testDB.DB, "contest3", "Private Contest", "Private contest", now.Add(-1*time.Hour), now.Add(2*time.Hour))
 	// Mark contest3 as not visible
-	testDB.DB.Model(&models.Contest{}).Where("key = ?", "contest3").Update("is_visible", false)
+	testDB.DB.Model(&models.Contest{}).Where("`key` = ?", "contest3").Update("is_visible", false)
 
 	// Setup router
 	gin := integration.TestRouter()

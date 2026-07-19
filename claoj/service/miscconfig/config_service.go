@@ -38,7 +38,7 @@ func (s *MiscConfigService) ListConfig(req ListConfigRequest) (*ListConfigRespon
 
 	// Get paginated results
 	if err := query.
-		Order("key ASC").
+		Order("`key` ASC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&configs).Error; err != nil {
@@ -83,7 +83,7 @@ func (s *MiscConfigService) GetConfigByKey(req GetConfigByKeyRequest) (*MiscConf
 	}
 
 	var config models.MiscConfig
-	if err := db.DB.Where("key = ?", req.Key).First(&config).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&config).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrConfigNotFound
 		}
@@ -102,7 +102,7 @@ func (s *MiscConfigService) CreateConfig(req CreateConfigRequest) (*MiscConfig, 
 
 	// Check if key already exists
 	var existing models.MiscConfig
-	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&existing).Error; err == nil {
 		return nil, ErrKeyExists
 	}
 
@@ -148,7 +148,7 @@ func (s *MiscConfigService) UpdateConfigByKey(req UpdateConfigByKeyRequest) (*Mi
 	}
 
 	var config models.MiscConfig
-	if err := db.DB.Where("key = ?", req.Key).First(&config).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&config).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrConfigNotFound
 		}
@@ -187,7 +187,7 @@ func (s *MiscConfigService) DeleteConfigByKey(req DeleteConfigByKeyRequest) erro
 	}
 
 	var config models.MiscConfig
-	if err := db.DB.Where("key = ?", req.Key).First(&config).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&config).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrConfigNotFound
 		}

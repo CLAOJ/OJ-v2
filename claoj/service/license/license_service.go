@@ -38,7 +38,7 @@ func (s *LicenseService) ListLicenses(req ListLicensesRequest) (*ListLicensesRes
 
 	// Get paginated results
 	if err := query.
-		Order("key ASC").
+		Order("`key` ASC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&licenses).Error; err != nil {
@@ -90,7 +90,7 @@ func (s *LicenseService) CreateLicense(req CreateLicenseRequest) (*License, erro
 
 	// Check if key already exists
 	var existing models.License
-	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&existing).Error; err == nil {
 		return nil, ErrKeyExists
 	}
 

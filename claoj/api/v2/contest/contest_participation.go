@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -58,8 +59,13 @@ func ParticipationList(c *gin.Context) {
 // UserParticipationList – GET /api/v2/user/contests
 // Gets the current user's contest participations (including virtual)
 func UserParticipationList(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
+		return
+	}
+	// judge_contestparticipation.user_id is a judge_profile.id FK
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
 		return
 	}
@@ -67,7 +73,7 @@ func UserParticipationList(c *gin.Context) {
 	var participations []models.ContestParticipation
 	if err := db.DB.
 		Preload("Contest").
-		Where("user_id = ?", userID).
+		Where("user_id = ?", profileID).
 		Order("id DESC").
 		Find(&participations).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

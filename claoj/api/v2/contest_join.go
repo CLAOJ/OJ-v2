@@ -28,7 +28,7 @@ func ContestJoin(c *gin.Context) {
 	}
 
 	var ct models.Contest
-	if err := db.DB.Where("key = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 			return

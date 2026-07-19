@@ -186,8 +186,15 @@ func BlogVoteHandler(c *gin.Context) {
 
 		err = tx.Model(&post).Update("score", post.Score).Error
 		if err == nil {
-			// Update author's contribution points
-			contribution.UpdateProfileContributionPoints(post.AuthorID)
+			// Update every author's contribution points (authorship is the
+			// judge_blogpost_authors m2m; judge_blogpost has no author_id).
+			var authorProfileIDs []uint
+			tx.Table("judge_blogpost_authors").
+				Where("blogpost_id = ?", post.ID).
+				Pluck("profile_id", &authorProfileIDs)
+			for _, pid := range authorProfileIDs {
+				contribution.UpdateProfileContributionPoints(pid)
+			}
 		}
 		return err
 	})

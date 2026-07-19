@@ -45,9 +45,12 @@ func CalculateProfileContributionPoints(profileID uint) (int, error) {
 	var blogScore struct {
 		Total int
 	}
+	// judge_blogpost has no author_id column; authorship is the
+	// judge_blogpost_authors m2m (blogpost_id, profile_id).
 	err = db.DB.Table("judge_blogpost").
-		Select("COALESCE(SUM(score), 0) as total").
-		Where("author_id = ?", profileID).
+		Select("COALESCE(SUM(judge_blogpost.score), 0) as total").
+		Joins("JOIN judge_blogpost_authors ba ON ba.blogpost_id = judge_blogpost.id").
+		Where("ba.profile_id = ?", profileID).
 		Scan(&blogScore).Error
 	if err != nil {
 		return 0, err

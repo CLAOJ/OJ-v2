@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/contest_format"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -22,15 +23,20 @@ func ContestStats(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
-	if !exists {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
+		return
+	}
+	// judge_contestparticipation.user_id is a judge_profile.id FK
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
 		return
 	}
 
 	// Get user's participation
 	var participation models.ContestParticipation
-	if err := db.DB.Where("contest_id = ? AND user_id = ?", ct.ID, userID).First(&participation).Error; err != nil {
+	if err := db.DB.Where("contest_id = ? AND user_id = ?", ct.ID, profileID).First(&participation).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("you have not participated in this contest"))
 		return
 	}
@@ -152,6 +158,7 @@ func ContestStats(c *gin.Context) {
 		db.DB.Table("judge_contestsubmission").
 			Joins("JOIN judge_submission ON judge_submission.id = judge_contestsubmission.submission_id").
 			Joins("JOIN judge_contestparticipation ON judge_contestparticipation.id = judge_contestsubmission.participation_id").
+			Joins("JOIN judge_contest ON judge_contest.id = judge_contestparticipation.contest_id").
 			Where("judge_contestsubmission.problem_id = ? AND judge_contestparticipation.contest_id = ? AND judge_contestparticipation.virtual = 0 AND judge_contestparticipation.is_disqualified = 0 AND judge_contestsubmission.points >= ?", cp.ID, ct.ID, cp.Points).
 			Select("AVG(TIMESTAMPDIFF(SECOND, judge_contest.start_time, judge_submission.date))").
 			Scan(&avgTime)
@@ -192,7 +199,7 @@ func ContestPublicStats(c *gin.Context) {
 	key := c.Param("key")
 
 	var ct models.Contest
-	if err := db.DB.Where("`key` = ? AND (is_visible = ? OR is_public = ?)", key, true, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}
@@ -202,6 +209,7 @@ func ContestPublicStats(c *gin.Context) {
 		ProblemCode  string `json:"problem_code"`
 		ProblemName  string `json:"problem_name"`
 		ProblemLabel string `json:"problem_label"`
+		ProblemOrder uint   `json:"-" gorm:"column:problem_order"`
 		Total        int64  `json:"total"`
 		Accepted     int64  `json:"accepted"`
 		ACRate       string `json:"ac_rate"`
@@ -209,16 +217,23 @@ func ContestPublicStats(c *gin.Context) {
 
 	var problemStats []ProblemSubmissionStats
 	db.DB.Raw(`
-		SELECT p.code, p.name, cp.label,
+		SELECT p.code as problem_code, p.name as problem_name, cp.` + "`order`" + ` as problem_order,
 		       COUNT(cs.submission_id) as total,
 		       SUM(CASE WHEN cs.points >= cp.points THEN 1 ELSE 0 END) as accepted
 		FROM judge_contestproblem cp
 		JOIN judge_problem p ON p.id = cp.problem_id
 		LEFT JOIN judge_contestsubmission cs ON cs.problem_id = cp.id
 		WHERE cp.contest_id = ?
-		GROUP BY cp.id, p.code, p.name, cp.label, cp.points
-		ORDER BY cp.order
+		GROUP BY cp.id, p.code, p.name, cp.` + "`order`" + `, cp.points
+		ORDER BY cp.` + "`order`" + `
 	`, ct.ID).Scan(&problemStats)
+
+	// Derive labels from problem order via the contest format, mirroring ContestStats:
+	// rows are sorted by cp.`order`, so the row index is the problem index.
+	cf := contest_format.GetFormat(ct.FormatName, &ct, ct.FormatConfig)
+	for i := range problemStats {
+		problemStats[i].ProblemLabel = cf.GetLabelForProblem(i)
+	}
 
 	for i := range problemStats {
 		if problemStats[i].Total > 0 {

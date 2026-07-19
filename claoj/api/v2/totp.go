@@ -107,7 +107,7 @@ type TotpSetupRequest struct {
 }
 
 func TotpSetup(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	username := c.GetString("username")
 
 	var req TotpSetupRequest
@@ -187,7 +187,7 @@ type TotpConfirmRequest struct {
 }
 
 func TotpConfirm(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var req TotpConfirmRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -244,7 +244,7 @@ type TotpDisableRequest struct {
 }
 
 func TotpDisable(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var req TotpDisableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -367,7 +367,7 @@ func TotpVerify(c *gin.Context) {
 // TotpStatus - GET /api/v2/auth/totp/status
 // Returns TOTP status for current user
 func TotpStatus(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var device models.TotpDevice
 	err := db.DB.Where("user_id = ? AND confirmed = ?", userID, true).First(&device).Error
@@ -388,7 +388,7 @@ type TotpBackupCodesGenerateRequest struct {
 }
 
 func TotpBackupCodesGenerate(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var req TotpBackupCodesGenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

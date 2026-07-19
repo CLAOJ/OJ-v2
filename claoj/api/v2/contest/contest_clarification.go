@@ -25,7 +25,7 @@ func ContestClarificationList(c *gin.Context) {
 	if err := db.DB.
 		Preload("Author.User").
 		Where("contest_id = ?", contest.ID).
-		Order("is_answered ASC, create_time DESC").
+		Order("is_answered ASC, `time` DESC").
 		Find(&clarifications).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return

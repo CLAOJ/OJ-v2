@@ -60,7 +60,9 @@ func HandleRateContestTask(ctx context.Context, t *asynq.Task) error {
 		Order("score DESC, cumtime ASC, tiebreaker ASC")
 
 	if !contest.RateAll {
-		query = query.Where("EXISTS (SELECT 1 FROM judge_submission s WHERE s.user_id = judge_contestparticipation.user_id AND s.contest_id = ?)", contest.ID)
+		// judge_submission has no contest_id; contest submissions link via
+		// judge_contestsubmission.participation_id.
+		query = query.Where("EXISTS (SELECT 1 FROM judge_contestsubmission cs WHERE cs.participation_id = judge_contestparticipation.id)")
 	}
 
 	if contest.RatingFloor != nil {

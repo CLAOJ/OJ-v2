@@ -39,9 +39,11 @@ func ProblemList(c *gin.Context) {
 	sortField := c.DefaultQuery("sort", "code")
 	order := c.DefaultQuery("order", "asc")
 
-	userID := uint(0)
-	if uid, exists := c.Get("user_id"); exists {
-		userID = uid.(uint)
+	// judge_submission.user_id is a judge_profile.id FK — resolve the
+	// request user's profile id, not the auth_user id from the context.
+	profileID := uint(0)
+	if pid, ok := auth.CurrentProfileID(c); ok {
+		profileID = pid
 	}
 
 	q := db.DB.Preload("Group").
@@ -62,10 +64,10 @@ func ProblemList(c *gin.Context) {
 		q = q.Where("points <= ?", pointsMax)
 	}
 
-	if status == "solved" && userID > 0 {
-		q = q.Where("judge_problem.id IN (SELECT problem_id FROM judge_submission WHERE user_id = ? AND result = 'AC')", userID)
-	} else if status == "unsolved" && userID > 0 {
-		q = q.Where("judge_problem.id NOT IN (SELECT problem_id FROM judge_submission WHERE user_id = ? AND result = 'AC')", userID)
+	if status == "solved" && profileID > 0 {
+		q = q.Where("judge_problem.id IN (SELECT problem_id FROM judge_submission WHERE user_id = ? AND result = 'AC')", profileID)
+	} else if status == "unsolved" && profileID > 0 {
+		q = q.Where("judge_problem.id NOT IN (SELECT problem_id FROM judge_submission WHERE user_id = ? AND result = 'AC')", profileID)
 	}
 
 	// Validate sort field
@@ -97,10 +99,10 @@ func ProblemList(c *gin.Context) {
 
 	// Get solved problems for the current user
 	solvedIDs := make(map[uint]bool)
-	if userID > 0 {
+	if profileID > 0 {
 		var solved []uint
 		db.DB.Table("judge_submission").
-			Where("user_id = ? AND result = 'AC'", userID).
+			Where("user_id = ? AND result = 'AC'", profileID).
 			Distinct("problem_id").
 			Pluck("problem_id", &solved)
 		for _, id := range solved {
@@ -154,8 +156,17 @@ func ProblemDetail(c *gin.Context) {
 		Preload("Group").
 		Preload("AllowedLangs").
 		Preload("Authors.User").
-		Where("code = ? AND is_public = ?", code, true).
+		Preload("Curators").
+		Preload("Testers").
+		Where("code = ?", code).
 		First(&p).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	// Django parity (Problem.is_accessible_by): hidden problems stay 404
+	// unless the viewer is privileged (superuser, see_private_problem,
+	// editor, or tester).
+	if !auth.CanViewProblem(c, &p) {
 		c.JSON(http.StatusNotFound, apiError("problem not found"))
 		return
 	}
@@ -180,12 +191,12 @@ func ProblemDetail(c *gin.Context) {
 
 	isSolved := false
 	isAttempted := false
-	if uid, exists := c.Get("user_id"); exists {
-		userID := uid.(uint)
+	// judge_submission.user_id is a judge_profile.id FK
+	if profileID, ok := auth.CurrentProfileID(c); ok {
 		var result string
 		err := db.DB.Table("judge_submission").
 			Select("result").
-			Where("user_id = ? AND problem_id = ?", userID, p.ID).
+			Where("user_id = ? AND problem_id = ?", profileID, p.ID).
 			Order("points DESC, date DESC").
 			Limit(1).
 			Pluck("result", &result).Error

@@ -146,8 +146,11 @@ func (s *SubmissionService) ListSubmissions(req ListSubmissionsRequest) (*ListSu
 		LanguageName string `gorm:"column:language_name"`
 	}
 
+	// judge_submission.user_id references judge_profile.id, so the username
+	// join must go through judge_profile.
 	query := db.DB.Table("judge_submission").
-		Joins("JOIN auth_user ON auth_user.id = judge_submission.user_id").
+		Joins("JOIN judge_profile ON judge_profile.id = judge_submission.user_id").
+		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
 		Joins("JOIN judge_problem ON judge_problem.id = judge_submission.problem_id").
 		Joins("JOIN judge_language ON judge_language.id = judge_submission.language_id").
 		Select("judge_submission.*, auth_user.username, judge_problem.code as problem_code, judge_language.name as language_name").
@@ -478,7 +481,8 @@ func applyRejudgeFilters(query *gorm.DB, filters *RejudgeFilters) *gorm.DB {
 		if err := db.DB.Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
 			Where("auth_user.username = ?", filters.Username).
 			First(&profile).Error; err == nil {
-			query = query.Where("user_id = ?", profile.UserID)
+			// judge_submission.user_id is a judge_profile.id FK, not auth_user.id.
+			query = query.Where("user_id = ?", profile.ID)
 		}
 	}
 	if filters.ProblemID != nil && *filters.ProblemID > 0 {

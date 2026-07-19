@@ -47,13 +47,19 @@ func (s *UserServiceTestSuite) createTestUser(username string, isActive bool) (m
 	err := s.database.Create(&user).Error
 	s.Require().NoError(err)
 
+	// Seed the profile with an explicit primary key that differs from the
+	// auth_user id: judge_profile.id and auth_user.id are separate id
+	// spaces, and the service keys requests by judge_profile.id. This
+	// catches any code path that conflates the two.
 	profile := models.Profile{
+		ID:         user.ID + 1000,
 		UserID:     user.ID,
 		Timezone:   "UTC",
 		LastAccess: time.Now(),
 	}
 	err = s.database.Create(&profile).Error
 	s.Require().NoError(err)
+	s.Require().NotEqual(user.ID, profile.ID)
 
 	return user, profile
 }
@@ -74,10 +80,10 @@ func TestUserServiceTestSuite(t *testing.T) {
 }
 
 func (s *UserServiceTestSuite) TestBanUser() {
-	user, _ := s.createTestUser("testuser", true)
+	user, profile := s.createTestUser("testuser", true)
 
 	req := BanUserRequest{
-		UserID: user.ID,
+		UserID: profile.ID,
 		Reason: "Spam behavior",
 	}
 
@@ -85,13 +91,13 @@ func (s *UserServiceTestSuite) TestBanUser() {
 	s.NoError(err)
 
 	// Verify user is banned
-	var profile models.Profile
-	err = s.database.Where("user_id = ?", user.ID).First(&profile).Error
+	var banned models.Profile
+	err = s.database.Where("user_id = ?", user.ID).First(&banned).Error
 	s.NoError(err)
-	s.True(profile.IsUnlisted)
-	s.True(profile.Mute)
-	s.NotNil(profile.BanReason)
-	s.Equal("Spam behavior", *profile.BanReason)
+	s.True(banned.IsUnlisted)
+	s.True(banned.Mute)
+	s.NotNil(banned.BanReason)
+	s.Equal("Spam behavior", *banned.BanReason)
 }
 
 func (s *UserServiceTestSuite) TestBanUser_InvalidUserID() {
@@ -104,10 +110,10 @@ func (s *UserServiceTestSuite) TestBanUser_InvalidUserID() {
 }
 
 func (s *UserServiceTestSuite) TestBanUser_InvalidReason() {
-	user, _ := s.createTestUser("testuser", true)
+	_, profile := s.createTestUser("testuser", true)
 
 	req := BanUserRequest{
-		UserID: user.ID,
+		UserID: profile.ID,
 		Reason: "",
 	}
 	err := s.service.BanUser(req)
@@ -132,7 +138,7 @@ func (s *UserServiceTestSuite) TestUnbanUser() {
 	profile.BanReason = &reason
 	s.database.Save(&profile)
 
-	req := UnbanUserRequest{UserID: user.ID}
+	req := UnbanUserRequest{UserID: profile.ID}
 	err := s.service.UnbanUser(req)
 	s.NoError(err)
 
@@ -158,9 +164,9 @@ func (s *UserServiceTestSuite) TestUnbanUser_UserNotFound() {
 }
 
 func (s *UserServiceTestSuite) TestGetUser() {
-	user, _ := s.createTestUser("testuser", true)
+	user, testProfile := s.createTestUser("testuser", true)
 
-	req := GetUserRequest{UserID: user.ID}
+	req := GetUserRequest{UserID: testProfile.ID}
 	profile, err := s.service.GetUser(req)
 	s.NoError(err)
 	s.NotNil(profile)
@@ -184,14 +190,14 @@ func (s *UserServiceTestSuite) TestGetUser_UserNotFound() {
 }
 
 func (s *UserServiceTestSuite) TestUpdateUser() {
-	user, _ := s.createTestUser("testuser", true)
+	user, testProfile := s.createTestUser("testuser", true)
 	org := s.createTestOrganization("TestOrg")
 
 	newDisplayName := "New Display Name"
 	isActive := false
 
 	req := UpdateUserRequest{
-		UserID:                user.ID,
+		UserID:                testProfile.ID,
 		DisplayName:           &newDisplayName,
 		IsActive:              &isActive,
 		AddOrganizationIDs:    []uint{org.ID},
@@ -222,9 +228,9 @@ func (s *UserServiceTestSuite) TestUpdateUser_UserNotFound() {
 }
 
 func (s *UserServiceTestSuite) TestDeleteUser() {
-	user, _ := s.createTestUser("todelete", true)
+	user, testProfile := s.createTestUser("todelete", true)
 
-	req := DeleteUserRequest{UserID: user.ID}
+	req := DeleteUserRequest{UserID: testProfile.ID}
 	err := s.service.DeleteUser(req)
 	s.NoError(err)
 

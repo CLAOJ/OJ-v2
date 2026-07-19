@@ -94,7 +94,7 @@ func (s *NavigationService) CreateNavigation(req CreateNavigationRequest) (*Navi
 
 	// Check if key already exists
 	var existing models.NavigationBar
-	if err := db.DB.Where("key = ?", req.Key).First(&existing).Error; err == nil {
+	if err := db.DB.Where("`key` = ?", req.Key).First(&existing).Error; err == nil {
 		return nil, ErrKeyExists
 	}
 

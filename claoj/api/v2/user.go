@@ -324,10 +324,11 @@ func UserAnalytics(c *gin.Context) {
 	}
 	var groupDist []GroupDist
 	db.DB.Table("judge_submission").
-		Select("jp.group, COUNT(DISTINCT js.problem_id) as solved, SUM(js.points) as points").
-		Joins("JOIN judge_problem jp ON jp.id = js.problem_id").
-		Where("js.user_id = ? AND js.result = 'AC'", profile.ID).
-		Group("jp.group").
+		Select("pg.full_name as `group`, COUNT(DISTINCT judge_submission.problem_id) as solved, SUM(judge_submission.points) as points").
+		Joins("JOIN judge_problem jp ON jp.id = judge_submission.problem_id").
+		Joins("JOIN judge_problemgroup pg ON pg.id = jp.group_id").
+		Where("judge_submission.user_id = ? AND judge_submission.result = 'AC'", profile.ID).
+		Group("pg.full_name").
 		Scan(&groupDist)
 
 	// Get contest history

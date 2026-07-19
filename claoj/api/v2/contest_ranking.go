@@ -65,14 +65,16 @@ func ContestRanking(c *gin.Context) {
 			}
 		}
 	} else {
-		// Contest not rated or not ended - fetch current ratings
+		// Contest not rated or not ended - fetch current ratings.
+		// userIDs holds judge_profile ids (participation.user_id is a profile
+		// FK), so match on judge_profile.id and key the map by profile id.
 		var profiles []models.Profile
-		if err := db.DB.Where("user_id IN ?", userIDs).Find(&profiles).Error; err == nil {
+		if err := db.DB.Where("id IN ?", userIDs).Find(&profiles).Error; err == nil {
 			for _, p := range profiles {
 				if p.Rating != nil {
-					ratingsMap[p.UserID] = *p.Rating
+					ratingsMap[p.ID] = *p.Rating
 				} else {
-					ratingsMap[p.UserID] = 1200 // Default for new users
+					ratingsMap[p.ID] = 1200 // Default for new users
 				}
 			}
 		}

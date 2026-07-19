@@ -25,7 +25,7 @@ type NotificationResponse struct {
 // NotificationList - GET /api/v2/notifications
 // Lists user notifications with pagination
 func NotificationList(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	// Parse pagination params
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -47,9 +47,9 @@ func NotificationList(c *gin.Context) {
 
 	query := db.DB.Where("user_id = ?", userID)
 	if readFilter == "true" {
-		query = query.Where("read = ?", true)
+		query = query.Where("`read` = ?", true)
 	} else if readFilter == "false" {
-		query = query.Where("read = ?", false)
+		query = query.Where("`read` = ?", false)
 	}
 
 	query.Model(&models.Notification{}).Count(&total)
@@ -81,10 +81,10 @@ func NotificationList(c *gin.Context) {
 // NotificationUnreadCount - GET /api/v2/notifications/unread-count
 // Returns the count of unread notifications
 func NotificationUnreadCount(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var count int64
-	db.DB.Model(&models.Notification{}).Where("user_id = ? AND read = ?", userID, false).Count(&count)
+	db.DB.Model(&models.Notification{}).Where("user_id = ? AND `read` = ?", userID, false).Count(&count)
 
 	c.JSON(http.StatusOK, gin.H{
 		"unread_count": count,
@@ -94,7 +94,7 @@ func NotificationUnreadCount(c *gin.Context) {
 // NotificationMarkRead - POST /api/v2/notifications/:id/read
 // Marks a single notification as read
 func NotificationMarkRead(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	notificationID := c.Param("id")
 
 	result := db.DB.Model(&models.Notification{}).
@@ -117,10 +117,10 @@ func NotificationMarkRead(c *gin.Context) {
 // NotificationMarkAllRead - POST /api/v2/notifications/read-all
 // Marks all notifications as read
 func NotificationMarkAllRead(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	result := db.DB.Model(&models.Notification{}).
-		Where("user_id = ? AND read = ?", userID, false).
+		Where("user_id = ? AND `read` = ?", userID, false).
 		Update("read", true)
 
 	if result.Error != nil {
@@ -137,7 +137,7 @@ func NotificationMarkAllRead(c *gin.Context) {
 // NotificationDelete - DELETE /api/v2/notifications/:id
 // Deletes a notification
 func NotificationDelete(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 	notificationID := c.Param("id")
 
 	result := db.DB.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&models.Notification{})
@@ -158,7 +158,7 @@ func NotificationDelete(c *gin.Context) {
 // NotificationPreferencesGet - GET /api/v2/notifications/preferences
 // Gets user's notification preferences
 func NotificationPreferencesGet(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var prefs models.NotificationPreference
 	err := db.DB.Where("user_id = ?", userID).First(&prefs).Error
@@ -203,7 +203,7 @@ type NotificationPreferencesRequest struct {
 }
 
 func NotificationPreferencesUpdate(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userID := c.GetUint("user_id")
 
 	var req NotificationPreferencesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

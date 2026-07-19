@@ -238,7 +238,7 @@ func AdminContestAddTag(c *gin.Context) {
 	tagIdStr := c.Param("tagId")
 
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", contestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}
@@ -272,7 +272,7 @@ func AdminContestRemoveTag(c *gin.Context) {
 	tagIdStr := c.Param("tagId")
 
 	var contest models.Contest
-	if err := db.DB.Where("key = ?", contestKey).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}

@@ -66,7 +66,7 @@ func Submit(c *gin.Context) {
 
 	// 2. Fetch Language
 	var lang models.Language
-	if err := db.DB.Where("key = ?", req.Language).First(&lang).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", req.Language).First(&lang).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid language"})
 		return
 	}
@@ -89,8 +89,16 @@ func Submit(c *gin.Context) {
 		statusStr := "QU"
 		zeroFloat := 0.0
 
+		// judge_submission.user_id is a FK to judge_profile.id, NOT
+		// auth_user.id — the two id sequences diverge on real data, so
+		// resolve the profile first.
+		var submitter models.Profile
+		if err := tx.Where("user_id = ?", userID).First(&submitter).Error; err != nil {
+			return errors.New("user profile not found")
+		}
+
 		sub = models.Submission{
-			UserID:      userID,
+			UserID:      submitter.ID,
 			ProblemID:   problem.ID,
 			LanguageID:  lang.ID,
 			Date:        now,
@@ -118,7 +126,7 @@ func Submit(c *gin.Context) {
 		// 4b. If this is a contest submission, link it
 		if req.ContestKey != "" {
 			var ct models.Contest
-			if err := tx.Where("key = ?", req.ContestKey).First(&ct).Error; err != nil {
+			if err := tx.Where("`key` = ?", req.ContestKey).First(&ct).Error; err != nil {
 				return errors.New("invalid contest")
 			}
 

@@ -181,22 +181,24 @@ func SubmissionDiff(c *gin.Context) {
 	}
 
 	// Check permissions: both submissions must be accessible
-	// Public submissions or user's own submissions
-	userID := uint(0)
-	if uid, exists := c.Get("user_id"); exists {
-		userID = uid.(uint)
+	// Public submissions or user's own submissions.
+	// judge_submission.user_id is a judge_profile.id FK — compare against
+	// the viewer's profile id, not their auth_user id.
+	profileID := uint(0)
+	if pid, ok := auth.CurrentProfileID(c); ok {
+		profileID = pid
 	}
 
 	// Django parity: seeing any submission's detail requires judge.view_all_submission.
 	isAdmin := auth.HasPerm(c, "judge.view_all_submission")
 
 	// Check access to submission 1
-	if !sub1.Problem.IsPublic && sub1.UserID != userID && !isAdmin {
+	if !sub1.Problem.IsPublic && sub1.UserID != profileID && !isAdmin {
 		c.JSON(http.StatusForbidden, apiError("access denied to submission 1"))
 		return
 	}
 	// Check access to submission 2
-	if !sub2.Problem.IsPublic && sub2.UserID != userID && !isAdmin {
+	if !sub2.Problem.IsPublic && sub2.UserID != profileID && !isAdmin {
 		c.JSON(http.StatusForbidden, apiError("access denied to submission 2"))
 		return
 	}
@@ -278,9 +280,11 @@ func SubmissionDiff(c *gin.Context) {
 }
 
 // Helper functions for SubmissionDiff
-func getUserUsername(userID uint) string {
+// getUserUsername resolves a judge_submission.user_id — a judge_profile.id FK,
+// not an auth_user.id — to the owning auth user's username.
+func getUserUsername(profileID uint) string {
 	var profile models.Profile
-	if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+	if err := db.DB.Preload("User").First(&profile, profileID).Error; err != nil {
 		return "unknown"
 	}
 	return profile.User.Username

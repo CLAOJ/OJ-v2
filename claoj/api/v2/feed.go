@@ -306,7 +306,7 @@ func BlogFeedRSS(c *gin.Context) {
 
 	var posts []models.BlogPost
 	if err := db.DB.
-		Preload("Author.User").
+		Preload("Authors.User").
 		Where("visible = ? AND publish_on <= ?", true, time.Now()).
 		Order("publish_on DESC").
 		Limit(limit).
@@ -318,8 +318,8 @@ func BlogFeedRSS(c *gin.Context) {
 	items := make([]RSSItem, 0, len(posts))
 	for _, post := range posts {
 		username := ""
-		if post.Author.UserID != 0 {
-			username = post.Author.User.Username
+		if len(post.Authors) > 0 {
+			username = post.Authors[0].User.Username
 		}
 
 		item := RSSItem{
@@ -361,7 +361,7 @@ func BlogFeedAtom(c *gin.Context) {
 
 	var posts []models.BlogPost
 	if err := db.DB.
-		Preload("Author.User").
+		Preload("Authors.User").
 		Where("visible = ? AND publish_on <= ?", true, time.Now()).
 		Order("publish_on DESC").
 		Limit(limit).
@@ -373,8 +373,8 @@ func BlogFeedAtom(c *gin.Context) {
 	entries := make([]AtomEntry, 0, len(posts))
 	for _, post := range posts {
 		username := ""
-		if post.Author.UserID != 0 {
-			username = post.Author.User.Username
+		if len(post.Authors) > 0 {
+			username = post.Authors[0].User.Username
 		}
 
 		entry := AtomEntry{

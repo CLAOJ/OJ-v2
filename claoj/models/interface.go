@@ -2,12 +2,12 @@ package models
 
 import "time"
 
-// BlogPost mirrors judge_blogpost.
+// BlogPost mirrors judge_blogpost. Authorship is exclusively the
+// judge_blogpost_authors m2m — the table has NO author_id column.
 type BlogPost struct {
 	ID             uint      `gorm:"primaryKey;column:id"`
 	Title          string    `gorm:"column:title;size:100;not null"`
 	Slug           string    `gorm:"column:slug;size:100;not null"`
-	AuthorID       uint      `gorm:"column:author_id;not null;index"`
 	PublishOn      time.Time `gorm:"column:publish_on;not null"`
 	Content        string    `gorm:"column:content;type:longtext;not null"`
 	Summary        string    `gorm:"column:summary;type:longtext;not null"`
@@ -18,7 +18,6 @@ type BlogPost struct {
 	OgImage        string    `gorm:"column:og_image;size:150;not null;default:''"`
 	OrganizationID *uint     `gorm:"column:organization_id;index"`
 
-	Author       Profile       `gorm:"foreignKey:AuthorID"`
 	Organization *Organization `gorm:"foreignKey:OrganizationID"`
 	Authors      []Profile     `gorm:"many2many:judge_blogpost_authors;joinForeignKey:blogpost_id;joinReferences:profile_id"`
 }
