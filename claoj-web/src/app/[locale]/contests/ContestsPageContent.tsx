@@ -58,7 +58,7 @@ export default function ContestsPageContent() {
         }
     });
 
-    const allContests = contestsData?.data || [];
+    const allContests = contestsData?.results || [];
 
     const filtered = allContests.filter(c =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||

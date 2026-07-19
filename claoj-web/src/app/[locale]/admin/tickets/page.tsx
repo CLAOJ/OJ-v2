@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminTicketApi } from '@/lib/adminApi';
-import { AdminTicket } from '@/types';
+import { AdminTicket, AdminTicketListResponse } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link } from '@/navigation';
@@ -36,7 +36,7 @@ export default function AdminTicketListPage() {
     const [assignedFilter, setAssignedFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
     const [contributiveFilter, setContributiveFilter] = useState<'all' | 'contributive' | 'non-contributive'>('all');
 
-    const { data, isLoading } = useQuery<{ data: AdminTicket[]; total: number }>({
+    const { data, isLoading } = useQuery<AdminTicketListResponse>({
         queryKey: ['admin-tickets', page, search, statusFilter, assignedFilter, contributiveFilter],
         queryFn: async () => {
             const filters: Record<string, string> = {};
@@ -51,7 +51,7 @@ export default function AdminTicketListPage() {
         }
     });
 
-    const tickets = data?.data || [];
+    const tickets = data?.items || [];
     const total = data?.total || 0;
 
     return (

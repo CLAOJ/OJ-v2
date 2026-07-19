@@ -334,7 +334,7 @@ export default function AdminTicketDetailPage() {
                         <MessageBubble
                             key={message.id}
                             message={message}
-                            isOP={message.user.username === ticket.creator}
+                            isOP={message.username === ticket.creator}
                         />
                     ))
                 ) : (

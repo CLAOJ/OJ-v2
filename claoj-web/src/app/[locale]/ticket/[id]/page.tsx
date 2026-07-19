@@ -18,8 +18,7 @@ import {
     Clock,
     User,
     Send,
-    Loader2,
-    Shield
+    Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -91,7 +90,7 @@ export default function TicketDetailPage() {
         );
     }
 
-    const isTicketOwner = ticket.user.username === user?.username;
+    const isTicketOwner = ticket.creator === user?.username;
     const isStaff = user?.is_staff || user?.is_admin;
 
     const handleReply = () => {
@@ -112,22 +111,17 @@ export default function TicketDetailPage() {
                 "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-black text-lg",
                 isOP ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
             )}>
-                {message.user.username[0]?.toUpperCase()}
+                {message.username[0]?.toUpperCase()}
             </div>
             <div className={cn(
                 "flex-1 bg-card border rounded-[2rem] p-6",
                 isOP ? "" : "bg-muted/30"
             )}>
                 <div className="flex items-center gap-3 mb-3">
-                    <span className="font-black">{message.user.username}</span>
+                    <span className="font-black">{message.username}</span>
                     {isOP && (
                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/20">
                             <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
-                        </Badge>
-                    )}
-                    {message.user.is_staff && (
-                        <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                            <Shield size={12} className="inline mr-1" /> {t('staffBadge')}
                         </Badge>
                     )}
                     <span className="text-[10px] text-muted-foreground font-mono ml-auto">
@@ -156,7 +150,7 @@ export default function TicketDetailPage() {
             <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4 flex-1">
-                        {ticket.is_closed ? (
+                        {!ticket.is_open ? (
                             <CheckCircle2 size={32} className="text-muted-foreground flex-shrink-0" />
                         ) : (
                             <AlertCircle size={32} className="text-amber-500 flex-shrink-0" />
@@ -167,26 +161,26 @@ export default function TicketDetailPage() {
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <User size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        {ticket.user.username}
+                                        {ticket.creator}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <Clock size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        {t('createdLabel', { time: dayjs(ticket.created_on).fromNow() })}
+                                        {t('createdLabel', { time: dayjs(ticket.created).fromNow() })}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <MessageSquare size={14} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                        {t('messagesCount', { count: ticket.message_count })}
+                                        {t('messagesCount', { count: ticket.messages.length })}
                                     </span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div className="flex-shrink-0">
-                        {ticket.is_closed ? (
+                        {!ticket.is_open ? (
                             <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest px-4 py-2">
                                 {t('closed')}
                             </Badge>
@@ -198,13 +192,13 @@ export default function TicketDetailPage() {
                     </div>
                 </div>
 
-                {ticket.problem && (
+                {ticket.linked_item && (
                     <Link
-                        href={`/problems/${ticket.problem.code}`}
+                        href={ticket.linked_item.type === 'problem' ? `/problems/${ticket.linked_item.code}` : `/contests/${ticket.linked_item.key}`}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 text-muted-foreground text-sm font-bold hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                         <AlertCircle size={16} />
-                        {ticket.problem.code} - {ticket.problem.name}
+                        {ticket.linked_item.name}
                     </Link>
                 )}
             </div>
@@ -216,7 +210,7 @@ export default function TicketDetailPage() {
                         <MessageBubble
                             key={message.id}
                             message={message}
-                            isOP={message.user.username === ticket.user.username}
+                            isOP={message.username === ticket.creator}
                         />
                     ))
                 ) : (
@@ -228,7 +222,7 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Reply Form */}
-            {!ticket.is_closed && (
+            {ticket.is_open && (
                 <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
                     <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                         <MessageSquare size={20} className="text-primary" />
@@ -260,7 +254,7 @@ export default function TicketDetailPage() {
                 </div>
             )}
 
-            {ticket.is_closed && (
+            {!ticket.is_open && (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                     <CheckCircle2 size={32} className="mx-auto mb-2 opacity-20" />
                     <p className="font-bold">{t('closedMessage')}</p>

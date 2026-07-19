@@ -165,7 +165,7 @@ export default function TicketListPage() {
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                        {ticket.is_closed ? (
+                                        {!ticket.is_open ? (
                                             <CheckCircle2 size={20} className="text-muted-foreground flex-shrink-0" />
                                         ) : (
                                             <AlertCircle size={20} className="text-amber-500 flex-shrink-0" />
@@ -175,27 +175,14 @@ export default function TicketListPage() {
                                         </h3>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-4 mt-4">
-                                        {ticket.problem && (
-                                            <Link
-                                                href={`/problems/${ticket.problem.code}`}
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/50 text-muted-foreground text-xs font-bold hover:bg-primary/10 hover:text-primary transition-colors"
-                                            >
-                                                <AlertCircle size={14} />
-                                                {ticket.problem.code} - {ticket.problem.name}
-                                            </Link>
-                                        )}
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <MessageSquare size={14} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{t('messagesCount', { count: ticket.message_count })}</span>
-                                        </div>
                                         <div className="flex items-center gap-2 text-muted-foreground">
                                             <Clock size={14} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{t('updatedLabel', { time: dayjs(ticket.updated_on).fromNow() })}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{t('createdLabel', { time: dayjs(ticket.created).fromNow() })}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0">
-                                    {ticket.is_closed ? (
+                                    {!ticket.is_open ? (
                                         <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
                                             {t('closed')}
                                         </Badge>
