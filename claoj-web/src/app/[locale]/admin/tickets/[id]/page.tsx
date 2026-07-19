@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminTicketApi, adminUserApi } from '@/lib/adminApi';
-import { AdminTicketDetail, AdminUser } from '@/types';
+import { AdminTicketDetail, AdminUser, TicketMessage } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter, usePathname } from '@/navigation';
@@ -22,7 +22,6 @@ import {
     User,
     Send,
     Loader2,
-    Shield,
     Star,
     UserPlus,
     FileText,
@@ -164,7 +163,7 @@ export default function AdminTicketDetailPage() {
         assignMutation.mutate(selectedAssignees);
     };
 
-    const MessageBubble = ({ message, isOP }: { message: any; isOP: boolean }) => (
+    const MessageBubble = ({ message, isOP }: { message: TicketMessage; isOP: boolean }) => (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -177,22 +176,17 @@ export default function AdminTicketDetailPage() {
                 "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-black text-lg",
                 isOP ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
             )}>
-                {message.user.username[0]?.toUpperCase()}
+                {message.username[0]?.toUpperCase()}
             </div>
             <div className={cn(
                 "flex-1 bg-card border rounded-[2rem] p-6",
                 isOP ? "" : "bg-muted/30"
             )}>
                 <div className="flex items-center gap-3 mb-3">
-                    <span className="font-black">{message.user.username}</span>
+                    <span className="font-black">{message.username}</span>
                     {isOP && (
                         <Badge className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/20">
                             <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
-                        </Badge>
-                    )}
-                    {message.user.is_staff && (
-                        <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                            <Shield size={12} className="inline mr-1" /> {t('staffBadge')}
                         </Badge>
                     )}
                     <span className="text-[10px] text-muted-foreground font-mono ml-auto">

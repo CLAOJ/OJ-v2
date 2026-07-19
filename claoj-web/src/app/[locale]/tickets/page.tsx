@@ -13,7 +13,6 @@ import {
     Plus,
     Search,
     Clock,
-    MessageSquare,
     ChevronLeft,
     ChevronRight,
     RefreshCw,
