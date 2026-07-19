@@ -1587,7 +1587,7 @@
         "tickets": "Tickets",
         "languages": "Languages",
         "navigation": "Navigation",
-        "roles": "Roles"
+        "roles": "Groups"
       },
       "welcomeBack": "Welcome back, {username}",
       "elevatedPrivileges": "You have elevated privileges. Manage the platform wisely.",

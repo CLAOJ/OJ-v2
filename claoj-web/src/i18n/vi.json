@@ -1587,7 +1587,7 @@
         "tickets": "Ticket",
         "languages": "Ngôn ngữ",
         "navigation": "Điều hướng",
-        "roles": "Vai trò"
+        "roles": "Nhóm"
       },
       "welcomeBack": "Chào mừng trở lại, {username}",
       "elevatedPrivileges": "Bạn có quyền truy cập nâng cao. Hãy quản lý nền tảng một cách cẩn trọng.",

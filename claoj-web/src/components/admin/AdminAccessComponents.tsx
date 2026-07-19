@@ -102,9 +102,9 @@ const ADMIN_SECTIONS = [
     },
     {
         id: 'roles',
-        label: 'Roles',
+        label: 'Groups',
         icon: Shield,
-        href: '/admin/roles',
+        href: '/admin/groups',
         color: 'from-red-500 to-rose-500',
     },
 ];

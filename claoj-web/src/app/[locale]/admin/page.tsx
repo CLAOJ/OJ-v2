@@ -115,14 +115,14 @@ const ADMIN_CARDS = [
     },
     {
         id: 'roles',
-        title: 'Roles',
-        description: 'Manage user roles, permissions, and access control.',
+        title: 'Groups',
+        description: 'Manage user groups, permissions, and access control.',
         icon: Shield,
-        href: '/admin/roles',
+        href: '/admin/groups',
         color: 'from-red-500 to-rose-500',
         bgColor: 'bg-red-500/10',
         borderColor: 'border-red-500/20',
-        stats: 'Manage roles',
+        stats: 'Manage groups',
     },
 ];
 
