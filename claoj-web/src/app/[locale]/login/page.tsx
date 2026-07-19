@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Link, useRouter } from '@/navigation';
+import { Link, useRouter, routing } from '@/navigation';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User as UserIcon, AlertCircle, Shield, Key } from 'lucide-react';
@@ -47,6 +47,19 @@ export default function LoginPage() {
         }
     }, []);
 
+    // Stored redirect paths come from window.location.pathname / document.referrer,
+    // which include the locale prefix on non-default locales (e.g. /vi/problems).
+    // next-intl's router.push treats hrefs as locale-less and prepends the current
+    // locale, so pushing a raw stored path doubles the prefix (/vi/vi/problems).
+    // Strip any known locale prefix before handing the path to the router.
+    const stripLocalePrefix = (path: string): string => {
+        for (const l of routing.locales) {
+            if (path === `/${l}`) return '/';
+            if (path.startsWith(`/${l}/`)) return path.slice(l.length + 1);
+        }
+        return path;
+    };
+
     // Helper function to get redirect URL after login
     const getRedirectUrl = (isStaff: boolean): string => {
         if (isStaff) return '/admin';
@@ -54,10 +67,11 @@ export default function LoginPage() {
         const stored = sessionStorage.getItem('loginRedirectUrl');
         sessionStorage.removeItem('loginRedirectUrl');
 
-        if (!stored || stored === '/' || stored.includes('/login')) {
+        if (!stored || stored.includes('/login')) {
             return '/';
         }
-        return stored;
+        const path = stripLocalePrefix(stored);
+        return path === '/' ? '/' : path;
     };
 
     const {
