@@ -467,6 +467,8 @@
   },
   "problem": {
     "editorial": "Lời giải",
+    "spoiler_show": "Hiện lời giải ẩn",
+    "spoiler_hide": "Ẩn lời giải",
     "editorial_not_found": "Không có lời giải cho bài này",
     "editorial_not_public": "Lời giải này chưa được công bố",
     "authors": "Tác giả",

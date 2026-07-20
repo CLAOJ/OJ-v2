@@ -467,6 +467,8 @@
   },
   "problem": {
     "editorial": "Editorial",
+    "spoiler_show": "Show spoiler",
+    "spoiler_hide": "Hide spoiler",
     "editorial_not_found": "No editorial available for this problem",
     "editorial_not_public": "This editorial is not yet public",
     "authors": "Authors",

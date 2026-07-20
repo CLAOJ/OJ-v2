@@ -104,4 +104,50 @@ describe('normalizeDmojMarkdown', () => {
     it('does not convert <br> inside inline code', () => {
         expect(normalizeDmojMarkdown('`a<br>b`')).toBe('`a<br>b`');
     });
+
+    // DMOJ spoilers are raw `<blockquote class="spoiler">` wrapping a fenced code
+    // block with NO blank line, so CommonMark swallows the whole thing as one raw
+    // HTML block and the fence never parses. Insert blank lines so the inner
+    // markdown (code fence, math) parses while the blockquote wrapper survives
+    // for rehype-raw to turn into a real spoiler element.
+    it('blank-line separates a DMOJ spoiler so its inner code fence parses', () => {
+        const src = '<blockquote class="spoiler">\n```cpp\nint x;\n```\n</blockquote>';
+        expect(normalizeDmojMarkdown(src)).toBe(
+            '<blockquote class="spoiler">\n\n```cpp\nint x;\n```\n\n</blockquote>'
+        );
+    });
+
+    it('is idempotent for an already separated spoiler', () => {
+        const src = '<blockquote class="spoiler">\n\n```cpp\nint x;\n```\n\n</blockquote>';
+        expect(normalizeDmojMarkdown(src)).toBe(src);
+    });
+
+    it('preserves spoiler code verbatim (no heading-space or tilde mangling)', () => {
+        const src = '<blockquote class="spoiler">\n```cpp\n#include <bits/stdc++.h>\n```\n</blockquote>';
+        expect(normalizeDmojMarkdown(src)).toBe(
+            '<blockquote class="spoiler">\n\n```cpp\n#include <bits/stdc++.h>\n```\n\n</blockquote>'
+        );
+    });
+
+    it('normalizes a heading directly followed by a spoiler', () => {
+        const src = '###Code\n<blockquote class="spoiler">\n```\nx\n```\n</blockquote>';
+        expect(normalizeDmojMarkdown(src)).toBe(
+            '### Code\n<blockquote class="spoiler">\n\n```\nx\n```\n\n</blockquote>'
+        );
+    });
+
+    it('handles multiple spoilers in one document', () => {
+        const src =
+            '<blockquote class="spoiler">\n```\na\n```\n</blockquote>\ntext\n' +
+            '<blockquote class="spoiler">\n```\nb\n```\n</blockquote>';
+        expect(normalizeDmojMarkdown(src)).toBe(
+            '<blockquote class="spoiler">\n\n```\na\n```\n\n</blockquote>\ntext\n' +
+            '<blockquote class="spoiler">\n\n```\nb\n```\n\n</blockquote>'
+        );
+    });
+
+    it('leaves a non-spoiler blockquote untouched', () => {
+        const src = '<blockquote>\nplain\n</blockquote>';
+        expect(normalizeDmojMarkdown(src)).toBe(src);
+    });
 });

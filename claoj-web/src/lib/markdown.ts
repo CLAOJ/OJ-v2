@@ -20,17 +20,38 @@
 export function normalizeDmojMarkdown(content: string): string {
     if (!content) return content;
 
+    // Spoilers must be normalized before the code split below: a DMOJ spoiler
+    // wraps a fenced code block, so the blank lines this inserts are what let
+    // that fence be recognized as code in the first place.
+    const withSpoilers = convertSpoilers(content);
+
     // Split out code so tildes inside it are preserved verbatim. A capturing
     // group means the code segments land at odd indices of the result array.
     const codePattern = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`)/g;
 
-    return content
+    return withSpoilers
         .split(codePattern)
         .map((segment, i) =>
             i % 2 === 1
                 ? segment
                 : convertInlineMath(convertUserReferences(convertLineBreaks(convertHeadings(segment)))))
         .join('');
+}
+
+// DMOJ spoilers are raw `<blockquote class="spoiler">` wrapping a fenced code
+// block with no blank line between them. CommonMark's HTML-block rule then
+// consumes the open tag, the fence, and everything up to the next blank line as
+// a SINGLE raw-HTML node, so the fence never parses as code (and rehype-raw even
+// mis-parses tokens like `<bits/stdc++.h>` as tags). Re-emitting the block with
+// blank lines around the inner content lets remark parse the fence as a real
+// code block while the `<blockquote class="spoiler">` wrapper survives for
+// rehype-raw to turn into an actual (collapsible) spoiler element. Idempotent:
+// `inner.trim()` + fixed blank lines means running it twice is a no-op.
+function convertSpoilers(text: string): string {
+    return text.replace(
+        /<blockquote\s+class=["']spoiler["']\s*>\s*\n([\s\S]*?)\n\s*<\/blockquote>/gi,
+        (_match, inner) => `<blockquote class="spoiler">\n\n${inner.trim()}\n\n</blockquote>`,
+    );
 }
 
 // `##Heading` -> `## Heading`. DMOJ statements often omit the space CommonMark
