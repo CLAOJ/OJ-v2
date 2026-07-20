@@ -1,22 +1,12 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
+import { renderWithProviders } from '../test-utils';
 import AccountSettingsTab from '@/components/settings/AccountSettingsTab';
 
-// Mock the AuthProvider
-jest.mock('@/components/providers/AuthProvider', () => ({
-    useAuth: () => ({
-        user: {
-            id: 1,
-            username: 'testuser',
-            is_admin: false,
-            is_staff: false,
-        },
-    }),
-}));
-
-// Mock the API
+// Mock the API client used by all four account settings sub-components
+// (PasswordChangeForm, EmailVerificationSection, TwoFactorSection, DangerZone).
+// None of the sub-components read auth context, so no AuthProvider mock is needed.
 jest.mock('@/lib/api', () => ({
     __esModule: true,
     default: {
@@ -27,85 +17,90 @@ jest.mock('@/lib/api', () => ({
 
 import api from '@/lib/api';
 
-const createTestQueryClient = () =>
-    new QueryClient({
-        defaultOptions: {
-            queries: {
-                retry: false,
-            },
-        },
-    });
+// `next-intl`'s `useTranslations` is mocked globally in __tests__/setup.ts to
+// return the raw message key instead of translated copy, so assertions below
+// target keys like 'changePassword' / 'emailVerificationTitle' rather than
+// human-readable English strings.
 
-const wrapper = ({ children }: { children: React.ReactNode }) => {
-    const testQueryClient = createTestQueryClient();
-    return (
-        <QueryClientProvider client={testQueryClient}>
-            {children}
-        </QueryClientProvider>
-    );
-};
+type GetRoutes = Record<string, unknown>;
+
+// EmailVerificationSection (`GET /user/me`) and TwoFactorSection
+// (`GET /auth/totp/status`) both query in parallel whenever the full tab
+// renders, so tests that care about one section's state stub both endpoints
+// by URL. Unlisted URLs resolve to an empty object so unrelated sections
+// don't crash while their state isn't under test.
+function mockGetRoutes(routes: GetRoutes) {
+    (api.get as jest.Mock).mockImplementation((url: string) => {
+        if (url in routes) {
+            return Promise.resolve({ data: routes[url] });
+        }
+        return Promise.resolve({ data: {} });
+    });
+}
 
 describe('AccountSettingsTab', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        // Safe baseline so every mounted section's GET resolves to something.
+        (api.get as jest.Mock).mockResolvedValue({ data: {} });
     });
 
     describe('Password Change Section', () => {
-        it('renders password change form', () => {
-            render(<AccountSettingsTab />, { wrapper });
+        it('renders password change form fields', () => {
+            renderWithProviders(<AccountSettingsTab />);
 
-            expect(screen.getAllByText('Change Password')[0]).toBeInTheDocument();
-            // Check for password inputs
-            expect(screen.getByRole('button', { name: /change password/i })).toBeInTheDocument();
+            expect(screen.getByText('oldPassword')).toBeInTheDocument();
+            expect(screen.getByText('newPassword')).toBeInTheDocument();
+            expect(screen.getByText('confirmNewPassword')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'changePassword' })).toBeInTheDocument();
         });
 
-        it('shows validation error when passwords do not match', async () => {
-            const { container } = render(<AccountSettingsTab />, { wrapper });
+        it('shows a validation error when the new and confirm passwords do not match', async () => {
+            const { container } = renderWithProviders(<AccountSettingsTab />);
 
-            // Find inputs by placeholder text
             const passwordInputs = container.querySelectorAll('input[type="password"]');
-
             expect(passwordInputs.length).toBeGreaterThanOrEqual(3);
 
-            // Fill in the password fields
             fireEvent.change(passwordInputs[0], { target: { value: 'oldpass123' } });
             fireEvent.change(passwordInputs[1], { target: { value: 'newpass123' } });
             fireEvent.change(passwordInputs[2], { target: { value: 'different123' } });
 
-            const submitButton = screen.getByRole('button', { name: /change password/i });
-            fireEvent.click(submitButton);
+            fireEvent.click(screen.getByRole('button', { name: 'changePassword' }));
 
             await waitFor(() => {
-                expect(screen.getByText(/passwords don't match/i)).toBeInTheDocument();
+                expect(screen.getByText('passwordsDontMatch')).toBeInTheDocument();
             });
         });
 
-        it('shows validation error for short passwords', async () => {
-            const { container } = render(<AccountSettingsTab />, { wrapper });
+        it('shows a validation error when the new password is too short', async () => {
+            const { container } = renderWithProviders(<AccountSettingsTab />);
 
             const passwordInputs = container.querySelectorAll('input[type="password"]');
-            const submitButton = screen.getByRole('button', { name: /change password/i });
+            expect(passwordInputs.length).toBeGreaterThanOrEqual(3);
 
+            fireEvent.change(passwordInputs[0], { target: { value: 'oldpass123' } });
             fireEvent.change(passwordInputs[1], { target: { value: '123' } });
-            fireEvent.click(submitButton);
+            fireEvent.change(passwordInputs[2], { target: { value: '123' } });
+
+            fireEvent.click(screen.getByRole('button', { name: 'changePassword' }));
 
             await waitFor(() => {
-                expect(screen.getByText(/at least 6 characters/i)).toBeInTheDocument();
+                expect(screen.getByText('newPasswordMinLength')).toBeInTheDocument();
             });
         });
 
-        it('submits password change on valid form', async () => {
+        it('submits the password change to the API on a valid form', async () => {
             (api.post as jest.Mock).mockResolvedValue({ data: {} });
 
-            const { container } = render(<AccountSettingsTab />, { wrapper });
+            const { container } = renderWithProviders(<AccountSettingsTab />);
 
             const passwordInputs = container.querySelectorAll('input[type="password"]');
-            const submitButton = screen.getByRole('button', { name: /change password/i });
 
             fireEvent.change(passwordInputs[0], { target: { value: 'oldpass123' } });
             fireEvent.change(passwordInputs[1], { target: { value: 'newpass123' } });
             fireEvent.change(passwordInputs[2], { target: { value: 'newpass123' } });
-            fireEvent.click(submitButton);
+
+            fireEvent.click(screen.getByRole('button', { name: 'changePassword' }));
 
             await waitFor(() => {
                 expect(api.post).toHaveBeenCalledWith('/auth/password/change', {
@@ -115,137 +110,93 @@ describe('AccountSettingsTab', () => {
             });
         });
 
-        it('shows success message after password change', async () => {
+        it('shows a success message after the password change succeeds', async () => {
             (api.post as jest.Mock).mockResolvedValue({ data: {} });
 
-            const { container } = render(<AccountSettingsTab />, { wrapper });
+            const { container } = renderWithProviders(<AccountSettingsTab />);
 
             const passwordInputs = container.querySelectorAll('input[type="password"]');
-            const submitButton = screen.getByRole('button', { name: /change password/i });
 
             fireEvent.change(passwordInputs[0], { target: { value: 'oldpass123' } });
             fireEvent.change(passwordInputs[1], { target: { value: 'newpass123' } });
             fireEvent.change(passwordInputs[2], { target: { value: 'newpass123' } });
-            fireEvent.click(submitButton);
+
+            fireEvent.click(screen.getByRole('button', { name: 'changePassword' }));
 
             await waitFor(() => {
-                expect(screen.getByText(/password changed successfully/i)).toBeInTheDocument();
+                expect(screen.getByText('passwordChangeSuccess')).toBeInTheDocument();
             });
         });
     });
 
     describe('Email Verification Section', () => {
-        it('renders email verification section', () => {
-            (api.get as jest.Mock).mockResolvedValue({
-                data: { is_active: true },
-            });
+        it('renders the email verification section', () => {
+            mockGetRoutes({ '/user/me': { is_active: true } });
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
-            expect(screen.getByText('Email Verification')).toBeInTheDocument();
+            expect(screen.getByText('emailVerificationTitle')).toBeInTheDocument();
         });
 
-        it('shows verified status when email is verified', async () => {
-            (api.get as jest.Mock).mockImplementation((url: string) => {
-                if (url === '/user/me') {
-                    return Promise.resolve({ data: { is_active: true } });
-                }
-                if (url === '/auth/totp/status') {
-                    return Promise.resolve({ data: { enabled: false, backup_codes_remaining: 0 } });
-                }
-                return Promise.resolve({ data: {} });
+        it('shows the verified state when the email is verified', async () => {
+            mockGetRoutes({
+                '/user/me': { is_active: true },
+                '/auth/totp/status': { enabled: false, backup_codes_remaining: 0 },
             });
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
             await waitFor(() => {
-                expect(screen.getByText(/your email is verified/i)).toBeInTheDocument();
+                expect(screen.getByText('emailVerifiedMsg')).toBeInTheDocument();
             });
-
-            expect(screen.getByText('Verified')).toBeInTheDocument();
+            expect(screen.getByText('verifiedBadge')).toBeInTheDocument();
         });
 
-        it('shows unverified warning and resend button when email is not verified', async () => {
-            (api.get as jest.Mock).mockImplementation((url: string) => {
-                if (url === '/user/me') {
-                    return Promise.resolve({ data: { is_active: false } });
-                }
-                if (url === '/auth/totp/status') {
-                    return Promise.resolve({ data: { enabled: false, backup_codes_remaining: 0 } });
-                }
-                return Promise.resolve({ data: {} });
+        it('shows the unverified warning and a resend button when the email is not verified', async () => {
+            mockGetRoutes({
+                '/user/me': { is_active: false },
+                '/auth/totp/status': { enabled: false, backup_codes_remaining: 0 },
             });
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
             await waitFor(() => {
-                expect(screen.getByText(/email not verified/i)).toBeInTheDocument();
+                expect(screen.getByText('emailNotVerifiedTitle')).toBeInTheDocument();
             });
-
-            expect(screen.getByText(/check your inbox for the verification link/i)).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /resend verification email/i })).toBeInTheDocument();
+            expect(screen.getByText('emailNotVerifiedDesc')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'resendVerificationEmail' })).toBeInTheDocument();
         });
 
-        it('calls resend verification API when button is clicked', async () => {
-            (api.get as jest.Mock).mockImplementation((url: string) => {
-                if (url === '/user/me') {
-                    return Promise.resolve({ data: { is_active: false } });
-                }
-                if (url === '/auth/totp/status') {
-                    return Promise.resolve({ data: { enabled: false, backup_codes_remaining: 0 } });
-                }
-                return Promise.resolve({ data: {} });
-            });
-
+        it('calls the resend verification API when the resend button is clicked', async () => {
+            mockGetRoutes({ '/user/me': { is_active: false } });
             (api.post as jest.Mock).mockResolvedValue({
                 data: { message: 'Verification email sent. Please check your inbox.' },
             });
-
-            // Mock alert
             const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /resend verification email/i })).toBeInTheDocument();
-            });
-
-            const resendButton = screen.getByRole('button', { name: /resend verification email/i });
+            const resendButton = await screen.findByRole('button', { name: 'resendVerificationEmail' });
             fireEvent.click(resendButton);
 
             await waitFor(() => {
                 expect(api.post).toHaveBeenCalledWith('/auth/resend-verification', {});
             });
-
             expect(alertMock).toHaveBeenCalledWith('Verification email sent. Please check your inbox.');
 
             alertMock.mockRestore();
         });
 
-        it('shows error when resend verification fails', async () => {
-            (api.get as jest.Mock).mockImplementation((url: string) => {
-                if (url === '/user/me') {
-                    return Promise.resolve({ data: { is_active: false } });
-                }
-                if (url === '/auth/totp/status') {
-                    return Promise.resolve({ data: { enabled: false, backup_codes_remaining: 0 } });
-                }
-                return Promise.resolve({ data: {} });
-            });
-
+        it('shows the server error message when resending verification fails', async () => {
+            mockGetRoutes({ '/user/me': { is_active: false } });
             (api.post as jest.Mock).mockRejectedValue({
                 response: { data: { error: 'Rate limit exceeded' } },
             });
-
             const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /resend verification email/i })).toBeInTheDocument();
-            });
-
-            const resendButton = screen.getByRole('button', { name: /resend verification email/i });
+            const resendButton = await screen.findByRole('button', { name: 'resendVerificationEmail' });
             fireEvent.click(resendButton);
 
             await waitFor(() => {
@@ -255,71 +206,55 @@ describe('AccountSettingsTab', () => {
             alertMock.mockRestore();
         });
 
-        it('defaults to verified state when profile data is not loaded', () => {
-            (api.get as jest.Mock).mockResolvedValue({
-                data: { enabled: false, backup_codes_remaining: 0 },
-            });
+        it('defaults to the verified state before the profile query has resolved', () => {
+            // No route stub: api.get is pending (unresolved) at the moment of
+            // this assertion, so userProfile is still undefined and
+            // `userProfile?.is_active ?? true` falls back to verified.
+            renderWithProviders(<AccountSettingsTab />);
 
-            render(<AccountSettingsTab />, { wrapper });
-
-            // When userProfile is undefined, isEmailVerified should default to true
-            expect(screen.getByText(/your email is verified/i)).toBeInTheDocument();
+            expect(screen.getByText('emailVerifiedMsg')).toBeInTheDocument();
         });
     });
 
     describe('Two-Factor Authentication Section', () => {
-        it('renders 2FA section', () => {
-            (api.get as jest.Mock).mockResolvedValue({
-                data: { enabled: false, backup_codes_remaining: 0 },
-            });
+        it('renders the 2FA section', () => {
+            mockGetRoutes({ '/auth/totp/status': { enabled: false, backup_codes_remaining: 0 } });
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
-            expect(screen.getByText('Two-Factor Authentication')).toBeInTheDocument();
+            expect(screen.getByText('twoFactor')).toBeInTheDocument();
         });
 
-        it('shows setup UI when 2FA is disabled', async () => {
-            (api.get as jest.Mock).mockImplementation((url: string) => {
-                if (url === '/auth/totp/status') {
-                    return Promise.resolve({ data: { enabled: false, backup_codes_remaining: 0 } });
-                }
-                return Promise.resolve({ data: {} });
-            });
+        it('shows the setup UI when 2FA is disabled', async () => {
+            mockGetRoutes({ '/auth/totp/status': { enabled: false, backup_codes_remaining: 0 } });
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
             await waitFor(() => {
-                expect(screen.getByText(/add an extra layer of security/i)).toBeInTheDocument();
+                expect(screen.getByText('twoFactorDesc')).toBeInTheDocument();
             });
-
-            expect(screen.getByRole('button', { name: /setup 2fa/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'setup2FA' })).toBeInTheDocument();
         });
 
-        it('shows enabled status when 2FA is active', async () => {
-            (api.get as jest.Mock).mockImplementation((url: string) => {
-                if (url === '/auth/totp/status') {
-                    return Promise.resolve({ data: { enabled: true, backup_codes_remaining: 10 } });
-                }
-                return Promise.resolve({ data: {} });
-            });
+        it('shows the enabled status when 2FA is active', async () => {
+            mockGetRoutes({ '/auth/totp/status': { enabled: true, backup_codes_remaining: 10 } });
 
-            render(<AccountSettingsTab />, { wrapper });
+            renderWithProviders(<AccountSettingsTab />);
 
             await waitFor(() => {
-                expect(screen.getByText(/two-factor authentication is enabled/i)).toBeInTheDocument();
+                expect(screen.getByText('twoFactorEnabledMsg')).toBeInTheDocument();
             });
-
-            expect(screen.getByText('Active')).toBeInTheDocument();
+            expect(screen.getByText('active')).toBeInTheDocument();
         });
     });
 
     describe('Danger Zone Section', () => {
-        it('renders danger zone section', () => {
-            render(<AccountSettingsTab />, { wrapper });
+        it('renders the danger zone section', () => {
+            renderWithProviders(<AccountSettingsTab />);
 
-            expect(screen.getByText('Danger Zone')).toBeInTheDocument();
-            expect(screen.getByText(/once you delete your account/i)).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /delete account/i })).toBeInTheDocument();
+            expect(screen.getByText('dangerZone')).toBeInTheDocument();
+            expect(screen.getByText('deleteAccountWarning')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'deleteAccount' })).toBeInTheDocument();
         });
     });
 });

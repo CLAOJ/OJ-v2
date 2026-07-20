@@ -418,3 +418,40 @@ docker compose -f docker-compose.yml -f docker-compose.v2.yml \
 v1 is unaffected — it never depended on any v2 service, the v2-only tables,
 or the Redis DB-2 keys. The additive tables can stay (Django ignores them) or
 be removed with `cleanup_v2_tables.sql` per §7.
+
+---
+
+## 10. CI/CD (automated build + beta deploy)
+
+**Pipeline (`.github/workflows/ci-cd.yml`).** Push/PR to `dev` or `main` runs, per
+changed path: backend `go vet` + `go test` (excluding `./integration`), web
+`npm ci` + `npm test`. Web ESLint runs in a separate **advisory** `lint-web` job
+(`continue-on-error`) — it surfaces findings as annotations but never blocks
+publishing (the web app carries pre-existing lint debt to clean up over time).
+**On `main` only**, each changed app whose tests passed is then built as a Docker
+image and **pushed to GHCR** (`ghcr.io/claoj/claoj-go`, `ghcr.io/claoj/claoj-web`),
+tagged `:latest` (moving) and `:sha-<short>` (immutable). On `dev`/PRs the image
+is **not** built — those runs are tests only. CI authenticates to GHCR with the
+built-in `GITHUB_TOKEN` — no secret to manage.
+
+**Branch flow.** Develop on `dev` (CI validates, publishes nothing); merge to
+`main` to publish and deploy.
+
+**Auto-deploy.** On the VPS, `containrrr/watchtower` (in
+`claoj-docker/claoj/docker-compose.watchtower.yml`, scope `claoj-v2`) polls GHCR
+every ~120 s and recreates only `claoj_v2_backend` / `claoj_v2_web` when a new
+`:latest` digest appears. The v1 stack and both judges are never touched.
+
+**One-time VPS setup.** Give the box read access to the private packages:
+
+    echo <READ_ONLY_PAT> | docker login ghcr.io -u <github-username> --password-stdin
+
+The PAT needs only `read:packages`. This writes `/root/.docker/config.json`, which
+Watchtower mounts read-only.
+
+**nginx.** `v2_nginx` uses a Docker DNS `resolver` + variable upstreams so it keeps
+serving through a backend/web recreate (no 502, no manual restart).
+
+**Rollback.** `claoj-docker/claoj/scripts/rollback.sh backend sha-<short>` pins a
+service to an immutable build (freezing Watchtower); `... backend latest` resumes
+auto-updates.
