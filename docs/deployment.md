@@ -425,14 +425,14 @@ be removed with `cleanup_v2_tables.sql` per §7.
 
 **Pipeline (`.github/workflows/ci-cd.yml`).** Push/PR to `dev` or `main` runs, per
 changed path: backend `go vet` + `go test` (excluding `./integration`), web
-`npm ci` + `npm test`, then a Docker image build of each changed app. Web ESLint
-runs in a separate **advisory** `lint-web` job (`continue-on-error`) — it surfaces
-findings as annotations but never blocks publishing (the web app carries
-pre-existing lint debt to clean up over time). Tests + build are the hard gate.
-Images are **pushed to GHCR only on `main`** (`ghcr.io/claoj/claoj-go`,
-`ghcr.io/claoj/claoj-web`), tagged `:latest` (moving) and `:sha-<short>`
-(immutable). CI authenticates to GHCR with the built-in `GITHUB_TOKEN` — no secret
-to manage.
+`npm ci` + `npm test`. Web ESLint runs in a separate **advisory** `lint-web` job
+(`continue-on-error`) — it surfaces findings as annotations but never blocks
+publishing (the web app carries pre-existing lint debt to clean up over time).
+**On `main` only**, each changed app whose tests passed is then built as a Docker
+image and **pushed to GHCR** (`ghcr.io/claoj/claoj-go`, `ghcr.io/claoj/claoj-web`),
+tagged `:latest` (moving) and `:sha-<short>` (immutable). On `dev`/PRs the image
+is **not** built — those runs are tests only. CI authenticates to GHCR with the
+built-in `GITHUB_TOKEN` — no secret to manage.
 
 **Branch flow.** Develop on `dev` (CI validates, publishes nothing); merge to
 `main` to publish and deploy.

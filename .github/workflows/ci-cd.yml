@@ -96,9 +96,9 @@ jobs:
 
   build-push-backend:
     needs: [changes, test-backend]
-    # success() is implicit for a status-function-free `if`, but this gate
-    # publishes to prod on main — make "tests passed" explicit and unmissable.
-    if: ${{ success() && needs.changes.outputs.backend == 'true' }}
+    # Build + push happen ONLY on main: dev/PRs run tests only, no image build.
+    # success() (explicit) also ensures a failed test skips the publish.
+    if: ${{ success() && needs.changes.outputs.backend == 'true' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +130,7 @@ jobs:
 
   build-push-web:
     needs: [changes, test-web]
-    if: ${{ success() && needs.changes.outputs.web == 'true' }}
+    if: ${{ success() && needs.changes.outputs.web == 'true' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
