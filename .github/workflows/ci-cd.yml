@@ -76,7 +76,9 @@ jobs:
 
   build-push-backend:
     needs: [changes, test-backend]
-    if: needs.changes.outputs.backend == 'true'
+    # success() is implicit for a status-function-free `if`, but this gate
+    # publishes to prod on main — make "tests passed" explicit and unmissable.
+    if: ${{ success() && needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,7 +110,7 @@ jobs:
 
   build-push-web:
     needs: [changes, test-web]
-    if: needs.changes.outputs.web == 'true'
+    if: ${{ success() && needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
