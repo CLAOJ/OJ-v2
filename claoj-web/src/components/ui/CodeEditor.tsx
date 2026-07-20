@@ -10,14 +10,17 @@ interface CodeEditorProps {
 }
 
 export default function CodeEditor({ value, onChange, language = 'cpp' }: CodeEditorProps) {
-    const { theme } = useTheme();
+    // Use `resolvedTheme`, not `theme`: on first load with defaultTheme="system"
+    // `theme` is "system", which would leave the editor on the light Monaco theme
+    // over a dark page until the user toggles.
+    const { resolvedTheme } = useTheme();
 
     return (
         <div className="h-full border rounded-xl overflow-hidden bg-card">
             <Editor
                 height="100%"
                 defaultLanguage={language}
-                theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
                 value={value}
                 onChange={onChange}
                 options={{

@@ -10,30 +10,43 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
-    const { theme, setTheme } = useTheme();
+    // `resolvedTheme` is the concrete "dark"/"light" after resolving "system";
+    // `theme` is "system" on first load, which would show the wrong icon and
+    // make the first click a no-op. Always key off `resolvedTheme`.
+    const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
+    const isDark = resolvedTheme === 'dark';
+
     const handleClick = () => {
-        setTheme(theme === 'dark' ? 'light' : 'dark');
+        setTheme(isDark ? 'light' : 'dark');
     };
+
+    // Gate the label on `mounted` like the icon: before mount `resolvedTheme`
+    // is undefined (SSR/first paint), so a neutral label keeps the server and
+    // client markup in sync. Deriving it straight from `isDark` leaves the
+    // aria-label/title stuck at the server value until the first interaction.
+    const label = !mounted
+        ? 'Toggle theme'
+        : isDark ? 'Switch to light mode' : 'Switch to dark mode';
 
     if (variant === 'mobile') {
         return (
             <button
                 onClick={handleClick}
                 className="flex items-center gap-2 p-3 rounded bg-muted text-sm font-bold"
-                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                aria-label={label}
             >
                 {mounted ? (
-                    theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />
+                    isDark ? <Sun size={18} /> : <Moon size={18} />
                 ) : (
                     <Moon size={18} className="opacity-50" />
                 )}
-                <span>Theme ({mounted ? (theme === 'dark' ? 'Dark' : 'Light') : '...'})</span>
+                <span>Theme ({mounted ? (isDark ? 'Dark' : 'Light') : '...'})</span>
             </button>
         );
     }
@@ -42,11 +55,11 @@ export default function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
         <button
             onClick={handleClick}
             className="p-2 rounded-full hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={label}
+            title={label}
         >
             {mounted ? (
-                theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />
+                isDark ? <Sun size={18} /> : <Moon size={18} />
             ) : (
                 <Moon size={18} className="opacity-50" />
             )}
