@@ -393,23 +393,17 @@ In `ProblemPageContent.tsx`, replace the statement body block (lines ~294-296):
                             <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
                         </div>
 ```
-with:
+with (renders the description box when there is a description **or** no PDF — preserving the current empty-box behavior for problems with neither — and appends the viewer whenever a PDF exists; no duplicated markup):
 ```tsx
-                        {problem.pdf_url ? (
-                            <>
-                                {problem.description?.trim() && (
-                                    <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-3xl p-8 lg:p-10 shadow-sm leading-relaxed">
-                                        <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
-                                    </div>
-                                )}
-                                <PdfStatementViewer code={code} />
-                            </>
-                        ) : (
+                        {(problem.description?.trim() || !problem.pdf_url) && (
                             <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-3xl p-8 lg:p-10 shadow-sm leading-relaxed">
                                 <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
                             </div>
                         )}
+                        {problem.pdf_url && <PdfStatementViewer code={code} />}
 ```
+
+Behavior: description-only → box only (unchanged); PDF + description → box then viewer; PDF-only → viewer only; neither → empty box (unchanged).
 
 - [ ] **Step 6: i18n the sidebar button label**
 
