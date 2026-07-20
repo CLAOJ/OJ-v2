@@ -184,6 +184,44 @@ judges, and `v2_nginx` are never candidates for update.
 Deploy invocation is unchanged (`docker compose -f docker-compose.yml -f
 docker-compose.v2.yml up -d`); Watchtower simply becomes one more overlay service.
 
+### 7.1 Keep `v2_nginx` re-resolving upstreams (required)
+
+**Problem.** `local/v2-nginx/conf.d/v2.conf` currently does
+`proxy_pass http://v2_backend:8081;` (and `http://v2_web:3000;`) with a hardcoded
+name and **no `resolver`**. nginx resolves those names **once at worker start** and
+caches the IP. When Watchtower recreates the backend/web container, Docker assigns
+it a **new IP**; nginx keeps proxying the dead one → **502 until nginx is manually
+restarted.** Without this fix, every auto-deploy is an outage.
+
+**Fix.** Make nginx re-resolve at request time using Docker's embedded DNS. In
+`v2.conf`, add the resolver once and switch each upstream to a variable so nginx
+defers resolution (keep `$request_uri` so the path/query are passed unchanged):
+
+```nginx
+resolver 127.0.0.11 valid=10s ipv6=off;   # Docker embedded DNS
+
+location /api/events {
+    set $v2_backend v2_backend;
+    proxy_pass http://$v2_backend:8081$request_uri;
+    # ...existing WebSocket + proxy headers unchanged...
+}
+location /api/ {
+    set $v2_backend v2_backend;
+    proxy_pass http://$v2_backend:8081$request_uri;
+    # ...existing proxy headers unchanged...
+}
+location / {
+    set $v2_web v2_web;
+    proxy_pass http://$v2_web:3000$request_uri;
+    # ...existing proxy headers unchanged...
+}
+```
+
+This makes nginx resilient to *any* container recreate, not just Watchtower's, and
+is Docker-idiomatic. (Alternative — restarting `v2_nginx` after each update — is
+rejected: it adds a moving part and a brief hard outage on every deploy.) The
+implementation plan finalizes exact syntax and re-verifies the WebSocket path.
+
 ---
 
 ## 8. Out of scope / unchanged
@@ -237,6 +275,8 @@ docker-compose.v2.yml up -d`); Watchtower simply becomes one more overlay servic
 **`claoj-docker` repo:**
 - `claoj/docker-compose.v2.yml` — GHCR image refs, Watchtower labels, Watchtower
   service (§7).
+- `claoj/local/v2-nginx/conf.d/v2.conf` — resolver + variable upstreams so nginx
+  survives a backend/web recreate (§7.1). **Required for zero-downtime auto-deploy.**
 - `claoj/scripts/rollback.sh` — new rollback helper (§10).
 - `README.md` — note the login-once step and the auto-update behaviour.
 
@@ -253,10 +293,13 @@ full path.
    `:sha-<short>` appear in GHCR.
 3. **Auto-deploy:** within ~2 min, Watchtower recreates `claoj_v2_backend` /
    `claoj_v2_web`; `docker logs claoj_v2_watchtower` shows the update.
-4. **Smoke test** per `deployment.md` §6 against `https://beta.claoj.edu.vn`
+4. **No-502 check (§7.1):** immediately after the recreate, `curl` beta `/api/...`
+   and `/` — both must serve without a 502, proving nginx re-resolved the new
+   container IP without a restart.
+5. **Smoke test** per `deployment.md` §6 against `https://beta.claoj.edu.vn`
    (public reads, auth round-trip, a graded submission).
-5. **Isolation:** confirm no v1 container was recreated (`docker ps` uptimes).
-6. **Rollback:** pin `claoj-go` to the previous `:sha-`, confirm the box serves it,
+6. **Isolation:** confirm no v1 container was recreated (`docker ps` uptimes).
+7. **Rollback:** pin `claoj-go` to the previous `:sha-`, confirm the box serves it,
    repoint to `:latest`, confirm auto-update resumes.
 
 ---
