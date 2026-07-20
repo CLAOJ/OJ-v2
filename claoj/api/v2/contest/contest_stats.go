@@ -18,7 +18,11 @@ func ContestStats(c *gin.Context) {
 	key := c.Param("key")
 
 	var ct models.Contest
-	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+	if !auth.CanViewContest(c, &ct) {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}
@@ -199,7 +203,11 @@ func ContestPublicStats(c *gin.Context) {
 	key := c.Param("key")
 
 	var ct models.Contest
-	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+	if !auth.CanViewContest(c, &ct) {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}

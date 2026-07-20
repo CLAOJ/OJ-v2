@@ -46,9 +46,13 @@ func ProblemList(c *gin.Context) {
 		profileID = pid
 	}
 
+	// Restrict to problems the requesting user may see. Without this,
+	// organization-private problems (is_public + is_organization_private) leak
+	// to every user (Django parity: Problem.get_visible_problems).
+	visExpr, visArgs := auth.VisibleProblemFilter(c)
 	q := db.DB.Preload("Group").
 		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.partial, judge_problem.is_public, judge_problem.user_count, judge_problem.ac_rate, judge_problem.group_id, judge_problem.date").
-		Where("is_public = ?", true)
+		Where(visExpr, visArgs...)
 
 	if search != "" {
 		q = q.Where("code LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
@@ -140,7 +144,8 @@ func ProblemList(c *gin.Context) {
 // RandomProblem – GET /api/v2/problems/random
 func RandomProblem(c *gin.Context) {
 	var p models.Problem
-	if err := db.DB.Where("is_public = ?", true).Order("RAND()").First(&p).Error; err != nil {
+	visExpr, visArgs := auth.VisibleProblemFilter(c)
+	if err := db.DB.Where(visExpr, visArgs...).Order("RAND()").First(&p).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to find a random problem"))
 		return
 	}

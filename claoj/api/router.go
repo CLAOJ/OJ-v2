@@ -400,6 +400,7 @@ func NewRouter() *gin.Engine {
 			protected.POST("/blog/:id/vote", v2.BlogVoteHandler)
 
 			// Organizations
+			protected.PATCH("/organization/:id", v2.UpdateOrganization)
 			protected.POST("/organization/:id/join", v2.JoinOrganization)
 			protected.POST("/organization/:id/leave", v2.LeaveOrganization)
 			protected.POST("/organization/:id/request", v2.RequestJoinOrganization)

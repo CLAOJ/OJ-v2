@@ -51,9 +51,15 @@ func ContestList(c *gin.Context) {
 	search := c.Query("search")
 
 	var contests []models.Contest
-	// Use raw SQL to properly handle 'key' reserved word in MariaDB
-	sql := "SELECT * FROM judge_contest WHERE is_visible = ?"
-	args := []interface{}{true}
+	// Use raw SQL to properly handle 'key' reserved word in MariaDB.
+	// Restrict to contests the requesting user may see — public contests plus,
+	// for authenticated users, the organization-private / private contests they
+	// belong to and the contests they run (Django parity:
+	// Contest.get_visible_contests). Without this, organization-limited contests
+	// leak to every user.
+	visExpr, visArgs := auth.VisibleContestFilter(c)
+	sql := "SELECT * FROM judge_contest WHERE " + visExpr
+	args := append([]any{}, visArgs...)
 
 	if search != "" {
 		sql += " AND (name LIKE ? OR `key` LIKE ?)"
@@ -147,8 +153,15 @@ func ContestDetail(c *gin.Context) {
 	var ct models.Contest
 	if err := db.DB.
 		Preload("ContestProblems.Problem").
-		Where("`key` = ? AND is_visible = ?", key, true).
+		Where("`key` = ?", key).
 		First(&ct).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+	// Enforce organization-private / private-contestant visibility, not just
+	// is_visible (Django parity: Contest.access_check). Hidden/restricted
+	// contests return 404 so their existence is not revealed.
+	if !auth.CanViewContest(c, &ct) {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}

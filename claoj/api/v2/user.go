@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/jobs"
 	"github.com/CLAOJ/claoj/models"
@@ -168,10 +169,15 @@ func UserRatingHistory(c *gin.Context) {
 		Contest   string    `json:"contest"`
 		ContestID string    `json:"contest_key"`
 	}
+	// Scope the rating history to contests the viewer may see, so an
+	// organization-private contest's name is not revealed on a participant's
+	// public profile.
+	ratingVisExpr, ratingVisArgs := auth.VisibleContestFilterFor(c, "jc")
 	db.DB.Table("judge_rating").
 		Select("judge_rating.last_rated as date, judge_rating.rating, jc.name as contest, jc.key as contest_key").
 		Joins("JOIN judge_contest jc ON jc.id = judge_rating.contest_id").
 		Where("judge_rating.user_id = ?", profile.ID).
+		Where(ratingVisExpr, ratingVisArgs...).
 		Order("judge_rating.last_rated ASC").
 		Scan(&history)
 
@@ -340,10 +346,14 @@ func UserAnalytics(c *gin.Context) {
 		Date        time.Time `json:"date"`
 	}
 	var contestHistory []ContestHistory
+	// Scope the contest history to contests the viewer may see (organization-
+	// private contests must not surface on a participant's public profile).
+	histVisExpr, histVisArgs := auth.VisibleContestFilterFor(c, "jc")
 	db.DB.Table("judge_contestparticipation").
 		Select("jc.key as contest_key, jc.name as contest_name, judge_contestparticipation.score, judge_contestparticipation.cumtime, jc.start_time as date").
 		Joins("JOIN judge_contest jc ON jc.id = judge_contestparticipation.contest_id").
 		Where("judge_contestparticipation.user_id = ? AND judge_contestparticipation.virtual = 0", profile.ID).
+		Where(histVisExpr, histVisArgs...).
 		Order("jc.start_time DESC").
 		Scan(&contestHistory)
 

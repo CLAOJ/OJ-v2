@@ -69,7 +69,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
         }
     });
 
-    const isMember = org?.members.some(m => m.username === user?.username);
+    const isMember = org?.members?.some(m => m.username === user?.username);
 
     const handleJoin = () => {
         if (!isAuthenticated) {
@@ -133,9 +133,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                 <Crown size={12} className="inline mr-1" /> Admin
                             </Badge>
                         )}
-                        <span className="text-[10px] text-muted-foreground font-bold">
-                            Joined {dayjs(member.joined_at).fromNow()}
-                        </span>
+                        {member.joined_at && (
+                            <span className="text-[10px] text-muted-foreground font-bold">
+                                Joined {dayjs(member.joined_at).fromNow()}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="text-right">

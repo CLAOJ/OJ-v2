@@ -64,15 +64,29 @@ func CanEditProblem(c *gin.Context, problem *models.Problem) bool {
 	return ok && isProblemEditor(problem, profileID)
 }
 
-// CanViewProblem mirrors the codename-relevant parts of Problem.is_accessible_by
-// (OJ problem.py:240-284): public problems are visible; hidden ones require
-// see_private_problem, editability, or being a tester.
+// CanViewProblem mirrors Problem.is_accessible_by (OJ problem.py:240-284). A
+// public problem that is private to organizations is only visible to members of
+// those organizations (or holders of see_organization_problem); hidden problems
+// require see_private_problem, editability, or being a tester.
 // Load with Preload("Authors").Preload("Curators").Preload("Testers").
 func CanViewProblem(c *gin.Context, problem *models.Problem) bool {
-	if problem.IsPublic {
-		return true
-	}
 	access := GetAccess(c)
+
+	// Public problems are visible unless they are restricted to organizations.
+	if problem.IsPublic {
+		if !problem.IsOrganizationPrivate {
+			return true
+		}
+		if access.HasPerm("judge.see_organization_problem") {
+			return true
+		}
+		if profileID, ok := CurrentProfileID(c); ok && userInProblemOrg(problem.ID, profileID) {
+			return true
+		}
+		// Not an organization member — editors, testers, or see_private_problem
+		// below may still grant access.
+	}
+
 	if access.IsSuperuser && access.IsActive {
 		return true
 	}
@@ -108,12 +122,14 @@ func CanEditContest(c *gin.Context, contest *models.Contest) bool {
 	return ok && isContestEditor(contest, profileID)
 }
 
-// CanViewContest mirrors the codename-relevant parts of Contest.access_check
-// (OJ contest.py:321-370). Load with Preload("Authors").Preload("Curators").Preload("Testers").
+// CanViewContest mirrors Contest.access_check (OJ contest.py:321-370). It fully
+// enforces organization-private and private-contestant restrictions: a merely
+// visible contest is NOT automatically viewable if it is limited to an
+// organization or a private contestant list. Membership is resolved from the
+// database by contest id, so the caller only needs the contest's id and its
+// is_visible / is_organization_private / is_private flags populated (a plain
+// row load is enough — no association preloads required).
 func CanViewContest(c *gin.Context, contest *models.Contest) bool {
-	if contest.IsVisible {
-		return true
-	}
 	access := GetAccess(c)
 	if access.IsSuperuser && access.IsActive {
 		return true
@@ -121,11 +137,39 @@ func CanViewContest(c *gin.Context, contest *models.Contest) bool {
 	if access.HasPerm("judge.see_private_contest") || access.HasPerm("judge.edit_all_contest") {
 		return true
 	}
-	profileID, ok := CurrentProfileID(c)
-	if !ok {
+
+	profileID, authed := CurrentProfileID(c)
+
+	// Authors, curators and testers may always view their contest, even while
+	// it is hidden (the editor/tester short-circuits in access_check).
+	if authed && (contestHasMember(contest.ID, "judge_contest_authors", profileID) ||
+		contestHasMember(contest.ID, "judge_contest_curators", profileID) ||
+		contestHasMember(contest.ID, "judge_contest_testers", profileID)) {
+		return true
+	}
+
+	// Everyone else needs the contest to be publicly visible first.
+	if !contest.IsVisible {
 		return false
 	}
-	return isContestEditor(contest, profileID) || profileInList(contest.Testers, profileID)
+
+	// A visible contest with no privacy restrictions is open to all.
+	if !contest.IsOrganizationPrivate && !contest.IsPrivate {
+		return true
+	}
+
+	// Restricted contests require an authenticated member of every restriction
+	// that applies (organization membership and/or the private-contestant list).
+	if !authed {
+		return false
+	}
+	if contest.IsOrganizationPrivate && !userInContestOrg(contest.ID, profileID) {
+		return false
+	}
+	if contest.IsPrivate && !contestHasMember(contest.ID, "judge_contest_private_contestants", profileID) {
+		return false
+	}
+	return true
 }
 
 // CanViewSolution mirrors Solution.is_accessible_by (OJ problem.py:630-637).

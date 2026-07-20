@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -156,10 +157,14 @@ func UserRatingDetail(c *gin.Context) {
 	}
 
 	var recentChanges []RatingChange
+	// Scope rating changes to contests the viewer may see, so organization-
+	// private contests are not revealed on a participant's public rating page.
+	visExpr, visArgs := auth.VisibleContestFilterFor(c, "jc")
 	db.DB.Table("judge_rating").
 		Select("judge_rating.last_rated as date, jc.name as contest, jc.key as contest_key, judge_rating.rank, judge_rating.rating, judge_rating.performance").
 		Joins("JOIN judge_contest jc ON jc.id = judge_rating.contest_id").
 		Where("judge_rating.user_id = ?", profile.ID).
+		Where(visExpr, visArgs...).
 		Order("judge_rating.last_rated DESC").
 		Limit(10).
 		Scan(&recentChanges)

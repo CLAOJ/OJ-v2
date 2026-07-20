@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -28,12 +29,18 @@ func ContestJoin(c *gin.Context) {
 	}
 
 	var ct models.Contest
-	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	// Do not allow joining a contest the user cannot see (organization-private
+	// / hidden). 404 to avoid revealing its existence.
+	if !auth.CanViewContest(c, &ct) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 		return
 	}
 

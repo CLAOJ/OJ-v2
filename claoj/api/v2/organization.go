@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/sanitization"
 	"github.com/CLAOJ/claoj/scoring"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -16,10 +18,26 @@ import (
 // OrganizationList – GET /api/v2/organizations
 func OrganizationList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
-	var orgs []models.Organization
+	search := c.Query("search")
 
-	if err := db.DB.
-		Where("is_unlisted = ?", false).
+	// Only listed organizations are shown (Django parity:
+	// Organization.objects.filter(is_unlisted=False)).
+	countQ := db.DB.Model(&models.Organization{}).Where("is_unlisted = ?", false)
+	listQ := db.DB.Model(&models.Organization{}).Where("is_unlisted = ?", false)
+	if search != "" {
+		like := "%" + search + "%"
+		countQ = countQ.Where("name LIKE ? OR short_name LIKE ?", like, like)
+		listQ = listQ.Where("name LIKE ? OR short_name LIKE ?", like, like)
+	}
+
+	var total int64
+	if err := countQ.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var orgs []models.Organization
+	if err := listQ.
 		Order("name ASC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
@@ -33,24 +51,72 @@ func OrganizationList(c *gin.Context) {
 		Name        string  `json:"name"`
 		Slug        string  `json:"slug"`
 		ShortName   string  `json:"short_name"`
+		About       string  `json:"about"`
 		IsOpen      bool    `json:"is_open"`
+		IsUnlisted  bool    `json:"is_unlisted"`
 		MemberCount int     `json:"member_count"`
 		PP          float64 `json:"performance_points"`
 	}
 	items := make([]Item, len(orgs))
 	for i, o := range orgs {
-		items[i] = Item{o.ID, o.Name, o.Slug, o.ShortName, o.IsOpen, o.MemberCount, o.PerformancePoints}
+		items[i] = Item{o.ID, o.Name, o.Slug, o.ShortName, o.About, o.IsOpen, o.IsUnlisted, o.MemberCount, o.PerformancePoints}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
 // OrganizationDetail – GET /api/v2/organization/:id
 func OrganizationDetail(c *gin.Context) {
 	id := c.Param("id")
 	var org models.Organization
-	if err := db.DB.First(&org, id).Error; err != nil {
+	if err := db.DB.
+		Preload("Members.User").
+		Preload("Admins.User").
+		First(&org, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("organization not found"))
 		return
+	}
+
+	// Members who are also admins are labelled with the "admin" role.
+	adminIDs := make(map[uint]bool, len(org.Admins))
+	for _, a := range org.Admins {
+		adminIDs[a.ID] = true
+	}
+
+	type Member struct {
+		ID          uint   `json:"id"`
+		Username    string `json:"username"`
+		DisplayName string `json:"display_name"`
+		Role        string `json:"role"`
+		JoinedAt    string `json:"joined_at"`
+	}
+	toMember := func(p models.Profile) Member {
+		role := "member"
+		if adminIDs[p.ID] {
+			role = "admin"
+		}
+		return Member{
+			ID:          p.ID,
+			Username:    p.User.Username,
+			DisplayName: p.UsernameDisplayOverride,
+			Role:        role,
+			// judge_profile_organizations has no join timestamp; left empty.
+			JoinedAt: "",
+		}
+	}
+	members := make([]Member, len(org.Members))
+	for i, m := range org.Members {
+		members[i] = toMember(m)
+	}
+	admins := make([]Member, len(org.Admins))
+	for i, a := range org.Admins {
+		admins[i] = toMember(a)
+	}
+
+	// The requesting user's own profile id, so the client can tell whether the
+	// viewer is one of this organization's admins. 0 for anonymous requests.
+	viewerProfileID := uint(0)
+	if pid, ok := auth.CurrentProfileID(c); ok {
+		viewerProfileID = pid
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -60,10 +126,83 @@ func OrganizationDetail(c *gin.Context) {
 		"short_name":         org.ShortName,
 		"about":              org.About,
 		"is_open":            org.IsOpen,
+		"is_unlisted":        org.IsUnlisted,
 		"member_count":       org.MemberCount,
 		"performance_points": org.PerformancePoints,
 		"creation_date":      org.CreationDate,
+		"user_id":            viewerProfileID,
+		"members":            members,
+		"admins":             admins,
 	})
+}
+
+// UpdateOrganization – PATCH /api/v2/organization/:id
+// Lets an organization's own administrators edit its settings (distinct from
+// the site-admin endpoint at /admin/organization/:id).
+func UpdateOrganization(c *gin.Context) {
+	id := c.Param("id")
+	_, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	var org models.Organization
+	if err := db.DB.First(&org, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		return
+	}
+
+	if !isOrgAdmin(db.DB, org.ID, profile.ID) {
+		c.JSON(http.StatusForbidden, apiError("access denied: not an organization administrator"))
+		return
+	}
+
+	var req struct {
+		Name       *string `json:"name"`
+		ShortName  *string `json:"short_name"`
+		About      *string `json:"about"`
+		IsOpen     *bool   `json:"is_open"`
+		IsUnlisted *bool   `json:"is_unlisted"`
+		Slots      *int    `json:"slots"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	updates := map[string]any{}
+	if req.Name != nil {
+		updates["name"] = sanitization.SanitizeTitle(*req.Name)
+	}
+	if req.ShortName != nil {
+		updates["short_name"] = sanitization.SanitizeTitle(*req.ShortName)
+	}
+	if req.About != nil {
+		updates["about"] = sanitization.SanitizeBlogContent(*req.About)
+	}
+	if req.IsOpen != nil {
+		updates["is_open"] = *req.IsOpen
+	}
+	if req.IsUnlisted != nil {
+		updates["is_unlisted"] = *req.IsUnlisted
+	}
+	if req.Slots != nil {
+		// A zero (or negative) slot count means "unlimited" (NULL).
+		if *req.Slots > 0 {
+			updates["slots"] = *req.Slots
+		} else {
+			updates["slots"] = gorm.Expr("NULL")
+		}
+	}
+
+	if len(updates) > 0 {
+		if err := db.DB.Model(&org).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "organization updated"})
 }
 
 // JoinOrganization – POST /api/v2/organization/:id/join

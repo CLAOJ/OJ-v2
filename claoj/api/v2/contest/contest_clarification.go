@@ -20,6 +20,12 @@ func ContestClarificationList(c *gin.Context) {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}
+	// Do not expose clarifications of contests the user may not see
+	// (organization-private / hidden contests).
+	if !auth.CanViewContest(c, &contest) {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
 
 	var clarifications []models.ContestClarification
 	if err := db.DB.
@@ -69,7 +75,11 @@ func ContestClarificationCreate(c *gin.Context) {
 	contestKey := c.Param("key")
 
 	var contest models.Contest
-	if err := db.DB.Where("`key` = ? AND is_visible = ?", contestKey, true).First(&contest).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+	if !auth.CanViewContest(c, &contest) {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
 		return
 	}

@@ -25,6 +25,7 @@ func setupPermsDB(t *testing.T) {
 		&models.AuthPermission{}, &models.AuthUserGroup{},
 		&models.AuthGroupPermission{}, &models.AuthUserPermission{},
 		&models.Profile{}, &models.Problem{}, &models.Contest{}, &models.Solution{},
+		&models.Organization{},
 	))
 	db.DB = database
 }

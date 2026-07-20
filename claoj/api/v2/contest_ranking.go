@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/contest_format"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -20,12 +21,18 @@ func ContestRanking(c *gin.Context) {
 	key := c.Param("key")
 
 	var ct models.Contest
-	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	// Restrict scoreboards to contests the user may see (organization-private
+	// contests must not leak via rankings).
+	if !auth.CanViewContest(c, &ct) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 		return
 	}
 
@@ -158,12 +165,18 @@ func ContestRankingPDF(c *gin.Context) {
 	key := c.Param("key")
 
 	var ct models.Contest
-	if err := db.DB.Where("`key` = ? AND is_visible = ?", key, true).First(&ct).Error; err != nil {
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	// Restrict scoreboards to contests the user may see (organization-private
+	// contests must not leak via rankings).
+	if !auth.CanViewContest(c, &ct) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 		return
 	}
 

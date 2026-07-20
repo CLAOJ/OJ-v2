@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -17,12 +18,19 @@ func ProblemClarificationList(c *gin.Context) {
 
 	// Get problem ID
 	var problem models.Problem
-	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
+		Where("code = ?", code).First(&problem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, apiError("problem not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	// Do not expose clarifications of a problem the user may not see
+	// (organization-private / hidden problems).
+	if !auth.CanViewProblem(c, &problem) {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
 		return
 	}
 

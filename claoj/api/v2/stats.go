@@ -107,14 +107,18 @@ func OverallStats(c *gin.Context) {
 	// Count users
 	db.DB.Model(&models.Profile{}).Count(&stats.TotalUsers)
 
-	// Count problems
-	db.DB.Model(&models.Problem{}).Where("is_public = ?", true).Count(&stats.TotalProblems)
+	// Count problems (public ones only — excludes organization-private)
+	db.DB.Model(&models.Problem{}).
+		Where("is_public = ? AND is_organization_private = ?", true, false).
+		Count(&stats.TotalProblems)
 
 	// Count submissions
 	db.DB.Model(&models.Submission{}).Count(&stats.TotalSubmissions)
 
-	// Count contests
-	db.DB.Model(&models.Contest{}).Where("is_visible = ?", true).Count(&stats.TotalContests)
+	// Count contests (public ones only — mirrors the public problem count)
+	db.DB.Model(&models.Contest{}).
+		Where("is_visible = ? AND is_organization_private = ? AND is_private = ?", true, false, false).
+		Count(&stats.TotalContests)
 
 	// Count organizations
 	db.DB.Model(&models.Organization{}).Where("is_unlisted = ?", false).Count(&stats.TotalOrganizations)
@@ -186,7 +190,7 @@ func ProblemStatsList(c *gin.Context) {
 		       SUM(CASE WHEN s.result = 'AC' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as ac_rate
 		FROM judge_problem p
 		LEFT JOIN judge_submission s ON p.id = s.problem_id
-		WHERE p.is_public = true
+		WHERE p.is_public = true AND p.is_organization_private = false
 		GROUP BY p.id, p.code, p.name, p.points
 		ORDER BY submissions DESC
 		LIMIT 100
@@ -278,7 +282,7 @@ func ContestStatsList(c *gin.Context) {
 		FROM judge_contest c
 		LEFT JOIN judge_contestparticipation cp ON c.id = cp.contest_id
 		LEFT JOIN judge_contestsubmission cs ON cs.participation_id = cp.id
-		WHERE c.is_visible = true
+		WHERE c.is_visible = true AND c.is_organization_private = false AND c.is_private = false
 		GROUP BY c.id, c.key, c.name, c.start_time, c.end_time
 		ORDER BY c.start_time DESC
 		LIMIT 50

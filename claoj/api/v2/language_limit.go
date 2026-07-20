@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -168,7 +169,13 @@ func ProblemLanguageLimits(c *gin.Context) {
 	code := c.Param("code")
 
 	var problem models.Problem
-	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
+		Where("code = ?", code).First(&problem).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
+		return
+	}
+	// Do not expose configuration of a problem the user may not see.
+	if !auth.CanViewProblem(c, &problem) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
 		return
 	}

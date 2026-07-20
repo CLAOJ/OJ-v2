@@ -302,7 +302,7 @@ func TestSubmissionFlow_SubmitSolution_PrivateProblem(t *testing.T) {
 	})
 
 	assert.Equal(t, http.StatusForbidden, resp.Code)
-	assert.Equal(t, "problem is not public", resp.JSONBody["error"])
+	assert.Equal(t, "you do not have access to this problem", resp.JSONBody["error"])
 }
 
 // TestSubmissionFlow_ViewSubmissionResults tests viewing submission results

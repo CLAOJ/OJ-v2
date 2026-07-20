@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/jobs"
 	"github.com/CLAOJ/claoj/models"
@@ -48,9 +49,10 @@ func Submit(c *gin.Context) {
 		return
 	}
 
-	// 1. Fetch Problem
+	// 1. Fetch Problem (editor/tester associations loaded for the access check)
 	var problem models.Problem
-	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
+		Where("code = ?", code).First(&problem).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
 			return
@@ -59,8 +61,11 @@ func Submit(c *gin.Context) {
 		return
 	}
 
-	if !problem.IsPublic {
-		c.JSON(http.StatusForbidden, gin.H{"error": "problem is not public"})
+	// Only allow submitting to a problem the user may access (Django parity:
+	// Problem.is_accessible_by). This blocks organization-private problems for
+	// non-members, not just non-public ones.
+	if !auth.CanViewProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "you do not have access to this problem"})
 		return
 	}
 

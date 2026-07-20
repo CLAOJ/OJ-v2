@@ -126,7 +126,8 @@ func SitemapProblems(c *gin.Context) {
 	baseURL := getBaseURL(c)
 
 	var problems []models.Problem
-	if err := db.DB.Where("is_public = ?", true).
+	// Sitemaps are served to anonymous crawlers: fully public problems only.
+	if err := db.DB.Where("is_public = ? AND is_organization_private = ?", true, false).
 		Select("code, is_manually_managed").
 		Find(&problems).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -190,7 +191,9 @@ func SitemapContests(c *gin.Context) {
 	baseURL := getBaseURL(c)
 
 	var contests []models.Contest
-	if err := db.DB.Where("is_visible = ?", true).
+	// Sitemaps are served to anonymous crawlers, so only include fully public
+	// contests (never organization-private or private ones).
+	if err := db.DB.Where("is_visible = ? AND is_organization_private = ? AND is_private = ?", true, false, false).
 		Select("`key`").
 		Find(&contests).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

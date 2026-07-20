@@ -54,8 +54,8 @@ export default function OrganizationManagePage() {
     });
 
     const kickMutation = useMutation({
-        mutationFn: async (userId: number) => {
-            const res = await api.post(`/organization/${id}/kick`, { user_id: userId });
+        mutationFn: async (username: string) => {
+            const res = await api.post(`/organization/${id}/kick`, { username });
             return res.data;
         },
         onSuccess: () => {
@@ -75,7 +75,7 @@ export default function OrganizationManagePage() {
 
     const handleKick = (member: OrganizationMember) => {
         if (confirm(`Are you sure you want to kick ${member.username} from the organization?`)) {
-            kickMutation.mutate(member.id);
+            kickMutation.mutate(member.username);
         }
     };
 

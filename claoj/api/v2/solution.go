@@ -327,9 +327,15 @@ func AdminSolutionDelete(c *gin.Context) {
 func ProblemSolution(c *gin.Context) {
 	code := c.Param("code")
 
-	// Get problem (Authors/Curators preloaded for the access helper)
+	// Get problem (Authors/Curators/Testers preloaded for the access helper)
 	var problem models.Problem
-	if err := db.DB.Preload("Authors").Preload("Curators").Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").Where("code = ?", code).First(&problem).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	// Must be able to view the problem to view its editorial (blocks
+	// organization-private problems for non-members).
+	if !auth.CanViewProblem(c, &problem) {
 		c.JSON(http.StatusNotFound, apiError("problem not found"))
 		return
 	}
@@ -391,8 +397,13 @@ func ProblemSolutionExists(c *gin.Context) {
 
 	// Get problem
 	var problem models.Problem
-	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").Where("code = ?", code).First(&problem).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"exists": false})
+		return
+	}
+	// Do not reveal editorial existence for a problem the user cannot see.
+	if !auth.CanViewProblem(c, &problem) {
+		c.JSON(http.StatusOK, gin.H{"exists": false})
 		return
 	}
 

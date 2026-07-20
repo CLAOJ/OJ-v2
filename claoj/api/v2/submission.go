@@ -22,12 +22,15 @@ func SubmissionList(c *gin.Context) {
 	resultFilter := c.Query("result")
 	langFilter := c.Query("language")
 
+	// Only expose submissions to problems the requesting user may see, so
+	// organization-private problems do not leak via the submission list.
+	visExpr, visArgs := auth.VisibleProblemFilterFor(c, "pr")
 	q := db.DB.Model(&models.Submission{}).
 		Joins("JOIN judge_profile jp ON jp.id = judge_submission.user_id").
 		Joins("JOIN auth_user au ON au.id = jp.user_id").
 		Joins("JOIN judge_problem pr ON pr.id = judge_submission.problem_id").
 		Joins("JOIN judge_language l ON l.id = judge_submission.language_id").
-		Where("pr.is_public = ?", true).
+		Where(visExpr, visArgs...).
 		Order("judge_submission.date DESC")
 
 	if userFilter != "" {

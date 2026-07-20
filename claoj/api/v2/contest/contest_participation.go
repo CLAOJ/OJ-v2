@@ -16,11 +16,14 @@ func ParticipationList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	contestKey := c.Query("contest")
 
+	// Only expose participations of contests the requesting user may see, so
+	// organization-private contests do not leak via their participant lists.
+	visExpr, visArgs := auth.VisibleContestFilter(c)
 	q := db.DB.
 		Joins("JOIN judge_contest ON judge_contest.id = judge_contestparticipation.contest_id").
 		Joins("JOIN judge_profile ON judge_profile.id = judge_contestparticipation.user_id").
 		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
-		Where("judge_contest.is_visible = ?", true).
+		Where(visExpr, visArgs...).
 		Where("judge_contestparticipation.virtual = 0"). // live participants only
 		Select("judge_contestparticipation.*, judge_contest.`key` as contest_key, auth_user.username").
 		Order("judge_contestparticipation.score DESC").

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -61,9 +62,12 @@ func ContestCalendar(c *gin.Context) {
 	// Get contests that start or end within this month
 	var contests []models.Contest
 
-	// Use raw SQL to handle reserved word 'key'
+	// Use raw SQL to handle reserved word 'key'. Restrict to contests the
+	// requesting user may see so organization-private contests do not appear on
+	// everyone's calendar.
+	visExpr, visArgs := auth.VisibleContestFilter(c)
 	sql := `SELECT * FROM judge_contest
-		WHERE is_visible = ?
+		WHERE ` + visExpr + `
 		AND (
 			(start_time >= ? AND start_time <= ?) OR
 			(end_time >= ? AND end_time <= ?) OR
@@ -71,12 +75,12 @@ func ContestCalendar(c *gin.Context) {
 		)
 		ORDER BY start_time ASC`
 
-	args := []interface{}{
-		true,
+	args := append([]any{}, visArgs...)
+	args = append(args,
 		firstOfMonth, lastOfMonth, // contests starting in month
 		firstOfMonth, lastOfMonth, // contests ending in month
 		firstOfMonth, lastOfMonth, // contests spanning entire month
-	}
+	)
 
 	if err := db.DB.Raw(sql, args...).Scan(&contests).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

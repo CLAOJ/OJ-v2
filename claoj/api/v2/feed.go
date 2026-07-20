@@ -84,9 +84,11 @@ func ProblemFeedRSS(c *gin.Context) {
 	}
 
 	var problems []models.Problem
+	// Public feed for anonymous crawlers: only fully public problems (never
+	// organization-private ones).
 	if err := db.DB.
 		Preload("Group").
-		Where("is_public = ?", true).
+		Where("is_public = ? AND is_organization_private = ?", true, false).
 		Order("date DESC").
 		Limit(limit).
 		Find(&problems).Error; err != nil {
@@ -134,9 +136,11 @@ func ProblemFeedAtom(c *gin.Context) {
 	}
 
 	var problems []models.Problem
+	// Public feed for anonymous crawlers: only fully public problems (never
+	// organization-private ones).
 	if err := db.DB.
 		Preload("Group").
-		Where("is_public = ?", true).
+		Where("is_public = ? AND is_organization_private = ?", true, false).
 		Order("date DESC").
 		Limit(limit).
 		Find(&problems).Error; err != nil {

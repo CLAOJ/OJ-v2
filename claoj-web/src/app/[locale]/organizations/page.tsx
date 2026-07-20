@@ -31,12 +31,12 @@ export default function OrganizationsListPage() {
                 page_size: '50',
                 search,
             });
-            const res = await api.get<{ items: Organization[]; total: number }>(`/organizations?${params.toString()}`);
+            const res = await api.get<{ data: Organization[]; total: number }>(`/organizations?${params.toString()}`);
             return res.data;
         }
     });
 
-    const organizations = data?.items || [];
+    const organizations = data?.data || [];
     const total = data?.total || 0;
 
     return (
