@@ -35,6 +35,16 @@ import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import Comments from '@/components/common/Comments';
 
+// The API returns memory_limit in kilobytes (DMOJ convention). Render it in MB
+// when it is at least 1 MB, otherwise keep KB. Previously the raw KB value was
+// printed with an "MB" suffix, so 512 MB showed as "524288MB".
+function formatMemoryLimit(kb?: number | null): string {
+    if (kb == null) return '—';
+    if (kb < 1024) return `${kb} KB`;
+    const mb = kb / 1024;
+    return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
+}
+
 export default function ProblemPageContent({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
     const searchParams = useSearchParams();
@@ -236,7 +246,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                                 <HardDrive size={14} className="text-emerald-500" />
                                 <span>Memory Limit</span>
                             </div>
-                            <span className="text-sm font-black">{problem.memory_limit}MB</span>
+                            <span className="text-sm font-black">{formatMemoryLimit(problem.memory_limit)}</span>
                         </div>
                     </div>
 

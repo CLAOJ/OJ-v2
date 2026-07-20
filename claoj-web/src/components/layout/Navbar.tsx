@@ -71,16 +71,20 @@ export default function Navbar() {
                                 </Link>
                             )}
 
-                            {/* Language Flags */}
-                            <LanguageSwitcher />
+                            {/* Language Flags (moved into the drawer on mobile) */}
+                            <div className="hidden md:block">
+                                <LanguageSwitcher />
+                            </div>
 
                             {/* Theme Toggle */}
                             <div className="hidden md:block">
                                 <ThemeToggle />
                             </div>
 
-                            {/* WebSocket Status */}
-                            <WebSocketStatusIndicator />
+                            {/* WebSocket Status (moved into the drawer on mobile) */}
+                            <div className="hidden md:block">
+                                <WebSocketStatusIndicator />
+                            </div>
 
                             {/* Notification Bell */}
                             {user && <NotificationBell />}
@@ -103,7 +107,7 @@ export default function Navbar() {
                                     />
                                 </>
                             ) : (
-                                <div className="flex items-center gap-2">
+                                <div className="hidden md:flex items-center gap-2">
                                     <button
                                         onClick={handleLoginRedirect}
                                         className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded hover:bg-accent/10 transition-colors"

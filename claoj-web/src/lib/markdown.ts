@@ -9,6 +9,10 @@
  * strikethrough — so without this step every inline formula renders as
  * struck-through raw LaTeX.
  *
+ * It also repairs two other DMOJ-isms that remark renders wrong: ATX headings
+ * written without the space CommonMark requires (`##Input` -> `## Input`) and
+ * literal `<br>` / `</br>` tags (which render as raw text without rehype-raw).
+ *
  * This rewrites inline `~...~` to `$...$`, leaves `$$...$$` display math and
  * `~~strikethrough~~` alone, and never touches text inside inline code spans
  * or fenced code blocks.
@@ -22,8 +26,26 @@ export function normalizeDmojMarkdown(content: string): string {
 
     return content
         .split(codePattern)
-        .map((segment, i) => (i % 2 === 1 ? segment : convertInlineMath(convertUserReferences(segment))))
+        .map((segment, i) =>
+            i % 2 === 1
+                ? segment
+                : convertInlineMath(convertUserReferences(convertLineBreaks(convertHeadings(segment)))))
         .join('');
+}
+
+// `##Heading` -> `## Heading`. DMOJ statements often omit the space CommonMark
+// requires after the leading 1-6 `#`s, so remark renders the line as literal
+// text. Only fires at the start of a line (multiline `^`) when a non-space,
+// non-`#` character follows, so mid-line hashes (`#5`) are left alone.
+function convertHeadings(text: string): string {
+    return text.replace(/^(#{1,6})(?=[^\s#])/gm, '$1 ');
+}
+
+// `<br>`, `<br/>`, `<br />`, and the malformed `</br>` -> a markdown hard line
+// break (two trailing spaces + newline). These render as literal text when
+// rehype-raw is disabled, so normalizing keeps the intended break in both modes.
+function convertLineBreaks(text: string): string {
+    return text.replace(/<\/?br\s*\/?>/gi, '  \n');
 }
 
 // `~latex~` -> `$latex$`. The lookarounds keep double-tilde runs (`~~strike~~`)

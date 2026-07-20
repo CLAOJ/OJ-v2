@@ -9,23 +9,23 @@ export default function Footer() {
     const currentYear = new Date().getFullYear();
     const t = useTranslations('Footer');
 
-    // QR Popup state
-    const [showQr, setShowQr] = useState(false);
-    const [minimized, setMinimized] = useState(false);
+    // Donation QR widget. Collapsed by default to a small floating button so it
+    // never covers page content; expands to the QR panel on tap. `dismissed`
+    // starts true to avoid a flash before the localStorage check runs.
+    const [dismissed, setDismissed] = useState(true);
+    const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
-        // Check if popup should be shown (based on localStorage)
         const hideUntil = localStorage.getItem('qrWidgetClosed');
         const now = new Date().getTime();
-        const DAYS_TO_WAIT = 1;
-
         if (!hideUntil || now >= parseInt(hideUntil)) {
-            setShowQr(true);
+            setDismissed(false);
         }
     }, []);
 
     const handleCloseQr = () => {
-        setShowQr(false);
+        setDismissed(true);
+        setExpanded(false);
         const DAYS_TO_WAIT = 1;
         const expiryTime = new Date().getTime() + (DAYS_TO_WAIT * 24 * 60 * 60 * 1000);
         localStorage.setItem('qrWidgetClosed', expiryTime.toString());
@@ -86,27 +86,37 @@ export default function Footer() {
                 </div>
             </footer>
 
-            {/* QR Popup Widget - Original CLAOJ Feature */}
-            {showQr && (
-                <div
-                    className={`fixed bottom-5 right-5 bg-background border border-border rounded-lg shadow-lg z-50 transition-all duration-300 ${minimized ? 'w-[120px]' : 'w-[160px]'}`}
-                    style={{ display: showQr ? 'block' : 'none' }}
+            {/* Donation QR widget — collapsed button by default, expands on tap */}
+            {!dismissed && !expanded && (
+                <button
+                    onClick={() => setExpanded(true)}
+                    aria-label={t('supportTitle')}
+                    title={t('supportTitle')}
+                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
                 >
+                    <Heart size={20} className="fill-white" />
+                </button>
+            )}
+
+            {!dismissed && expanded && (
+                <div className="fixed bottom-5 right-5 z-40 w-[180px] rounded-lg border border-border bg-background shadow-xl">
                     {/* Header */}
-                    <div className="bg-muted/50 px-3 py-2 flex items-center justify-between border-b border-border">
-                        <span className="text-xs font-semibold text-foreground">Hỗ Trợ CLAOJ</span>
+                    <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
+                        <span className="text-xs font-semibold text-foreground">{t('supportTitle')}</span>
                         <div className="flex items-center gap-1">
                             <button
-                                onClick={() => setMinimized(!minimized)}
-                                className="text-muted-foreground hover:text-foreground text-sm"
-                                title={minimized ? 'Expand' : 'Minimize'}
+                                onClick={() => setExpanded(false)}
+                                className="px-1 text-sm text-muted-foreground hover:text-foreground"
+                                title={t('supportMinimize')}
+                                aria-label={t('supportMinimize')}
                             >
-                                {minimized ? '+' : '−'}
+                                −
                             </button>
                             <button
                                 onClick={handleCloseQr}
-                                className="text-muted-foreground hover:text-foreground text-sm"
-                                title="Close"
+                                className="px-1 text-sm text-muted-foreground hover:text-foreground"
+                                title={t('supportClose')}
+                                aria-label={t('supportClose')}
                             >
                                 ×
                             </button>
@@ -114,21 +124,19 @@ export default function Footer() {
                     </div>
 
                     {/* Body with QR Code */}
-                    {!minimized && (
-                        <div className="p-3 text-center">
-                            <a href="https://quy.momo.vn/v2/MsvmMoip7r?e14fe" target="_blank" rel="noreferrer">
-                                <img
-                                    src="/static/qr-code.jpg"
-                                    alt="QR Code"
-                                    className="w-full h-auto rounded"
-                                    onError={(e) => {
-                                        // Fallback if QR image not found
-                                        (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="none" stroke="%23333" stroke-width="2" width="100" height="100"/><rect fill="%23333" x="10" y="10" width="30" height="30"/><rect fill="%23333" x="60" y="10" width="30" height="30"/><rect fill="%23333" x="10" y="60" width="30" height="30"/><rect fill="%23333" x="15" y="15" width="20" height="20"/><rect fill="%23333" x="65" y="15" width="20" height="20"/><rect fill="%23333" x="15" y="65" width="20" height="20"/></svg>';
-                                    }}
-                                />
-                            </a>
-                        </div>
-                    )}
+                    <div className="p-3 text-center">
+                        <a href="https://quy.momo.vn/v2/MsvmMoip7r?e14fe" target="_blank" rel="noreferrer">
+                            <img
+                                src="/static/qr-code.jpg"
+                                alt={t('supportTitle')}
+                                className="h-auto w-full rounded"
+                                onError={(e) => {
+                                    // Fallback if QR image not found
+                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="none" stroke="%23333" stroke-width="2" width="100" height="100"/><rect fill="%23333" x="10" y="10" width="30" height="30"/><rect fill="%23333" x="60" y="10" width="30" height="30"/><rect fill="%23333" x="10" y="60" width="30" height="30"/><rect fill="%23333" x="15" y="15" width="20" height="20"/><rect fill="%23333" x="65" y="15" width="20" height="20"/><rect fill="%23333" x="15" y="65" width="20" height="20"/></svg>';
+                                }}
+                            />
+                        </a>
+                    </div>
                 </div>
             )}
         </>

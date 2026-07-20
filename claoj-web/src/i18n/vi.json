@@ -90,7 +90,10 @@
     "aboutUs": "Về chúng tôi",
     "donate": "Ủng hộ",
     "github": "GitHub",
-    "copyright": "Nền tảng CLAOJ. Được xây dựng với"
+    "copyright": "Nền tảng CLAOJ. Được xây dựng với",
+    "supportTitle": "Hỗ Trợ CLAOJ",
+    "supportMinimize": "Thu nhỏ",
+    "supportClose": "Đóng"
   },
   "Home": {
     "welcome": "Chào mừng đến với CLAOJ",

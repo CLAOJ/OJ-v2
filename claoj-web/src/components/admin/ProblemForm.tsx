@@ -63,7 +63,8 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
             partial: initialData?.partial ?? true,
             is_public: initialData?.is_public ?? false,
             time_limit: initialData?.time_limit || 1,
-            memory_limit: initialData?.memory_limit || 256,
+            // memory_limit is stored in KB but presented/edited in MB (see submitInMbToKb).
+            memory_limit: initialData?.memory_limit ? Math.round(initialData.memory_limit / 1024) : 256,
             is_manually_managed: initialData?.is_manually_managed ?? false,
             pdf_url: initialData?.pdf_url || '',
         }
@@ -121,8 +122,12 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
         }
     };
 
+    // The form field is in MB; storage/judge expect KB. Convert on the way out.
+    const submitInMbToKb = (data: ProblemFormData) =>
+        onSubmit({ ...data, memory_limit: Math.round((Number(data.memory_limit) || 0) * 1024) });
+
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(submitInMbToKb)} className="space-y-6">
             <BasicInfoSection
                 formData={{
                     code: watch('code'),

@@ -61,4 +61,47 @@ describe('normalizeDmojMarkdown', () => {
     it('handles user references and math together', () => {
         expect(normalizeDmojMarkdown('[user:bob] solved ~N~ problems')).toBe('[bob](/user/bob) solved $N$ problems');
     });
+
+    // DMOJ content frequently omits the space CommonMark requires after the
+    // leading '#'s of an ATX heading (e.g. "##Input"). v1's markdown processor
+    // rendered these as headings; remark does not, so we insert the space.
+    it('inserts the missing space after a level-2 ATX heading', () => {
+        expect(normalizeDmojMarkdown('##Đầu vào:')).toBe('## Đầu vào:');
+    });
+
+    it('inserts the missing space after a level-1 ATX heading', () => {
+        expect(normalizeDmojMarkdown('#Title')).toBe('# Title');
+    });
+
+    it('leaves already-spaced headings untouched', () => {
+        expect(normalizeDmojMarkdown('### Already spaced')).toBe('### Already spaced');
+    });
+
+    it('fixes ATX headings across multiple lines', () => {
+        expect(normalizeDmojMarkdown('##Đầu vào:\ntext\n###Ràng buộc:')).toBe('## Đầu vào:\ntext\n### Ràng buộc:');
+    });
+
+    it('does not treat a mid-line hash as a heading', () => {
+        expect(normalizeDmojMarkdown('the value #5 here')).toBe('the value #5 here');
+    });
+
+    it('does not fix headings inside fenced code blocks', () => {
+        const src = '```\n##notheading\n```';
+        expect(normalizeDmojMarkdown(src)).toBe(src);
+    });
+
+    // Legacy DMOJ statements contain literal <br>, <br/>, and the malformed
+    // </br>. Without rehype-raw these render as literal text, so convert them
+    // to a markdown hard line break.
+    it('converts a malformed </br> tag to a hard line break', () => {
+        expect(normalizeDmojMarkdown('line1</br>line2')).toBe('line1  \nline2');
+    });
+
+    it('converts <br> and <br/> variants to a hard line break', () => {
+        expect(normalizeDmojMarkdown('a<br>b<br/>c<br />d')).toBe('a  \nb  \nc  \nd');
+    });
+
+    it('does not convert <br> inside inline code', () => {
+        expect(normalizeDmojMarkdown('`a<br>b`')).toBe('`a<br>b`');
+    });
 });

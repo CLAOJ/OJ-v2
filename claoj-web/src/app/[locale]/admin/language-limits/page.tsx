@@ -121,7 +121,8 @@ export default function LanguageLimitsAdminPage() {
                 problem_id: response.data.problem_id,
                 language_id: response.data.language_id,
                 time_limit: response.data.time_limit,
-                memory_limit: response.data.memory_limit,
+                // Stored in KB; the form edits MB.
+                memory_limit: Math.round(response.data.memory_limit / 1024),
             });
             setEditingLimit(limit);
             setIsEditDialogOpen(true);
@@ -136,7 +137,11 @@ export default function LanguageLimitsAdminPage() {
             return;
         }
         try {
-            await adminLanguageLimitApi.create(formData);
+            // Form is in MB; storage/judge expect KB.
+            await adminLanguageLimitApi.create({
+                ...formData,
+                memory_limit: Math.round((Number(formData.memory_limit) || 0) * 1024),
+            });
             toast.success(t('languageLimits.createSuccess'));
             setIsCreateDialogOpen(false);
             loadLimits();
@@ -151,7 +156,8 @@ export default function LanguageLimitsAdminPage() {
         try {
             const updateData: AdminLanguageLimitUpdateRequest = {
                 time_limit: formData.time_limit,
-                memory_limit: formData.memory_limit,
+                // Form is in MB; storage/judge expect KB.
+                memory_limit: Math.round((Number(formData.memory_limit) || 0) * 1024),
             };
             await adminLanguageLimitApi.update(editingLimit.id, updateData);
             toast.success(t('languageLimits.updateSuccess'));
@@ -244,7 +250,7 @@ export default function LanguageLimitsAdminPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>{limit.time_limit.toFixed(2)}s</TableCell>
-                                    <TableCell>{limit.memory_limit} MB</TableCell>
+                                    <TableCell>{Math.round(limit.memory_limit / 1024)} MB</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button

@@ -163,7 +163,7 @@ export default function ProblemsPageContent() {
                     <div className="pt-6 border-t">
                         <button
                             onClick={launchRandomProblem}
-                            className="w-full h-14 rounded-3xl bg-zinc-900 text-zinc-100 font-black flex items-center justify-center gap-3 group relative overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
+                            className="w-full h-14 rounded-3xl bg-foreground text-background font-black flex items-center justify-center gap-3 group relative overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                             <Gamepad2 size={20} className="relative z-10 text-amber-500" />
@@ -173,7 +173,7 @@ export default function ProblemsPageContent() {
                 </div>
 
                 {/* Hot Problems */}
-                <div className="p-8 rounded-[3rem] bg-zinc-900 border border-zinc-800 shadow-xl space-y-8 overflow-hidden relative">
+                <div className="p-8 rounded-[3rem] bg-card border border-border shadow-xl space-y-8 overflow-hidden relative">
                     <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none rotate-12">
                         <Flame size={120} className="text-rose-500" />
                     </div>
@@ -188,14 +188,14 @@ export default function ProblemsPageContent() {
                             <Link
                                 key={hp.code}
                                 href={`/problems/${hp.code}`}
-                                className="block p-4 rounded-3xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800 hover:border-rose-500/30 transition-all group"
+                                className="block p-4 rounded-3xl bg-muted/50 border border-border hover:bg-muted hover:border-rose-500/30 transition-all group"
                             >
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[10px] font-black text-rose-500/70 uppercase tracking-widest">{hp.code}</span>
-                                    <span className="text-sm font-black text-zinc-100 group-hover:text-rose-400 transition-colors truncate">{hp.name}</span>
+                                    <span className="text-sm font-black text-foreground group-hover:text-rose-400 transition-colors truncate">{hp.name}</span>
                                     <div className="flex items-center justify-between mt-1">
-                                        <span className="text-[10px] font-bold text-zinc-500">{hp.user_count} Users Solved</span>
-                                        <span className="text-[10px] font-black text-zinc-400">{Math.round(hp.ac_rate)}% AC</span>
+                                        <span className="text-[10px] font-bold text-muted-foreground">{hp.user_count} Users Solved</span>
+                                        <span className="text-[10px] font-black text-muted-foreground">{Math.round(hp.ac_rate)}% AC</span>
                                     </div>
                                 </div>
                             </Link>

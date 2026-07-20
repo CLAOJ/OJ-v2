@@ -90,7 +90,10 @@
     "aboutUs": "About Us",
     "donate": "Donate",
     "github": "GitHub",
-    "copyright": "CLAOJ Platform. Built with"
+    "copyright": "CLAOJ Platform. Built with",
+    "supportTitle": "Support CLAOJ",
+    "supportMinimize": "Minimize",
+    "supportClose": "Close"
   },
   "Home": {
     "welcome": "Welcome to CLAOJ",

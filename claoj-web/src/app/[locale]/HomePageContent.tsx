@@ -272,16 +272,16 @@ export default function HomePageContent() {
                                         index === 0 ? "" : ""
                                     )}
                                 >
-                                    <div className="p-6">
-                                        <div className="flex gap-4">
+                                    <div className="p-4 sm:p-5">
+                                        <div className="flex gap-3">
                                             {/* Vote Section */}
-                                            <div className="flex flex-col items-center gap-1">
+                                            <div className="flex flex-col items-center gap-0.5 pt-0.5">
                                                 <button className="text-gray-400 hover:text-primary transition-colors">
-                                                    <ThumbsUp size={20} />
+                                                    <ThumbsUp size={18} />
                                                 </button>
                                                 <span className="text-sm font-bold text-gray-400">{post.score || 0}</span>
                                                 <button className="text-gray-400 hover:text-red-400 transition-colors">
-                                                    <ThumbsDown size={20} />
+                                                    <ThumbsDown size={18} />
                                                 </button>
                                             </div>
 
@@ -312,17 +312,19 @@ export default function HomePageContent() {
                                                     </span>
                                                 </div>
 
-                                                <div className={cn(
-                                                    "prose dark:prose-invert max-w-none text-sm text-muted-foreground",
-                                                    index > 0 ? "line-clamp-3" : ""
-                                                )}>
-                                                    <ReactMarkdown
-                                                        remarkPlugins={[remarkGfm]}
-                                                        rehypePlugins={[rehypeRaw]}
-                                                    >
-                                                        {post.summary || post.content}
-                                                    </ReactMarkdown>
-                                                </div>
+                                                {(post.summary || post.content) && (
+                                                    <div className={cn(
+                                                        "prose dark:prose-invert max-w-none text-sm text-muted-foreground",
+                                                        index > 0 ? "line-clamp-3" : ""
+                                                    )}>
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
+                                                            rehypePlugins={[rehypeRaw]}
+                                                        >
+                                                            {post.summary || post.content}
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                )}
 
                                                 {index === 0 && (post.summary || (post.content && post.content.length > 200)) && (
                                                     <div className="mt-3">

@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Class-based dark mode. next-themes sets `class="dark"` / `class="light"` on
+   <html> (see ThemeProvider). By default Tailwind v4's `dark:` variant follows
+   the OS `prefers-color-scheme`, which does NOT track the in-app theme toggle —
+   so `dark:` utilities (e.g. `dark:prose-invert`) would flip with the OS instead
+   of the chosen theme. Bind the variant to the `.dark` class so it matches the
+   toggle. (The token system in the `.light` block below is the light override;
+   dark is the `:root` default.) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* CLAOJ Original Theme Colors - Dark Theme */
 /* Based on vars.scss from the original Django project */
 
