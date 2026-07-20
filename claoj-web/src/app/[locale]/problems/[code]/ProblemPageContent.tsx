@@ -3,7 +3,8 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter, Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
-import api, { problemClarificationApi } from '@/lib/api';
+import dynamic from 'next/dynamic';
+import api, { problemClarificationApi, problemPdfApi } from '@/lib/api';
 import { ProblemDetail, ProblemClarification } from '@/types';
 import MathRenderer from '@/components/ui/MathRenderer';
 import CodeEditor from '@/components/ui/CodeEditor';
@@ -44,6 +45,16 @@ function formatMemoryLimit(kb?: number | null): string {
     const mb = kb / 1024;
     return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
 }
+
+// react-pdf touches browser-only APIs — load it client-side only.
+const PdfStatementViewer = dynamic(() => import('@/components/ui/PdfStatementViewer'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex items-center justify-center p-10 bg-card border rounded-3xl shadow-sm">
+            <Loader2 className="animate-spin text-primary" size={28} />
+        </div>
+    ),
+});
 
 export default function ProblemPageContent({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
@@ -200,7 +211,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                             className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none w-full"
                         >
                             <FileText size={18} className="text-red-500 group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold">PDF Statement</span>
+                            <span className="text-sm font-bold">{t('pdfViewer.sidebarLabel')}</span>
                             <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
                         </button>
                     </div>
@@ -291,9 +302,12 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                             </div>
                         </header>
 
-                        <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-3xl p-8 lg:p-10 shadow-sm leading-relaxed">
-                            <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
-                        </div>
+                        {(problem.description?.trim() || !problem.pdf_url) && (
+                            <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-3xl p-8 lg:p-10 shadow-sm leading-relaxed">
+                                <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
+                            </div>
+                        )}
+                        {problem.pdf_url && <PdfStatementViewer code={code} />}
 
                         {/* Authors & Group */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -387,7 +401,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         {/* Modal header */}
                         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                             <a
-                                href={`/api/problem/${code}/pdf`}
+                                href={problemPdfApi.getPdfUrl(code)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:scale-105 transition-all font-bold shadow-lg"
@@ -404,13 +418,9 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                             </button>
                         </div>
 
-                        {/* PDF iframe */}
-                        <div className="w-full h-full bg-white rounded-lg overflow-hidden shadow-2xl">
-                            <iframe
-                                src={`/api/problem/${code}/pdf`}
-                                className="w-full h-full"
-                                title="PDF Statement"
-                            />
+                        {/* PDF viewer */}
+                        <div className="w-full h-full overflow-hidden rounded-lg shadow-2xl">
+                            <PdfStatementViewer code={code} heightClass="h-full" />
                         </div>
                     </div>
                 </div>

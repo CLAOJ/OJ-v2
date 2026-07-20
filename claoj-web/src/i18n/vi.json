@@ -119,6 +119,16 @@
   },
   "Problems": {
     "title": "Bài toán",
+    "pdfViewer": {
+      "sidebarLabel": "Đề bài PDF",
+      "loading": "Đang tải PDF…",
+      "pageCount": "{count} trang",
+      "error": "Không thể tải đề bài PDF.",
+      "download": "Tải xuống",
+      "openNewTab": "Mở trong tab mới",
+      "zoomIn": "Phóng to",
+      "zoomOut": "Thu nhỏ"
+    },
     "search": "Tìm kiếm",
     "category": "Thể loại",
     "points": "Điểm",

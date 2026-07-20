@@ -119,6 +119,16 @@
   },
   "Problems": {
     "title": "Problems",
+    "pdfViewer": {
+      "sidebarLabel": "PDF Statement",
+      "loading": "Loading PDF…",
+      "pageCount": "{count} pages",
+      "error": "The PDF statement could not be loaded.",
+      "download": "Download",
+      "openNewTab": "Open in New Tab",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
+    },
     "search": "Search",
     "category": "Category",
     "points": "Points",
