@@ -49,27 +49,29 @@ func SubmissionList(c *gin.Context) {
 	q = q.Offset((page - 1) * pageSize).Limit(pageSize)
 
 	type Row struct {
-		ID       uint      `json:"id"`
-		Problem  string    `json:"problem"`
-		User     string    `json:"user"`
-		Date     time.Time `json:"date"`
-		Language string    `json:"language"`
-		Status   string    `json:"status"`
-		Result   *string   `json:"result"`
-		Points   *float64  `json:"points"`
-		Time     *float64  `json:"time"`
-		Memory   *float64  `json:"memory"`
+		ID          uint      `json:"id"`
+		Problem     string    `json:"problem"`
+		ProblemName string    `json:"problem_name"`
+		User        string    `json:"user"`
+		Date        time.Time `json:"date"`
+		Language    string    `json:"language"`
+		Status      string    `json:"status"`
+		Result      *string   `json:"result"`
+		Points      *float64  `json:"points"`
+		Time        *float64  `json:"time"`
+		Memory      *float64  `json:"memory"`
 	}
 
 	var rows []struct {
 		models.Submission
 		Username    string
 		ProblemCode string
+		ProblemName string
 		LangKey     string
 	}
 
 	q = q.Select(
-		"judge_submission.*, au.username, pr.code as problem_code, l.key as lang_key",
+		"judge_submission.*, au.username, pr.code as problem_code, pr.name as problem_name, l.key as lang_key",
 	)
 
 	if err := q.Find(&rows).Error; err != nil {
@@ -80,16 +82,17 @@ func SubmissionList(c *gin.Context) {
 	items := make([]Row, len(rows))
 	for i, r := range rows {
 		items[i] = Row{
-			ID:       r.Submission.ID,
-			Problem:  r.ProblemCode,
-			User:     r.Username,
-			Date:     r.Submission.Date,
-			Language: r.LangKey,
-			Status:   r.Submission.Status,
-			Result:   r.Submission.Result,
-			Points:   r.Submission.Points,
-			Time:     r.Submission.Time,
-			Memory:   r.Submission.Memory,
+			ID:          r.Submission.ID,
+			Problem:     r.ProblemCode,
+			ProblemName: r.ProblemName,
+			User:        r.Username,
+			Date:        r.Submission.Date,
+			Language:    r.LangKey,
+			Status:      r.Submission.Status,
+			Result:      r.Submission.Result,
+			Points:      r.Submission.Points,
+			Time:        r.Submission.Time,
+			Memory:      r.Submission.Memory,
 		}
 	}
 	c.JSON(http.StatusOK, apiList(items))

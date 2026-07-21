@@ -203,8 +203,8 @@ export default function SubmissionListPage() {
                                         </td>
                                         <td className="px-6 py-8">
                                             <Link href={`/problem/${s.problem}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
-                                                <span className="font-black text-sm tracking-tight">{s.problem}</span>
-                                                <span className="text-[10px] font-black uppercase text-muted-foreground opacity-40">Problem Code</span>
+                                                <span className="font-black text-sm tracking-tight">{s.problem_name || s.problem}</span>
+                                                <span className="text-[10px] font-mono font-black uppercase text-muted-foreground opacity-40">{s.problem}</span>
                                             </Link>
                                         </td>
                                         <td className="px-6 py-8 text-center">
