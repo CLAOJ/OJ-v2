@@ -12,6 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return {
     title: t('home.title'),
     description: t('home.description'),
+    alternates: { canonical: `${SITE_URL}` },
     openGraph: {
       title: t('home.title'),
       description: t('home.description'),

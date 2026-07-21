@@ -27,9 +27,9 @@ export const metadata: Metadata = {
   },
   description: "Modern, high-performance competitive programming platform.",
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: siteUrl,
-  },
+  // NOTE: no blanket `alternates.canonical` here — a site-wide root canonical
+  // makes every page look like a duplicate of the homepage. Each page sets its
+  // own self-canonical in generateMetadata instead.
 
   // Open Graph
   openGraph: {
