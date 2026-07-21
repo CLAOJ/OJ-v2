@@ -59,6 +59,12 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 	// Migrate all tables needed for integration tests
 	err = database.AutoMigrate(
 		&models.AuthUser{},
+		&models.DjangoContentType{},
+		&models.AuthPermission{},
+		&models.AuthGroup{},
+		&models.AuthGroupPermission{},
+		&models.AuthUserGroup{},
+		&models.AuthUserPermission{},
 		&models.Profile{},
 		&models.Language{},
 		&models.Judge{},

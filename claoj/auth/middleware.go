@@ -128,7 +128,7 @@ func OptionalMiddleware() gin.HandlerFunc {
 	}
 }
 
-// AdminRequiredMiddleware ensures the user is authenticated AND is an admin (is_staff = true)
+// AdminRequiredMiddleware ensures the user is authenticated AND may use the admin surface (is_staff OR is_superuser).
 func AdminRequiredMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// First check if user is authenticated
@@ -140,12 +140,14 @@ func AdminRequiredMiddleware() gin.HandlerFunc {
 		userID := uid.(uint)
 
 		var user models.AuthUser
-		if err := db.DB.Select("is_staff").First(&user, userID).Error; err != nil {
+		if err := db.DB.Select("id", "is_staff", "is_superuser").First(&user, userID).Error; err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 			return
 		}
 
-		if !user.IsStaff {
+		// v1 parity: is_staff opens the admin surface; a superuser bypasses the
+		// staff requirement entirely (Django ModelBackend semantics).
+		if !user.IsStaff && !user.IsSuperuser {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 			return
 		}

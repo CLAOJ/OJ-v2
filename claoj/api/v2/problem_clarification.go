@@ -119,6 +119,18 @@ func ProblemClarificationDelete(c *gin.Context) {
 		return
 	}
 
+	// v1 parity: only editors of the parent problem may delete its clarifications.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").
+		First(&problem, clarification.ProblemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem"))
+		return
+	}
+
 	if err := db.DB.Delete(&clarification).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return

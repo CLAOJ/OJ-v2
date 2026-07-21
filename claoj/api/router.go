@@ -110,14 +110,14 @@ func NewRouter() *gin.Engine {
 			// Contests
 			admin.GET("/admin/contests", v2.AdminContestList)
 			admin.GET("/admin/contest/:key", v2.AdminContestDetail)
-			admin.POST("/admin/contests", v2.AdminContestCreate)
-			admin.PATCH("/admin/contest/:key", v2.AdminContestUpdate)
-			admin.DELETE("/admin/contest/:key", v2.AdminContestDelete)
-			admin.POST("/admin/contest/:key/lock", v2.AdminContestLock)
-			admin.POST("/admin/contest/:key/clone", v2.AdminContestClone)
+			admin.POST("/admin/contests", auth.RequirePerm("judge.add_contest"), v2.AdminContestCreate)
+			admin.PATCH("/admin/contest/:key", auth.RequireContestEdit(), v2.AdminContestUpdate)
+			admin.DELETE("/admin/contest/:key", auth.RequireContestEdit(), v2.AdminContestDelete)
+			admin.POST("/admin/contest/:key/lock", auth.RequireContestEdit(), v2.AdminContestLock)
+			admin.POST("/admin/contest/:key/clone", auth.RequirePerm("judge.clone_contest"), v2.AdminContestClone)
 			// Contest Participation Disqualify
-			admin.POST("/admin/contest/:key/participation/:id/disqualify", v2.AdminContestParticipationDisqualify)
-			admin.POST("/admin/contest/:key/participation/:id/undisqualify", v2.AdminContestParticipationUndisqualify)
+			admin.POST("/admin/contest/:key/participation/:id/disqualify", auth.RequireContestEdit(), v2.AdminContestParticipationDisqualify)
+			admin.POST("/admin/contest/:key/participation/:id/undisqualify", auth.RequireContestEdit(), v2.AdminContestParticipationUndisqualify)
 
 			// Contest Tags
 			admin.GET("/admin/contest-tags", v2.AdminContestTagList)
@@ -125,34 +125,34 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/contest-tags", v2.AdminContestTagCreate)
 			admin.PATCH("/admin/contest-tag/:id", v2.AdminContestTagUpdate)
 			admin.DELETE("/admin/contest-tag/:id", v2.AdminContestTagDelete)
-			admin.POST("/admin/contest/:key/tags/:tagId", v2.AdminContestAddTag)
-			admin.DELETE("/admin/contest/:key/tags/:tagId", v2.AdminContestRemoveTag)
+			admin.POST("/admin/contest/:key/tags/:tagId", auth.RequireContestEdit(), v2.AdminContestAddTag)
+			admin.DELETE("/admin/contest/:key/tags/:tagId", auth.RequireContestEdit(), v2.AdminContestRemoveTag)
 
 			// Problems
 			admin.GET("/admin/problems", v2.AdminProblemList)
 			admin.GET("/admin/problem/:code", v2.AdminProblemDetail)
-			admin.POST("/admin/problems", v2.AdminProblemCreate)
-			admin.PATCH("/admin/problem/:code", v2.AdminProblemUpdate)
-			admin.DELETE("/admin/problem/:code", v2.AdminProblemDelete)
+			admin.POST("/admin/problems", auth.RequirePerm("judge.add_problem"), v2.AdminProblemCreate)
+			admin.PATCH("/admin/problem/:code", auth.RequireProblemEdit(), v2.AdminProblemUpdate)
+			admin.DELETE("/admin/problem/:code", auth.RequireProblemEdit(), v2.AdminProblemDelete)
 			// Problem Clone
-			admin.POST("/admin/problem/:code/clone", v2.AdminProblemClone)
+			admin.POST("/admin/problem/:code/clone", auth.RequirePerm("judge.clone_problem"), v2.AdminProblemClone)
 			// Problem Clarifications
-			admin.POST("/admin/problem/:code/clarification", v2.ProblemClarificationCreate)
+			admin.POST("/admin/problem/:code/clarification", auth.RequireProblemEdit(), v2.ProblemClarificationCreate)
 			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
 			// Problem Data
-			admin.GET("/admin/problem/:code/data", adminHandlers.AdminProblemData)
-			admin.POST("/admin/problem/:code/data", adminHandlers.AdminProblemDataUpload)
-			admin.DELETE("/admin/problem/:code/data/testcase/:id", adminHandlers.AdminProblemDataDeleteTestCase)
+			admin.GET("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemData)
+			admin.POST("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataUpload)
+			admin.DELETE("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataDeleteTestCase)
 		// Problem PDF
-		admin.POST("/admin/problem/:code/pdf", adminHandlers.AdminProblemPdfUpload)
-		admin.DELETE("/admin/problem/:code/pdf", adminHandlers.AdminProblemPdfDelete)
+		admin.POST("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfUpload)
+		admin.DELETE("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfDelete)
 			// Problem Data - Reorder & File Operations
-			admin.PATCH("/admin/problem/:code/data/reorder", adminHandlers.AdminProblemDataReorder)
-			admin.GET("/admin/problem/:code/data/files", adminHandlers.AdminProblemDataFiles)
-			admin.GET("/admin/problem/:code/data/file/*path", adminHandlers.AdminProblemDataFileContent)
-			admin.DELETE("/admin/problem/:code/data/file/*path", adminHandlers.AdminProblemDataFileDelete)
-			admin.GET("/admin/problem/:code/data/testcase/:id/content", adminHandlers.AdminProblemDataTestCaseContent)
-			admin.PATCH("/admin/problem/:code/data/testcase/:id", adminHandlers.AdminProblemDataTestCaseUpdate)
+			admin.PATCH("/admin/problem/:code/data/reorder", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataReorder)
+			admin.GET("/admin/problem/:code/data/files", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFiles)
+			admin.GET("/admin/problem/:code/data/file/*path", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFileContent)
+			admin.DELETE("/admin/problem/:code/data/file/*path", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFileDelete)
+			admin.GET("/admin/problem/:code/data/testcase/:id/content", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseContent)
+			admin.PATCH("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseUpdate)
 
 			// Solutions
 			admin.GET("/admin/solutions", v2.AdminSolutionList)
@@ -172,9 +172,9 @@ func NewRouter() *gin.Engine {
 
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)
-			admin.POST("/admin/organizations", v2.AdminOrganizationCreate)
-			admin.PATCH("/admin/organization/:id", v2.AdminOrganizationUpdate)
-			admin.DELETE("/admin/organization/:id", v2.AdminOrganizationDelete)
+			admin.POST("/admin/organizations", auth.RequirePerm("judge.add_organization"), v2.AdminOrganizationCreate)
+			admin.PATCH("/admin/organization/:id", auth.RequireOrgEdit(), v2.AdminOrganizationUpdate)
+			admin.DELETE("/admin/organization/:id", auth.RequirePerm("judge.edit_all_organization"), v2.AdminOrganizationDelete)
 
 			// Submissions
 			admin.GET("/admin/submissions", v2.AdminSubmissionList)

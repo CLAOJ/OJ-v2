@@ -78,6 +78,17 @@ func AdminSubmissionRejudge(c *gin.Context) {
 		return
 	}
 
+	// Django parity: rejudging a submission requires being able to rejudge its problem.
+	var sub models.Submission
+	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if !auth.CanRejudge(c, &sub.Problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to rejudge this submission"))
+		return
+	}
+
 	if err := getSubmissionService().Rejudge(submission.RejudgeRequest{
 		SubmissionID: uint(submissionID),
 	}); err != nil {
@@ -105,6 +116,12 @@ func AdminSubmissionAbort(c *gin.Context) {
 	submissionID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		return
+	}
+
+	// Django parity: aborting another user's submission requires judge.abort_any_submission.
+	if !auth.HasPerm(c, "judge.abort_any_submission") {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to abort submissions"))
 		return
 	}
 
@@ -154,6 +171,12 @@ func AdminSubmissionBatchRejudge(c *gin.Context) {
 
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid request body"))
+		return
+	}
+
+	// Django parity: bulk rejudge requires judge.rejudge_submission_lot.
+	if !auth.HasPerm(c, "judge.rejudge_submission_lot") {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to batch-rejudge submissions"))
 		return
 	}
 
