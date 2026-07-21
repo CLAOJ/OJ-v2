@@ -1,4 +1,5 @@
-import { parseLeadingId } from './route';
+import { describe, it, expect } from '@jest/globals';
+import { parseLeadingId } from '@/utils/route';
 
 describe('parseLeadingId', () => {
   it('extracts the numeric id from an <id>-<slug> segment', () => {
