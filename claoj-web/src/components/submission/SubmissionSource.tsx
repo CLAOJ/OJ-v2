@@ -12,34 +12,69 @@ interface SubmissionSourceProps {
     className?: string;
 }
 
+// Exact DMOJ language keys (judge_language.key) → Prism language.
+// Keys are matched case-insensitively; anything not listed falls through
+// to the prefix rules / lowercase fallback in resolvePrismLanguage().
 const LANGUAGE_MAP: Record<string, string> = {
-    'cpp': 'cpp',
-    'cpp11': 'cpp',
-    'cpp14': 'cpp',
-    'cpp17': 'cpp',
-    'cpp20': 'cpp',
-    'c': 'c',
-    'python3': 'python',
-    'python2': 'python',
-    'py3': 'python',
-    'py2': 'python',
-    'java': 'java',
-    'kotlin': 'kotlin',
-    'go': 'go',
-    'rust': 'rust',
-    'javascript': 'javascript',
-    'nodejs': 'javascript',
-    'ruby': 'ruby',
-    'pascal': 'pascal',
-    'perl': 'perl',
-    'php': 'php',
-    'csharp': 'csharp',
-    'haskell': 'haskell',
-    'lua': 'lua',
-    'ocaml': 'ocaml',
-    'scala': 'scala',
-    'swift': 'swift',
+    C: 'c',
+    C11: 'c',
+    CLANG: 'c',
+    CPP03: 'cpp',
+    CPP11: 'cpp',
+    CPP14: 'cpp',
+    CPP17: 'cpp',
+    CPP20: 'cpp',
+    CLANGX: 'cpp',
+    PY2: 'python',
+    PY3: 'python',
+    PYPY2: 'python',
+    PYPY3: 'python',
+    JAVA: 'java',
+    JAVA8: 'java',
+    JAVA11: 'java',
+    JAVA15: 'java',
+    JAVA17: 'java',
+    KOTLIN: 'kotlin',
+    GO: 'go',
+    RUST: 'rust',
+    NODEJS: 'javascript',
+    V8JS: 'javascript',
+    JS: 'javascript',
+    RUBY: 'ruby',
+    PAS: 'pascal',
+    PERL: 'perl',
+    PHP: 'php',
+    CS: 'csharp',
+    MONOCS: 'csharp',
+    HASK: 'haskell',
+    LUA: 'lua',
+    OCAML: 'ocaml',
+    SCALA: 'scala',
+    SWIFT: 'swift',
+    D: 'd',
+    DART: 'dart',
+    GROOVY: 'groovy',
+    SCM: 'scheme',
+    TEXT: 'text',
 };
+
+// Map a raw DMOJ language key (e.g. "CPP17", "PY3", "JAVA8") to a Prism
+// language. The backend sends judge_language.key verbatim, which is uppercase
+// and versioned, so a plain lowercase lookup never matched (everything fell
+// back to "text" → no highlighting).
+function resolvePrismLanguage(raw: string): string {
+    if (!raw) return 'text';
+    const key = raw.toUpperCase();
+    if (LANGUAGE_MAP[key]) return LANGUAGE_MAP[key];
+    // Prefix rules cover versioned variants not listed explicitly above.
+    if (key.startsWith('CPP') || key.startsWith('CLANGX')) return 'cpp';
+    if (key.startsWith('PYPY') || key.startsWith('PY')) return 'python';
+    if (key.startsWith('JAVA')) return 'java';
+    if (key.startsWith('KOTLIN')) return 'kotlin';
+    if (key === 'C' || key.startsWith('C1') || key === 'CLANG') return 'c';
+    // Last resort: Prism language ids are lowercase.
+    return raw.toLowerCase();
+}
 
 export default function SubmissionSource({ source, language, className }: SubmissionSourceProps) {
     const [copied, setCopied] = useState(false);
@@ -50,7 +85,7 @@ export default function SubmissionSource({ source, language, className }: Submis
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const syntaxLanguage = LANGUAGE_MAP[language] || 'text';
+    const syntaxLanguage = resolvePrismLanguage(language);
 
     return (
         <div className={cn("relative rounded-2xl overflow-hidden border bg-[#1e1e1e]", className)}>
