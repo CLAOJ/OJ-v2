@@ -172,9 +172,9 @@ func NewRouter() *gin.Engine {
 
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)
-			admin.POST("/admin/organizations", v2.AdminOrganizationCreate)
-			admin.PATCH("/admin/organization/:id", v2.AdminOrganizationUpdate)
-			admin.DELETE("/admin/organization/:id", v2.AdminOrganizationDelete)
+			admin.POST("/admin/organizations", auth.RequirePerm("judge.add_organization"), v2.AdminOrganizationCreate)
+			admin.PATCH("/admin/organization/:id", auth.RequireOrgEdit(), v2.AdminOrganizationUpdate)
+			admin.DELETE("/admin/organization/:id", auth.RequirePerm("judge.edit_all_organization"), v2.AdminOrganizationDelete)
 
 			// Submissions
 			admin.GET("/admin/submissions", v2.AdminSubmissionList)
