@@ -131,28 +131,28 @@ func NewRouter() *gin.Engine {
 			// Problems
 			admin.GET("/admin/problems", v2.AdminProblemList)
 			admin.GET("/admin/problem/:code", v2.AdminProblemDetail)
-			admin.POST("/admin/problems", v2.AdminProblemCreate)
-			admin.PATCH("/admin/problem/:code", v2.AdminProblemUpdate)
-			admin.DELETE("/admin/problem/:code", v2.AdminProblemDelete)
+			admin.POST("/admin/problems", auth.RequirePerm("judge.add_problem"), v2.AdminProblemCreate)
+			admin.PATCH("/admin/problem/:code", auth.RequireProblemEdit(), v2.AdminProblemUpdate)
+			admin.DELETE("/admin/problem/:code", auth.RequireProblemEdit(), v2.AdminProblemDelete)
 			// Problem Clone
-			admin.POST("/admin/problem/:code/clone", v2.AdminProblemClone)
+			admin.POST("/admin/problem/:code/clone", auth.RequirePerm("judge.clone_problem"), v2.AdminProblemClone)
 			// Problem Clarifications
-			admin.POST("/admin/problem/:code/clarification", v2.ProblemClarificationCreate)
+			admin.POST("/admin/problem/:code/clarification", auth.RequireProblemEdit(), v2.ProblemClarificationCreate)
 			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
 			// Problem Data
-			admin.GET("/admin/problem/:code/data", adminHandlers.AdminProblemData)
-			admin.POST("/admin/problem/:code/data", adminHandlers.AdminProblemDataUpload)
-			admin.DELETE("/admin/problem/:code/data/testcase/:id", adminHandlers.AdminProblemDataDeleteTestCase)
+			admin.GET("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemData)
+			admin.POST("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataUpload)
+			admin.DELETE("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataDeleteTestCase)
 		// Problem PDF
-		admin.POST("/admin/problem/:code/pdf", adminHandlers.AdminProblemPdfUpload)
-		admin.DELETE("/admin/problem/:code/pdf", adminHandlers.AdminProblemPdfDelete)
+		admin.POST("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfUpload)
+		admin.DELETE("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfDelete)
 			// Problem Data - Reorder & File Operations
-			admin.PATCH("/admin/problem/:code/data/reorder", adminHandlers.AdminProblemDataReorder)
-			admin.GET("/admin/problem/:code/data/files", adminHandlers.AdminProblemDataFiles)
-			admin.GET("/admin/problem/:code/data/file/*path", adminHandlers.AdminProblemDataFileContent)
-			admin.DELETE("/admin/problem/:code/data/file/*path", adminHandlers.AdminProblemDataFileDelete)
-			admin.GET("/admin/problem/:code/data/testcase/:id/content", adminHandlers.AdminProblemDataTestCaseContent)
-			admin.PATCH("/admin/problem/:code/data/testcase/:id", adminHandlers.AdminProblemDataTestCaseUpdate)
+			admin.PATCH("/admin/problem/:code/data/reorder", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataReorder)
+			admin.GET("/admin/problem/:code/data/files", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFiles)
+			admin.GET("/admin/problem/:code/data/file/*path", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFileContent)
+			admin.DELETE("/admin/problem/:code/data/file/*path", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFileDelete)
+			admin.GET("/admin/problem/:code/data/testcase/:id/content", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseContent)
+			admin.PATCH("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseUpdate)
 
 			// Solutions
 			admin.GET("/admin/solutions", v2.AdminSolutionList)
