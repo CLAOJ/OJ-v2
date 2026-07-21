@@ -42,12 +42,18 @@ func CurrentUser(c *gin.Context) {
 		return
 	}
 
-	// We don't expose sensitive info like Password or TOTP keys
+	// We don't expose sensitive info like Password or TOTP keys.
+	// is_staff and is_admin drive the frontend admin surface: the admin gate
+	// (AdminAccessWrapper / AdminSidebar) hides all admin UI unless is_staff is
+	// truthy, and reads is_admin for the super-admin label. is_admin mirrors the
+	// login response (is_admin = IsSuperuser).
 	c.JSON(http.StatusOK, gin.H{
 		"id":           authUser.ID,
 		"username":     authUser.Username,
 		"email":        authUser.Email,
 		"is_active":    authUser.IsActive,
+		"is_staff":     authUser.IsStaff,
+		"is_admin":     authUser.IsSuperuser,
 		"is_superuser": authUser.IsSuperuser,
 		"date_joined":  authUser.DateJoined,
 		"profile": gin.H{

@@ -85,6 +85,47 @@ func TestAuthFlow_FullLoginLogout(t *testing.T) {
 	// For this test, we just verify logout endpoint succeeded
 }
 
+// TestCurrentUser_IncludesStaffFlags verifies /user/me returns is_staff and
+// is_admin. The frontend admin gate (AdminAccessWrapper / AdminSidebar) hides
+// the whole admin surface unless user.is_staff is truthy, and reads
+// user.is_admin for the super-admin label. The handler previously omitted
+// is_staff entirely (and emitted is_superuser instead of is_admin), so the
+// admin button never appeared even for a staff+superuser account.
+func TestCurrentUser_IncludesStaffFlags(t *testing.T) {
+	testDB := integration.SetupIntegrationDB(t)
+	defer CleanupDB(testDB)
+
+	user := integration.CreateTestUser(testDB.DB, "staffuser", "Password123!", true)
+	// Promote to staff + superuser (CreateTestUser defaults both to false).
+	testDB.DB.Model(&user).Updates(map[string]interface{}{"is_staff": true, "is_superuser": true})
+
+	gin := integration.TestRouter()
+	gin.POST("/auth/login", authHandlers.Login)
+	gin.GET("/me", auth.RequiredMiddleware(), v2.CurrentUser)
+
+	loginResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method: "POST",
+		Path:   "/auth/login",
+		Body: map[string]interface{}{
+			"username": "staffuser",
+			"password": "Password123!",
+		},
+	})
+	assert.Equal(t, http.StatusOK, loginResp.Code, "Login should succeed")
+	accessToken := loginResp.JSONBody["access_token"].(string)
+
+	meResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method: "GET",
+		Path:   "/me",
+		Headers: map[string]string{
+			"Authorization": "Bearer " + accessToken,
+		},
+	})
+	assert.Equal(t, http.StatusOK, meResp.Code, "Should access /me")
+	assert.Equal(t, true, meResp.JSONBody["is_staff"], "/me must return is_staff so the frontend can show the admin surface")
+	assert.Equal(t, true, meResp.JSONBody["is_admin"], "/me must return is_admin for the super-admin label")
+}
+
 // TestAuthFlow_LoginFailure tests login failure scenarios
 func TestAuthFlow_LoginFailure(t *testing.T) {
 	testDB := integration.SetupIntegrationDB(t)
