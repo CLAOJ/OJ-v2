@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Link } from '@/navigation';
@@ -11,6 +12,8 @@ interface ErrorProps {
 }
 
 export default function Error({ error, reset }: ErrorProps) {
+    const t = useTranslations('Common');
+
     useEffect(() => {
         // Log error to error reporting service (when configured)
         // console.error('Application error:', error);
@@ -26,9 +29,9 @@ export default function Error({ error, reset }: ErrorProps) {
                 </div>
 
                 <div className="space-y-2">
-                    <h2 className="text-2xl font-bold">Something went wrong</h2>
+                    <h2 className="text-2xl font-bold">{t('errorTitle')}</h2>
                     <p className="text-muted-foreground">
-                        An error occurred while processing your request. Please try again.
+                        {t('errorDescription')}
                     </p>
                 </div>
 
@@ -44,12 +47,12 @@ export default function Error({ error, reset }: ErrorProps) {
                         className="flex items-center gap-2"
                     >
                         <RefreshCw size={18} />
-                        Try again
+                        {t('tryAgain')}
                     </Button>
                     <Link href="/">
                         <Button variant="outline" className="flex items-center gap-2">
                             <Home size={18} />
-                            Go home
+                            {t('goHome')}
                         </Button>
                     </Link>
                 </div>

@@ -324,7 +324,14 @@ describe('AuthProvider', () => {
     });
 
     describe('periodic token refresh', () => {
-        it('should call /auth/refresh every 10 minutes when user is logged in', async () => {
+        // The provider used to fire /auth/refresh on a 10-minute interval,
+        // bypassing the single-flight lock in lib/api.ts. That lock is
+        // module-scoped (so per-tab anyway), and the backend rotates the
+        // refresh token on every call while treating a second use of an
+        // already-rotated token as replay -- revoking the whole token family.
+        // Two open tabs were therefore enough to log the user out at random.
+        // Refresh is now driven solely by the 401 interceptor, on demand.
+        it('should not refresh in the background while a user is logged in', async () => {
             const mockUser: User = {
                 id: 1,
                 username: 'testuser',
@@ -341,24 +348,20 @@ describe('AuthProvider', () => {
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
-            // Wait for initial auth check to complete and user to be set
             await waitFor(() => {
                 expect(result.current.user).toEqual(mockUser);
             });
 
-            // Fast-forward 10 minutes
+            // Well past the old 10-minute interval, and then some.
             act(() => {
-                jest.advanceTimersByTime(10 * 60 * 1000);
+                jest.advanceTimersByTime(60 * 60 * 1000);
             });
 
-            // Wait for the interval callback to execute
-            await waitFor(() => {
-                expect(api.post).toHaveBeenCalledWith(
-                    '/auth/refresh',
-                    {},
-                    { withCredentials: true }
-                );
-            });
+            expect(api.post).not.toHaveBeenCalledWith(
+                '/auth/refresh',
+                expect.anything(),
+                expect.anything()
+            );
         });
 
         it('should not call /auth/refresh when user is not logged in', async () => {

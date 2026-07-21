@@ -348,6 +348,10 @@ func NewRouter() *gin.Engine {
 		protected.Use(csrf.Middleware(csrf.DefaultConfig()))
 		{
 			protected.POST("/auth/revoke-all-sessions", authHandlers.RevokeAllSessions)
+			// Logged-in password change (the settings page). Distinct from the
+			// public /auth/password/reset* pair, which is the forgot-password
+			// flow for users who can't sign in.
+			protected.POST("/auth/password/change", authHandlers.PasswordChange)
 
 			// TOTP/2FA management (requires an authenticated session).
 			// Previously mis-registered in the public group before the auth

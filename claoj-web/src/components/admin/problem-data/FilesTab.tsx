@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { adminProblemDataApi } from '@/lib/adminApi';
 import { FolderOpen, FileText, Trash2, Loader2 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ interface ProblemFile {
 }
 
 export function FilesTab({ code }: FilesTabProps) {
+    const t = useTranslations('Admin');
     const queryClient = useQueryClient();
 
     const { data: filesData, isLoading } = useQuery({
@@ -45,7 +47,7 @@ export function FilesTab({ code }: FilesTabProps) {
         <div className="border rounded-xl overflow-hidden">
             <div className="bg-muted/30 px-4 py-3 border-b font-medium flex items-center gap-2">
                 <FolderOpen size={18} />
-                Problem Files
+                {t('problemData.filesTitle')}
             </div>
             <div className="divide-y">
                 {filesData?.map((file: ProblemFile) => (
@@ -64,7 +66,7 @@ export function FilesTab({ code }: FilesTabProps) {
                         {file.type === 'file' && (
                             <button
                                 onClick={() => {
-                                    if (confirm('Are you sure you want to delete this file?')) {
+                                    if (confirm(t('problemData.deleteFileConfirm'))) {
                                         deleteFileMutation.mutate(file.path);
                                     }
                                 }}
@@ -79,8 +81,8 @@ export function FilesTab({ code }: FilesTabProps) {
                 {filesData?.length === 0 && (
                     <div className="p-8 text-center text-muted-foreground">
                         <FolderOpen size={48} className="mx-auto mb-4 opacity-50" />
-                        <p className="font-medium">No files found</p>
-                        <p className="text-sm mt-1">Upload files using the test case upload feature</p>
+                        <p className="font-medium">{t('problemData.noFilesFound')}</p>
+                        <p className="text-sm mt-1">{t('problemData.noFilesHint')}</p>
                     </div>
                 )}
             </div>

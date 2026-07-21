@@ -284,6 +284,13 @@ func TestAuthFlow_RefreshTokenReuse_RevokesWholeFamily(t *testing.T) {
 	testDB := integration.SetupIntegrationDB(t)
 	defer CleanupDB(testDB)
 
+	// Replaying a rotated-out token inside RotationGracePeriod is treated as
+	// two tabs racing, not as an attack (see TestAuthFlow_ConcurrentRefresh...
+	// below). This test is about the attack case, so collapse the window to
+	// zero and let every reuse be judged as a replay.
+	defer func(orig time.Duration) { authHandlers.RotationGracePeriod = orig }(authHandlers.RotationGracePeriod)
+	authHandlers.RotationGracePeriod = 0
+
 	integration.CreateTestUser(testDB.DB, "testuser", "Password123!", true)
 
 	gin := integration.TestRouter()
@@ -337,6 +344,68 @@ func TestAuthFlow_RefreshTokenReuse_RevokesWholeFamily(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusUnauthorized, successorAfterReuse.Code,
 		"replaying a revoked token must revoke its whole family, including the live successor token")
+}
+
+// Two tabs of the same browser share one cookie jar. When an access token
+// expires, both can hit a 401 and both fire /auth/refresh with the same
+// refresh token. One wins and rotates; the loser then arrives with a token
+// that was revoked microseconds ago.
+//
+// Judging that as a replay used to revoke the whole family — including the
+// fresh token the winner had just been handed — silently logging the user out
+// mid-session. Inside RotationGracePeriod the loser must instead be told to
+// retry, with the session left intact.
+func TestAuthFlow_ConcurrentRefreshDoesNotKillTheSession(t *testing.T) {
+	testDB := integration.SetupIntegrationDB(t)
+	defer CleanupDB(testDB)
+
+	integration.CreateTestUser(testDB.DB, "testuser", "Password123!", true)
+
+	gin := integration.TestRouter()
+	gin.POST("/auth/login", authHandlers.Login)
+	gin.POST("/auth/refresh", authHandlers.Refresh)
+
+	loginResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method: "POST",
+		Path:   "/auth/login",
+		Body:   map[string]interface{}{"username": "testuser", "password": "Password123!"},
+	})
+	assert.Equal(t, http.StatusOK, loginResp.Code)
+	sharedToken := loginResp.JSONBody["refresh_token"].(string)
+
+	// JWT `iat` has second precision; wait out the second so the rotated
+	// token is a distinct string from the original.
+	time.Sleep(1100 * time.Millisecond)
+
+	// Tab A wins the race and rotates the shared token.
+	winner := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + sharedToken},
+	})
+	assert.Equal(t, http.StatusOK, winner.Code)
+	rotatedToken := winner.JSONBody["refresh_token"].(string)
+
+	// Tab B loses, arriving with the token A just rotated out.
+	loser := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + sharedToken},
+	})
+	assert.Equal(t, http.StatusConflict, loser.Code,
+		"a refresh colliding with a just-completed rotation should ask the client to retry")
+	assert.Empty(t, loser.JSONBody["refresh_token"],
+		"the collision branch must not issue any token")
+
+	// The crux: the winner's token must still work. Before this fix the
+	// loser's request revoked the whole family and killed it.
+	stillAlive := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + rotatedToken},
+	})
+	assert.Equal(t, http.StatusOK, stillAlive.Code,
+		"a concurrent-refresh collision must not revoke the session that won the race")
 }
 
 // TestAuthFlow_RememberMe tests login with remember_me option

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { getErrorMessages } from '@/lib/errorBoundaryMessages';
 
 export default function GlobalError({
     error,
@@ -9,6 +10,10 @@ export default function GlobalError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    // global-error replaces the root layout, so NextIntlClientProvider never
+    // wraps it and useTranslations would throw — see lib/errorBoundaryMessages.
+    const t = getErrorMessages();
+
     useEffect(() => {
         // Log error to error reporting service (when configured)
         // console.error('Global error:', error);
@@ -28,9 +33,9 @@ export default function GlobalError({
                         </div>
 
                         <div className="space-y-2">
-                            <h2 className="text-2xl font-bold text-gray-900">Critical Error</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">{t('criticalTitle')}</h2>
                             <p className="text-gray-600">
-                                A critical error occurred. Please refresh the page or try again later.
+                                {t('criticalDescription')}
                             </p>
                         </div>
 
@@ -45,13 +50,13 @@ export default function GlobalError({
                                 onClick={reset}
                                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                             >
-                                Try again
+                                {t('tryAgain')}
                             </button>
                             <a
                                 href="/"
                                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
-                                Go home
+                                {t('goHome')}
                             </a>
                         </div>
                     </div>

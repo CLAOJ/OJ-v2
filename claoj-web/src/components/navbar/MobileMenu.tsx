@@ -9,6 +9,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useTranslations } from 'next-intl';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
+import { rememberLoginRedirect } from '@/lib/loginRedirect';
 
 const NAV_LINKS = [
     { href: '/problems', key: 'problems' },
@@ -49,8 +50,8 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                 onClick={onToggle}
                 aria-expanded={isOpen}
                 aria-controls="mobile-menu"
-                aria-label={isOpen ? 'Close menu' : 'Open menu'}
-                title={isOpen ? 'Close menu' : 'Open menu'}
+                aria-label={isOpen ? t('closeMenu') : t('openMenu')}
+                title={isOpen ? t('closeMenu') : t('openMenu')}
             >
                 {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -74,7 +75,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                             ref={mobileMenuContainerRef}
                             id="mobile-menu"
                             role="navigation"
-                            aria-label="Mobile navigation menu"
+                            aria-label={t('mobileNavigationMenu')}
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
@@ -84,10 +85,10 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                             {/* Drawer header with its own close control (the navbar toggle
                                 sits under the backdrop while the drawer is open). */}
                             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
-                                <span className="text-lg font-black tracking-tight">Menu</span>
+                                <span className="text-lg font-black tracking-tight">{t('menu')}</span>
                                 <button
                                     onClick={onToggle}
-                                    aria-label="Close menu"
+                                    aria-label={t('closeMenu')}
                                     className="-mr-2 p-2 text-muted-foreground hover:text-foreground"
                                 >
                                     <X size={24} />
@@ -118,18 +119,18 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                     )}
                                 >
                                     <RefreshCw size={20} />
-                                    <span>Random Problem</span>
+                                    <span>{t('randomProblem')}</span>
                                 </Link>
 
                                 {/* Report Issue */}
                                 {user && (
                                     <Link
-                                        href="/tickets/new"
+                                        href="/ticket/create"
                                         onClick={onToggle}
                                         className="flex items-center gap-2 text-yellow-500 font-bold"
                                     >
                                         <Ticket size={18} />
-                                        <span>Report issue</span>
+                                        <span>{t('report')}</span>
                                     </Link>
                                 )}
 
@@ -142,12 +143,16 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
 
                                     {!user ? (
                                         <div className="grid grid-cols-2 gap-4 mt-2">
-                                            <button
+                                            <Link
+                                                href="/login"
                                                 className="flex items-center justify-center h-12 rounded border border-border font-bold text-muted-foreground hover:bg-muted transition-colors"
-                                                onClick={onToggle}
+                                                onClick={() => {
+                                                    rememberLoginRedirect(window.location.pathname);
+                                                    onToggle();
+                                                }}
                                             >
                                                 {t('login')}
-                                            </button>
+                                            </Link>
                                             <Link
                                                 href="/register"
                                                 className="flex items-center justify-center h-12 rounded bg-primary text-white font-bold hover:bg-primary/90 transition-all"
@@ -176,7 +181,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                                         onClick={onToggle}
                                                     >
                                                         <Crown size={20} />
-                                                        <span>Admin Dashboard</span>
+                                                        <span>{t('adminDashboard')}</span>
                                                     </Link>
                                                     <div className="grid grid-cols-2 gap-2 px-1">
                                                         <Link
@@ -184,28 +189,28 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
                                                         >
-                                                            Problems
+                                                            {t('problems')}
                                                         </Link>
                                                         <Link
                                                             href="/admin/contests"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
                                                         >
-                                                            Contests
+                                                            {t('contests')}
                                                         </Link>
                                                         <Link
                                                             href="/admin/users"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
                                                         >
-                                                            Users
+                                                            {t('users')}
                                                         </Link>
                                                         <Link
                                                             href="/admin/tickets"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
                                                         >
-                                                            Tickets
+                                                            {t('tickets')}
                                                         </Link>
                                                     </div>
                                                 </div>
@@ -217,14 +222,14 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                                 onClick={onToggle}
                                             >
                                                 <SettingsIcon size={20} />
-                                                <span>Settings</span>
+                                                <span>{t('settings')}</span>
                                             </Link>
                                             <button
                                                 onClick={() => { logout(); onToggle(); }}
                                                 className="flex items-center gap-3 p-4 rounded bg-red-500/10 text-red-400 font-bold text-left"
                                             >
                                                 <LogOut size={20} />
-                                                <span>Logout</span>
+                                                <span>{t('logout')}</span>
                                             </button>
                                         </div>
                                     )}

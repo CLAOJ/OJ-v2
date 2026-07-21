@@ -53,6 +53,29 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Endpoints that establish or renew a session themselves. A 401 from any of
+// these is the *real* answer (bad password, expired refresh token, ...), not a
+// stale-access-token signal, so the refresh-on-401 rule below must not touch
+// them. Without this, `POST /auth/login` returning 401 "invalid username or
+// password" would trigger a refresh, and the refresh's own 401 ("refresh token
+// not found in cookie") would be surfaced to the user in its place.
+const AUTH_ENDPOINTS = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/refresh',
+    '/auth/logout',
+    '/auth/totp',
+    '/auth/webauthn',
+    '/auth/password/reset',
+];
+
+function isAuthEndpoint(url: string | undefined): boolean {
+    if (!url) return false;
+    // url may be absolute (the refresh call builds a full URL) or relative.
+    const path = url.startsWith('http') ? new URL(url).pathname : url;
+    return AUTH_ENDPOINTS.some(e => path.includes(e));
+}
+
 // Refresh locking to prevent concurrent refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: () => void; reject: (error: unknown) => void }> = [];
@@ -75,6 +98,22 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config as AxiosRequestConfigWithRetry;
 
+        // Never refresh-and-retry on behalf of the session endpoints themselves:
+        // their errors are the real answer and must reach the caller untouched.
+        // (`_skipAuthRedirect` is deliberately NOT an exclusion here — the
+        // AuthProvider's silent `/user/me` probe relies on this refresh to
+        // restore a session whose access token expired while the tab was shut.)
+        if (isAuthEndpoint(originalRequest?.url)) {
+            return Promise.reject(error);
+        }
+
+        // Only a 401 is a candidate for refresh-and-retry. A 403/429/500 that
+        // happens to land while a refresh is in flight must be rejected with its
+        // own error rather than queued and later re-thrown as the refresh error.
+        if (error.response?.status !== 401) {
+            return Promise.reject(error);
+        }
+
         // If refresh is in progress and this isn't a retried request, queue it
         if (isRefreshing && !originalRequest._retry) {
             return new Promise((resolve, reject) => {
@@ -87,7 +126,7 @@ api.interceptors.response.use(
             });
         }
 
-        if (error.response?.status === 401 && !originalRequest._retry && !isRefreshing) {
+        if (!originalRequest._retry && !isRefreshing) {
             isRefreshing = true;
             originalRequest._retry = true;
 
@@ -106,6 +145,15 @@ api.interceptors.response.use(
                     throw new Error('Refresh returned non-200 status');
                 }
             } catch (refreshError) {
+                // 409 means another tab rotated the token microseconds ago and
+                // the backend deliberately kept the session alive rather than
+                // treating us as a replay. The winner's Set-Cookie has already
+                // landed in the shared cookie jar, so the original request can
+                // simply go again with the fresh access token.
+                if (axios.isAxiosError(refreshError) && refreshError.response?.status === 409) {
+                    processQueue();
+                    return api(originalRequest);
+                }
                 processQueue(refreshError);
                 // Refresh failed - don't redirect automatically
                 // Let the AuthProvider handle the auth state clearing

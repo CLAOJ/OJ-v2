@@ -38,10 +38,10 @@ export default function ProblemEditorialPage() {
                     } else if (axiosError.response?.status === 403) {
                         setError(t('problem.editorial_not_public'));
                     } else {
-                        setError(t('common.error_loading_data'));
+                        setError(t('Common.error_loading_data'));
                     }
                 } else {
-                    setError(t('common.error_loading_data'));
+                    setError(t('Common.error_loading_data'));
                 }
             } finally {
                 setLoading(false);
@@ -70,7 +70,7 @@ export default function ProblemEditorialPage() {
                         href={`/problem/${code}`}
                         className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                        {t('common.back_to_problem')}
+                        {t('Common.back_to_problem')}
                     </Link>
                 </div>
             </div>
@@ -85,7 +85,7 @@ export default function ProblemEditorialPage() {
                     href={`/problem/${code}`}
                     className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block"
                 >
-                    &larr; {t('common.back_to_problem')}
+                    &larr; {t('Common.back_to_problem')}
                 </Link>
                 <h1 className="text-3xl font-bold mb-2">
                     {t('problem.editorial')}

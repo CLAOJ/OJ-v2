@@ -180,7 +180,7 @@ export default function ContestCalendarPage() {
 
                                         {dayContests.length > 3 && (
                                             <div className="text-[9px] text-muted-foreground text-center">
-                                                +{dayContests.length - 3} more
+                                                {t('calendarMoreContests', { count: dayContests.length - 3 })}
                                             </div>
                                         )}
                                     </div>
@@ -198,7 +198,7 @@ export default function ContestCalendarPage() {
             return (
                 <div className="bg-muted/20 rounded-xl p-6 text-center text-muted-foreground border border-dashed">
                     <Calendar size={48} className="mx-auto mb-3 opacity-50" />
-                    <p className="font-medium">No contests scheduled for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
+                    <p className="font-medium">{t('calendarNoContestsInMonth', { month: MONTH_NAMES[currentMonth - 1], year: String(currentYear) })}</p>
                 </div>
             );
         }
@@ -206,23 +206,23 @@ export default function ContestCalendarPage() {
         return (
             <div className="space-y-2">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    Contests in {MONTH_NAMES[currentMonth - 1]} {currentYear}
+                    {t('calendarContestsInMonth', { month: MONTH_NAMES[currentMonth - 1], year: String(currentYear) })}
                 </h3>
                 {calendarData.contests.map(contest => {
                     const status = getContestStatus(contest);
                     const statusConfig = {
                         ongoing: {
-                            label: 'Ongoing',
+                            label: t('statusOngoing'),
                             color: 'bg-emerald-500 text-white',
                             icon: Zap
                         },
                         upcoming: {
-                            label: 'Upcoming',
+                            label: t('statusUpcoming'),
                             color: 'bg-blue-500 text-white',
                             icon: Clock
                         },
                         past: {
-                            label: 'Past',
+                            label: t('statusPast'),
                             color: 'bg-muted text-muted-foreground',
                             icon: Calendar
                         }
@@ -283,10 +283,10 @@ export default function ContestCalendarPage() {
                     <div>
                         <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
                             <Calendar className="text-primary" size={36} />
-                            Contest Calendar
+                            {t('calendarTitle')}
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Track upcoming contests and plan your participation
+                            {t('calendarSubtitle')}
                         </p>
                     </div>
                 </div>
@@ -297,7 +297,7 @@ export default function ContestCalendarPage() {
                 <button
                     onClick={prevMonth}
                     className="p-2 hover:bg-muted rounded-lg transition-colors"
-                    aria-label="Previous month"
+                    aria-label={t('previousMonth')}
                 >
                     <ChevronLeft size={24} />
                 </button>
@@ -310,14 +310,14 @@ export default function ContestCalendarPage() {
                         onClick={goToToday}
                         className="px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                     >
-                        Today
+                        {t('today')}
                     </button>
                 </div>
 
                 <button
                     onClick={nextMonth}
                     className="p-2 hover:bg-muted rounded-lg transition-colors"
-                    aria-label="Next month"
+                    aria-label={t('nextMonth')}
                 >
                     <ChevronRight size={24} />
                 </button>
@@ -359,23 +359,23 @@ export default function ContestCalendarPage() {
 
             {/* Legend */}
             <div className="bg-card rounded-xl border p-4 shadow-sm">
-                <h3 className="text-sm font-bold mb-3">Legend</h3>
+                <h3 className="text-sm font-bold mb-3">{t('legend')}</h3>
                 <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-emerald-500/10 border border-emerald-200" />
-                        <span className="text-sm text-muted-foreground">Ongoing</span>
+                        <span className="text-sm text-muted-foreground">{t('statusOngoing')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-blue-500/10 border border-blue-200" />
-                        <span className="text-sm text-muted-foreground">Upcoming</span>
+                        <span className="text-sm text-muted-foreground">{t('statusUpcoming')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-muted border border-muted" />
-                        <span className="text-sm text-muted-foreground">Past</span>
+                        <span className="text-sm text-muted-foreground">{t('statusPast')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Star size={14} className="text-amber-500 fill-current" />
-                        <span className="text-sm text-muted-foreground">Rated Contest</span>
+                        <span className="text-sm text-muted-foreground">{t('ratedContest')}</span>
                     </div>
                 </div>
             </div>

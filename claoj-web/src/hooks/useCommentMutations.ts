@@ -1,11 +1,22 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import api from '@/lib/api';
 import { Comment } from '@/types';
 
 export function useCommentMutations(page: string) {
     const queryClient = useQueryClient();
+    const t = useTranslations('Common');
+
+    // Every one of these mutations used to declare onSuccess only, so a
+    // rejected request (a 401 for a signed-out visitor, a 403, a 500) was
+    // absorbed by React Query and the click produced no visible effect at all.
+    const onError = (err: unknown) => {
+        const e = err as { response?: { data?: { error?: string } } };
+        toast.error(e.response?.data?.error || t('error'));
+    };
 
     const postComment = useMutation({
         mutationFn: async ({ body, parent_id }: { body: string; parent_id?: number | null }) => {
@@ -17,7 +28,8 @@ export function useCommentMutations(page: string) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['comments', page] });
-        }
+        },
+        onError
     });
 
     const voteComment = useMutation({
@@ -26,7 +38,8 @@ export function useCommentMutations(page: string) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['comments', page] });
-        }
+        },
+        onError
     });
 
     const editComment = useMutation({
@@ -35,7 +48,8 @@ export function useCommentMutations(page: string) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['comments', page] });
-        }
+        },
+        onError
     });
 
     const deleteComment = useMutation({
@@ -44,7 +58,8 @@ export function useCommentMutations(page: string) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['comments', page] });
-        }
+        },
+        onError
     });
 
     const hideComment = useMutation({
@@ -53,7 +68,8 @@ export function useCommentMutations(page: string) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['comments', page] });
-        }
+        },
+        onError
     });
 
     return {

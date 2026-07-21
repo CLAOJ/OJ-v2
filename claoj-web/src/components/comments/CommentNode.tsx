@@ -13,6 +13,8 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { Comment } from '@/types';
 import { CommentActions } from './CommentActions';
 import { CommentReplyForm } from './CommentReplyForm';
+import { useTranslations } from 'next-intl';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 dayjs.extend(relativeTime);
 
@@ -56,14 +58,22 @@ export default function CommentNode({
     const [isExpanded, setIsExpanded] = useState(true);
     const [replyBody, setReplyBody] = useState('');
     const [voteDirection, setVoteDirection] = useState<number>(0);
+    const tAuth = useTranslations('Auth');
+    const { requireAuth } = useRequireAuth();
 
     const isEditable = !!user && (node.author === user.username);
     const canModerate = isAdmin;
 
+    // The optimistic flip below is why this must be gated rather than left to
+    // fail server-side: an unauthenticated click used to turn the button
+    // "voted" instantly and then quietly 401 in the background, so the UI
+    // claimed a vote had been recorded when none had.
     const handleVote = () => {
-        const newDirection = voteDirection === 1 ? 0 : 1;
-        setVoteDirection(newDirection);
-        onVote({ id: node.id, score: newDirection === 1 ? 1 : -1 });
+        requireAuth(() => {
+            const newDirection = voteDirection === 1 ? 0 : 1;
+            setVoteDirection(newDirection);
+            onVote({ id: node.id, score: newDirection === 1 ? 1 : -1 });
+        }, tAuth('loginToVote'));
     };
 
     const handleReply = () => {
@@ -105,7 +115,7 @@ export default function CommentNode({
                 {node.hidden ? (
                     <div className="pl-1 text-[15px] font-medium leading-relaxed text-muted-foreground/60 italic flex items-center gap-2">
                         <Eye size={16} />
-                        This comment has been hidden
+                        {t('hiddenComment')}
                     </div>
                 ) : (
                     <div className="pl-1 text-[15px] font-medium leading-relaxed text-muted-foreground/90 whitespace-pre-wrap">

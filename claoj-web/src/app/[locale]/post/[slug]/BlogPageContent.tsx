@@ -46,7 +46,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
             queryClient.invalidateQueries({ queryKey: ['blog', id] });
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.error || 'Failed to vote');
+            toast.error(error.response?.data?.error || t('voteFailed'));
         },
     });
 
@@ -55,7 +55,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
     };
 
     if (isLoading) return <div className="p-8"><Skeleton className="h-[70vh] w-full rounded-[2.5rem]" /></div>;
-    if (!post) return <div className="p-8 text-center">Blog post not found.</div>;
+    if (!post) return <div className="p-8 text-center">{t('postNotFound')}</div>;
 
     return (
         <div className="max-w-4xl mx-auto space-y-12 pb-20">
@@ -64,7 +64,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                 className="inline-flex items-center gap-2 text-sm font-black text-muted-foreground hover:text-primary transition-colors group"
             >
                 <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-                Back to Blog
+                {t('backToBlog')}
             </Link>
 
             <article className="space-y-10">
@@ -80,7 +80,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                     onClick={() => handleVote(1)}
                                     disabled={voteMutation.isPending}
                                     className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors disabled:opacity-50"
-                                    title="Upvote"
+                                    title={t('upvote')}
                                 >
                                     <ArrowBigUp size={20} />
                                 </button>
@@ -95,12 +95,12 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                     onClick={() => handleVote(-1)}
                                     disabled={voteMutation.isPending}
                                     className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
-                                    title="Downvote"
+                                    title={t('downvote')}
                                 >
                                     <ArrowBigDown size={20} />
                                 </button>
                             </div>
-                            <span className="text-[10px] uppercase tracking-widest">Points</span>
+                            <span className="text-[10px] uppercase tracking-widest">{t('points')}</span>
                         </span>
                     </div>
 
@@ -114,7 +114,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                 <User size={20} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-xs font-black uppercase text-muted-foreground tracking-tighter">Authors</span>
+                                <span className="text-xs font-black uppercase text-muted-foreground tracking-tighter">{t('authors')}</span>
                                 <span className="text-sm font-bold">
                                     {post.authors.map(a => `@${a.username}`).join(', ')}
                                 </span>

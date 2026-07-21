@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Link, useRouter, routing } from '@/navigation';
+import { Link, useRouter } from '@/navigation';
+import { consumeLoginRedirect, hasStoredLoginRedirect, rememberLoginRedirect } from '@/lib/loginRedirect';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User as UserIcon, AlertCircle, Shield, Key } from 'lucide-react';
@@ -32,46 +33,27 @@ export default function LoginPage() {
     const [webAuthnUsername, setWebAuthnUsername] = useState('');
     const [showWebAuthnForm, setShowWebAuthnForm] = useState(false);
 
-    // Capture referrer on mount for redirect after login
+    // Capture referrer on mount for redirect after login. Only fills the gap
+    // when the caller didn't stash a destination itself (e.g. the user typed
+    // /login directly after following a link); rememberLoginRedirect filters
+    // out the credential pages, so arriving from /register can't make /register
+    // the post-login destination.
     useEffect(() => {
-        // Only store if there's a referrer and it's not the login page
-        if (document.referrer && !document.referrer.includes('/login')) {
-            try {
-                const referrerPath = new URL(document.referrer).pathname;
-                if (!sessionStorage.getItem('loginRedirectUrl')) {
-                    sessionStorage.setItem('loginRedirectUrl', referrerPath);
-                }
-            } catch {
-                // Invalid referrer URL, ignore
+        if (!document.referrer) return;
+        try {
+            const referrerPath = new URL(document.referrer).pathname;
+            if (!hasStoredLoginRedirect()) {
+                rememberLoginRedirect(referrerPath);
             }
+        } catch {
+            // Invalid referrer URL, ignore
         }
     }, []);
-
-    // Stored redirect paths come from window.location.pathname / document.referrer,
-    // which include the locale prefix on non-default locales (e.g. /vi/problems).
-    // next-intl's router.push treats hrefs as locale-less and prepends the current
-    // locale, so pushing a raw stored path doubles the prefix (/vi/vi/problems).
-    // Strip any known locale prefix before handing the path to the router.
-    const stripLocalePrefix = (path: string): string => {
-        for (const l of routing.locales) {
-            if (path === `/${l}`) return '/';
-            if (path.startsWith(`/${l}/`)) return path.slice(l.length + 1);
-        }
-        return path;
-    };
 
     // Helper function to get redirect URL after login
     const getRedirectUrl = (isStaff: boolean): string => {
         if (isStaff) return '/admin';
-
-        const stored = sessionStorage.getItem('loginRedirectUrl');
-        sessionStorage.removeItem('loginRedirectUrl');
-
-        if (!stored || stored.includes('/login')) {
-            return '/';
-        }
-        const path = stripLocalePrefix(stored);
-        return path === '/' ? '/' : path;
+        return consumeLoginRedirect();
     };
 
     const {

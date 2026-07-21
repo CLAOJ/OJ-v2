@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Button } from './Button';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -35,6 +36,7 @@ export function Pagination({
     showInfo = true,
     className,
 }: PaginationProps) {
+    const t = useTranslations('Common');
     const canGoPrevious = page > 1;
     const canGoNext = page < totalPages;
 
@@ -50,9 +52,12 @@ export function Pagination({
         )}>
             {showInfo && total !== undefined && (
                 <div className="text-sm text-muted-foreground">
-                    Showing <span className="font-medium">{startItem}</span> to{' '}
-                    <span className="font-medium">{endItem}</span> of{' '}
-                    <span className="font-medium">{total}</span>
+                    {t.rich('paginationShowing', {
+                        from: startItem,
+                        to: endItem,
+                        total,
+                        b: (chunks) => <span className="font-medium">{chunks}</span>,
+                    })}
                 </div>
             )}
 
@@ -68,7 +73,7 @@ export function Pagination({
                     className="flex items-center gap-1"
                 >
                     <ChevronLeft size={16} />
-                    Previous
+                    {t('previous')}
                 </Button>
 
                 <div className="flex items-center gap-1">
@@ -109,7 +114,7 @@ export function Pagination({
                     disabled={!canGoNext}
                     className="flex items-center gap-1"
                 >
-                    Next
+                    {t('next')}
                     <ChevronRight size={16} />
                 </Button>
             </div>
@@ -140,13 +145,18 @@ export function SimplePagination({
     hasMore,
     className,
 }: SimplePaginationProps) {
+    const t = useTranslations('Common');
+
     return (
         <div className={cn(
             'flex items-center justify-between px-6 py-4 border-t bg-muted/30',
             className
         )}>
             <div className="text-sm text-muted-foreground">
-                Page <span className="font-medium">{page}</span>
+                {t.rich('paginationPage', {
+                    page,
+                    b: (chunks) => <span className="font-medium">{chunks}</span>,
+                })}
             </div>
 
             <div className="flex items-center gap-2">
@@ -156,7 +166,7 @@ export function SimplePagination({
                     onClick={() => onPageChange(page - 1)}
                     disabled={page === 1}
                 >
-                    Previous
+                    {t('previous')}
                 </Button>
 
                 <Button
@@ -165,7 +175,7 @@ export function SimplePagination({
                     onClick={() => onPageChange(page + 1)}
                     disabled={!hasMore}
                 >
-                    Next
+                    {t('next')}
                 </Button>
             </div>
         </div>

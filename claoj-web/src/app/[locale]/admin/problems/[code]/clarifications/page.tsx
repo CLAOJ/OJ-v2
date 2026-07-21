@@ -32,6 +32,8 @@ import { formatDistanceToNow } from 'date-fns';
 export default function ProblemClarificationsPage() {
     const params = useParams();
     const router = useRouter();
+    const t = useTranslations('admin');
+    const tCommon = useTranslations('Common');
     const code = params.code as string;
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [description, setDescription] = useState('');
@@ -83,26 +85,26 @@ export default function ProblemClarificationsPage() {
         <div className="container mx-auto py-8">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2">Problem Clarifications</h1>
-                    <p className="text-muted-foreground">Manage clarifications for problem {code}</p>
+                    <h1 className="text-3xl font-bold mb-2">{t('problem_clarifications')}</h1>
+                    <p className="text-muted-foreground">{t('manage_problem_clarifications', { code })}</p>
                 </div>
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <Plus className="w-4 h-4 mr-2" />
-                            Add Clarification
+                            {t('add_clarification')}
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add Problem Clarification</DialogTitle>
+                            <DialogTitle>{t('add_problem_clarification')}</DialogTitle>
                             <DialogDescription>
-                                Add a new clarification for problem {code}
+                                {t('add_problem_clarification_desc', { code })}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
                             <Textarea
-                                placeholder="Enter the clarification description..."
+                                placeholder={t('clarification_description_placeholder')}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 className="min-h-[150px]"
@@ -110,10 +112,10 @@ export default function ProblemClarificationsPage() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                                Cancel
+                                {tCommon('cancel')}
                             </Button>
                             <Button onClick={handleSubmit} disabled={isPending}>
-                                {isPending ? 'Creating...' : 'Create Clarification'}
+                                {isPending ? t('creating') : t('create_clarification')}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -138,9 +140,9 @@ export default function ProblemClarificationsPage() {
                     <CardContent className="flex items-center gap-4 py-8">
                         <AlertCircle className="w-12 h-12 text-muted-foreground" />
                         <div>
-                            <p className="font-medium">No clarifications yet</p>
+                            <p className="font-medium">{t('no_clarifications')}</p>
                             <p className="text-sm text-muted-foreground">
-                                Be the first to add a clarification for this problem
+                                {t('be_first_clarification')}
                             </p>
                         </div>
                     </CardContent>
@@ -153,7 +155,7 @@ export default function ProblemClarificationsPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <MessageSquare className="w-5 h-5 text-primary" />
-                                        <CardTitle className="text-lg">Clarification #{clar.id}</CardTitle>
+                                        <CardTitle className="text-lg">{t('clarification_number', { id: clar.id })}</CardTitle>
                                     </div>
                                     <Button
                                         variant="ghost"

@@ -23,6 +23,7 @@ import { cn, getRankColor } from '@/lib/utils';
 
 export default function UsersListPage() {
     const t = useTranslations('Users');
+    const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<'points' | 'rating' | 'problem_count'>('points');
@@ -72,12 +73,12 @@ export default function UsersListPage() {
                         <Users className="text-primary" size={48} />
                         {t('title') || 'Users'}
                     </h1>
-                    <p className="text-muted-foreground font-black opacity-80">Competitive programmers from around the world.</p>
+                    <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4 rounded-[2.5rem] border border-dashed">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Page</span>
+                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">{tCommon('page')}</span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -106,7 +107,7 @@ export default function UsersListPage() {
                         }}
                         className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-auto"
                     >
-                        <RefreshCw size={14} /> Reset
+                        <RefreshCw size={14} /> {tCommon('reset')}
                     </button>
                 </div>
             </div>
@@ -114,7 +115,7 @@ export default function UsersListPage() {
             {/* Search and Sort Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6 rounded-[2.5rem] bg-card border shadow-sm">
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('search')}</label>
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
@@ -128,7 +129,7 @@ export default function UsersListPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sort By</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('sortBy')}</label>
                     <div className="flex gap-2">
                         <button
                             onClick={() => toggleSort('points')}
@@ -139,7 +140,7 @@ export default function UsersListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            <Trophy size={14} /> Points
+                            <Trophy size={14} /> {t('points')}
                         </button>
                         <button
                             onClick={() => toggleSort('rating')}
@@ -150,7 +151,7 @@ export default function UsersListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            <TrendingUp size={14} /> Rating
+                            <TrendingUp size={14} /> {t('rating')}
                         </button>
                         <button
                             onClick={() => toggleSort('problem_count')}
@@ -161,13 +162,13 @@ export default function UsersListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            <Hash size={14} /> Solved
+                            <Hash size={14} /> {t('solved')}
                         </button>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Order</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('order')}</label>
                     <div className="flex gap-2">
                         <button
                             onClick={() => setOrder('desc')}
@@ -178,7 +179,7 @@ export default function UsersListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            High to Low
+                            {tCommon('highToLow')}
                         </button>
                         <button
                             onClick={() => setOrder('asc')}
@@ -189,7 +190,7 @@ export default function UsersListPage() {
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
-                            Low to High
+                            {tCommon('lowToHigh')}
                         </button>
                     </div>
                 </div>
@@ -200,24 +201,24 @@ export default function UsersListPage() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-muted/30 border-b">
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">Rank</th>
-                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">User</th>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">{t('rank')}</th>
+                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('user')}</th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer" onClick={() => toggleSort('points')}>
                                     <div className="flex items-center justify-center gap-2">
-                                        Points {sortBy === 'points' && (order === 'asc' ? '↑' : '↓')}
+                                        {t('points')} {sortBy === 'points' && (order === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer" onClick={() => toggleSort('rating')}>
                                     <div className="flex items-center justify-center gap-2">
-                                        Rating {sortBy === 'rating' && (order === 'asc' ? '↑' : '↓')}
+                                        {t('rating')} {sortBy === 'rating' && (order === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer" onClick={() => toggleSort('problem_count')}>
                                     <div className="flex items-center justify-center gap-2">
-                                        Solved {sortBy === 'problem_count' && (order === 'asc' ? '↑' : '↓')}
+                                        {t('solved')} {sortBy === 'problem_count' && (order === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Organization</th>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('organization')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
@@ -282,11 +283,11 @@ export default function UsersListPage() {
                                                         </Link>
                                                     ))}
                                                     {user.organizations.length > 2 && (
-                                                        <span className="text-[10px] text-muted-foreground">+{user.organizations.length - 2} more</span>
+                                                        <span className="text-[10px] text-muted-foreground">{t('moreOrganizations', { count: user.organizations.length - 2 })}</span>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <span className="text-muted-foreground text-[10px] font-black uppercase opacity-50">None</span>
+                                                <span className="text-muted-foreground text-[10px] font-black uppercase opacity-50">{tCommon('none')}</span>
                                             )}
                                         </td>
                                     </tr>
@@ -299,7 +300,7 @@ export default function UsersListPage() {
 
             {users.length > 0 && (
                 <div className="text-center text-sm text-muted-foreground font-bold">
-                    Showing {users.length} users
+                    {t('showingUsers', { count: users.length })}
                 </div>
             )}
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from '@/navigation';
 import { cn } from '@/lib/utils';
 import { GB_FLAG_SVG, VI_FLAG_SVG } from '@/lib/flag-icons';
@@ -11,6 +11,7 @@ interface LanguageSwitcherProps {
 
 export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitcherProps) {
     const locale = useLocale();
+    const t = useTranslations('Navbar');
     const pathname = usePathname();
 
     const handleLanguageChange = (newLocale: string) => {
@@ -27,7 +28,7 @@ export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitch
     if (variant === 'mobile') {
         return (
             <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground">Language</span>
+                <span className="text-sm font-bold text-foreground">{t('language')}</span>
                 <div className="flex items-center gap-2 p-1 rounded bg-muted">
                     <button
                         onClick={() => handleLanguageChange('en')}
@@ -37,7 +38,7 @@ export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitch
                                 ? "text-[#009688] bg-white/20"
                                 : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                         )}
-                        aria-label="Switch to English"
+                        aria-label={t('switchToEnglish')}
                         aria-pressed={locale === 'en'}
                     >
                         EN
@@ -51,7 +52,7 @@ export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitch
                                 ? "text-[#009688] bg-white/20"
                                 : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                         )}
-                        aria-label="Switch to Vietnamese"
+                        aria-label={t('switchToVietnamese')}
                         aria-pressed={locale === 'vi'}
                     >
                         VI
@@ -71,7 +72,7 @@ export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitch
                         ? "bg-[#009688] text-white"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                 )}
-                aria-label="Switch to English"
+                aria-label={t('switchToEnglish')}
                 aria-pressed={locale === 'en'}
             >
                 <img src="/static/icons/gb_flag.svg" alt="" className="w-4 h-3 object-cover" onError={(e) => (e.target as HTMLImageElement).src = GB_FLAG_SVG} />
@@ -85,7 +86,7 @@ export default function LanguageSwitcher({ variant = 'default' }: LanguageSwitch
                         ? "bg-[#009688] text-white"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                 )}
-                aria-label="Switch to Vietnamese"
+                aria-label={t('switchToVietnamese')}
                 aria-pressed={locale === 'vi'}
             >
                 <img src="/static/icons/vi_flag.svg" alt="" className="w-4 h-3 object-cover" onError={(e) => (e.target as HTMLImageElement).src = VI_FLAG_SVG} />

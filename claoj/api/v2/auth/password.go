@@ -9,6 +9,7 @@ import (
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/auth/tokenstore"
 	"github.com/CLAOJ/claoj/config"
+	"github.com/CLAOJ/claoj/cookie"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/email"
 	"github.com/CLAOJ/claoj/models"
@@ -111,4 +112,97 @@ func PasswordResetConfirm(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
+}
+
+// PasswordChange - POST /api/v2/auth/password/change
+//
+// Changes the password of the currently authenticated user. This is distinct
+// from the PasswordReset* pair above, which is the logged-out "I forgot my
+// password" flow driven by an emailed one-time token. The settings page has
+// always posted here; the route simply didn't exist, so every attempt to
+// change a password 404'd.
+func PasswordChange(c *gin.Context) {
+	rawUserID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID, ok := rawUserID.(uint)
+	if !ok || userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password" binding:"required,min=6"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.AuthUser
+	if err := db.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Knowing the current password is what authorizes the change: without it
+	// anyone with a stolen access token could lock the real owner out.
+	valid, err := auth.CheckPassword(req.CurrentPassword, user.Password)
+	if err != nil || !valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "current password is incorrect"})
+		return
+	}
+
+	if req.NewPassword == req.CurrentPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new password must differ from the current one"})
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+
+	if err := db.DB.Model(&models.AuthUser{}).Where("id = ?", userID).
+		Update("password", hashedPassword).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to change password"})
+		return
+	}
+
+	// A password change must not leave sessions opened with the old password
+	// alive — that's the whole point of changing it after a suspected
+	// compromise. Revoke every refresh token for this user, then immediately
+	// mint a fresh pair so the tab that made the change stays signed in.
+	if err := RefreshStore.RevokeAllForUser(userID); err != nil {
+		// Best-effort: the password itself is already changed.
+	}
+
+	accessToken, refreshToken, familyID, err := auth.GenerateTokens(user.ID, user.Username, user.IsSuperuser, "", false)
+	if err != nil {
+		// The password change succeeded but we couldn't re-establish this
+		// session. Clear the cookies so the user is sent back to the login
+		// page rather than left holding tokens that no longer refresh.
+		cookie.Helper().ClearAuthTokens(c)
+		c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully, please log in again"})
+		return
+	}
+
+	if err := RefreshStore.Save(refreshToken, tokenstore.Entry{
+		UserID:    user.ID,
+		FamilyID:  familyID,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		CreatedAt: time.Now(),
+		UserAgent: c.Request.UserAgent(),
+		ClientIP:  c.ClientIP(),
+	}); err != nil {
+		// Best-effort, mirroring Login.
+	}
+
+	cookie.Helper().SetAuthTokens(c, accessToken, refreshToken, cookie.RefreshTokenDuration)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
 }

@@ -42,12 +42,12 @@ export default function Footer() {
                                 {t('description')}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                                <strong>Long An HSGS Online Judge</strong><br />
-                                Powered by{' '}
+                                <strong>{t('fullName')}</strong><br />
+                                {t('poweredBy')}{' '}
                                 <a href="https://dmoj.ca" target="_blank" rel="noreferrer" className="text-primary hover:underline">
                                     <b>DMOJ</b>
                                 </a>{' '}
-                                and{' '}
+                                {t('and')}{' '}
                                 <a href="https://oj.vnoi.info" target="_blank" rel="noreferrer" className="text-primary hover:underline">
                                     <b>VNOI</b>
                                 </a>
@@ -66,9 +66,13 @@ export default function Footer() {
                             <h4 className="font-semibold mb-4">{t('support')}</h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li><Link href="/tickets" className="hover:text-primary transition-colors">{t('helpTickets')}</Link></li>
-                                <li><Link href="/about" className="hover:text-primary transition-colors">{t('aboutUs')}</Link></li>
-                                <li><a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">IT-CLA Productions</a></li>
-                                <li><Link href="/donate" className="hover:text-primary transition-colors">{t('donate')}</Link></li>
+                                <li><a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">{t('builtBy')}</a></li>
+                                {/* The "About us" and "Donate" entries linked to /about and
+                                    /donate, neither of which exists as a route. Next prefetched
+                                    both on every page that renders the footer, so each one was a
+                                    steady source of 404s in the console. Their translation keys
+                                    (Footer.aboutUs / Footer.donate) are still in en.json and
+                                    vi.json — restore these <li>s once the pages are written. */}
                             </ul>
                         </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +14,7 @@ export default function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
     // `resolvedTheme` is the concrete "dark"/"light" after resolving "system";
     // `theme` is "system" on first load, which would show the wrong icon and
     // make the first click a no-op. Always key off `resolvedTheme`.
+    const t = useTranslations('Navbar');
     const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
@@ -31,8 +33,8 @@ export default function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
     // client markup in sync. Deriving it straight from `isDark` leaves the
     // aria-label/title stuck at the server value until the first interaction.
     const label = !mounted
-        ? 'Toggle theme'
-        : isDark ? 'Switch to light mode' : 'Switch to dark mode';
+        ? t('toggleTheme')
+        : isDark ? t('switchToLightMode') : t('switchToDarkMode');
 
     if (variant === 'mobile') {
         return (
@@ -46,7 +48,7 @@ export default function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
                 ) : (
                     <Moon size={18} className="opacity-50" />
                 )}
-                <span>Theme ({mounted ? (isDark ? 'Dark' : 'Light') : '...'})</span>
+                <span>{t('themeWithMode', { mode: mounted ? (isDark ? t('themeDark') : t('themeLight')) : '...' })}</span>
             </button>
         );
     }

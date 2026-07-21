@@ -76,9 +76,9 @@ export default function SubmissionDiffViewer({
         return (
             <div className="p-8 text-center space-y-4">
                 <AlertCircle size={48} className="mx-auto text-red-500" />
-                <h3 className="text-lg font-bold">Failed to load diff</h3>
+                <h3 className="text-lg font-bold">{t('diffLoadFailed')}</h3>
                 <p className="text-muted-foreground">
-                    {(error as Error).message || 'Unable to compare submissions'}
+                    {(error as Error).message || t('diffCompareFailed')}
                 </p>
             </div>
         );
@@ -94,11 +94,11 @@ export default function SubmissionDiffViewer({
             <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card border rounded-2xl p-6">
                 <div className="flex items-center gap-4">
                     <GitCompare size={24} className="text-primary" />
-                    <h2 className="text-xl font-bold">Submission Comparison</h2>
+                    <h2 className="text-xl font-bold">{t('submissionComparison')}</h2>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground">View:</span>
+                    <span className="text-sm text-muted-foreground">{t('viewLabel')}</span>
                     <div className="flex gap-2">
                         <button
                             onClick={() => setViewMode('side-by-side')}
@@ -109,7 +109,7 @@ export default function SubmissionDiffViewer({
                                     : "bg-muted text-muted-foreground hover:bg-primary/10"
                             )}
                         >
-                            Side by Side
+                            {t('sideBySide')}
                         </button>
                         <button
                             onClick={() => setViewMode('unified')}
@@ -120,14 +120,14 @@ export default function SubmissionDiffViewer({
                                     : "bg-muted text-muted-foreground hover:bg-primary/10"
                             )}
                         >
-                            Unified
+                            {t('unified')}
                         </button>
                     </div>
                     {onClose && (
                         <button
                             onClick={onClose}
                             className="p-2 hover:bg-muted rounded-lg transition-colors"
-                            aria-label="Close diff viewer"
+                            aria-label={t('closeDiffViewer')}
                         >
                             <XCircle size={20} />
                         </button>
@@ -138,11 +138,11 @@ export default function SubmissionDiffViewer({
             {/* Submission info cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SubmissionInfoCard
-                    title={`Submission #${data.submission1.id}`}
+                    title={`${t('submissionNumber')}${data.submission1.id}`}
                     submission={data.submission1}
                 />
                 <SubmissionInfoCard
-                    title={`Submission #${data.submission2.id}`}
+                    title={`${t('submissionNumber')}${data.submission2.id}`}
                     submission={data.submission2}
                 />
             </div>
@@ -151,12 +151,12 @@ export default function SubmissionDiffViewer({
             <div className="flex gap-4 items-center">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
                     <span className="text-sm font-bold text-red-500">
-                        {data.stats.deletions} deletions
+                        {t('deletionsCount', { count: data.stats.deletions })}
                     </span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                     <span className="text-sm font-bold text-emerald-500">
-                        {data.stats.additions} additions
+                        {t('additionsCount', { count: data.stats.additions })}
                     </span>
                 </div>
             </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormRegister } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 
 interface ProblemFormData {
     code: string;
@@ -32,9 +33,11 @@ interface SettingsSectionProps {
 }
 
 export function SettingsSection({ settings, register }: SettingsSectionProps) {
+    const t = useTranslations('Admin');
+
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Settings</h3>
+            <h3 className="text-lg font-bold">{t('problemForm.settingsTitle')}</h3>
 
             <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -44,7 +47,7 @@ export function SettingsSection({ settings, register }: SettingsSectionProps) {
                         {...register('is_public')}
                         checked={settings.is_public}
                     />
-                    <span className="text-sm font-medium">Public (visible to users)</span>
+                    <span className="text-sm font-medium">{t('problemForm.isPublicLabel')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -54,7 +57,7 @@ export function SettingsSection({ settings, register }: SettingsSectionProps) {
                         {...register('partial')}
                         checked={settings.partial}
                     />
-                    <span className="text-sm font-medium">Partial scoring</span>
+                    <span className="text-sm font-medium">{t('problemForm.partialLabel')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -64,13 +67,13 @@ export function SettingsSection({ settings, register }: SettingsSectionProps) {
                         {...register('is_manually_managed')}
                         checked={settings.is_manually_managed}
                     />
-                    <span className="text-sm font-medium">Manually managed</span>
+                    <span className="text-sm font-medium">{t('problemForm.manuallyManagedLabel')}</span>
                 </label>
             </div>
 
             <div>
                 <label htmlFor="pdf-url" className="text-sm font-medium text-muted-foreground block mb-2">
-                    PDF URL (optional)
+                    {t('problemForm.pdfUrlLabel')}
                 </label>
                 <input
                     id="pdf-url"

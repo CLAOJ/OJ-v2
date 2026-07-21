@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProblemDataApi, adminProblemApi } from '@/lib/adminApi';
 import { FileText, Check, Trash2, Eye, Upload, Loader2 } from 'lucide-react';
@@ -14,6 +15,7 @@ interface ProblemData {
 }
 
 export function PdfTab({ code }: PdfTabProps) {
+    const t = useTranslations('Admin.problemData');
     const queryClient = useQueryClient();
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -37,10 +39,10 @@ export function PdfTab({ code }: PdfTabProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-problem-detail', code] });
             setSelectedFile(null);
-            alert('PDF uploaded successfully');
+            alert(t('pdfUploadSuccess'));
         },
         onError: (err: Error) => {
-            alert(err.message || 'Failed to upload PDF');
+            alert(err.message || t('pdfUploadError'));
         },
         onSettled: () => {
             setIsUploading(false);
@@ -51,10 +53,10 @@ export function PdfTab({ code }: PdfTabProps) {
         mutationFn: () => adminProblemDataApi.deletePdf(code),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-problem-detail', code] });
-            alert('PDF deleted successfully');
+            alert(t('pdfDeleteSuccess'));
         },
         onError: (err: Error) => {
-            alert(err.message || 'Failed to delete PDF');
+            alert(err.message || t('pdfDeleteError'));
         }
     });
 
@@ -70,7 +72,7 @@ export function PdfTab({ code }: PdfTabProps) {
             <div className="p-6 border rounded-xl bg-muted/30">
                 <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
                     <FileText size={20} className="text-primary" />
-                    PDF Statement Upload
+                    {t('pdfUploadTitle')}
                 </h2>
 
                 {hasPdf ? (
@@ -78,10 +80,10 @@ export function PdfTab({ code }: PdfTabProps) {
                         <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                             <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                                 <Check size={18} />
-                                <span className="font-medium">PDF statement is configured</span>
+                                <span className="font-medium">{t('pdfConfigured')}</span>
                             </div>
                             <p className="text-sm mt-2 text-green-600 dark:text-green-500">
-                                Current file: {problemData.pdf_url}
+                                {t('pdfCurrentFile', { file: problemData.pdf_url ?? '' })}
                             </p>
                         </div>
 
@@ -93,7 +95,7 @@ export function PdfTab({ code }: PdfTabProps) {
                                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
                             >
                                 <Eye size={16} />
-                                View PDF
+                                {t('pdfView')}
                             </a>
                             <button
                                 onClick={() => deleteMutation.mutate()}
@@ -101,7 +103,7 @@ export function PdfTab({ code }: PdfTabProps) {
                                 className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
                             >
                                 <Trash2 size={16} />
-                                {deleteMutation.isPending ? 'Deleting...' : 'Delete PDF'}
+                                {deleteMutation.isPending ? t('pdfDeleting') : t('pdfDelete')}
                             </button>
                         </div>
                     </div>
@@ -109,7 +111,7 @@ export function PdfTab({ code }: PdfTabProps) {
                     <div className="space-y-4">
                         <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                             <p className="text-amber-700 dark:text-amber-400">
-                                No PDF statement configured. Upload a PDF file to enable PDF statement viewing.
+                                {t('pdfNotConfigured')}
                             </p>
                         </div>
 
@@ -130,7 +132,7 @@ export function PdfTab({ code }: PdfTabProps) {
                                 ) : (
                                     <Upload size={16} />
                                 )}
-                                {isUploading ? 'Uploading...' : 'Upload PDF'}
+                                {isUploading ? t('pdfUploading') : t('pdfUpload')}
                             </button>
                         </div>
                     </div>
@@ -139,10 +141,10 @@ export function PdfTab({ code }: PdfTabProps) {
 
             {selectedFile && (
                 <div className="p-4 border rounded-xl bg-card">
-                    <h3 className="font-medium mb-2">Selected file:</h3>
+                    <h3 className="font-medium mb-2">{t('pdfSelectedFile')}</h3>
                     <p className="text-sm text-muted-foreground">{selectedFile.name}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        {t('pdfFileSizeMb', { size: (selectedFile.size / 1024 / 1024).toFixed(2) })}
                     </p>
                 </div>
             )}

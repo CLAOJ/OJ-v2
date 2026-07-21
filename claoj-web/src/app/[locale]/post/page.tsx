@@ -61,7 +61,7 @@ export default function BlogListPage() {
                     {t('title')}
                 </h1>
                 <p className="text-xl text-muted-foreground font-black opacity-80 max-w-2xl">
-                    Insights, updates, and community stories from the CLAOJ team.
+                    {t('subtitle')}
                 </p>
             </header>
 
@@ -89,7 +89,7 @@ export default function BlogListPage() {
                                 {post.sticky && (
                                     <div className="absolute -top-3 -right-3 rotate-12 shadow-xl">
                                         <Badge className="bg-primary text-primary-foreground rounded-full px-5 py-2 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/30">
-                                            Sticky
+                                            {t('sticky')}
                                         </Badge>
                                     </div>
                                 )}
@@ -102,7 +102,7 @@ export default function BlogListPage() {
                                         </span>
                                         <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full border">
                                             <TrendingUp size={14} className="text-emerald-500" />
-                                            {post.score} Score
+                                            {t('scoreValue', { score: post.score })}
                                         </span>
                                     </div>
 
@@ -120,7 +120,7 @@ export default function BlogListPage() {
                                                 {post.authors[0]?.username?.[0]?.toUpperCase()}
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Authors</span>
+                                                <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{t('authors')}</span>
                                                 <span className="text-sm font-black">
                                                     {post.authors.map(a => `@${a.username}`).join(', ')}
                                                 </span>
@@ -175,7 +175,7 @@ export default function BlogListPage() {
                     <div className="p-8 rounded-[2.5rem] border bg-card shadow-sm space-y-8">
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-3">
                             <Clock size={16} />
-                            Upcoming Events
+                            {t('upcomingEvents')}
                         </h3>
                         <div className="space-y-4">
                             {isContestsLoading ? (
@@ -209,7 +209,7 @@ export default function BlogListPage() {
 
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-500 flex items-center gap-3 relative z-10">
                             <Flame size={16} />
-                            Hall of Fame
+                            {t('hallOfFame')}
                         </h3>
 
                         <div className="space-y-3 relative z-10">
@@ -247,7 +247,7 @@ export default function BlogListPage() {
                             href="/users"
                             className="flex items-center justify-center gap-2 pt-4 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-amber-500 transition-colors"
                         >
-                            View Global Rankings <ArrowRight size={12} />
+                            {t('viewGlobalRankings')} <ArrowRight size={12} />
                         </Link>
                     </div>
                 </aside>

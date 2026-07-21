@@ -20,7 +20,7 @@ export default function DesktopNav() {
     const t = useTranslations('Navbar');
 
     return (
-        <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
+        <nav className="hidden md:flex items-center gap-1" aria-label={t('mainNavigation')}>
             <span className="text-muted-foreground/50 mx-1">|</span>
             {NAV_LINKS.map((link) => (
                 <Link
@@ -44,7 +44,7 @@ export default function DesktopNav() {
                         ? "text-primary bg-muted/50"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                 )}
-                title="Random Problem"
+                title={t('randomProblem')}
             >
                 <RefreshCw size={14} />
             </Link>

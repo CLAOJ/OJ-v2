@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { adminOrganizationApi, type AdminOrganizationUpdateRequest } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
 import { X, Edit, Trash2 } from 'lucide-react';
@@ -21,6 +22,7 @@ interface OrganizationEditModalProps {
 }
 
 export default function OrganizationEditModal({ organization, onClose }: OrganizationEditModalProps) {
+    const t = useTranslations('Admin');
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<AdminOrganizationUpdateRequest>({});
 
@@ -59,7 +61,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
     };
 
     const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this organization? This action cannot be undone.')) {
+        if (confirm(t('organizations.deleteConfirm'))) {
             deleteMutation.mutate();
         }
     };
@@ -71,7 +73,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
             <div className="bg-card rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold">Edit Organization</h2>
+                    <h2 className="text-xl font-bold">{t('organizations.editModalTitle')}</h2>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -84,7 +86,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                 <div className="space-y-4">
                     <div>
                         <label className="text-sm font-medium text-muted-foreground block mb-2">
-                            Name
+                            {t('organizations.nameLabel')}
                         </label>
                         <input
                             type="text"
@@ -97,7 +99,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium text-muted-foreground block mb-2">
-                                Slug
+                                {t('organizations.slugLabel')}
                             </label>
                             <input
                                 type="text"
@@ -109,7 +111,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
 
                         <div>
                             <label className="text-sm font-medium text-muted-foreground block mb-2">
-                                Short Name
+                                {t('organizations.shortNameLabel')}
                             </label>
                             <input
                                 type="text"
@@ -122,7 +124,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
 
                     <div>
                         <label className="text-sm font-medium text-muted-foreground block mb-2">
-                            About
+                            {t('organizations.aboutLabel')}
                         </label>
                         <textarea
                             className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[100px] text-sm"
@@ -139,7 +141,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                                 checked={formData.is_open ?? false}
                                 onChange={(e) => setFormData({ ...formData, is_open: e.target.checked })}
                             />
-                            <span className="text-sm font-medium">Open (users can join)</span>
+                            <span className="text-sm font-medium">{t('organizations.openLabel')}</span>
                         </label>
 
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -149,14 +151,14 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                                 checked={formData.is_unlisted ?? false}
                                 onChange={(e) => setFormData({ ...formData, is_unlisted: e.target.checked })}
                             />
-                            <span className="text-sm font-medium">Unlisted (hidden from public)</span>
+                            <span className="text-sm font-medium">{t('organizations.unlistedLabel')}</span>
                         </label>
                     </div>
 
                     {/* Stats */}
                     <div className="bg-muted/30 rounded-xl p-4">
                         <div className="text-sm text-muted-foreground">
-                            <span className="font-medium">Members:</span> {organization.member_count}
+                            <span className="font-medium">{t('organizations.membersLabel')}</span> {organization.member_count}
                         </div>
                     </div>
                 </div>
@@ -170,7 +172,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                         className="px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
                         <Trash2 size={18} />
-                        Delete
+                        {t('common.delete')}
                     </button>
 
                     <div className="flex gap-3">
@@ -179,7 +181,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                             onClick={onClose}
                             className="px-4 py-2 rounded-xl hover:bg-muted transition-colors"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="button"
@@ -188,7 +190,7 @@ export default function OrganizationEditModal({ organization, onClose }: Organiz
                             className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
                         >
                             <Edit size={18} />
-                            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                            {updateMutation.isPending ? t('common.saving') : t('common.saveChanges')}
                         </button>
                     </div>
                 </div>

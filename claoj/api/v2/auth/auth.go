@@ -23,6 +23,19 @@ import (
 // in tests.
 var RefreshStore tokenstore.Store
 
+// RotationGracePeriod is how long after a refresh token is rotated out that
+// presenting it again is treated as a concurrent-refresh collision (two tabs
+// racing) rather than a replay attack.
+//
+// Racing tabs fire within milliseconds of each other, so this only needs to
+// cover one slow round trip. Keeping it short keeps the replay-detection hole
+// small. The hole is narrow to begin with: the collision branch issues *no*
+// tokens, it merely defers the family revocation, and the very next reuse
+// outside the window still kills the family.
+//
+// Exported so tests can shrink it instead of sleeping.
+var RotationGracePeriod = 10 * time.Second
+
 // OneTimeTokens issues and consumes single-use tokens (password reset,
 // email verification) outside the shared MySQL schema. It is set once at
 // startup in main.go (Redis-backed, or an in-memory fallback when Redis is
@@ -254,11 +267,28 @@ func Refresh(c *gin.Context) {
 	}
 
 	if entry.Revoked {
-		// Token-reuse detected: this refresh token was already rotated out
-		// (or explicitly revoked) but is being presented again. That means
-		// either an attacker has a copy of an old token, or a legitimate
-		// client is replaying a stale one — either way we can't trust any
-		// token in this family anymore, so kill the whole family.
+		// This token was already rotated out (or explicitly revoked) but is
+		// being presented again. Two very different things look identical here:
+		//
+		//  1. A genuine replay — an attacker holding a stolen copy of an old
+		//     token. The whole family must die.
+		//  2. A benign rotation collision — two tabs of the same browser hit a
+		//     401 at the same moment and both refreshed with the token that was
+		//     current when they started. One wins; the loser arrives moments
+		//     later with a token the winner just rotated out.
+		//
+		// Treating (2) as (1) logged people out at random, because killing the
+		// family also revokes the freshly-issued token the winner is now using.
+		// Inside a short window after rotation, assume the collision: fail just
+		// this request and leave the family intact. The loser's next attempt
+		// picks up the winner's cookie from the shared jar and succeeds.
+		// Strict `<` so that a zero RotationGracePeriod disables the grace
+		// entirely — the clock can report an elapsed time of exactly zero when
+		// both reads land in the same tick.
+		if !entry.RevokedAt.IsZero() && time.Since(entry.RevokedAt) < RotationGracePeriod {
+			c.JSON(http.StatusConflict, gin.H{"error": "refresh already in progress, retry"})
+			return
+		}
 		if err := RefreshStore.RevokeFamily(entry.FamilyID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token family"})
 			return

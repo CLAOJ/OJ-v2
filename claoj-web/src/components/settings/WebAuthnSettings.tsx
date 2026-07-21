@@ -12,7 +12,7 @@ import { WebAuthnRegistrationForm } from './webauthn/RegistrationForm';
 import { CredentialList } from './webauthn/CredentialList';
 
 export default function WebAuthnSettings() {
-    const t = useTranslations();
+    const t = useTranslations('Settings');
     const { user } = useAuth();
 
     const { data: status } = useQuery({
@@ -45,10 +45,10 @@ export default function WebAuthnSettings() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />
-                    WebAuthn / Passkey Authentication
+                    {t('webauthnTitle')}
                 </CardTitle>
                 <CardDescription>
-                    Manage your WebAuthn credentials for passwordless login
+                    {t('webauthnDesc')}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -58,7 +58,7 @@ export default function WebAuthnSettings() {
                     <div className="space-y-4">
                         <Alert variant="default">
                             <AlertDescription>
-                                WebAuthn is enabled on your account. You can use your registered credentials to log in without a password.
+                                {t('webauthnEnabledMsg')}
                             </AlertDescription>
                         </Alert>
 

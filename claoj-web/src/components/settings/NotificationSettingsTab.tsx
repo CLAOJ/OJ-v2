@@ -3,6 +3,7 @@
 import api from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Bell } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface NotificationPreferences {
@@ -15,6 +16,7 @@ interface NotificationPreferences {
 }
 
 export default function NotificationSettingsTab() {
+    const t = useTranslations('Settings');
     const queryClient = useQueryClient();
 
     const { data: preferences, isLoading } = useQuery<{
@@ -86,49 +88,49 @@ export default function NotificationSettingsTab() {
             <section className="space-y-4">
                 <div className="flex items-center gap-2 text-primary font-bold">
                     <Bell size={18} />
-                    Notification Preferences
+                    {t('notificationPreferences')}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                    Choose how you want to receive notifications.
+                    {t('notificationPreferencesDesc')}
                 </p>
 
                 <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Email Notifications</h3>
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{t('emailNotifications')}</h3>
                     <ToggleSwitch
-                        label="Submission Results"
-                        description="Receive email when your submission is graded"
+                        label={t('notifySubmissionResults')}
+                        description={t('emailSubmissionResultsDesc')}
                         checked={preferences?.email_on_submission_result ?? true}
                         onChange={(val) => updatePreferences({ email_on_submission_result: val })}
                     />
                     <ToggleSwitch
-                        label="Contest Start"
-                        description="Receive email when a contest you joined is about to start"
+                        label={t('notifyContestStart')}
+                        description={t('emailContestStartDesc')}
                         checked={preferences?.email_on_contest_start ?? true}
                         onChange={(val) => updatePreferences({ email_on_contest_start: val })}
                     />
                     <ToggleSwitch
-                        label="Ticket Replies"
-                        description="Receive email when a ticket receives a reply"
+                        label={t('notifyTicketReplies')}
+                        description={t('emailTicketRepliesDesc')}
                         checked={preferences?.email_on_ticket_reply ?? true}
                         onChange={(val) => updatePreferences({ email_on_ticket_reply: val })}
                     />
 
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mt-6">Web Notifications</h3>
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mt-6">{t('webNotifications')}</h3>
                     <ToggleSwitch
-                        label="Submission Results"
-                        description="Show web notification when your submission is graded"
+                        label={t('notifySubmissionResults')}
+                        description={t('webSubmissionResultsDesc')}
                         checked={preferences?.web_on_submission_result ?? true}
                         onChange={(val) => updatePreferences({ web_on_submission_result: val })}
                     />
                     <ToggleSwitch
-                        label="Contest Start"
-                        description="Show web notification when a contest you joined is about to start"
+                        label={t('notifyContestStart')}
+                        description={t('webContestStartDesc')}
                         checked={preferences?.web_on_contest_start ?? true}
                         onChange={(val) => updatePreferences({ web_on_contest_start: val })}
                     />
                     <ToggleSwitch
-                        label="Ticket Replies"
-                        description="Show web notification when a ticket receives a reply"
+                        label={t('notifyTicketReplies')}
+                        description={t('webTicketRepliesDesc')}
                         checked={preferences?.web_on_ticket_reply ?? true}
                         onChange={(val) => updatePreferences({ web_on_ticket_reply: val })}
                     />

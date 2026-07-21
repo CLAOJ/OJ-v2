@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ProblemsPageContent() {
     const t = useTranslations('Problems');
+    const tCommon = useTranslations('Common');
     const router = useRouter();
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<string>('all');
@@ -87,13 +88,13 @@ export default function ProblemsPageContent() {
                 <div className="p-8 rounded-[3rem] bg-card border shadow-sm space-y-8 sticky top-4">
                     <div className="flex items-center gap-3">
                         <SlidersHorizontal size={20} className="text-primary" />
-                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Advanced Filters</h3>
+                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">{t('advancedFilters')}</h3>
                     </div>
 
                     <div className="space-y-6">
                         {/* Search */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('search')}</label>
                             <div className="relative">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
                                 <input
@@ -108,7 +109,7 @@ export default function ProblemsPageContent() {
 
                         {/* Status */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Solved Status</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('solvedStatus')}</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {['all', 'unsolved', 'solved'].map((s) => (
                                     <button
@@ -121,7 +122,7 @@ export default function ProblemsPageContent() {
                                                 : "bg-muted/30 hover:bg-muted/50 border-transparent text-muted-foreground"
                                         )}
                                     >
-                                        {s}
+                                        {s === 'all' ? t('statusAll') : s === 'solved' ? t('solved') : t('unsolved')}
                                     </button>
                                 ))}
                             </div>
@@ -130,7 +131,7 @@ export default function ProblemsPageContent() {
                         {/* Point Range */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center ml-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Points</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t('points')}</label>
                                 <span className="text-xs font-black text-primary">{pointsMin} — {pointsMax}</span>
                             </div>
                             <div className="space-y-6">
@@ -155,7 +156,7 @@ export default function ProblemsPageContent() {
                             }}
                             className="w-full h-12 rounded-2xl bg-muted/50 text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all border border-dashed flex items-center justify-center gap-2"
                         >
-                            <RefreshCw size={14} /> Reset Filters
+                            <RefreshCw size={14} /> {t('resetFilters')}
                         </button>
                     </div>
 
@@ -167,7 +168,7 @@ export default function ProblemsPageContent() {
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                             <Gamepad2 size={20} className="relative z-10 text-amber-500" />
-                            <span className="relative z-10">Surprise Me!</span>
+                            <span className="relative z-10">{t('surpriseMe')}</span>
                         </button>
                     </div>
                 </div>
@@ -180,7 +181,7 @@ export default function ProblemsPageContent() {
 
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-rose-500 flex items-center gap-3 relative z-10">
                         <Flame size={16} />
-                        Trending Now
+                        {t('trendingNow')}
                     </h3>
 
                     <div className="space-y-2 relative z-10">
@@ -194,8 +195,8 @@ export default function ProblemsPageContent() {
                                     <span className="text-[10px] font-black text-rose-500/70 uppercase tracking-widest">{hp.code}</span>
                                     <span className="text-sm font-black text-foreground group-hover:text-rose-400 transition-colors truncate">{hp.name}</span>
                                     <div className="flex items-center justify-between mt-1">
-                                        <span className="text-[10px] font-bold text-muted-foreground">{hp.user_count} Users Solved</span>
-                                        <span className="text-[10px] font-black text-muted-foreground">{Math.round(hp.ac_rate)}% AC</span>
+                                        <span className="text-[10px] font-bold text-muted-foreground">{t('usersSolved', { count: hp.user_count })}</span>
+                                        <span className="text-[10px] font-black text-muted-foreground">{t('acPercent', { rate: Math.round(hp.ac_rate) })}</span>
                                     </div>
                                 </div>
                             </Link>
@@ -211,25 +212,25 @@ export default function ProblemsPageContent() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-muted/30 border-b">
-                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">Status</th>
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">{tCommon('status')}</th>
                                     <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground cursor-pointer group" onClick={() => toggleSort('code')}>
                                         <div className="flex items-center gap-2">
-                                            Code {sort === 'code' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                            {t('code')} {sort === 'code' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                                         </div>
                                     </th>
                                     <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground cursor-pointer group" onClick={() => toggleSort('name')}>
                                         <div className="flex items-center gap-2">
-                                            Name {sort === 'name' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                            {t('name')} {sort === 'name' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                                         </div>
                                     </th>
                                     <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer group" onClick={() => toggleSort('points')}>
                                         <div className="flex items-center gap-2 justify-center">
-                                            Points {sort === 'points' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                            {t('points')} {sort === 'points' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                                         </div>
                                     </th>
                                     <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer group" onClick={() => toggleSort('ac_rate')}>
                                         <div className="flex items-center gap-2 justify-center">
-                                            AC Rate {sort === 'ac_rate' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                            {t('acRate')} {sort === 'ac_rate' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                                         </div>
                                     </th>
                                 </tr>
@@ -294,16 +295,16 @@ export default function ProblemsPageContent() {
                         disabled={page === 1}
                         className="px-8 h-12 rounded-2xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
                     >
-                        Previous
+                        {tCommon('previous')}
                     </button>
                     <div className="h-12 flex items-center px-6 rounded-2xl bg-primary text-primary-foreground font-black text-xs">
-                        Page {page}
+                        {tCommon('page')} {page}
                     </div>
                     <button
                         onClick={() => setPage(p => p + 1)}
                         className="px-8 h-12 rounded-2xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted"
                     >
-                        Next
+                        {tCommon('next')}
                     </button>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Plus, Minus } from 'lucide-react';
 import { DiffLine } from './DiffLine';
@@ -15,6 +16,7 @@ interface SideBySideDiffProps {
 }
 
 export function SideBySideDiff({ diffLines }: SideBySideDiffProps) {
+    const t = useTranslations('Submissions');
     const leftLines: { line: number; content: string; type: string }[] = [];
     const rightLines: { line: number; content: string; type: string }[] = [];
 
@@ -46,11 +48,11 @@ export function SideBySideDiff({ diffLines }: SideBySideDiffProps) {
             <div className="grid grid-cols-2 border-b">
                 <div className="p-3 bg-red-500/10 text-center text-sm font-bold text-red-500">
                     <Minus size={16} className="inline mr-1" />
-                    Removed
+                    {t('diffRemoved')}
                 </div>
                 <div className="p-3 bg-emerald-500/10 text-center text-sm font-bold text-emerald-500">
                     <Plus size={16} className="inline mr-1" />
-                    Added
+                    {t('diffAdded')}
                 </div>
             </div>
             <div className="max-h-[60vh] overflow-auto font-mono text-sm">

@@ -133,7 +133,7 @@ export default function StatsPage() {
                 <div className="text-right">
                   <div className="font-semibold">{stat.count.toLocaleString()}</div>
                   <div className="text-sm text-gray-500">
-                    {stat.ac_rate.toFixed(1)}% AC
+                    {t('stats.ac_rate_percent', { rate: stat.ac_rate.toFixed(1) })}
                   </div>
                 </div>
               </div>
@@ -195,7 +195,7 @@ export default function StatsPage() {
                   <span className="font-mono">{judge.name}</span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  {judge.load}% load
+                  {t('stats.judge_load_percent', { load: judge.load })}
                 </div>
               </div>
             ))}

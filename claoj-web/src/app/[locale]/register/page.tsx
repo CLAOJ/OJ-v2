@@ -74,10 +74,12 @@ export default function RegisterPage() {
                             <Mail size={40} className="text-primary" />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-2xl font-bold">Verify Your Email</h2>
+                            <h2 className="text-2xl font-bold">{t('verifyYourEmail')}</h2>
                             <p className="text-muted-foreground">
-                                We've sent a verification link to <strong>{registeredEmail}</strong>.
-                                Please check your inbox and click the link to verify your account.
+                                {t.rich('verificationLinkSent', {
+                                    email: registeredEmail,
+                                    strong: (chunks) => <strong>{chunks}</strong>
+                                })}
                             </p>
                         </div>
                         <div className="space-y-3">
@@ -85,13 +87,13 @@ export default function RegisterPage() {
                                 href="/login"
                                 className="block w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all"
                             >
-                                Go to Login
+                                {t('goToLogin')}
                             </Link>
                             <Link
                                 href="/resend-verification"
                                 className="block w-full py-3 rounded-xl border font-bold hover:bg-muted/50 transition-all"
                             >
-                                Resend Verification Email
+                                {t('resendVerificationTitle')}
                             </Link>
                         </div>
                     </div>
@@ -165,7 +167,7 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Confirm Password</label>
+                                    <label className="text-sm font-medium">{t('confirmPassword')}</label>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                         <input
@@ -192,7 +194,7 @@ export default function RegisterPage() {
                         </form>
 
                         <div className="text-center text-sm text-muted-foreground">
-                            {t('haveAccount')}{' '}
+                            {t('hasAccount')}{' '}
                             <Link href="/login" className="font-bold text-primary hover:underline underline-offset-4">
                                 {t('signIn')}
                             </Link>
@@ -204,7 +206,7 @@ export default function RegisterPage() {
                                 <div className="w-full border-t border-muted-foreground/20"></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">Or continue with</span>
+                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">{t('orContinueWith')}</span>
                             </div>
                         </div>
 

@@ -51,7 +51,7 @@ export function CommentActions({
                                 className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-destructive/10 text-destructive transition-colors"
                             >
                                 <Trash2 size={16} />
-                                Delete
+                                {t('delete')}
                             </button>
                         </>
                     )}
@@ -60,7 +60,7 @@ export function CommentActions({
                         className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors"
                     >
                         <History size={16} />
-                        View history
+                        {t('viewHistory')}
                     </button>
                     {canModerate && (
                         <>
@@ -70,7 +70,7 @@ export function CommentActions({
                                 className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors"
                             >
                                 <Shield size={16} />
-                                {node.hidden ? 'Unhide' : 'Hide'} comment
+                                {node.hidden ? t('unhideComment') : t('hideComment')}
                             </button>
                         </>
                     )}

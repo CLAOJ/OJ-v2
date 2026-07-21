@@ -71,8 +71,8 @@ export default function ContestStatsPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center text-red-500">
-          <h1 className="text-2xl font-bold mb-2">Contest not found</h1>
-          <p>The contest you're looking for doesn't exist or isn't visible.</p>
+          <h1 className="text-2xl font-bold mb-2">{t('Contest.notFound')}</h1>
+          <p>{t('Contest.notFoundDesc')}</p>
         </div>
       </div>
     );
@@ -130,7 +130,7 @@ export default function ContestStatsPage() {
                   <div className="font-semibold">
                     {problem.accepted} / {problem.total}
                   </div>
-                  <div className="text-sm text-gray-500">{problem.ac_rate}% AC</div>
+                  <div className="text-sm text-gray-500">{t('Contest.acPercent', { rate: problem.ac_rate })}</div>
                 </div>
               </div>
             ))}
@@ -209,7 +209,7 @@ export default function ContestStatsPage() {
             href={`/contest/${key}`}
             className="block text-center mt-4 text-blue-600 hover:underline"
           >
-            {t('contest.scoreboard')} →
+            {t('Contest.scoreboard')} →
           </a>
         </div>
       </div>

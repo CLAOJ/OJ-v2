@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import api from '@/lib/api';
 import { Contest, APIResponse } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -32,6 +34,8 @@ dayjs.extend(duration);
 
 export default function ContestsPageContent() {
     const t = useTranslations('Contest');
+    const tAuth = useTranslations('Auth');
+    const { requireAuth } = useRequireAuth();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [now, setNow] = useState(dayjs());
@@ -55,6 +59,11 @@ export default function ContestsPageContent() {
         mutationFn: (key: string) => api.post(`/contest/${key}/join`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contests'] });
+        },
+        // Without this, React Query absorbed the rejection and a failed join
+        // looked identical to no click at all.
+        onError: (err: any) => {
+            toast.error(err.response?.data?.error || t('joinFailed'));
         }
     });
 
@@ -154,7 +163,7 @@ export default function ContestsPageContent() {
                                                 <div className="flex justify-end gap-2">
                                                     {!c.is_joined && isRunning && (
                                                         <button
-                                                            onClick={() => joinMutation.mutate(c.key)}
+                                                            onClick={() => requireAuth(() => joinMutation.mutate(c.key), tAuth('loginToJoinContest'))}
                                                             className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm shadow-emerald-200"
                                                         >
                                                             <Play size={14} fill="currentColor" /> {t('join')}
@@ -208,7 +217,7 @@ export default function ContestsPageContent() {
                             <Trophy className="text-primary" size={36} />
                             {t('title')}
                         </h1>
-                        <p className="text-muted-foreground mt-1">Participate in challenges, win recognition, and grow your rating.</p>
+                        <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -217,7 +226,7 @@ export default function ContestsPageContent() {
                             className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-bold transition-all border border-primary/20"
                         >
                             <Calendar size={18} />
-                            <span>View Calendar</span>
+                            <span>{t('viewCalendar')}</span>
                         </Link>
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
@@ -277,7 +286,7 @@ export default function ContestsPageContent() {
                     {past.length > 10 && (
                         <div className="flex justify-center pt-4">
                             <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
-                                View all past contests <ChevronRight size={16} />
+                                {t('viewAllPast')} <ChevronRight size={16} />
                             </button>
                         </div>
                     )}

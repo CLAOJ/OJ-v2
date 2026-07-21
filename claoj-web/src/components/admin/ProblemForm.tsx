@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { useForm, UseFormRegister } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { adminProblemGroupApi, adminProblemTypeApi } from '@/lib/adminApi';
 import { BasicInfoSection } from './problem-form/BasicInfoSection';
+
+// The taxonomy selects need every group/type, not a page of them.
+const TAXONOMY_PAGE_SIZE = 500;
+
 import { ClassificationSection } from './problem-form/ClassificationSection';
 import { AuthorsSection } from './problem-form/AuthorsSection';
 import { SettingsSection } from './problem-form/SettingsSection';
@@ -72,10 +77,16 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
 
     const [description, setDescription] = useState(initialData?.description || '');
 
+    // Problem taxonomy is only exposed under the admin routes
+    // (/admin/problem-groups, /admin/problem-types). The bare /problem/groups
+    // and /problem/types paths this used to call don't exist — worse, they were
+    // swallowed by the /problem/:code route and came back as a "problem not
+    // found" 404, so both selects silently rendered empty on every problem
+    // create/edit page load.
     const { data: groups } = useQuery<{ data: ProblemGroup[] }>({
         queryKey: ['problem-groups'],
         queryFn: async () => {
-            const res = await api.get('/problem/groups');
+            const res = await adminProblemGroupApi.list(1, TAXONOMY_PAGE_SIZE);
             return res.data;
         }
     });
@@ -83,7 +94,7 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
     const { data: types } = useQuery<{ data: ProblemType[] }>({
         queryKey: ['problem-types'],
         queryFn: async () => {
-            const res = await api.get('/problem/types');
+            const res = await adminProblemTypeApi.list(1, TAXONOMY_PAGE_SIZE);
             return res.data;
         }
     });

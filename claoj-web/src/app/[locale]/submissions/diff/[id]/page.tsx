@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { use } from 'react';
 import SubmissionDiffViewer from '@/components/submission/SubmissionDiffViewer';
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function SubmissionDiffPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const t = useTranslations('Submissions');
     const searchParams = useSearchParams();
     const compareId = searchParams.get('compare');
 
@@ -17,16 +19,18 @@ export default function SubmissionDiffPage({ params }: { params: Promise<{ id: s
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Link href="/submissions" className="hover:text-primary transition-colors flex items-center gap-2">
                         <ArrowLeft size={16} />
-                        Back to Submissions
+                        {t('backToSubmissions')}
                     </Link>
                 </div>
                 <div className="p-8 text-center space-y-4">
-                    <h2 className="text-2xl font-bold">Missing comparison ID</h2>
+                    <h2 className="text-2xl font-bold">{t('diffMissingIdTitle')}</h2>
                     <p className="text-muted-foreground">
-                        Please provide a submission ID to compare with using the <code className="bg-muted px-2 py-1 rounded">compare</code> query parameter.
+                        {t.rich('diffMissingIdDesc', {
+                            code: (chunks) => <code className="bg-muted px-2 py-1 rounded">{chunks}</code>
+                        })}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                        Example: <code className="bg-muted px-2 py-1 rounded">/submissions/diff/123?compare=456</code>
+                        {t('diffExampleLabel')} <code className="bg-muted px-2 py-1 rounded">/submissions/diff/123?compare=456</code>
                     </p>
                 </div>
             </div>
@@ -38,7 +42,7 @@ export default function SubmissionDiffPage({ params }: { params: Promise<{ id: s
             <div className="flex items-center gap-2 text-muted-foreground mb-6">
                 <Link href="/submissions" className="hover:text-primary transition-colors flex items-center gap-2">
                     <ArrowLeft size={16} />
-                    Back to Submissions
+                    {t('backToSubmissions')}
                 </Link>
             </div>
             <SubmissionDiffViewer

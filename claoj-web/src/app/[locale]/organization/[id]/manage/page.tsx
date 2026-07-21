@@ -76,7 +76,7 @@ export default function OrganizationManagePage() {
     });
 
     const handleKick = (member: OrganizationMember) => {
-        if (confirm(`Are you sure you want to kick ${member.username} from the organization?`)) {
+        if (confirm(t('kickConfirm', { username: member.username }))) {
             kickMutation.mutate(member.username);
         }
     };
@@ -97,9 +97,9 @@ export default function OrganizationManagePage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <Building2 size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">Organization Not Found</h2>
+                <h2 className="text-2xl font-black mb-2">{t('notFound')}</h2>
                 <Link href="/organizations" className="text-primary hover:underline">
-                    Back to Organizations
+                    {t('backToOrganizations')}
                 </Link>
             </div>
         );
@@ -111,10 +111,10 @@ export default function OrganizationManagePage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <Shield size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">Access Denied</h2>
-                <p className="text-muted-foreground">You don&apos;t have permission to manage this organization.</p>
+                <h2 className="text-2xl font-black mb-2">{t('accessDenied')}</h2>
+                <p className="text-muted-foreground">{t('noManagePermission')}</p>
                 <Link href={`/organization/${org.id}-${org.slug}`} className="text-primary hover:underline mt-4 block">
-                    Back to Organization
+                    {t('backToOrganization')}
                 </Link>
             </div>
         );
@@ -133,7 +133,7 @@ export default function OrganizationManagePage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Settings className="text-primary" size={32} />
-                        Manage Organization
+                        {t('manage')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {org.name}
@@ -153,7 +153,7 @@ export default function OrganizationManagePage() {
                     )}
                 >
                     <Bell size={18} />
-                    Join Requests
+                    {t('joinRequests')}
                     {requests?.data.length ? (
                         <Badge className="ml-1 bg-primary text-primary-foreground">{requests.data.length}</Badge>
                     ) : null}
@@ -168,7 +168,7 @@ export default function OrganizationManagePage() {
                     )}
                 >
                     <Users size={18} />
-                    Members
+                    {t('members')}
                 </button>
                 <button
                     onClick={() => setActiveTab('edit')}
@@ -180,7 +180,7 @@ export default function OrganizationManagePage() {
                     )}
                 >
                     <Settings size={18} />
-                    Edit Organization
+                    {t('edit')}
                 </button>
             </div>
 
@@ -194,7 +194,7 @@ export default function OrganizationManagePage() {
                     ) : requests?.data.length ? (
                         <div className="border rounded-xl overflow-hidden">
                             <div className="bg-muted/30 px-4 py-3 border-b font-medium">
-                                Pending Join Requests ({requests.data.length})
+                                {t('pendingJoinRequests', { count: requests.data.length })}
                             </div>
                             <div className="divide-y">
                                 {requests.data.map((request) => (
@@ -205,7 +205,7 @@ export default function OrganizationManagePage() {
                                         <div className="flex-1">
                                             <div className="font-medium">{request.user.username}</div>
                                             <div className="text-sm text-muted-foreground">
-                                                Requested {dayjs(request.created_at).fromNow()}
+                                                {t('requestedAt', { time: dayjs(request.created_at).fromNow() })}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export default function OrganizationManagePage() {
                                                 onClick={() => handleRequest(request.id, 'approve')}
                                                 disabled={handleRequestMutation.isPending}
                                                 className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-colors disabled:opacity-50"
-                                                title="Approve"
+                                                title={t('approve')}
                                             >
                                                 <Check size={18} />
                                             </button>
@@ -221,7 +221,7 @@ export default function OrganizationManagePage() {
                                                 onClick={() => handleRequest(request.id, 'reject')}
                                                 disabled={handleRequestMutation.isPending}
                                                 className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                                                title="Reject"
+                                                title={t('reject')}
                                             >
                                                 <X size={18} />
                                             </button>
@@ -233,7 +233,7 @@ export default function OrganizationManagePage() {
                     ) : (
                         <div className="p-8 text-center text-muted-foreground border rounded-xl">
                             <Bell size={48} className="mx-auto mb-4 opacity-20" />
-                            <p className="font-medium">No pending requests</p>
+                            <p className="font-medium">{t('noPendingRequests')}</p>
                         </div>
                     )}
                 </div>
@@ -243,7 +243,7 @@ export default function OrganizationManagePage() {
             {activeTab === 'members' && (
                 <div className="border rounded-xl overflow-hidden">
                     <div className="bg-muted/30 px-4 py-3 border-b font-medium">
-                        Organization Members ({org.members?.length || 0})
+                        {t('membersCount', { count: org.members?.length || 0 })}
                     </div>
                     <div className="divide-y">
                         {org.members?.map((member) => (
@@ -256,12 +256,12 @@ export default function OrganizationManagePage() {
                                         <span className="font-medium">{member.username}</span>
                                         {member.role === 'admin' && (
                                             <Badge className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                                <Crown size={12} className="inline mr-1" /> Admin
+                                                <Crown size={12} className="inline mr-1" /> {t('admin')}
                                             </Badge>
                                         )}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
-                                        Joined {dayjs(member.joined_at).fromNow()}
+                                        {t('joinedAt', { time: dayjs(member.joined_at).fromNow() })}
                                     </div>
                                 </div>
                                 {member.role !== 'admin' && (
@@ -269,7 +269,7 @@ export default function OrganizationManagePage() {
                                         onClick={() => handleKick(member)}
                                         disabled={kickMutation.isPending}
                                         className="p-2 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
-                                        title="Kick from organization"
+                                        title={t('kickFromOrganization')}
                                     >
                                         <UserX size={18} />
                                     </button>
@@ -279,7 +279,7 @@ export default function OrganizationManagePage() {
                         {!org.members?.length && (
                             <div className="p-8 text-center text-muted-foreground">
                                 <Users size={48} className="mx-auto mb-4 opacity-20" />
-                                <p className="font-medium">No members yet</p>
+                                <p className="font-medium">{t('noMembersYet')}</p>
                             </div>
                         )}
                     </div>
@@ -302,6 +302,7 @@ interface OrganizationRequest {
 
 function EditOrganizationForm({ organization, onSuccess }: { organization: OrganizationDetail; onSuccess: () => void }) {
     const t = useTranslations('Organization');
+    const tCommon = useTranslations('Common');
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState({
         name: organization.name,
@@ -334,10 +335,10 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">Basic Information</h3>
+                <h3 className="text-lg font-bold">{t('basicInformation')}</h3>
 
                 <div>
-                    <label className="block text-sm font-medium mb-2">Organization Name</label>
+                    <label className="block text-sm font-medium mb-2">{t('name')}</label>
                     <input
                         type="text"
                         value={formData.name}
@@ -348,7 +349,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-2">Short Name</label>
+                    <label className="block text-sm font-medium mb-2">{t('shortName')}</label>
                     <input
                         type="text"
                         value={formData.short_name}
@@ -359,7 +360,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-2">About</label>
+                    <label className="block text-sm font-medium mb-2">{t('about')}</label>
                     <textarea
                         value={formData.about}
                         onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
@@ -370,7 +371,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
             </div>
 
             <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">Settings</h3>
+                <h3 className="text-lg font-bold">{t('settings')}</h3>
 
                 <div className="flex flex-wrap gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -380,7 +381,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                             onChange={(e) => setFormData(prev => ({ ...prev, is_open: e.target.checked }))}
                             className="rounded w-5 h-5"
                         />
-                        <span className="text-sm font-medium">Open for joining (anyone can join)</span>
+                        <span className="text-sm font-medium">{t('openForJoining')}</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -390,12 +391,12 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                             onChange={(e) => setFormData(prev => ({ ...prev, is_unlisted: e.target.checked }))}
                             className="rounded w-5 h-5"
                         />
-                        <span className="text-sm font-medium">Unlisted (hide from public list)</span>
+                        <span className="text-sm font-medium">{t('unlistedHide')}</span>
                     </label>
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-2">Member Slots (0 for unlimited)</label>
+                    <label className="block text-sm font-medium mb-2">{t('memberSlots')}</label>
                     <input
                         type="number"
                         min="0"
@@ -411,7 +412,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                     href={`/organization/${organization.id}-${organization.slug}`}
                     className="px-6 py-2.5 rounded-xl border hover:bg-muted transition-colors font-medium"
                 >
-                    Cancel
+                    {tCommon('cancel')}
                 </Link>
                 <button
                     type="submit"
@@ -419,7 +420,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                     className="px-6 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                     {isLoading && <Loader2 size={16} className="animate-spin" />}
-                    Save Changes
+                    {tCommon('saveChanges')}
                 </button>
             </div>
         </form>

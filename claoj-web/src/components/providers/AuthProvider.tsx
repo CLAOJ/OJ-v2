@@ -194,18 +194,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    // Separate effect for periodic token refresh
-    useEffect(() => {
-        // Periodic refresh every 10 minutes to keep tokens alive
-        const refreshInterval = setInterval(() => {
-            if (user) {
-                api.post('/auth/refresh', {}, { withCredentials: true })
-                    .catch(() => { /* Silent fail - token will be cleared on next API call if truly invalid */ });
-            }
-        }, 10 * 60 * 1000);
-
-        return () => clearInterval(refreshInterval);
-    }, [user]);
+    // NOTE: there is deliberately no periodic background refresh here.
+    //
+    // A 10-minute setInterval used to fire `POST /auth/refresh` directly,
+    // bypassing the single-flight lock in lib/api.ts. Because that lock is
+    // module-scoped it is per-tab anyway, so two open tabs would present the
+    // same refresh token within the same instant. The backend rotates on every
+    // refresh and treats a second use of an already-rotated token as replay,
+    // revoking the entire token family (api/v2/auth/auth.go) — which logged the
+    // user out at random.
+    //
+    // The response interceptor in lib/api.ts already refreshes on demand when a
+    // request 401s, which is the only moment a fresh access token is actually
+    // needed. Proactive refreshing bought nothing and caused the races.
 
     return (
         <AuthContext.Provider value={{ user, loading, login, loginTotp, loginWebAuthn, logout }}>

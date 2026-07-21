@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface ProblemGroup {
     id: number;
     name: string;
@@ -27,13 +29,15 @@ export function ClassificationSection({
     onGroupChange,
     onTypeToggle
 }: ClassificationSectionProps) {
+    const tProblems = useTranslations('Problems');
+
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Classification</h3>
+            <h3 className="text-lg font-bold">{tProblems('classification')}</h3>
 
             <div>
                 <label htmlFor="problem-group" className="text-sm font-medium text-muted-foreground block mb-2">
-                    Problem Group
+                    {tProblems('problemGroup')}
                 </label>
                 <select
                     id="problem-group"
@@ -41,7 +45,7 @@ export function ClassificationSection({
                     value={selectedGroup || ''}
                     onChange={(e) => onGroupChange(e.target.value ? Number(e.target.value) : undefined)}
                 >
-                    <option value="">Select a group...</option>
+                    <option value="">{tProblems('selectGroupPlaceholder')}</option>
                     {groups?.data.map(g => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
@@ -50,7 +54,7 @@ export function ClassificationSection({
 
             <div>
                 <label htmlFor="problem-types" className="text-sm font-medium text-muted-foreground block mb-2">
-                    Problem Types
+                    {tProblems('problemTypes')}
                 </label>
                 <div id="problem-types" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="problem-types">
                     {types?.data.map(t => (

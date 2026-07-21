@@ -36,6 +36,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     const { id: idParam } = use(params);
     const id = parseLeadingId(idParam);
     const t = useTranslations('Organization');
+    const tCommon = useTranslations('Common');
     const router = useRouter();
     const { user, loading } = useAuth();
     const [activeTab, setActiveTab] = useState<'members' | 'admins'>('members');
@@ -102,14 +103,14 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <Building2 size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">Organization Not Found</h2>
-                <p className="text-muted-foreground mb-6">The organization you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+                <h2 className="text-2xl font-black mb-2">{t('notFound')}</h2>
+                <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/organizations"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
-                    Back to Organizations
+                    {t('backToOrganizations')}
                 </Link>
             </div>
         );
@@ -132,12 +133,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     <div className="flex items-center gap-3 mt-2">
                         {isAdmin && (
                             <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                <Crown size={12} className="inline mr-1" /> Admin
+                                <Crown size={12} className="inline mr-1" /> {t('adminBadge')}
                             </Badge>
                         )}
                         {member.joined_at && (
                             <span className="text-[10px] text-muted-foreground font-bold">
-                                Joined {dayjs(member.joined_at).fromNow()}
+                                {t('joinedAgo', { time: dayjs(member.joined_at).fromNow() })}
                             </span>
                         )}
                     </div>
@@ -157,7 +158,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
-                Back to Organizations
+                {t('backToOrganizations')}
             </Link>
 
             {/* Header Card */}
@@ -190,7 +191,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                     className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                                 >
                                     <UserPlus size={18} />
-                                    Join Organization
+                                    {t('joinOrganization')}
                                 </button>
                             )}
                             {isMember && (
@@ -200,12 +201,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                     className="px-6 py-3 rounded-xl bg-muted text-muted-foreground font-bold hover:bg-destructive/10 hover:text-destructive transition-colors flex items-center gap-2 disabled:opacity-50"
                                 >
                                     <UserMinus size={18} />
-                                    Leave
+                                    {t('leave')}
                                 </button>
                             )}
                             {!org.is_open && !isMember && (
                                 <Badge className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-muted text-muted-foreground border border-dashed">
-                                    Invite Only
+                                    {t('inviteOnly')}
                                 </Badge>
                             )}
                         </div>
@@ -225,35 +226,35 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         >
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <FileText size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Blog</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t('blog')}</span>
                             </div>
-                            <div className="text-3xl font-black group-hover:text-primary transition-colors">View</div>
+                            <div className="text-3xl font-black group-hover:text-primary transition-colors">{tCommon('view')}</div>
                         </Link>
                         <div className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Users size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Members</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t('members')}</span>
                             </div>
                             <div className="text-3xl font-black">{org.member_count}</div>
                         </div>
                         <div className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Crown size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Admins</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t('admins')}</span>
                             </div>
                             <div className="text-3xl font-black">{org.admins?.length || 0}</div>
                         </div>
                         <div className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Shield size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Status</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{tCommon('status')}</span>
                             </div>
                             <div className="text-lg font-black text-emerald-500">{org.is_open ? 'Open' : 'Private'}</div>
                         </div>
                         <div className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Hash size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">ID</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t('idLabel')}</span>
                             </div>
                             <div className="text-lg font-black font-mono">{org.id}</div>
                         </div>
@@ -273,7 +274,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     )}
                 >
                     <Users size={16} />
-                    Members ({org.members?.length || 0})
+                    {t('membersCount', { count: org.members?.length || 0 })}
                 </button>
                 <button
                     onClick={() => setActiveTab('admins')}
@@ -285,7 +286,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     )}
                 >
                     <Crown size={16} />
-                    Admins ({org.admins?.length || 0})
+                    {t('adminsCount', { count: org.admins?.length || 0 })}
                 </button>
             </div>
 
@@ -306,7 +307,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         ) : (
                             <div className="col-span-full text-center py-20 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                                 <Users size={48} className="mx-auto mb-4 opacity-10" />
-                                <p className="font-bold">No members yet</p>
+                                <p className="font-bold">{t('noMembers')}</p>
                             </div>
                         )}
                     </>
@@ -320,7 +321,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         ) : (
                             <div className="col-span-full text-center py-20 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                                 <Crown size={48} className="mx-auto mb-4 opacity-10" />
-                                <p className="font-bold">No admins</p>
+                                <p className="font-bold">{t('noAdmins')}</p>
                             </div>
                         )}
                     </>

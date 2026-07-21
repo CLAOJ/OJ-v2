@@ -45,6 +45,7 @@ export default function OrganizationBlogPage() {
     const id = parseLeadingId(params.id);
     const router = useRouter();
     const t = useTranslations('Blog');
+    const tOrg = useTranslations('Organization');
     const [search, setSearch] = useState('');
 
     const { data: org, isLoading: orgLoading } = useQuery({
@@ -84,14 +85,14 @@ export default function OrganizationBlogPage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <FileText size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">Organization Not Found</h2>
-                <p className="text-muted-foreground mb-6">The organization you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+                <h2 className="text-2xl font-black mb-2">{tOrg('notFound')}</h2>
+                <p className="text-muted-foreground mb-6">{tOrg('notFoundDesc')}</p>
                 <Link
                     href="/organizations"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
-                    Back to Organizations
+                    {tOrg('backToOrganizations')}
                 </Link>
             </div>
         );
@@ -106,7 +107,7 @@ export default function OrganizationBlogPage() {
                     className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
                 >
                     <ArrowLeft size={16} />
-                    Back to Organization
+                    {tOrg('backToOrganization')}
                 </Link>
             </div>
 
@@ -125,7 +126,7 @@ export default function OrganizationBlogPage() {
                         )}
                     </div>
                 </div>
-                <p className="text-muted-foreground font-bold">Blog posts from {org.name}</p>
+                <p className="text-muted-foreground font-bold">{t('postsFrom', { name: org.name })}</p>
             </div>
 
             {/* Search */}
@@ -148,9 +149,9 @@ export default function OrganizationBlogPage() {
             ) : !filteredPosts || filteredPosts.length === 0 ? (
                 <div className="bg-card border rounded-[3rem] p-12 text-center">
                     <FileText size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                    <h3 className="text-xl font-black mb-2">No Blog Posts</h3>
+                    <h3 className="text-xl font-black mb-2">{t('noPostsTitle')}</h3>
                     <p className="text-muted-foreground font-medium">
-                        This organization hasn&apos;t published any blog posts yet.
+                        {t('orgNoPostsDesc')}
                     </p>
                 </div>
             ) : (
@@ -166,7 +167,7 @@ export default function OrganizationBlogPage() {
                                     <div className="flex items-center gap-2 mb-3">
                                         {post.sticky && (
                                             <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                                Sticky
+                                                {t('sticky')}
                                             </Badge>
                                         )}
                                         <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
@@ -198,7 +199,7 @@ export default function OrganizationBlogPage() {
                                     </span>
                                 </div>
                                 <span className="text-sm font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Read More →
+                                    {t('readMore')} →
                                 </span>
                             </div>
                         </Link>

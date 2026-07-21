@@ -20,9 +20,14 @@ import (
 
 // Entry describes a single refresh-token session.
 type Entry struct {
-	UserID    uint      `json:"user_id"`
-	FamilyID  string    `json:"family_id"`
-	Revoked   bool      `json:"revoked"`
+	UserID   uint   `json:"user_id"`
+	FamilyID string `json:"family_id"`
+	Revoked  bool   `json:"revoked"`
+	// RevokedAt is when Revoked was first set, and is what lets the refresh
+	// handler tell a genuine token replay from two tabs of the same browser
+	// refreshing simultaneously. Zero while the entry is live. Once set it is
+	// never moved forward, so the grace window cannot renew itself.
+	RevokedAt time.Time `json:"revoked_at,omitzero"`
 	ExpiresAt time.Time `json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
 	UserAgent string    `json:"user_agent,omitempty"`
@@ -103,16 +108,24 @@ func (s *memoryStore) Get(token string) (*Entry, bool, error) {
 	return &cp, true, nil
 }
 
+// markRevoked flags an entry, stamping RevokedAt only on the first transition
+// so repeated revocations can't slide the grace window forward.
+// Callers must hold s.mu.
+func (s *memoryStore) markRevoked(token string) {
+	e, ok := s.entries[token]
+	if !ok || e.Revoked {
+		return
+	}
+	e.Revoked = true
+	e.RevokedAt = time.Now()
+	s.entries[token] = e
+}
+
 func (s *memoryStore) Revoke(token string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	e, ok := s.entries[token]
-	if !ok {
-		return nil
-	}
-	e.Revoked = true
-	s.entries[token] = e
+	s.markRevoked(token)
 	return nil
 }
 
@@ -121,10 +134,7 @@ func (s *memoryStore) RevokeFamily(familyID string) error {
 	defer s.mu.Unlock()
 
 	for token := range s.byFam[familyID] {
-		if e, ok := s.entries[token]; ok {
-			e.Revoked = true
-			s.entries[token] = e
-		}
+		s.markRevoked(token)
 	}
 	return nil
 }
@@ -134,10 +144,7 @@ func (s *memoryStore) RevokeAllForUser(userID uint) error {
 	defer s.mu.Unlock()
 
 	for token := range s.byUser[userID] {
-		if e, ok := s.entries[token]; ok {
-			e.Revoked = true
-			s.entries[token] = e
-		}
+		s.markRevoked(token)
 	}
 	return nil
 }
@@ -278,6 +285,7 @@ func (s *redisStore) revokeHash(hash string) error {
 	}
 
 	e.Revoked = true
+	e.RevokedAt = time.Now()
 	newData, err := json.Marshal(e)
 	if err != nil {
 		return err

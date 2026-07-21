@@ -29,6 +29,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from '@/navigation';
 import Comments from '@/components/common/Comments';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { toast } from 'sonner';
 
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
@@ -36,6 +38,9 @@ dayjs.extend(relativeTime);
 export default function ContestPageContent({ params }: { params: Promise<{ key: string }> }) {
     const { key } = use(params);
     const t = useTranslations('Contest');
+    const tAuth = useTranslations('Auth');
+    const tCommon = useTranslations('Common');
+    const { requireAuth } = useRequireAuth();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'problems' | 'scoreboard'>('dashboard');
     const [timeLeft, setTimeLeft] = useState<string>('');
     const queryClient = useQueryClient();
@@ -73,6 +78,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contest', key] });
+        },
+        // Without this, React Query absorbed the rejection and a failed join
+        // looked identical to no click at all.
+        onError: (err: any) => {
+            toast.error(err.response?.data?.error || t('joinFailed'));
         }
     });
 
@@ -117,7 +127,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     }, [ranking, status, activeTab]);
 
     if (isFetching) return <div className="p-8 max-w-7xl mx-auto"><Skeleton className="h-[60vh] w-full rounded-[3rem]" /></div>;
-    if (!contest) return <div className="p-8 text-center text-muted-foreground">Contest not found.</div>;
+    if (!contest) return <div className="p-8 text-center text-muted-foreground">{t('notFound')}</div>;
 
     const isRunning = dayjs().isAfter(contest.start_time) && dayjs().isBefore(contest.end_time);
     const isPast = dayjs().isAfter(contest.end_time);
@@ -134,7 +144,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                     <div className="space-y-4">
                         <div className="flex flex-wrap items-center gap-4">
                             <Badge variant="outline" className="px-4 py-1.5 rounded-full border-primary/20 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest shadow-sm">
-                                {contest.format} Format
+                                {t('formatBadge', { format: contest.format ?? '' })}
                             </Badge>
                             <div className="flex items-center gap-2 text-xs font-black text-muted-foreground bg-muted/30 px-4 py-1.5 rounded-full border border-dashed tracking-wide">
                                 <Clock size={14} className="text-primary" />
@@ -149,7 +159,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                     <div className="flex flex-wrap items-center gap-4 pt-4">
                         {isRunning && (
                             <button
-                                onClick={() => joinContest()}
+                                onClick={() => requireAuth(() => joinContest(), tAuth('loginToJoinContest'))}
                                 disabled={isJoining || contest.is_joined}
                                 className={cn(
                                     "px-10 h-14 rounded-2xl font-black transition-all shadow-xl flex items-center gap-3",
@@ -159,12 +169,12 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 )}
                             >
                                 {contest.is_joined ? <CheckCircle2 size={20} /> : <Play size={20} fill="currentColor" />}
-                                {contest.is_joined ? 'Participating' : t('joinContest')}
+                                {contest.is_joined ? t('participating') : t('joinContest')}
                             </button>
                         )}
                         <div className="flex items-center gap-2 px-6 h-14 rounded-2xl bg-card border font-black text-sm shadow-sm group">
                             <BarChart3 size={18} className="text-primary group-hover:scale-110 transition-transform" />
-                            {contest.is_rated ? t('rated') : 'Unrated'}
+                            {contest.is_rated ? t('rated') : t('unrated')}
                         </div>
                     </div>
                 </div>
@@ -221,7 +231,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 )}
 
                                 <div className="prose prose-zinc dark:prose-invert max-w-none text-muted-foreground leading-relaxed">
-                                    {contest.description || "The contest description will be displayed here."}
+                                    {contest.description || t('descriptionPlaceholder')}
                                 </div>
                             </section>
 
@@ -234,25 +244,25 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <section className="p-8 rounded-[3rem] border bg-card shadow-sm space-y-8">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-3">
                                     <Info size={16} />
-                                    Rules & Format
+                                    {t('rulesAndFormat')}
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Contest System</p>
+                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{t('contestSystem')}</p>
                                         <p className="text-sm font-black">{contest.format} (DMOJ)</p>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Time Constraint</p>
-                                        <p className="text-sm font-black">{contest.time_limit ? `${contest.time_limit / 60} Minutes` : 'Infinite Window'}</p>
+                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{t('timeConstraint')}</p>
+                                        <p className="text-sm font-black">{contest.time_limit ? t('minutesCount', { count: contest.time_limit / 60 }) : t('infiniteWindow')}</p>
                                     </div>
                                     <div className="pt-4 border-t space-y-4">
                                         <div className="flex items-center justify-between text-xs font-bold">
-                                            <span className="text-muted-foreground">Scoreboard</span>
-                                            <span className="text-emerald-500">Public</span>
+                                            <span className="text-muted-foreground">{t('scoreboard')}</span>
+                                            <span className="text-emerald-500">{tCommon('public')}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-xs font-bold">
-                                            <span className="text-muted-foreground">Clars</span>
-                                            <span className="text-blue-500">Enabled</span>
+                                            <span className="text-muted-foreground">{t('clars')}</span>
+                                            <span className="text-blue-500">{tCommon('enabled')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -261,17 +271,17 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <section className="p-8 rounded-[3rem] bg-zinc-900 text-zinc-100 border border-zinc-800 shadow-xl space-y-8">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-3">
                                     <Clock size={16} />
-                                    Timeline
+                                    {t('timeline')}
                                 </h3>
                                 <div className="space-y-6 relative pl-4 border-l border-zinc-700">
                                     <div className="relative">
                                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Start Time</p>
+                                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{t('startTime')}</p>
                                         <p className="text-sm font-black">{dayjs(contest.start_time).format('HH:mm, DD MMM YYYY')}</p>
                                     </div>
                                     <div className="relative">
                                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-rose-500" />
-                                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">End Time</p>
+                                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{t('endTime')}</p>
                                         <p className="text-sm font-black">{dayjs(contest.end_time).format('HH:mm, DD MMM YYYY')}</p>
                                     </div>
                                 </div>
@@ -294,10 +304,10 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     <thead>
                                         <tr className="bg-muted/30 border-b">
                                             <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-24 text-center">#</th>
-                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Problem</th>
-                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">Status</th>
-                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">Points</th>
-                                            <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">AC Rate</th>
+                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('problem')}</th>
+                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{tCommon('status')}</th>
+                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{t('points')}</th>
+                                            <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{t('acRate')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
@@ -348,8 +358,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <div className="p-24 text-center rounded-[3rem] border border-dashed bg-card flex flex-col items-center gap-4">
                                 <Lock size={64} className="text-primary opacity-10 animate-pulse" />
                                 <div className="space-y-1">
-                                    <p className="text-lg font-black tracking-tight">Access Restricted</p>
-                                    <p className="text-sm font-medium text-muted-foreground">Problems will be visible once the contest begins.</p>
+                                    <p className="text-lg font-black tracking-tight">{t('accessRestricted')}</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{t('problemsVisibleAfterStart')}</p>
                                 </div>
                             </div>
                         )}
@@ -368,19 +378,19 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                         <div className="flex items-center justify-between px-8 py-4 border-b bg-muted/30">
                             <div className="flex items-center gap-3">
                                 <BarChart3 size={20} className="text-primary" />
-                                <h3 className="text-sm font-black uppercase tracking-widest">Scoreboard</h3>
+                                <h3 className="text-sm font-black uppercase tracking-widest">{t('scoreboard')}</h3>
                             </div>
                             <div className="flex items-center gap-2">
                                 {isRunning && status === 'connected' && (
                                     <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold animate-pulse">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                         <Wifi size={14} />
-                                        <span className="hidden sm:inline">Live</span>
+                                        <span className="hidden sm:inline">{t('live')}</span>
                                     </span>
                                 )}
                                 {lastLiveUpdate && (
                                     <span className="text-[10px] text-muted-foreground font-medium">
-                                        Updated {dayjs(lastLiveUpdate).fromNow()}
+                                        {t('updatedAgo', { time: dayjs(lastLiveUpdate).fromNow() })}
                                     </span>
                                 )}
                             </div>
@@ -389,16 +399,16 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-muted/30 border-b">
-                                        <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">Rank</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Competitor</th>
-                                        <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-24">Rating</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Total</th>
+                                        <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">{t('rank')}</th>
+                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('competitor')}</th>
+                                        <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-24">{t('rating')}</th>
+                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('total')}</th>
                                         {ranking?.problems.map((p, i) => (
                                             <th key={i} className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-28">
                                                 {p.label}
                                             </th>
                                         ))}
-                                        <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Window</th>
+                                        <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('window')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/50">
@@ -441,7 +451,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground font-black">N/A</span>
+                                                        <span className="text-[10px] text-muted-foreground font-black">{tCommon('notAvailable')}</span>
                                                     )}
                                                 </div>
                                             </td>

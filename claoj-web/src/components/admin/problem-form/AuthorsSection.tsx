@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface UserProfile {
     id: number;
     username: string;
@@ -28,13 +30,15 @@ export function AuthorsSection({
     onAuthorToggle,
     onLangToggle
 }: AuthorsSectionProps) {
+    const t = useTranslations('Problems');
+
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Authors & Languages</h3>
+            <h3 className="text-lg font-bold">{t('authorsAndLanguages')}</h3>
 
             <div>
                 <label htmlFor="problem-authors" className="text-sm font-medium text-muted-foreground block mb-2">
-                    Authors
+                    {t('authors')}
                 </label>
                 <div id="problem-authors" className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto" role="group" aria-labelledby="problem-authors">
                     {users?.data.map(u => (
@@ -53,7 +57,7 @@ export function AuthorsSection({
 
             <div>
                 <label htmlFor="allowed-languages" className="text-sm font-medium text-muted-foreground block mb-2">
-                    Allowed Languages
+                    {t('allowedLanguages')}
                 </label>
                 <div id="allowed-languages" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="allowed-languages">
                     {languages?.data.map(lang => (

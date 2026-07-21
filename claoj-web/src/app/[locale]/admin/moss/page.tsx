@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { adminSubmissionApi } from '@/lib/adminApi';
@@ -32,6 +33,8 @@ interface MossResult {
 }
 
 export default function AdminMossPage() {
+    const t = useTranslations('Admin.moss');
+    const tCommon = useTranslations('Admin.common');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
 
@@ -91,10 +94,10 @@ export default function AdminMossPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <BarChart3 className="text-primary" size={32} />
-                        MOSS Results
+                        {t('title')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Plagiarism detection results for submissions
+                        {t('subtitle')}
                     </p>
                 </div>
 
@@ -102,7 +105,7 @@ export default function AdminMossPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                     <input
                         type="text"
-                        placeholder="Search by username or problem..."
+                        placeholder={t('searchPlaceholder')}
                         className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -115,11 +118,9 @@ export default function AdminMossPage() {
                 <div className="flex items-start gap-3">
                     <FileText className="text-primary mt-0.5" size={20} />
                     <div className="text-sm">
-                        <p className="font-medium text-primary mb-1">About MOSS</p>
+                        <p className="font-medium text-primary mb-1">{t('aboutTitle')}</p>
                         <p className="text-muted-foreground">
-                            MOSS (Measure Of Software Similarity) is a system that automatically determines
-                            the similarity of computer programs. It supports multiple programming languages
-                            and is widely used for detecting plagiarism in programming assignments.
+                            {t('aboutDescription')}
                         </p>
                     </div>
                 </div>
@@ -135,12 +136,12 @@ export default function AdminMossPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Submission</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">User</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Matches</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Max Similarity</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">Status</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">Actions</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colSubmission')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colUser')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colMatches')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colMaxSimilarity')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colStatus')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{tCommon('actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -149,7 +150,7 @@ export default function AdminMossPage() {
                                         <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                                             <div className="flex flex-col items-center gap-2">
                                                 <FileText size={48} className="opacity-20" />
-                                                <p>No MOSS results found</p>
+                                                <p>{t('noResultsFound')}</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -180,7 +181,7 @@ export default function AdminMossPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <FileText size={16} className="text-muted-foreground" />
-                                                    <span className="text-sm">{result.match_count} matches</span>
+                                                    <span className="text-sm">{t('matchesCount', { count: result.match_count })}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -204,12 +205,12 @@ export default function AdminMossPage() {
                                                             className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-2 text-sm font-medium transition-colors"
                                                         >
                                                             <ExternalLink size={14} />
-                                                            View Report
+                                                            {t('viewReport')}
                                                         </a>
                                                     )}
                                                     {!result.moss_url && result.status === 'completed' && (
                                                         <span className="text-sm text-muted-foreground">
-                                                            No report URL
+                                                            {t('noReportUrl')}
                                                         </span>
                                                     )}
                                                     {result.status === 'pending' && (
@@ -222,7 +223,7 @@ export default function AdminMossPage() {
                                                             className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50"
                                                         >
                                                             <BarChart3 size={14} />
-                                                            Analyze
+                                                            {t('analyze')}
                                                         </button>
                                                     )}
                                                 </div>
@@ -238,7 +239,7 @@ export default function AdminMossPage() {
                     {filteredResults.length > 0 && (
                         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
                             <div className="text-sm text-muted-foreground">
-                                Showing {filteredResults.length} of {data?.total || 0} results
+                                {t('showingCount', { shown: filteredResults.length, total: data?.total || 0 })}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -246,7 +247,7 @@ export default function AdminMossPage() {
                                     disabled={page === 1}
                                     className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
                                 >
-                                    Previous
+                                    {tCommon('previous')}
                                 </button>
                                 <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
                                     {page}
@@ -256,7 +257,7 @@ export default function AdminMossPage() {
                                     disabled={filteredResults.length < 50}
                                     className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
                                 >
-                                    Next
+                                    {tCommon('next')}
                                 </button>
                             </div>
                         </div>

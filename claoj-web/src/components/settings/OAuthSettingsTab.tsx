@@ -16,11 +16,11 @@ export default function OAuthSettingsTab() {
             <section className="space-y-6">
                 <div className="flex items-center gap-2 text-primary font-bold">
                     <Globe size={18} />
-                    Connected Accounts
+                    {t('connectedAccounts')}
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                    Connect your Google or GitHub account for easier sign-in.
+                    {t('connectedAccountsDesc')}
                 </p>
 
                 <div className="space-y-4">
@@ -37,14 +37,14 @@ export default function OAuthSettingsTab() {
                             </div>
                             <div>
                                 <h3 className="font-bold">Google</h3>
-                                <p className="text-xs text-muted-foreground">Connect your Google account</p>
+                                <p className="text-xs text-muted-foreground">{t('connectGoogleDesc')}</p>
                             </div>
                         </div>
                         <button
                             onClick={() => handleOAuthConnect('google')}
                             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
                         >
-                            Connect
+                            {t('connect')}
                         </button>
                     </div>
 
@@ -58,14 +58,14 @@ export default function OAuthSettingsTab() {
                             </div>
                             <div>
                                 <h3 className="font-bold">GitHub</h3>
-                                <p className="text-xs text-muted-foreground">Connect your GitHub account</p>
+                                <p className="text-xs text-muted-foreground">{t('connectGithubDesc')}</p>
                             </div>
                         </div>
                         <button
                             onClick={() => handleOAuthConnect('github')}
                             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
                         >
-                            Connect
+                            {t('connect')}
                         </button>
                     </div>
                 </div>

@@ -30,6 +30,7 @@ dayjs.extend(relativeTime);
 
 export default function SubmissionListPage() {
     const t = useTranslations('Submissions');
+    const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
     const [userFilter, setUserFilter] = useState('');
     const [problemFilter, setProblemFilter] = useState('');
@@ -73,12 +74,12 @@ export default function SubmissionListPage() {
                         <BrainCircuit className="text-primary" size={48} />
                         {t('title')}
                     </h1>
-                    <p className="text-muted-foreground font-black opacity-80">Real-time judging results from the globally distributed nodes.</p>
+                    <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4 rounded-[2.5rem] border border-dashed">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Page</span>
+                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">{tCommon('page')}</span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -110,7 +111,7 @@ export default function SubmissionListPage() {
                         }}
                         className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 items-end mt-auto"
                     >
-                        <RefreshCw size={14} /> Reset
+                        <RefreshCw size={14} /> {tCommon('reset')}
                     </button>
                 </div>
             </div>
@@ -118,7 +119,7 @@ export default function SubmissionListPage() {
             {/* Advanced Filters Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-[2.5rem] bg-card border shadow-sm">
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Username</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('usernameLabel')}</label>
                     <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
@@ -132,7 +133,7 @@ export default function SubmissionListPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Problem Code</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('problemCodeLabel')}</label>
                     <div className="relative">
                         <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
@@ -146,25 +147,25 @@ export default function SubmissionListPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verdict</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('verdictLabel')}</label>
                     <select
                         className="w-full h-12 bg-muted/30 border border-transparent rounded-2xl px-4 text-sm font-black focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none cursor-pointer"
                         value={resultFilter}
                         onChange={(e) => { setResultFilter(e.target.value); setPage(1); }}
                     >
-                        <option value="">All Results</option>
+                        <option value="">{t('allResultsOption')}</option>
                         {results.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Language</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('language')}</label>
                     <select
                         className="w-full h-12 bg-muted/30 border border-transparent rounded-2xl px-4 text-sm font-black focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none cursor-pointer"
                         value={langFilter}
                         onChange={(e) => { setLangFilter(e.target.value); setPage(1); }}
                     >
-                        <option value="">All Languages</option>
+                        <option value="">{t('allLanguagesOption')}</option>
                         {languages?.map(l => <option key={l.key} value={l.key}>{l.name}</option>)}
                     </select>
                 </div>
@@ -177,7 +178,7 @@ export default function SubmissionListPage() {
                             <tr className="bg-muted/30 border-b">
                                 <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-40">{t('user')}</th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('problem')}</th>
-                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-40 text-center">{t('status')}</th>
+                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-40 text-center">{tCommon('status')}</th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-24">{t('score')}</th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{t('language')}</th>
                                 <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right w-40">{t('date')}</th>

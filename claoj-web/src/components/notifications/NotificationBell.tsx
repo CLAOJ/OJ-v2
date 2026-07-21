@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Bell, Check, Trash2, Loader2 } from 'lucide-react';
@@ -20,6 +21,7 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+    const t = useTranslations('Notification');
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
@@ -110,10 +112,10 @@ export default function NotificationBell() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-2 rounded-full hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground"
-                aria-label="Notifications"
+                aria-label={t('title')}
                 aria-expanded={isOpen}
                 aria-haspopup="true"
-                title="Notifications"
+                title={t('title')}
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
@@ -134,7 +136,7 @@ export default function NotificationBell() {
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b bg-muted/30">
-                            <h3 className="font-bold text-lg">Notifications</h3>
+                            <h3 className="font-bold text-lg">{t('title')}</h3>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={() => markAllAsRead.mutate()}
@@ -146,7 +148,7 @@ export default function NotificationBell() {
                                     ) : (
                                         <Check size={12} />
                                     )}
-                                    Mark all read
+                                    {t('markAllRead')}
                                 </button>
                             )}
                         </div>
@@ -162,9 +164,9 @@ export default function NotificationBell() {
                                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
                                         <Bell size={24} className="text-muted-foreground" />
                                     </div>
-                                    <p className="text-muted-foreground font-medium">No notifications yet</p>
+                                    <p className="text-muted-foreground font-medium">{t('noNotifications')}</p>
                                     <p className="text-xs text-muted-foreground/70 mt-1">
-                                        We&apos;ll notify you when something happens
+                                        {t('willNotifyYou')}
                                     </p>
                                 </div>
                             ) : (
@@ -213,7 +215,7 @@ export default function NotificationBell() {
                                                     }}
                                                     disabled={markAsRead.isPending}
                                                     className="p-1.5 rounded hover:bg-primary/10 text-primary transition-colors"
-                                                    title="Mark as read"
+                                                    title={t('markAsRead')}
                                                 >
                                                     <Check size={14} />
                                                 </button>
@@ -225,7 +227,7 @@ export default function NotificationBell() {
                                                 }}
                                                 disabled={deleteNotification.isPending}
                                                 className="p-1.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
-                                                title="Delete"
+                                                title={t('delete')}
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -243,7 +245,7 @@ export default function NotificationBell() {
                                     onClick={() => setIsOpen(false)}
                                     className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
                                 >
-                                    View all notifications
+                                    {t('viewAll')}
                                 </Link>
                             </div>
                         )}

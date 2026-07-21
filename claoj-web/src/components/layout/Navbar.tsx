@@ -14,10 +14,12 @@ import ThemeToggle from '@/components/navbar/ThemeToggle';
 import UserMenu from '@/components/navbar/UserMenu';
 import MobileMenu from '@/components/navbar/MobileMenu';
 import { useContestTimer } from '@/hooks/useContestTimer';
+import { rememberLoginRedirect } from '@/lib/loginRedirect';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const t = useTranslations('Navbar');
+    const tContest = useTranslations('Contest');
     const [mounted, setMounted] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -32,10 +34,9 @@ export default function Navbar() {
     }, []);
 
     const handleLoginRedirect = () => {
-        const pathname = window.location.pathname;
-        if (pathname && !pathname.includes('/login')) {
-            sessionStorage.setItem('loginRedirectUrl', pathname);
-        }
+        // rememberLoginRedirect filters out the credential pages, so clicking
+        // "Login" from /register no longer parks /register as the destination.
+        rememberLoginRedirect(window.location.pathname);
         window.location.href = '/login';
     };
 
@@ -60,12 +61,12 @@ export default function Navbar() {
                             {/* Report Issue Button */}
                             {user && (
                                 <Link
-                                    href="/tickets/new"
+                                    href="/ticket/create"
                                     className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 transition-colors text-xs font-bold"
-                                    title="Report issue"
+                                    title={t('report')}
                                 >
                                     <Ticket size={14} />
-                                    <span>Report</span>
+                                    <span>{t('reportShort')}</span>
                                 </Link>
                             )}
 
@@ -126,10 +127,10 @@ export default function Navbar() {
                 {inContest && currentTime && (
                     <div className="bg-card border-t border-b border-primary px-4 py-2 text-center">
                         <Link href="/contest/current" className="text-sm font-medium text-white">
-                            <span className="text-primary">Current Contest:</span>{' '}
-                            <span className="font-bold">Contest Name</span>{' '}
+                            <span className="text-primary">{t('currentContest')}</span>{' '}
+                            <span className="font-bold">{t('contestNamePlaceholder')}</span>{' '}
                             <span className="mx-2">|</span>{' '}
-                            <span className="text-yellow-400">Ends in {formatTimeRemaining()}</span>
+                            <span className="text-yellow-400">{tContest('endsIn')} {formatTimeRemaining()}</span>
                         </Link>
                     </div>
                 )}

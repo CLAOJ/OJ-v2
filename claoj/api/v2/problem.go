@@ -154,6 +154,24 @@ func RandomProblem(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": p.Code})
 }
 
+// Nested DTOs for the problem detail payload. The json tags are load-bearing:
+// claoj-web reads these as lowercase (`languages: {key, name}[]`, `types:
+// {name}[]`, `authors: {username}[]` in claoj-web/src/types/index.ts). Without
+// tags, encoding/json emits the Go field names and every field reads as
+// undefined on the client — which blanked out the submit-language <select>.
+type problemLangItem struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
+type problemTypeItem struct {
+	Name string `json:"name"`
+}
+
+type problemAuthorItem struct {
+	Username string `json:"username"`
+}
+
 // ProblemDetail – GET /api/v2/problem/:code
 func ProblemDetail(c *gin.Context) {
 	code := c.Param("code")
@@ -178,22 +196,19 @@ func ProblemDetail(c *gin.Context) {
 		return
 	}
 
-	type LangItem struct{ Key, Name string }
-	langs := make([]LangItem, len(p.AllowedLangs))
+	langs := make([]problemLangItem, len(p.AllowedLangs))
 	for i, l := range p.AllowedLangs {
-		langs[i] = LangItem{l.Key, l.Name}
+		langs[i] = problemLangItem{Key: l.Key, Name: l.Name}
 	}
 
-	type TypeItem struct{ Name string }
-	types := make([]TypeItem, len(p.Types))
+	types := make([]problemTypeItem, len(p.Types))
 	for i, t := range p.Types {
-		types[i] = TypeItem{t.FullName}
+		types[i] = problemTypeItem{Name: t.FullName}
 	}
 
-	type AuthorItem struct{ Username string }
-	authors := make([]AuthorItem, len(p.Authors))
+	authors := make([]problemAuthorItem, len(p.Authors))
 	for i, a := range p.Authors {
-		authors[i] = AuthorItem{a.User.Username}
+		authors[i] = problemAuthorItem{Username: a.User.Username}
 	}
 
 	isSolved := false

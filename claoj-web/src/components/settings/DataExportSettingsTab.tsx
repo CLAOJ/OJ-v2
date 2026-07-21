@@ -2,10 +2,14 @@
 
 import api from '@/lib/api';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Loader2, Info, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
 export default function DataExportSettingsTab() {
+    const t = useTranslations('Settings');
+    const tCommon = useTranslations('Common');
+
     const { data: exportStatus, refetch } = useQuery<{
         last_export?: string;
         can_request: boolean;
@@ -29,16 +33,16 @@ export default function DataExportSettingsTab() {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to request data export');
+            alert(error.response?.data?.error || t('dataExportRequestError'));
         },
     });
 
     return (
         <div className="space-y-6">
             <div className="space-y-2">
-                <h2 className="text-2xl font-bold">Download Your Data</h2>
+                <h2 className="text-2xl font-bold">{t('downloadYourData')}</h2>
                 <p className="text-muted-foreground text-sm">
-                    Export all your personal data including submissions, comments, blog posts, and contest participations.
+                    {t('dataExportDesc')}
                 </p>
             </div>
 
@@ -46,37 +50,37 @@ export default function DataExportSettingsTab() {
                 <div className="flex items-start gap-3">
                     <Info className="w-5 h-5 text-primary mt-0.5" />
                     <div className="space-y-2 text-sm">
-                        <p className="font-medium">What&apos;s included in your export:</p>
+                        <p className="font-medium">{t('exportIncludesTitle')}</p>
                         <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
-                            <li>Profile information and preferences</li>
-                            <li>All submissions with source code</li>
-                            <li>Comments and blog posts</li>
-                            <li>Support tickets</li>
-                            <li>Contest participations and ratings</li>
-                            <li>Organization memberships</li>
+                            <li>{t('exportIncludesProfile')}</li>
+                            <li>{t('exportIncludesSubmissions')}</li>
+                            <li>{t('exportIncludesComments')}</li>
+                            <li>{t('exportIncludesTickets')}</li>
+                            <li>{t('exportIncludesContests')}</li>
+                            <li>{t('exportIncludesOrganizations')}</li>
                         </ul>
                     </div>
                 </div>
             </div>
 
             <div className="p-6 rounded-2xl border bg-card">
-                <h3 className="text-lg font-bold mb-4">Export Status</h3>
+                <h3 className="text-lg font-bold mb-4">{t('exportStatus')}</h3>
 
                 {exportStatus ? (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Last export:</span>
+                            <span className="text-sm text-muted-foreground">{t('lastExportLabel')}</span>
                             <span className="text-sm font-medium">
                                 {exportStatus.last_export
                                     ? new Date(exportStatus.last_export).toLocaleDateString()
-                                    : 'Never'}
+                                    : t('exportNever')}
                             </span>
                         </div>
 
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Can request export:</span>
+                            <span className="text-sm text-muted-foreground">{t('canRequestExportLabel')}</span>
                             <Badge variant={exportStatus.can_request ? 'success' : 'secondary'}>
-                                {exportStatus.can_request ? 'Yes' : 'No'}
+                                {exportStatus.can_request ? tCommon('yes') : tCommon('no')}
                             </Badge>
                         </div>
 
@@ -84,10 +88,10 @@ export default function DataExportSettingsTab() {
                             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm">
                                 <p className="font-medium flex items-center gap-2">
                                     <Info size={16} />
-                                    Rate limit active
+                                    {t('rateLimitActive')}
                                 </p>
                                 <p className="mt-1">
-                                    You can request a new data export in {exportStatus.days_until_request} days.
+                                    {t('rateLimitDesc', { days: exportStatus.days_until_request ?? 0 })}
                                 </p>
                             </div>
                         )}
@@ -98,12 +102,12 @@ export default function DataExportSettingsTab() {
                                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
                             >
                                 <Download size={16} />
-                                Download Export
+                                {t('downloadExport')}
                             </a>
                         )}
                     </div>
                 ) : (
-                    <div className="text-sm text-muted-foreground">No export data available</div>
+                    <div className="text-sm text-muted-foreground">{t('noExportData')}</div>
                 )}
             </div>
 
@@ -113,7 +117,7 @@ export default function DataExportSettingsTab() {
                 className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
                 {isRequesting && <Loader2 size={16} className="animate-spin" />}
-                Request Data Export
+                {t('requestDataExport')}
             </button>
         </div>
     );

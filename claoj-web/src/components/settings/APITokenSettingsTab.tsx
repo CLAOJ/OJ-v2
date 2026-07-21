@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, CheckCircle, Copy, Shield, Info } from 'lucide-react';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 
 export default function APITokenSettingsTab() {
+    const t = useTranslations('Settings');
     const queryClient = useQueryClient();
     const [showToken, setShowToken] = useState(false);
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function APITokenSettingsTab() {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to generate API token');
+            alert(error.response?.data?.error || t('apiTokenGenerateError'));
         },
     });
 
@@ -51,7 +53,7 @@ export default function APITokenSettingsTab() {
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
-            alert(error.response?.data?.error || 'Failed to revoke API token');
+            alert(error.response?.data?.error || t('apiTokenRevokeError'));
         },
     });
 
@@ -76,18 +78,17 @@ export default function APITokenSettingsTab() {
             <div className="p-6 rounded-2xl border bg-card space-y-4">
                 <div className="flex items-center gap-2 text-amber-600">
                     <Info size={20} />
-                    <span className="font-bold text-sm">Existing Token</span>
+                    <span className="font-bold text-sm">{t('apiTokenExistingTitle')}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                    You already have an API token. For security reasons, you cannot view it again.
-                    Generate a new token if you&apos;ve lost yours (this will invalidate the old token).
+                    {t('apiTokenExistingDesc')}
                 </p>
                 <button
                     onClick={() => revokeToken()}
                     disabled={isRevoking}
                     className="px-6 py-3 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
                 >
-                    {isRevoking ? 'Revoking...' : 'Revoke Token'}
+                    {isRevoking ? t('apiTokenRevoking') : t('apiTokenRevoke')}
                 </button>
             </div>
         );
@@ -98,7 +99,7 @@ export default function APITokenSettingsTab() {
             <div className="p-6 rounded-2xl border bg-card space-y-4">
                 <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle size={20} />
-                    <span className="font-bold text-sm">Token Generated</span>
+                    <span className="font-bold text-sm">{t('apiTokenGeneratedTitle')}</span>
                 </div>
                 <div className="p-4 bg-muted rounded-xl">
                     <code className="text-xs break-all">{generatedToken}</code>
@@ -106,10 +107,10 @@ export default function APITokenSettingsTab() {
                 <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm">
                     <p className="font-medium flex items-center gap-2">
                         <Info size={16} />
-                        Important: Save this token now
+                        {t('apiTokenSaveNowTitle')}
                     </p>
                     <p className="mt-1">
-                        For security reasons, the token will not be shown again. Store it in a secure location.
+                        {t('apiTokenSaveNowDesc')}
                     </p>
                 </div>
                 <button
@@ -119,7 +120,7 @@ export default function APITokenSettingsTab() {
                     }}
                     className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
                 >
-                    Done
+                    {t('apiTokenDone')}
                 </button>
             </div>
         );
@@ -128,9 +129,9 @@ export default function APITokenSettingsTab() {
     return (
         <div className="space-y-6">
             <div className="space-y-2">
-                <h2 className="text-2xl font-bold">API Token</h2>
+                <h2 className="text-2xl font-bold">{t('apiToken')}</h2>
                 <p className="text-muted-foreground text-sm">
-                    Generate a token to access your account programmatically.
+                    {t('apiTokenDesc')}
                 </p>
             </div>
 
@@ -141,16 +142,16 @@ export default function APITokenSettingsTab() {
                     className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {isGenerating && <Loader2 size={16} className="animate-spin" />}
-                    Generate API Token
+                    {t('apiTokenGenerate')}
                 </button>
             </div>
 
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-sm space-y-2">
                 <p className="font-medium flex items-center gap-2">
                     <Shield size={16} />
-                    How to use your API token
+                    {t('apiTokenHowToTitle')}
                 </p>
-                <p>Include the token in the Authorization header of your API requests:</p>
+                <p>{t('apiTokenHowToDesc')}</p>
                 <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
                     <code>Authorization: Bearer YOUR_API_TOKEN</code>
                 </pre>

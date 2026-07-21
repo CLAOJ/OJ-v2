@@ -1,6 +1,7 @@
 'use client';
 
 import { Search, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -47,6 +48,7 @@ export function SearchInput({
     showClearButton = true,
     autoFocus = false,
 }: SearchInputProps) {
+    const t = useTranslations('Common');
     const debouncedValue = useDebounce(value, debounceMs || 0);
 
     // Track if we've fired the initial debounced change
@@ -91,7 +93,7 @@ export function SearchInput({
                     type="button"
                     onClick={handleClear}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
+                    aria-label={t('clearSearch')}
                 >
                     <X size={16} />
                 </button>

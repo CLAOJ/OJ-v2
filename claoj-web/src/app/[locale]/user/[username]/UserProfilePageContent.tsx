@@ -48,7 +48,7 @@ dayjs.extend(relativeTime);
 
 export default function UserProfilePageContent({ params }: { params: Promise<{ username: string }> }) {
     const { username } = use(params);
-    const t = useTranslations('Auth');
+    const t = useTranslations('Users');
     const pt = useTranslations('Problems');
     const [activeTab, setActiveTab] = useState<'solved' | 'rating' | 'about' | 'organizations'>('solved');
     const [ratingView, setRatingView] = useState<'chart' | 'table'>('chart');
@@ -101,13 +101,13 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
         </div>
     );
 
-    if (!user) return <div className="p-20 text-center text-muted-foreground">User not found.</div>;
+    if (!user) return <div className="p-20 text-center text-muted-foreground">{t('userNotFound')}</div>;
 
     const stats = [
-        { label: 'Rank', value: user.rank ? `#${user.rank}` : '-', icon: Hash, color: 'text-blue-500' },
-        { label: 'Points', value: Math.round(user.points), icon: Award, color: 'text-amber-500' },
-        { label: 'PP', value: Math.round(user.performance_points), icon: Zap, color: 'text-purple-500' },
-        { label: 'Contr.', value: user.contribution_points, icon: Activity, color: 'text-emerald-500' },
+        { label: t('rank'), value: user.rank ? `#${user.rank}` : '-', icon: Hash, color: 'text-blue-500' },
+        { label: t('points'), value: Math.round(user.points), icon: Award, color: 'text-amber-500' },
+        { label: t('pp'), value: Math.round(user.performance_points), icon: Zap, color: 'text-purple-500' },
+        { label: t('contributionShort'), value: user.contribution_points, icon: Activity, color: 'text-emerald-500' },
     ];
 
     const RatingTooltip = ({ active, payload, label }: any) => {
@@ -166,11 +166,11 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
 
                     <div className="pt-4 border-t space-y-3">
                         <div className="flex justify-between items-center">
-                            <span className="text-xs font-medium text-muted-foreground">Solved Count</span>
+                            <span className="text-xs font-medium text-muted-foreground">{t('solvedCount')}</span>
                             <span className="text-sm font-black">{user.problem_count}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-xs font-medium text-muted-foreground">Rating Rank</span>
+                            <span className="text-xs font-medium text-muted-foreground">{t('ratingRank')}</span>
                             <span className="text-sm font-black">{user.rating_rank ? `#${user.rating_rank}` : '-'}</span>
                         </div>
                     </div>
@@ -180,11 +180,11 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                 <div className="bg-muted/30 border border-dashed rounded-3xl p-6 space-y-4 text-sm">
                     <div className="flex items-center gap-3 text-muted-foreground">
                         <Calendar size={16} />
-                        <span>Joined {dayjs(user.date_joined).format('MMM YYYY')}</span>
+                        <span>{t('joinedOn', { date: dayjs(user.date_joined).format('MMM YYYY') })}</span>
                     </div>
                     <div className="flex items-center gap-3 text-muted-foreground">
                         <Clock size={16} />
-                        <span>Seen {dayjs(user.last_access).fromNow()}</span>
+                        <span>{t('seenAt', { time: dayjs(user.last_access).fromNow() })}</span>
                     </div>
                     {user.organizations.length > 0 && (
                         <div className="flex items-center gap-3 text-muted-foreground">
@@ -200,10 +200,10 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                 {/* Tabs Navigation */}
                 <div className="flex bg-card border p-1 rounded-2xl shadow-sm sticky top-4 z-10 backdrop-blur-xl bg-card/80 overflow-x-auto no-scrollbar whitespace-nowrap">
                     {[
-                        { id: 'solved', label: 'Solved Problems', icon: CheckCircle2 },
-                        { id: 'rating', label: 'Rating History', icon: TrendingUp },
-                        { id: 'organizations', label: 'Organizations', icon: Shield },
-                        { id: 'about', label: 'About', icon: Info },
+                        { id: 'solved', label: t('solvedProblems'), icon: CheckCircle2 },
+                        { id: 'rating', label: t('ratingHistory'), icon: TrendingUp },
+                        { id: 'organizations', label: t('organizations'), icon: Shield },
+                        { id: 'about', label: t('about'), icon: Info },
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -233,8 +233,8 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 <BarChart3 size={20} className="text-primary" />
                             </div>
                             <div className="text-left">
-                                <h3 className="text-lg font-black tracking-tight">Performance Points Breakdown</h3>
-                                <p className="text-xs text-muted-foreground">See how your PP is calculated</p>
+                                <h3 className="text-lg font-black tracking-tight">{t('ppBreakdownTitle')}</h3>
+                                <p className="text-xs text-muted-foreground">{t('ppBreakdownSubtitle')}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -263,16 +263,16 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             {/* Summary Cards */}
                                             <div className="grid grid-cols-3 gap-4">
                                                 <div className="bg-muted/30 rounded-2xl p-4 border text-center">
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Weighted Sum</p>
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('weightedSum')}</p>
                                                     <p className="text-2xl font-black text-primary">{ppBreakdown.weighted_sum.toFixed(2)}</p>
                                                 </div>
                                                 <div className="bg-muted/30 rounded-2xl p-4 border text-center">
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bonus Points</p>
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('bonusPoints')}</p>
                                                     <p className="text-2xl font-black text-emerald-500">{ppBreakdown.bonus.bonus_points.toFixed(2)}</p>
-                                                    <p className="text-xs text-muted-foreground mt-1">{ppBreakdown.bonus.solved_count} problems solved</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">{t('problemsSolvedCount', { count: ppBreakdown.bonus.solved_count })}</p>
                                                 </div>
                                                 <div className="bg-primary/10 rounded-2xl p-4 border border-primary/20 text-center">
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total PP</p>
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('totalPP')}</p>
                                                     <p className="text-2xl font-black text-primary">{ppBreakdown.total.toFixed(2)}</p>
                                                 </div>
                                             </div>
@@ -283,10 +283,10 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     <thead>
                                                         <tr className="bg-muted/30 border-b">
                                                             <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">#</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Problem</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Points</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Weight</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Contribution</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('problem')}</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('points')}</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('weight')}</th>
+                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('contribution')}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-muted/50">
@@ -317,14 +317,14 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
 
                                             {/* Formula Info */}
                                             <div className="bg-muted/20 rounded-xl p-4 border border-dashed">
-                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">PP Formula</p>
+                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('ppFormula')}</p>
                                                 <code className="text-xs font-mono text-muted-foreground block">
-                                                    PP = sum(0.95^i * points[i]) for top 100 problems + 300 * (1 - 0.997^solved_count)
+                                                    {t('ppFormulaExpression')}
                                                 </code>
                                             </div>
                                         </>
                                     ) : (
-                                        <p className="text-center text-muted-foreground italic py-12">No PP breakdown available</p>
+                                        <p className="text-center text-muted-foreground italic py-12">{t('noPPBreakdown')}</p>
                                     )}
                                 </div>
                             </motion.div>
@@ -345,7 +345,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             >
                                 <div className="bg-card border rounded-3xl p-8 shadow-sm">
                                     <h3 className="text-xl font-black tracking-tight mb-6 flex items-center gap-2">
-                                        Solved Problems
+                                        {t('solvedProblems')}
                                         <Badge variant="secondary" className="font-bold">{user.problem_count}</Badge>
                                     </h3>
                                     {solvedLoading ? (
@@ -365,7 +365,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-center text-muted-foreground italic py-12 border border-dashed rounded-2xl bg-muted/20">No problems solved yet.</p>
+                                        <p className="text-center text-muted-foreground italic py-12 border border-dashed rounded-2xl bg-muted/20">{t('noProblemsSolved')}</p>
                                     )}
                                 </div>
                             </motion.div>
@@ -381,7 +381,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             >
                                 <div className="bg-card border rounded-3xl p-8 shadow-sm">
                                     <div className="flex items-center justify-between mb-8">
-                                        <h3 className="text-xl font-black tracking-tight">Performance & Rating</h3>
+                                        <h3 className="text-xl font-black tracking-tight">{t('performanceAndRating')}</h3>
                                         <div className="flex bg-muted/30 p-1 rounded-xl">
                                             <button
                                                 onClick={() => setRatingView('chart')}
@@ -390,7 +390,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     ratingView === 'chart' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
                                                 )}
                                             >
-                                                Chart
+                                                {t('chartView')}
                                             </button>
                                             <button
                                                 onClick={() => setRatingView('table')}
@@ -399,7 +399,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     ratingView === 'table' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
                                                 )}
                                             >
-                                                Table
+                                                {t('tableView')}
                                             </button>
                                         </div>
                                     </div>
@@ -447,7 +447,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             ) : (
                                                 <div className="h-full border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-muted-foreground gap-4">
                                                     <TrendingUp size={48} className="opacity-10" />
-                                                    <p className="font-bold">No rated contests participated yet.</p>
+                                                    <p className="font-bold">{t('noRatedContests')}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -456,11 +456,11 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-muted/30 border-b">
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Date</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Contest</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Rank</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Rating</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Title</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('date')}</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('contest')}</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('rank')}</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('rating')}</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('rankTitle')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-muted/50">
@@ -507,7 +507,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     ) : (
                                                         <tr>
                                                             <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                                                                No rating history available
+                                                                {t('noRatingHistory')}
                                                             </td>
                                                         </tr>
                                                     )}
@@ -535,7 +535,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             </div>
                                             <div className="space-y-1">
                                                 <h4 className="font-black tracking-tight group-hover:text-primary transition-colors">{org.name}</h4>
-                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Active Member</p>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('activeMember')}</p>
                                             </div>
                                         </div>
                                         <ArrowUpRight size={20} className="text-muted-foreground group-hover:text-primary transition-colors" />
@@ -544,7 +544,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 {user.organizations.length === 0 && (
                                     <div className="col-span-full py-20 text-center text-muted-foreground border-2 border-dashed rounded-3xl">
                                         <Shield size={48} className="mx-auto mb-4 opacity-10" />
-                                        <p className="font-bold italic">No organizations joined yet.</p>
+                                        <p className="font-bold italic">{t('noOrganizations')}</p>
                                     </div>
                                 )}
                             </motion.div>
@@ -558,11 +558,11 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 exit={{ opacity: 0, y: -10 }}
                                 className="bg-card border rounded-3xl p-8 shadow-sm prose prose-sm dark:prose-invert max-w-none min-h-[40vh]"
                             >
-                                <h3 className="text-xl font-black tracking-tight mb-6">About {user.username}</h3>
+                                <h3 className="text-xl font-black tracking-tight mb-6">{t('aboutUser', { username: user.username })}</h3>
                                 {user.about ? (
                                     <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{user.about}</p>
                                 ) : (
-                                    <p className="italic text-muted-foreground/50">This user hasn't shared anything about themselves yet.</p>
+                                    <p className="italic text-muted-foreground/50">{t('noAboutInfo')}</p>
                                 )}
                             </motion.div>
                         )}

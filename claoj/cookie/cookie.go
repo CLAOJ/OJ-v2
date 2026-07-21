@@ -154,10 +154,17 @@ func (h *CookieHelper) setTokenCookie(c *gin.Context, name, value string, maxAge
 	c.SetCookie(name, value, maxAge, "/", "", secure, true)
 }
 
-// clearCookie clears a cookie by setting MaxAge to -1
+// clearCookie clears a cookie by setting MaxAge to -1.
+//
+// The deletion cookie must carry the *same* attributes the cookie was set with,
+// otherwise the browser stores a second cookie instead of overwriting the first.
+// In particular it must go through getSameSite: emitting SameSite=None without
+// Secure (the case over a plain-http SITE_URL) makes browsers reject the
+// Set-Cookie header outright, so logout silently left a valid session cookie in
+// place while the server had already revoked the token.
 func (h *CookieHelper) clearCookie(c *gin.Context, name string) {
 	secure := h.isSecureCookie()
-	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetSameSite(h.getSameSite(SameSiteNone))
 	c.SetCookie(name, "", -1, "/", "", secure, true)
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Clock } from 'lucide-react';
 
 interface ContestTimerProps {
@@ -18,6 +19,7 @@ interface TimeLeft {
 }
 
 export function ContestTimer({ startTime, endTime, onStatusChange }: ContestTimerProps) {
+    const t = useTranslations('Contest');
     const [timeLeft, setTimeLeft] = useState<TimeLeft>({
         days: 0,
         hours: 0,
@@ -97,11 +99,11 @@ export function ContestTimer({ startTime, endTime, onStatusChange }: ContestTime
     const getStatusText = () => {
         switch (status) {
             case 'before':
-                return 'Starts in:';
+                return `${t('startIn')}:`;
             case 'ongoing':
-                return 'Ends in:';
+                return `${t('endsIn')}:`;
             case 'ended':
-                return 'Ended';
+                return t('ended');
         }
     };
 
@@ -109,7 +111,7 @@ export function ContestTimer({ startTime, endTime, onStatusChange }: ContestTime
         return (
             <div className={`flex items-center gap-2 ${getStatusColor()}`}>
                 <Clock size={20} />
-                <span className="font-bold">Contest Ended</span>
+                <span className="font-bold">{t('contestEnded')}</span>
             </div>
         );
     }

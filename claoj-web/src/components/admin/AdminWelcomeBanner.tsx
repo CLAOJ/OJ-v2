@@ -84,7 +84,7 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
                         {/* Dismiss */}
                         <button
                             onClick={handleDismiss}
-                            aria-label="Close"
+                            aria-label={t('common.close')}
                             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         >
                             <X className="w-5 h-5" />

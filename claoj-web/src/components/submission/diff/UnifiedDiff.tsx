@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface UnifiedDiffProps {
@@ -7,12 +8,13 @@ interface UnifiedDiffProps {
 }
 
 export function UnifiedDiff({ diff }: UnifiedDiffProps) {
+    const t = useTranslations('Submissions');
     const lines = diff.split('\n');
 
     return (
         <div className="bg-card border rounded-2xl overflow-hidden">
             <div className="p-3 bg-muted/50 border-b">
-                <span className="text-sm font-bold text-muted-foreground">Unified Diff</span>
+                <span className="text-sm font-bold text-muted-foreground">{t('unifiedDiff')}</span>
             </div>
             <div className="max-h-[60vh] overflow-auto font-mono text-sm">
                 {lines.map((line, idx) => {

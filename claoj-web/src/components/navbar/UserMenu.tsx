@@ -1,6 +1,7 @@
 'use client';
 
 import { Link } from '@/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { User, LogOut, ChevronDown, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ export default function UserMenu({
     onClose,
     onLogout,
 }: UserMenuProps) {
+    const t = useTranslations('Navbar');
     const userMenuRef = useRef<HTMLDivElement>(null);
     const reduceMotion = useReducedMotion();
 
@@ -80,7 +82,7 @@ export default function UserMenu({
                             role="menuitem"
                         >
                             <User size={16} />
-                            <span>Profile</span>
+                            <span>{t('profile')}</span>
                         </Link>
                         {isStaff && (
                             <>
@@ -91,24 +93,24 @@ export default function UserMenu({
                                     role="menuitem"
                                 >
                                     <Crown size={16} className="text-amber-500" />
-                                    <span className="font-semibold text-amber-500">Admin Dashboard</span>
+                                    <span className="font-semibold text-amber-500">{t('adminDashboard')}</span>
                                 </Link>
                                 <div className="px-4 py-1.5 border-t border-border/50">
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Quick Access</p>
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">{t('quickAccess')}</p>
                                     <div className="flex gap-1.5">
                                         <Link
                                             href="/admin/problems/create"
                                             onClick={onClose}
                                             className="flex-1 px-2 py-1 text-[10px] bg-muted hover:bg-muted/80 rounded text-center transition-colors"
                                         >
-                                            + Problem
+                                            {t('quickAddProblem')}
                                         </Link>
                                         <Link
                                             href="/admin/contests/create"
                                             onClick={onClose}
                                             className="flex-1 px-2 py-1 text-[10px] bg-muted hover:bg-muted/80 rounded text-center transition-colors"
                                         >
-                                            + Contest
+                                            {t('quickAddContest')}
                                         </Link>
                                     </div>
                                 </div>
@@ -120,7 +122,7 @@ export default function UserMenu({
                             onClick={onClose}
                             role="menuitem"
                         >
-                            <span>Edit profile</span>
+                            <span>{t('editProfile')}</span>
                         </Link>
                         <hr className="my-1 border-border" />
                         <button
@@ -129,7 +131,7 @@ export default function UserMenu({
                             role="menuitem"
                         >
                             <LogOut size={16} />
-                            <span>Log out</span>
+                            <span>{t('logout')}</span>
                         </button>
                     </motion.div>
                 )}

@@ -11,6 +11,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { DEFAULT_SEO, SITE_URL, generateWebSiteJsonLd, generateOrganizationJsonLd } from '@/lib/seo';
 import JsonLd from '@/components/seo/JsonLd';
+import { Toaster } from 'sonner';
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -122,6 +123,11 @@ export default async function RootLayout({
                     {children}
                   </main>
                   <Footer />
+                  {/* Ten components call sonner's toast() for success and
+                      error feedback, but the Toaster was never mounted, so
+                      every one of those notifications rendered nowhere —
+                      failed actions looked like nothing had happened. */}
+                  <Toaster position="top-right" richColors closeButton />
                 </WebSocketProvider>
               </AuthProvider>
             </QueryProvider>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, FileCode } from 'lucide-react';
@@ -77,6 +78,7 @@ function resolvePrismLanguage(raw: string): string {
 }
 
 export default function SubmissionSource({ source, language, className }: SubmissionSourceProps) {
+    const t = useTranslations('Common');
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -102,12 +104,12 @@ export default function SubmissionSource({ source, language, className }: Submis
                     {copied ? (
                         <>
                             <Check size={14} className="text-emerald-500" />
-                            <span className="text-emerald-500">Copied!</span>
+                            <span className="text-emerald-500">{t('copied')}</span>
                         </>
                     ) : (
                         <>
                             <Copy size={14} />
-                            <span>Copy</span>
+                            <span>{t('copy')}</span>
                         </>
                     )}
                 </button>

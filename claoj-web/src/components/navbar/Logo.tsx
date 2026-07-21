@@ -1,3 +1,7 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
+
 // Theme-aware logo.
 //
 // The site theme is class-based and *inverted* from the usual convention:
@@ -12,18 +16,20 @@
 // prefers-color-scheme instead of the toggle) keeps it correct when a user
 // overrides their OS theme.
 export default function Logo() {
+    const t = useTranslations('Navbar');
+
     return (
         <>
             {/* Light/white logo — default (dark theme); hidden when .light is active */}
             <img
                 src="/static/claoj-logo-light.png"
-                alt="CLAOJ"
+                alt={t('logoAlt')}
                 className="h-8 w-auto object-contain block [.light_&]:hidden"
             />
             {/* Dark/black logo — shown only in light theme */}
             <img
                 src="/static/claoj-logo-dark.png"
-                alt="CLAOJ"
+                alt={t('logoAlt')}
                 className="h-8 w-auto object-contain hidden [.light_&]:block"
             />
         </>

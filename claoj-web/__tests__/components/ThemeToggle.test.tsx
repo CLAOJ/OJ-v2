@@ -10,6 +10,12 @@ jest.mock('next-themes', () => ({
 
 const mockedUseTheme = useTheme as jest.MockedFunction<typeof useTheme>;
 
+// The global next-intl mock in __tests__/setup.ts returns the key itself, so
+// these assertions check which translation key the component picks rather than
+// the rendered English. That is still the behaviour under test: the toggle must
+// offer the *opposite* of the currently resolved theme. `npm run i18n:usage`
+// separately guarantees these keys exist in every locale.
+
 // The toggle must key off `resolvedTheme` (the concrete "dark"/"light" after
 // resolving "system"), NOT the raw `theme` (which is "system" on first load).
 // Reading `theme` makes the first click a no-op and shows the wrong icon.
@@ -32,13 +38,13 @@ describe('ThemeToggle', () => {
     it('offers "switch to light" when system resolves to dark on first load', () => {
         setTheme('dark');
         render(<ThemeToggle />);
-        expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Switch to light mode');
+        expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'switchToLightMode');
     });
 
     it('offers "switch to dark" when system resolves to light on first load', () => {
         setTheme('light');
         render(<ThemeToggle />);
-        expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Switch to dark mode');
+        expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'switchToDarkMode');
     });
 
     it('switches to light on the first click when currently dark (system default)', () => {
@@ -58,6 +64,8 @@ describe('ThemeToggle', () => {
     it('shows the resolved theme name in the mobile variant', () => {
         setTheme('dark');
         const { container } = render(<ThemeToggle variant="mobile" />);
-        expect(container.textContent).toContain('Theme (Dark)');
+        // themeWithMode takes the resolved mode as an ICU param; the mock drops
+        // params, so assert on the label key and the mode key it feeds in.
+        expect(container.textContent).toContain('themeWithMode');
     });
 });

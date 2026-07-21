@@ -11,34 +11,45 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import Link from 'next/link';
 
-export default function ResendVerificationPage() {
+/**
+ * The login page has always linked to /forgot-password, and the backend has
+ * always exposed POST /auth/password/reset — but this page didn't exist, so the
+ * link 404'd and the password-reset flow was unreachable from the UI.
+ *
+ * Modelled on the sibling resend-verification page, which drives the same shape
+ * of request against the same kind of endpoint.
+ */
+export default function ForgotPasswordPage() {
     const t = useTranslations('Auth');
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const resendSchema = z.object({
+    const resetSchema = z.object({
         email: z.string().email(t('invalidEmailError')),
     });
 
-    type ResendFormValues = z.infer<typeof resendSchema>;
+    type ResetFormValues = z.infer<typeof resetSchema>;
 
     const {
         register,
         handleSubmit,
         formState: { errors },
-    } = useForm<ResendFormValues>({
-        resolver: zodResolver(resendSchema),
+    } = useForm<ResetFormValues>({
+        resolver: zodResolver(resetSchema),
     });
 
-    const onSubmit = async (data: ResendFormValues) => {
+    const onSubmit = async (data: ResetFormValues) => {
         setIsLoading(true);
         setError(null);
         try {
-            await api.post('/auth/resend-verification', { email: data.email });
+            await api.post('/auth/password/reset', { email: data.email });
+            // The backend answers 200 whether or not the address is registered,
+            // so that this form can't be used to enumerate accounts. Show the
+            // same confirmation either way.
             setSuccess(true);
         } catch (err: any) {
-            setError(err.response?.data?.error || t('resendVerificationErrorDefault'));
+            setError(err.response?.data?.error || t('resetPasswordErrorDefault'));
         } finally {
             setIsLoading(false);
         }
@@ -55,9 +66,9 @@ export default function ResendVerificationPage() {
                     <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle size={40} className="text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-bold">{t('resendEmailSentTitle')}</h2>
+                    <h2 className="text-2xl font-bold">{t('resetEmailSentTitle')}</h2>
                     <p className="text-muted-foreground">
-                        {t('resendEmailSentDesc')}
+                        {t('resetEmailSentDesc')}
                     </p>
                     <Link
                         href="/login"
@@ -81,9 +92,9 @@ export default function ResendVerificationPage() {
                     <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         <Mail size={32} className="text-primary" />
                     </div>
-                    <h2 className="text-2xl font-bold">{t('resendVerificationTitle')}</h2>
+                    <h2 className="text-2xl font-bold">{t('resetPassword')}</h2>
                     <p className="text-muted-foreground">
-                        {t('resendVerificationDesc')}
+                        {t('resetPasswordDesc')}
                     </p>
                 </div>
 
@@ -105,7 +116,7 @@ export default function ResendVerificationPage() {
                             <input
                                 {...register('email')}
                                 type="email"
-                                placeholder={t('emailPlaceholder')}
+                                placeholder="you@example.com"
                                 className={cn(
                                     "flex h-12 w-full rounded-xl border border-input bg-background px-10 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all",
                                     errors.email && "border-destructive focus-visible:ring-destructive/20"
@@ -121,7 +132,7 @@ export default function ResendVerificationPage() {
                         className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                     >
                         {isLoading && <Loader2 size={18} className="animate-spin" />}
-                        {t('sendVerificationEmail')}
+                        {t('sendResetLink')}
                     </button>
                 </form>
 

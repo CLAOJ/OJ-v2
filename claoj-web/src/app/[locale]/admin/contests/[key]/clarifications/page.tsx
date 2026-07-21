@@ -17,12 +17,12 @@ export default function AdminContestClarificationsPage() {
                 <div>
                     <h1 className="text-3xl font-bold">{t('admin.contest_clarifications')}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Answer clarification questions from contestants
+                        {t('admin.answer_contestant_clarifications')}
                     </p>
                 </div>
                 <Badge variant="default">
                     <MessageSquare className="w-4 h-4 mr-2" />
-                    Staff View
+                    {t('admin.staff_view')}
                 </Badge>
             </div>
 

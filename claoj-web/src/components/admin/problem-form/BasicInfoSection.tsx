@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormRegister } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface BasicInfo {
@@ -50,14 +51,16 @@ export function BasicInfoSection({
     onDescriptionChange,
     isEditMode
 }: BasicInfoSectionProps) {
+    const t = useTranslations('Admin.problemForm');
+
     return (
         <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">Basic Information</h3>
+            <h3 className="text-lg font-bold">{t('basicInformation')}</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label htmlFor="problem-code" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Problem Code *
+                        {t('problemCodeLabel')}
                     </label>
                     <input
                         id="problem-code"
@@ -66,8 +69,8 @@ export function BasicInfoSection({
                             "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                             errors.code && "border-destructive"
                         )}
-                        placeholder="e.g., SAMPLE"
-                        {...register('code', { required: 'Problem code is required' })}
+                        placeholder={t('problemCodePlaceholder')}
+                        {...register('code', { required: t('problemCodeRequired') })}
                         disabled={isEditMode}
                     />
                     {errors.code && (
@@ -77,7 +80,7 @@ export function BasicInfoSection({
 
                 <div>
                     <label htmlFor="problem-name" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Problem Name *
+                        {t('problemNameLabel')}
                     </label>
                     <input
                         id="problem-name"
@@ -86,8 +89,8 @@ export function BasicInfoSection({
                             "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none",
                             errors.name && "border-destructive"
                         )}
-                        placeholder="e.g., Sample Problem"
-                        {...register('name', { required: 'Problem name is required' })}
+                        placeholder={t('problemNamePlaceholder')}
+                        {...register('name', { required: t('problemNameRequired') })}
                     />
                     {errors.name && (
                         <p className="text-destructive text-xs mt-1">{errors.name.message}</p>
@@ -97,7 +100,7 @@ export function BasicInfoSection({
 
             <div>
                 <label htmlFor="problem-description" className="text-sm font-medium text-muted-foreground block mb-2">
-                    Description *
+                    {t('descriptionLabel')}
                 </label>
                 <textarea
                     id="problem-description"
@@ -105,7 +108,7 @@ export function BasicInfoSection({
                         "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[300px] font-mono text-sm",
                         errors.description && "border-destructive"
                     )}
-                    placeholder="Problem description in Markdown..."
+                    placeholder={t('descriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => onDescriptionChange(e.target.value)}
                     required
@@ -118,7 +121,7 @@ export function BasicInfoSection({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label htmlFor="problem-points" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Points *
+                        {t('pointsLabel')}
                     </label>
                     <input
                         id="problem-points"
@@ -131,7 +134,7 @@ export function BasicInfoSection({
 
                 <div>
                     <label htmlFor="problem-time-limit" className="text-sm font-medium text-muted-foreground block mb-2">
-                        Time Limit (seconds) *
+                        {t('timeLimitLabel')}
                     </label>
                     <input
                         id="problem-time-limit"
@@ -146,7 +149,7 @@ export function BasicInfoSection({
 
             <div>
                 <label htmlFor="problem-memory-limit" className="text-sm font-medium text-muted-foreground block mb-2">
-                    Memory Limit (MB) *
+                    {t('memoryLimitLabel')}
                 </label>
                 <input
                     id="problem-memory-limit"

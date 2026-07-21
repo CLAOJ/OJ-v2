@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Link } from '@/navigation';
 import {
@@ -110,6 +111,7 @@ const ADMIN_SECTIONS = [
 ];
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+    const t = useTranslations('Admin');
     const { user } = useAuth();
     const reduceMotion = useReducedMotion();
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -158,10 +160,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                                             </div>
                                             <div>
                                                 <h2 className="text-lg font-bold text-slate-100">
-                                                    Admin Panel
+                                                    {t('layout.panelTitle')}
                                                 </h2>
                                                 <p className="text-xs text-slate-400 font-medium">
-                                                    Command Center
+                                                    {t('shell.commandCenter')}
                                                 </p>
                                             </div>
                                         </div>
@@ -188,7 +190,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                                         <div className="flex items-center gap-1.5">
                                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                             <span className="text-xs text-slate-400">
-                                                {user.is_admin ? 'Super Admin' : 'Staff'}
+                                                {user.is_admin ? t('shell.superAdmin') : t('shell.staffRole')}
                                             </span>
                                         </div>
                                     </div>
@@ -265,7 +267,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                             <div className="p-4 border-t border-slate-800/50">
                                 <div className="flex items-center gap-2 text-xs text-slate-500">
                                     <Shield className="w-3.5 h-3.5" />
-                                    <span>Secure Admin Session</span>
+                                    <span>{t('shell.secureSession')}</span>
                                 </div>
                             </div>
                         </div>
@@ -285,6 +287,7 @@ interface AdminQuickAccessButtonProps {
 }
 
 export function AdminQuickAccessButton({ onClick }: AdminQuickAccessButtonProps) {
+    const t = useTranslations('Admin');
     const { user } = useAuth();
     const [isHovered, setIsHovered] = useState(false);
     const [showPulse, setShowPulse] = useState(true);
@@ -332,7 +335,7 @@ export function AdminQuickAccessButton({ onClick }: AdminQuickAccessButtonProps)
                 animate={{ x: isHovered ? 2 : 0 }}
                 className="text-sm font-semibold text-amber-400"
             >
-                Admin
+                {t('layout.adminLabel')}
             </motion.span>
         </motion.button>
     );
@@ -347,6 +350,7 @@ interface AdminWelcomeBannerProps {
 }
 
 export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
+    const t = useTranslations('Admin');
     const { user } = useAuth();
     const [isVisible, setIsVisible] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -419,14 +423,14 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <h2 className="text-2xl font-bold text-slate-100">
-                                    Welcome back, {user.username}
+                                    {t('shell.welcomeBack', { username: user.username })}
                                 </h2>
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">
-                                    {user.is_admin ? 'Super Admin' : 'Admin'}
+                                    {user.is_admin ? t('shell.superAdmin') : t('layout.adminLabel')}
                                 </span>
                             </div>
                             <p className="text-slate-400">
-                                You have elevated privileges. Manage the platform wisely.
+                                {t('shell.elevatedPrivileges')}
                             </p>
                         </div>
                     </div>
@@ -515,6 +519,7 @@ interface AdminNavbarBadgeProps {
 }
 
 export function AdminNavbarBadge({ onClick }: AdminNavbarBadgeProps) {
+    const t = useTranslations('Admin');
     const { user } = useAuth();
 
     if (!user?.is_staff) return null;
@@ -534,7 +539,7 @@ export function AdminNavbarBadge({ onClick }: AdminNavbarBadgeProps) {
             )}
         >
             <Shield className="w-3.5 h-3.5" />
-            <span>Admin</span>
+            <span>{t('layout.adminLabel')}</span>
         </motion.button>
     );
 }

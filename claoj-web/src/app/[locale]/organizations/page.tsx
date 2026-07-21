@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 
 export default function OrganizationsListPage() {
     const t = useTranslations('Organizations');
+    const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
 
@@ -47,12 +48,12 @@ export default function OrganizationsListPage() {
                         <Building2 className="text-primary" size={48} />
                         {t('title') || 'Organizations'}
                     </h1>
-                    <p className="text-muted-foreground font-black opacity-80">Universities, schools, and competitive programming communities.</p>
+                    <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4 rounded-[2.5rem] border border-dashed">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Page</span>
+                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">{tCommon('page')}</span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -81,7 +82,7 @@ export default function OrganizationsListPage() {
                         }}
                         className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-auto"
                     >
-                        <RefreshCw size={14} /> Reset
+                        <RefreshCw size={14} /> {tCommon('reset')}
                     </button>
                 </div>
             </div>
@@ -89,7 +90,7 @@ export default function OrganizationsListPage() {
             {/* Search Bar */}
             <div className="p-6 rounded-[2.5rem] bg-card border shadow-sm">
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('search')}</label>
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={16} />
                         <input
@@ -123,12 +124,12 @@ export default function OrganizationsListPage() {
                                     <div className="flex gap-2">
                                         {org.is_open && (
                                             <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Open</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest">{t('open')}</span>
                                             </div>
                                         )}
                                         {org.is_unlisted && (
                                             <div className="px-3 py-1.5 rounded-xl bg-muted text-muted-foreground border border-transparent">
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Unlisted</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest">{t('unlisted')}</span>
                                             </div>
                                         )}
                                     </div>
@@ -154,7 +155,7 @@ export default function OrganizationsListPage() {
                                     <div className="flex items-center gap-2 text-muted-foreground">
                                         <Users size={16} />
                                         <span className="text-sm font-black">{org.member_count}</span>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Members</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{t('members')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -165,14 +166,14 @@ export default function OrganizationsListPage() {
 
             {total > 0 && (
                 <div className="text-center text-sm text-muted-foreground font-bold">
-                    Showing {organizations.length} of {total} organizations
+                    {t('showingCount', { count: organizations.length, total })}
                 </div>
             )}
 
             {!isLoading && organizations.length === 0 && (
                 <div className="text-center py-20">
                     <Building2 size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                    <p className="text-muted-foreground font-bold">No organizations found</p>
+                    <p className="text-muted-foreground font-bold">{t('noneFound')}</p>
                 </div>
             )}
         </div>
