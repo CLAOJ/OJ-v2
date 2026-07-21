@@ -110,14 +110,14 @@ func NewRouter() *gin.Engine {
 			// Contests
 			admin.GET("/admin/contests", v2.AdminContestList)
 			admin.GET("/admin/contest/:key", v2.AdminContestDetail)
-			admin.POST("/admin/contests", v2.AdminContestCreate)
-			admin.PATCH("/admin/contest/:key", v2.AdminContestUpdate)
-			admin.DELETE("/admin/contest/:key", v2.AdminContestDelete)
-			admin.POST("/admin/contest/:key/lock", v2.AdminContestLock)
-			admin.POST("/admin/contest/:key/clone", v2.AdminContestClone)
+			admin.POST("/admin/contests", auth.RequirePerm("judge.add_contest"), v2.AdminContestCreate)
+			admin.PATCH("/admin/contest/:key", auth.RequireContestEdit(), v2.AdminContestUpdate)
+			admin.DELETE("/admin/contest/:key", auth.RequireContestEdit(), v2.AdminContestDelete)
+			admin.POST("/admin/contest/:key/lock", auth.RequireContestEdit(), v2.AdminContestLock)
+			admin.POST("/admin/contest/:key/clone", auth.RequirePerm("judge.clone_contest"), v2.AdminContestClone)
 			// Contest Participation Disqualify
-			admin.POST("/admin/contest/:key/participation/:id/disqualify", v2.AdminContestParticipationDisqualify)
-			admin.POST("/admin/contest/:key/participation/:id/undisqualify", v2.AdminContestParticipationUndisqualify)
+			admin.POST("/admin/contest/:key/participation/:id/disqualify", auth.RequireContestEdit(), v2.AdminContestParticipationDisqualify)
+			admin.POST("/admin/contest/:key/participation/:id/undisqualify", auth.RequireContestEdit(), v2.AdminContestParticipationUndisqualify)
 
 			// Contest Tags
 			admin.GET("/admin/contest-tags", v2.AdminContestTagList)
@@ -125,8 +125,8 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/contest-tags", v2.AdminContestTagCreate)
 			admin.PATCH("/admin/contest-tag/:id", v2.AdminContestTagUpdate)
 			admin.DELETE("/admin/contest-tag/:id", v2.AdminContestTagDelete)
-			admin.POST("/admin/contest/:key/tags/:tagId", v2.AdminContestAddTag)
-			admin.DELETE("/admin/contest/:key/tags/:tagId", v2.AdminContestRemoveTag)
+			admin.POST("/admin/contest/:key/tags/:tagId", auth.RequireContestEdit(), v2.AdminContestAddTag)
+			admin.DELETE("/admin/contest/:key/tags/:tagId", auth.RequireContestEdit(), v2.AdminContestRemoveTag)
 
 			// Problems
 			admin.GET("/admin/problems", v2.AdminProblemList)
