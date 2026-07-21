@@ -20,7 +20,7 @@ export default function ContestJsonLd({ contest }: ContestJsonLdProps) {
     endDate: contest.end_time,
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-    url: `${typeof window !== 'undefined' ? window.location.origin : ''}/contests/${contest.key}`,
+    url: `${typeof window !== 'undefined' ? window.location.origin : ''}/contest/${contest.key}`,
     organizer: {
       '@type': 'Organization',
       name: 'CLAOJ',
