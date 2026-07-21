@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
 import { useState, use } from 'react';
+import { parseLeadingId } from '@/utils/route';
 import {
     Building2,
     Users,
@@ -32,7 +33,8 @@ import { useAuth } from '@/components/providers/AuthProvider';
 dayjs.extend(relativeTime);
 
 export default function OrganizationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id: idParam } = use(params);
+    const id = parseLeadingId(idParam);
     const t = useTranslations('Organization');
     const router = useRouter();
     const { user, loading } = useAuth();
@@ -218,7 +220,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     {/* Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
                         <Link
-                            href={`/organization/${org.id}/blog`}
+                            href={`/organization/${org.id}-${org.slug}/blog`}
                             className="bg-muted/30 rounded-[1.5rem] p-4 border border-dashed hover:border-primary/30 hover:bg-muted/50 transition-all group"
                         >
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">

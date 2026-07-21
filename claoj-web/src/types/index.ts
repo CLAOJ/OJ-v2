@@ -578,7 +578,7 @@ export interface UserListItem {
     problem_count: number;
     display_rank: string;
     avatar_url?: string;
-    organizations?: { id: number; name: string }[];
+    organizations?: { id: number; name: string; slug: string }[];
 }
 
 // ============================================================

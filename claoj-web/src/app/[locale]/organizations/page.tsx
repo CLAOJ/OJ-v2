@@ -112,7 +112,7 @@ export default function OrganizationsListPage() {
                     organizations.map((org) => (
                         <Link
                             key={org.id}
-                            href={`/organization/${org.id}`}
+                            href={`/organization/${org.id}-${org.slug}`}
                             className="group block"
                         >
                             <div className="bg-card border rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 h-full flex flex-col">

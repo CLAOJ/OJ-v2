@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { Link, useRouter } from '@/navigation';
 import { useParams } from 'next/navigation';
+import { parseLeadingId } from '@/utils/route';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import {
@@ -41,25 +42,26 @@ interface Organization {
 
 export default function OrganizationBlogPage() {
     const params = useParams<{ id: string }>();
+    const id = parseLeadingId(params.id);
     const router = useRouter();
     const t = useTranslations('Blog');
     const [search, setSearch] = useState('');
 
     const { data: org, isLoading: orgLoading } = useQuery({
-        queryKey: ['organization', params.id],
+        queryKey: ['organization', id],
         queryFn: async () => {
-            const res = await api.get<Organization>(`/organization/${params.id}`);
+            const res = await api.get<Organization>(`/organization/${id}`);
             return res.data;
         }
     });
 
     const { data: posts, isLoading: postsLoading } = useQuery({
-        queryKey: ['organization-blog', params.id],
+        queryKey: ['organization-blog', id],
         queryFn: async () => {
             const res = await api.get<{
                 data: BlogPost[];
                 total: number;
-            }>(`/blogs?organization=${params.id}`);
+            }>(`/blogs?organization=${id}`);
             return res.data;
         }
     });
@@ -100,7 +102,7 @@ export default function OrganizationBlogPage() {
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Link
-                    href={`/organization/${params.id}`}
+                    href={`/organization/${org.id}-${org.slug}`}
                     className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
                 >
                     <ArrowLeft size={16} />

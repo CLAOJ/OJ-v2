@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { OrganizationDetail, OrganizationMember } from '@/types';
 import { Link } from '@/navigation';
 import { useState } from 'react';
+import { parseLeadingId } from '@/utils/route';
 import {
     Building2,
     Users,
@@ -32,7 +33,8 @@ export default function OrganizationManagePage() {
     const t = useTranslations('Organization');
     const params = useParams();
     const router = useRouter();
-    const id = params.id as string;
+    const idParam = params.id as string;
+    const id = parseLeadingId(idParam);
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'requests' | 'members' | 'edit'>('requests');
 
@@ -111,7 +113,7 @@ export default function OrganizationManagePage() {
                 <Shield size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
                 <h2 className="text-2xl font-black mb-2">Access Denied</h2>
                 <p className="text-muted-foreground">You don&apos;t have permission to manage this organization.</p>
-                <Link href={`/organization/${id}`} className="text-primary hover:underline mt-4 block">
+                <Link href={`/organization/${org.id}-${org.slug}`} className="text-primary hover:underline mt-4 block">
                     Back to Organization
                 </Link>
             </div>
@@ -123,7 +125,7 @@ export default function OrganizationManagePage() {
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
                 <Link
-                    href={`/organization/${id}`}
+                    href={`/organization/${org.id}-${org.slug}`}
                     className="p-2 hover:bg-muted rounded-xl transition-colors"
                 >
                     <ArrowLeft size={20} />
@@ -286,7 +288,7 @@ export default function OrganizationManagePage() {
 
             {/* Edit Tab */}
             {activeTab === 'edit' && (
-                <EditOrganizationForm organization={org} onSuccess={() => router.push(`/organization/${id}`)} />
+                <EditOrganizationForm organization={org} onSuccess={() => router.push(`/organization/${org.id}-${org.slug}`)} />
             )}
         </div>
     );
@@ -406,7 +408,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
 
             <div className="flex justify-end gap-3">
                 <Link
-                    href={`/organization/${organization.id}`}
+                    href={`/organization/${organization.id}-${organization.slug}`}
                     className="px-6 py-2.5 rounded-xl border hover:bg-muted transition-colors font-medium"
                 >
                     Cancel

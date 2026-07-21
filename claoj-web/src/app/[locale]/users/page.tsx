@@ -275,7 +275,7 @@ export default function UsersListPage() {
                                                     {user.organizations.slice(0, 2).map(org => (
                                                         <Link
                                                             key={org.id}
-                                                            href={`/organization/${org.id}`}
+                                                            href={`/organization/${org.id}-${org.slug}`}
                                                             className="text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
                                                         >
                                                             {org.name}
