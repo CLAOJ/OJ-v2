@@ -7,7 +7,6 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import WebSocketStatusIndicator from '@/components/common/WebSocketStatus';
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { AdminNavbarBadge, AdminQuickAccessButton, AdminSidebar } from '@/components/admin';
 import Logo from '@/components/navbar/Logo';
 import DesktopNav from '@/components/navbar/DesktopNav';
 import LanguageSwitcher from '@/components/navbar/LanguageSwitcher';
@@ -22,7 +21,6 @@ export default function Navbar() {
     const [mounted, setMounted] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
 
     // Contest timer state (placeholder - in real app, this would come from context)
     const [inContest] = useState(false);
@@ -92,11 +90,6 @@ export default function Navbar() {
                             {/* User Menu */}
                             {user ? (
                                 <>
-                                    {/* Admin Badge */}
-                                    {(user.is_staff || user.is_admin) && (
-                                        <AdminNavbarBadge onClick={() => setAdminSidebarOpen(true)} />
-                                    )}
-
                                     <UserMenu
                                         username={user.username}
                                         isStaff={user.is_staff || user.is_admin}
@@ -141,12 +134,6 @@ export default function Navbar() {
                     </div>
                 )}
             </header>
-
-            {/* Admin Sidebar */}
-            <AdminSidebar isOpen={adminSidebarOpen} onClose={() => setAdminSidebarOpen(false)} />
-
-            {/* Admin Quick Access Button - Fixed position */}
-            <AdminQuickAccessButton onClick={() => setAdminSidebarOpen(true)} />
         </>
     );
 }
