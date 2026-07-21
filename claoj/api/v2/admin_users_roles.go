@@ -162,6 +162,17 @@ func AdminUserUpdate(c *gin.Context) {
 		return
 	}
 
+	// v1 parity: appointing or removing an organization administrator requires
+	// authority over that organization (org admin, edit_all_organization, or
+	// superuser). Checked per targeted org id.
+	orgAdminTargets := append(append([]uint{}, input.AddOrganizationAdmin...), input.RemoveOrganizationAdmin...)
+	for _, orgID := range orgAdminTargets {
+		if !auth.CanEditOrganization(c, orgID) {
+			c.JSON(http.StatusForbidden, apiError("you do not have permission to manage administrators of organization "+strconv.FormatUint(uint64(orgID), 10)))
+			return
+		}
+	}
+
 	// is_staff / is_superuser changes are superuser-only. This writes
 	// directly to Django's auth_user row (id, is_staff, is_superuser),
 	// which is a different primary key than the judge_profile.id used as
