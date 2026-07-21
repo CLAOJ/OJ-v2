@@ -420,7 +420,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                         {/* PDF viewer */}
                         <div className="w-full h-full overflow-hidden rounded-lg shadow-2xl">
-                            <PdfStatementViewer code={code} heightClass="h-full" />
+                            <PdfStatementViewer code={code} variant="modal" />
                         </div>
                     </div>
                 </div>

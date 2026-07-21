@@ -9,10 +9,13 @@ import '@/components/ui/pdfSetup';
 
 interface PdfStatementViewerProps {
     code: string;
-    heightClass?: string;
+    // 'inline' (default): sits in the page flow, scroll area capped at 80vh.
+    // 'modal': fills its parent's height and scrolls internally (the parent must
+    // establish a height, e.g. h-full inside a fixed-size modal).
+    variant?: 'inline' | 'modal';
 }
 
-export default function PdfStatementViewer({ code, heightClass = 'max-h-[80vh]' }: PdfStatementViewerProps) {
+export default function PdfStatementViewer({ code, variant = 'inline' }: PdfStatementViewerProps) {
     const t = useTranslations('Problems');
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
     const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
@@ -77,7 +80,7 @@ export default function PdfStatementViewer({ code, heightClass = 'max-h-[80vh]' 
     }
 
     return (
-        <div className="bg-card border rounded-3xl shadow-sm overflow-hidden flex flex-col">
+        <div className={`bg-card border rounded-3xl shadow-sm overflow-hidden flex flex-col ${variant === 'modal' ? 'h-full' : ''}`}>
             <div className="flex items-center justify-between gap-2 border-b p-3">
                 <span className="text-xs font-bold text-muted-foreground">
                     {status === 'ready' ? t('pdfViewer.pageCount', { count: numPages }) : t('pdfViewer.loading')}
@@ -90,7 +93,7 @@ export default function PdfStatementViewer({ code, heightClass = 'max-h-[80vh]' 
                 </div>
             </div>
 
-            <div ref={containerRef} className={`overflow-auto bg-muted/30 ${heightClass}`}>
+            <div ref={containerRef} className={`overflow-auto overscroll-contain bg-muted/30 ${variant === 'modal' ? 'flex-1 min-h-0' : 'max-h-[80vh]'}`}>
                 {status === 'loading' && !file && (
                     <div className="flex items-center justify-center p-10"><Loader2 className="animate-spin text-primary" size={28} /></div>
                 )}
