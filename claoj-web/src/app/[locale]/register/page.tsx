@@ -11,20 +11,27 @@ import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const registerSchema = z.object({
-    username: z.string().min(3, 'Username must be at least 3 characters'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Please confirm your password'),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-});
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterFormValues = {
+    username: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+};
 
 export default function RegisterPage() {
     const t = useTranslations('Auth');
+
+    // Built inside the component so the messages can go through t(); at module
+    // scope they were unavoidably English and surfaced verbatim to the user.
+    const registerSchema = z.object({
+        username: z.string().min(3, t('usernameMinLength')),
+        email: z.string().email(t('invalidEmailError')),
+        password: z.string().min(6, t('passwordMinLength')),
+        confirmPassword: z.string().min(6, t('confirmPasswordRequired')),
+    }).refine((data) => data.password === data.confirmPassword, {
+        message: t('passwordsDontMatch'),
+        path: ["confirmPassword"],
+    });
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);

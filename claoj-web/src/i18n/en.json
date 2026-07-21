@@ -477,7 +477,13 @@
     "resetPasswordErrorDefault": "Failed to send the reset link",
     "verifyYourEmail": "Verify Your Email",
     "verificationLinkSent": "We've sent a verification link to <strong>{email}</strong>. Please check your inbox and click the link to verify your account.",
-    "emailPlaceholder": "you@example.com"
+    "emailPlaceholder": "you@example.com",
+    "usernameRequired": "Username is required",
+    "passwordRequired": "Password is required",
+    "usernameMinLength": "Username must be at least 3 characters",
+    "passwordMinLength": "Password must be at least 6 characters",
+    "confirmPasswordRequired": "Please confirm your password",
+    "passwordsDontMatch": "Passwords don't match"
   },
   "Comments": {
     "title": "Comments",
@@ -673,7 +679,11 @@
     "errorTitle": "Something went wrong",
     "errorDescription": "An error occurred while processing your request. Please try again.",
     "tryAgain": "Try again",
-    "goHome": "Go home"
+    "goHome": "Go home",
+    "wsConnected": "Connected",
+    "wsConnecting": "Connecting...",
+    "wsError": "Connection Error",
+    "wsDisconnected": "Disconnected"
   },
   "Ratings": {
     "title": "Rating Leaderboard",
@@ -935,7 +945,9 @@
     "noTicketsDescription": "Create a new ticket to get help from the team.",
     "previousButton": "Previous",
     "nextButton": "Next",
-    "pageLabel": "Page {page}"
+    "pageLabel": "Page {page}",
+    "titleMinLength": "Title must be at least 5 characters",
+    "bodyMinLength": "Description must be at least 20 characters"
   },
   "Settings": {
     "title": "Settings",

@@ -14,16 +14,22 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
-const loginSchema = z.object({
-    username: z.string().min(1, 'Username is required'),
-    password: z.string().min(1, 'Password is required'),
-    rememberMe: z.boolean().optional(),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = {
+    username: string;
+    password: string;
+    rememberMe?: boolean;
+};
 
 export default function LoginPage() {
     const t = useTranslations('Auth');
+
+    // Built inside the component so the messages can go through t(); at module
+    // scope they were unavoidably English and surfaced verbatim to the user.
+    const loginSchema = z.object({
+        username: z.string().min(1, t('usernameRequired')),
+        password: z.string().min(1, t('passwordRequired')),
+        rememberMe: z.boolean().optional(),
+    });
     const { login, loginTotp, loginWebAuthn } = useAuth();
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);

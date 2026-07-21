@@ -477,7 +477,13 @@
     "resetPasswordErrorDefault": "Gửi liên kết đặt lại thất bại",
     "verifyYourEmail": "Xác minh email của bạn",
     "verificationLinkSent": "Chúng tôi đã gửi liên kết xác minh tới <strong>{email}</strong>. Vui lòng kiểm tra hộp thư và nhấn vào liên kết để xác minh tài khoản của bạn.",
-    "emailPlaceholder": "ban@example.com"
+    "emailPlaceholder": "ban@example.com",
+    "usernameRequired": "Vui lòng nhập tên đăng nhập",
+    "passwordRequired": "Vui lòng nhập mật khẩu",
+    "usernameMinLength": "Tên đăng nhập phải có ít nhất 3 ký tự",
+    "passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự",
+    "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu",
+    "passwordsDontMatch": "Mật khẩu xác nhận không khớp"
   },
   "Comments": {
     "title": "Bình luận",
@@ -673,7 +679,11 @@
     "errorTitle": "Đã xảy ra lỗi",
     "errorDescription": "Đã xảy ra lỗi khi xử lý yêu cầu của bạn. Vui lòng thử lại.",
     "tryAgain": "Thử lại",
-    "goHome": "Về trang chủ"
+    "goHome": "Về trang chủ",
+    "wsConnected": "Đã kết nối",
+    "wsConnecting": "Đang kết nối...",
+    "wsError": "Lỗi kết nối",
+    "wsDisconnected": "Đã ngắt kết nối"
   },
   "Ratings": {
     "title": "Bảng xếp hạng Rating",
@@ -935,7 +945,9 @@
     "noTicketsDescription": "Tạo ticket mới để được đội ngũ hỗ trợ.",
     "previousButton": "Trước",
     "nextButton": "Tiếp",
-    "pageLabel": "Trang {page}"
+    "pageLabel": "Trang {page}",
+    "titleMinLength": "Tiêu đề phải có ít nhất 5 ký tự",
+    "bodyMinLength": "Mô tả phải có ít nhất 20 ký tự"
   },
   "Settings": {
     "title": "Cài đặt",

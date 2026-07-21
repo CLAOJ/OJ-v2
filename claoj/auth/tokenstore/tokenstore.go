@@ -42,7 +42,14 @@ type Entry struct {
 type Store interface {
 	Save(token string, e Entry) error
 	Get(token string) (*Entry, bool, error) // (entry, found, err)
-	Revoke(token string) error              // marks revoked, keeps entry until TTL (rotation-reuse detection)
+	// Supersede retires a token because rotation replaced it with a successor.
+	// It stamps RevokedAt so the handler can recognise a racing client that
+	// still holds the old token; see the grace period in api/v2/auth.
+	Supersede(token string) error
+	// Revoke kills a token outright (logout). Unlike Supersede it leaves
+	// RevokedAt zero, so presenting the token again is treated as reuse rather
+	// than as a benign rotation collision.
+	Revoke(token string) error
 	RevokeFamily(familyID string) error
 	RevokeAllForUser(userID uint) error
 }
@@ -108,24 +115,35 @@ func (s *memoryStore) Get(token string) (*Entry, bool, error) {
 	return &cp, true, nil
 }
 
-// markRevoked flags an entry, stamping RevokedAt only on the first transition
-// so repeated revocations can't slide the grace window forward.
-// Callers must hold s.mu.
-func (s *memoryStore) markRevoked(token string) {
+// markRevoked flags an entry. `superseded` records that rotation replaced the
+// token (as opposed to it being killed outright), and is stamped only on the
+// first transition so repeated revocations can't slide the grace window
+// forward. Callers must hold s.mu.
+func (s *memoryStore) markRevoked(token string, superseded bool) {
 	e, ok := s.entries[token]
 	if !ok || e.Revoked {
 		return
 	}
 	e.Revoked = true
-	e.RevokedAt = time.Now()
+	if superseded {
+		e.RevokedAt = time.Now()
+	}
 	s.entries[token] = e
+}
+
+func (s *memoryStore) Supersede(token string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.markRevoked(token, true)
+	return nil
 }
 
 func (s *memoryStore) Revoke(token string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.markRevoked(token)
+	s.markRevoked(token, false)
 	return nil
 }
 
@@ -134,7 +152,7 @@ func (s *memoryStore) RevokeFamily(familyID string) error {
 	defer s.mu.Unlock()
 
 	for token := range s.byFam[familyID] {
-		s.markRevoked(token)
+		s.markRevoked(token, false)
 	}
 	return nil
 }
@@ -144,7 +162,7 @@ func (s *memoryStore) RevokeAllForUser(userID uint) error {
 	defer s.mu.Unlock()
 
 	for token := range s.byUser[userID] {
-		s.markRevoked(token)
+		s.markRevoked(token, false)
 	}
 	return nil
 }
@@ -250,15 +268,23 @@ func (s *redisStore) Get(token string) (*Entry, bool, error) {
 	return &e, true, nil
 }
 
-func (s *redisStore) Revoke(token string) error {
-	return s.revokeHash(hashToken(token))
+func (s *redisStore) Supersede(token string) error {
+	return s.markRevokedHash(hashToken(token), true)
 }
 
-// revokeHash rewrites the value at rt:{hash} with Revoked=true while
+func (s *redisStore) Revoke(token string) error {
+	return s.markRevokedHash(hashToken(token), false)
+}
+
+// markRevokedHash rewrites the value at rt:{hash} with Revoked=true while
 // preserving whatever TTL currently remains on the key, so a subsequent
 // Get still finds the (now revoked) entry until it naturally expires —
 // this is what lets Refresh detect a reused/rotated-out token.
-func (s *redisStore) revokeHash(hash string) error {
+//
+// `superseded` distinguishes rotation (the token was replaced by a successor,
+// so a racing client presenting it deserves a retry) from an outright kill
+// such as logout or a family revocation (where reuse must be treated as reuse).
+func (s *redisStore) markRevokedHash(hash string, superseded bool) error {
 	key := valueKey(hash)
 	data, err := s.client.Get(s.ctx, key).Bytes()
 	if errors.Is(err, redis.Nil) {
@@ -285,7 +311,9 @@ func (s *redisStore) revokeHash(hash string) error {
 	}
 
 	e.Revoked = true
-	e.RevokedAt = time.Now()
+	if superseded {
+		e.RevokedAt = time.Now()
+	}
 	newData, err := json.Marshal(e)
 	if err != nil {
 		return err
@@ -301,7 +329,7 @@ func (s *redisStore) RevokeFamily(familyID string) error {
 	}
 	var firstErr error
 	for _, h := range hashes {
-		if err := s.revokeHash(h); err != nil && firstErr == nil {
+		if err := s.markRevokedHash(h, false); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
@@ -315,7 +343,7 @@ func (s *redisStore) RevokeAllForUser(userID uint) error {
 	}
 	var firstErr error
 	for _, h := range hashes {
-		if err := s.revokeHash(h); err != nil && firstErr == nil {
+		if err := s.markRevokedHash(h, false); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}

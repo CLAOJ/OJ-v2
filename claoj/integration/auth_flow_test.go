@@ -408,6 +408,65 @@ func TestAuthFlow_ConcurrentRefreshDoesNotKillTheSession(t *testing.T) {
 		"a concurrent-refresh collision must not revoke the session that won the race")
 }
 
+// Once reuse detection has killed a family, every token in it must report the
+// revocation plainly. An earlier version of the grace window stamped the
+// revocation time on *all* family members, so the victim's still-fresh token
+// answered 409 "retry" instead of 401 — turning a compromise signal into a
+// retry hint, and sending the client round a pointless retry loop.
+func TestAuthFlow_RevokedFamilyReportsRevocationNotRetry(t *testing.T) {
+	testDB := integration.SetupIntegrationDB(t)
+	defer CleanupDB(testDB)
+
+	integration.CreateTestUser(testDB.DB, "testuser", "Password123!", true)
+
+	gin := integration.TestRouter()
+	gin.POST("/auth/login", authHandlers.Login)
+	gin.POST("/auth/refresh", authHandlers.Refresh)
+
+	loginResp := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method: "POST",
+		Path:   "/auth/login",
+		Body:   map[string]interface{}{"username": "testuser", "password": "Password123!"},
+	})
+	assert.Equal(t, http.StatusOK, loginResp.Code)
+	original := loginResp.JSONBody["refresh_token"].(string)
+
+	// JWT `iat` has second precision; wait so the successor is a distinct token.
+	time.Sleep(1100 * time.Millisecond)
+
+	rotated := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + original},
+	})
+	assert.Equal(t, http.StatusOK, rotated.Code)
+	successor := rotated.JSONBody["refresh_token"].(string)
+
+	// Replay the original from outside the grace window: a genuine reuse.
+	defer func(orig time.Duration) { authHandlers.RotationGracePeriod = orig }(authHandlers.RotationGracePeriod)
+	authHandlers.RotationGracePeriod = 0
+
+	reuse := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + original},
+	})
+	assert.Equal(t, http.StatusUnauthorized, reuse.Code)
+
+	// The successor is now revoked as collateral. Restore a normal grace window
+	// and confirm it still reports 401 rather than being mistaken for a racing
+	// tab -- family revocation must not open a grace window.
+	authHandlers.RotationGracePeriod = 10 * time.Second
+
+	victim := integration.MakeRequest(t, gin, integration.HTTPRequest{
+		Method:  "POST",
+		Path:    "/auth/refresh",
+		Headers: map[string]string{"Cookie": "refresh_token=" + successor},
+	})
+	assert.Equal(t, http.StatusUnauthorized, victim.Code,
+		"a token revoked by a family kill must report revocation, not a retry")
+}
+
 // TestAuthFlow_RememberMe tests login with remember_me option
 func TestAuthFlow_RememberMe(t *testing.T) {
 	testDB := integration.SetupIntegrationDB(t)

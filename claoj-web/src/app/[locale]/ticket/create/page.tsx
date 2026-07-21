@@ -20,16 +20,22 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/AuthProvider';
 
-const ticketSchema = z.object({
-    title: z.string().min(5, 'Title must be at least 5 characters'),
-    body: z.string().min(20, 'Description must be at least 20 characters'),
-    problem_code: z.string().optional(),
-});
-
-type TicketFormValues = z.infer<typeof ticketSchema>;
+type TicketFormValues = {
+    title: string;
+    body: string;
+    problem_code?: string;
+};
 
 export default function CreateTicketPage() {
     const t = useTranslations('Ticket');
+
+    // Built inside the component so the messages can go through t(); at module
+    // scope they were unavoidably English and surfaced verbatim to the user.
+    const ticketSchema = z.object({
+        title: z.string().min(5, t('titleMinLength')),
+        body: z.string().min(20, t('bodyMinLength')),
+        problem_code: z.string().optional(),
+    });
     const router = useRouter();
     const { user, loading } = useAuth();
     const [problemSearch, setProblemSearch] = useState('');

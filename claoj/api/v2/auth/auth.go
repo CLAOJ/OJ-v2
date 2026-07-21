@@ -309,8 +309,12 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	// Revoke old token and store new one
-	if err := RefreshStore.Revoke(refreshToken); err != nil {
+	// Retire the old token in favour of its successor. Supersede (not Revoke)
+	// so that a client still holding it — the losing tab in a refresh race —
+	// is offered a retry instead of being treated as a replay. A revocation
+	// that is *not* a rotation (logout, family kill) deliberately leaves no
+	// grace, so reuse of those tokens is still reported as reuse.
+	if err := RefreshStore.Supersede(refreshToken); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token"})
 		return
 	}
