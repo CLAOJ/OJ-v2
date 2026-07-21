@@ -176,7 +176,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, href: null },
                             { id: 'problems', label: t('problems'), icon: ListOrdered, href: null },
                             { id: 'scoreboard', label: t('scoreboard'), icon: BarChart3, href: null },
-                            { id: 'stats', label: t('statistics'), icon: Activity, href: `/contests/${key}/stats`, external: true }
+                            { id: 'stats', label: t('statistics'), icon: Activity, href: `/contest/${key}/stats`, external: true }
                         ].map((tab) => (
                             <button
                                 key={tab.id}

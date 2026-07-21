@@ -184,7 +184,7 @@ export default function BlogListPage() {
                                 contests?.map(ct => (
                                     <Link
                                         key={ct.key}
-                                        href={`/contests/${ct.key}`}
+                                        href={`/contest/${ct.key}`}
                                         className="block p-4 rounded-3xl bg-muted/30 border border-dashed hover:bg-muted/50 hover:border-primary/30 transition-all group"
                                     >
                                         <div className="flex flex-col gap-1">

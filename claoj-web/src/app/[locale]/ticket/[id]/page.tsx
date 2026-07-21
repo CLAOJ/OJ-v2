@@ -194,7 +194,7 @@ export default function TicketDetailPage() {
 
                 {ticket.linked_item && (
                     <Link
-                        href={ticket.linked_item.type === 'problem' ? `/problem/${ticket.linked_item.code}` : `/contests/${ticket.linked_item.key}`}
+                        href={ticket.linked_item.type === 'problem' ? `/problem/${ticket.linked_item.code}` : `/contest/${ticket.linked_item.key}`}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 text-muted-foreground text-sm font-bold hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                         <AlertCircle size={16} />

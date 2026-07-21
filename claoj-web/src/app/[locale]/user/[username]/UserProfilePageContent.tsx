@@ -481,7 +481,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                                     {dayjs(entry.date).format('MMM D, YYYY')}
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <Link href={`/contests/${entry.contest_key}`} className="text-sm font-black hover:text-primary transition-colors">
+                                                                    <Link href={`/contest/${entry.contest_key}`} className="text-sm font-black hover:text-primary transition-colors">
                                                                         {entry.contest}
                                                                     </Link>
                                                                 </td>

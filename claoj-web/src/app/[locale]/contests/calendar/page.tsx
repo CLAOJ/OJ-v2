@@ -159,7 +159,7 @@ export default function ContestCalendarPage() {
                                             return (
                                                 <Link
                                                     key={contest.key}
-                                                    href={`/contests/${contest.key}`}
+                                                    href={`/contest/${contest.key}`}
                                                     className={`block p-1.5 rounded-md border text-[10px] font-medium transition-all hover:shadow-md ${statusColors[status]}`}
                                                 >
                                                     <div className="flex items-center gap-1">
@@ -234,7 +234,7 @@ export default function ContestCalendarPage() {
                     return (
                         <Link
                             key={contest.key}
-                            href={`/contests/${contest.key}`}
+                            href={`/contest/${contest.key}`}
                             className="block p-4 bg-card rounded-xl border hover:shadow-md transition-all group"
                         >
                             <div className="flex items-start justify-between gap-4">

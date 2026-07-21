@@ -112,7 +112,7 @@ export default function ContestsPageContent() {
                                         <tr key={c.key} className="hover:bg-muted/30 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1">
-                                                    <Link href={`/contests/${c.key}`} className="font-bold text-base hover:text-primary transition-colors">
+                                                    <Link href={`/contest/${c.key}`} className="font-bold text-base hover:text-primary transition-colors">
                                                         {c.name}
                                                     </Link>
                                                     <div className="flex items-center gap-2 flex-wrap">
@@ -162,7 +162,7 @@ export default function ContestsPageContent() {
                                                     )}
                                                     {c.is_joined && isRunning && (
                                                         <Link
-                                                            href={`/contests/${c.key}`}
+                                                            href={`/contest/${c.key}`}
                                                             className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm shadow-primary/20"
                                                         >
                                                             <Trophy size={14} /> {t('enter')}
@@ -170,7 +170,7 @@ export default function ContestsPageContent() {
                                                     )}
                                                     {!isRunning && !now.isAfter(dayjs(c.end_time)) && (
                                                         <Link
-                                                            href={`/contests/${c.key}`}
+                                                            href={`/contest/${c.key}`}
                                                             className="border border-muted-foreground/20 hover:bg-muted px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
                                                         >
                                                             {t('details')}
@@ -181,7 +181,7 @@ export default function ContestsPageContent() {
                                                             <button className="text-primary hover:text-primary/80 px-2 py-1 text-xs font-bold transition-colors border rounded-md">
                                                                 {t('virtualJoin')}
                                                             </button>
-                                                            <Link href={`/contests/${c.key}`} className="p-1.5 hover:bg-muted rounded-md transition-colors">
+                                                            <Link href={`/contest/${c.key}`} className="p-1.5 hover:bg-muted rounded-md transition-colors">
                                                                 <ChevronRight size={18} />
                                                             </Link>
                                                         </>

@@ -206,7 +206,7 @@ export default function ContestStatsPage() {
             {t('stats.view_ranking')}
           </p>
           <a
-            href={`/contests/${key}`}
+            href={`/contest/${key}`}
             className="block text-center mt-4 text-blue-600 hover:underline"
           >
             {t('contest.scoreboard')} →

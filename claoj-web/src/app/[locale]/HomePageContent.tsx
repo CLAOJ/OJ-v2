@@ -384,7 +384,7 @@ export default function HomePageContent() {
                                         className="bg-primary-10 rounded-lg p-4 border border-muted hover:border-primary/50 transition-colors"
                                     >
                                         <Link
-                                            href={`/contests/${contest.key}`}
+                                            href={`/contest/${contest.key}`}
                                             className="text-lg font-bold hover:text-primary transition-colors block mb-2"
                                         >
                                             {contest.name}
@@ -419,7 +419,7 @@ export default function HomePageContent() {
                             {ongoingContests.map(contest => (
                                 <div key={contest.key}>
                                     <Link
-                                        href={`/contests/${contest.key}`}
+                                        href={`/contest/${contest.key}`}
                                         className="text-sm font-bold hover:text-primary transition-colors block"
                                     >
                                         {contest.name}
@@ -444,7 +444,7 @@ export default function HomePageContent() {
                             {upcomingContests.map(contest => (
                                 <div key={contest.key}>
                                     <Link
-                                        href={`/contests/${contest.key}`}
+                                        href={`/contest/${contest.key}`}
                                         className="text-sm font-bold hover:text-primary transition-colors block"
                                     >
                                         {contest.name}
