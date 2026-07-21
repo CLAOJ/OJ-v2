@@ -1171,3 +1171,261 @@ Expected: `cleanup done`. (Deleting the users cascades their judge_profile rows.
 - Tasks 1-3 are pure `auth`-package units (fast, DB-backed via `setupPermsDB`). Tasks 4-8 are `integration_test` and require a reachable MariaDB (the running `claoj_db`); `integration.SetupIntegrationDB(t)` provisions/cleans the schema exactly as the existing `organization_flow_test.go` does.
 - The helpers `makeStaff`, `loginToken`, `profileForUser` are defined once in the `integration_test` package (Task 4 adds `makeStaff`; `loginToken`/`profileForUser` already exist in `organization_flow_test.go`). Do not redefine them.
 - Do NOT stage the 6 unrelated pre-existing dirty files (`contest_ranking.go`, `submission.go`, `contest_format/*.go`, `SubmissionSource.tsx`). Stage only the files named in each task.
+
+---
+
+## Addendum — post-review follow-ups (OOS-1, OOS-2)
+
+The final whole-branch review surfaced two pre-existing gaps the stakeholder chose to fix in this branch. Same delegation model, same helpers.
+
+### Task 10: Submission rejudge / abort / batch-rejudge authority (OOS-1)
+
+**Files:**
+- Modify: `claoj/api/v2/admin_submission.go` (`AdminSubmissionRejudge`, `AdminSubmissionAbort`, `AdminSubmissionBatchRejudge`)
+- Test: `claoj/integration/admin_submission_authz_test.go` (create)
+
+**Interfaces:**
+- Consumes: `auth.CanRejudge` (mirrors the existing `AdminSubmissionRescore` at `admin_submission.go:209-218`), `auth.HasPerm`, `models.Submission{ProblemID, Problem}`.
+- Produces: single rejudge → per-object `CanRejudge`; abort → `judge.abort_any_submission`; batch rejudge → `judge.rejudge_submission_lot`.
+
+**v1 basis:** rejudge = `rejudge_submission` + `is_editable_by` (exactly `CanRejudge`); abort = `abort_any_submission`; bulk = `rejudge_submission_lot`. `admin_submission.go` already imports `auth`, `db`, `models`, `http`.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `claoj/integration/admin_submission_authz_test.go`:
+
+```go
+package integration_test
+
+import (
+	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
+	v2 "github.com/CLAOJ/claoj/api/v2"
+	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/integration"
+	"github.com/CLAOJ/claoj/models"
+	"github.com/stretchr/testify/require"
+)
+
+func TestAdminSubmissionAuthz_DeniesPlainStaff(t *testing.T) {
+	testDB := integration.SetupIntegrationDB(t)
+	defer integration.CleanupDB(t, testDB)
+
+	prob := models.Problem{Code: "sub_p", Name: "SubP", IsPublic: true}
+	require.NoError(t, testDB.DB.Create(&prob).Error)
+
+	staff := integration.CreateTestUser(testDB.DB, "substaff", "Password123!", true)
+	makeStaff(t, testDB.DB, staff.ID, true, false)
+	staffProfile := profileForUser(t, testDB.DB, staff.ID)
+	staffToken := loginToken(t, "substaff", "Password123!")
+
+	sub := models.Submission{UserID: staffProfile.ID, ProblemID: prob.ID, LanguageID: 1, Status: "QU", Date: time.Now()}
+	require.NoError(t, testDB.DB.Create(&sub).Error)
+
+	g := integration.TestRouter()
+	g.Use(auth.RequiredMiddleware())
+	g.Use(auth.AdminRequiredMiddleware())
+	g.POST("/admin/submission/:id/rejudge", v2.AdminSubmissionRejudge)
+	g.POST("/admin/submission/:id/abort", v2.AdminSubmissionAbort)
+	g.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
+
+	hdr := map[string]string{"Authorization": "Bearer " + staffToken}
+
+	r := integration.MakeRequest(t, g, integration.HTTPRequest{Method: "POST", Path: fmt.Sprintf("/admin/submission/%d/rejudge", sub.ID), Headers: hdr})
+	require.Equal(t, http.StatusForbidden, r.Code, "rejudge: non-editor staff must be denied")
+
+	r = integration.MakeRequest(t, g, integration.HTTPRequest{Method: "POST", Path: fmt.Sprintf("/admin/submission/%d/abort", sub.ID), Headers: hdr})
+	require.Equal(t, http.StatusForbidden, r.Code, "abort: staff without abort_any_submission must be denied")
+
+	r = integration.MakeRequest(t, g, integration.HTTPRequest{Method: "POST", Path: "/admin/submissions/batch-rejudge", Headers: hdr, Body: map[string]interface{}{"dry_run": true}})
+	require.Equal(t, http.StatusForbidden, r.Code, "batch: staff without rejudge_submission_lot must be denied")
+}
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd claoj && go test ./integration/ -run TestAdminSubmissionAuthz_DeniesPlainStaff -v`
+Expected: FAIL — all three currently return 200 (is_staff-only), so the 403 assertions fail.
+
+- [ ] **Step 3: Add the guards**
+
+In `AdminSubmissionRejudge`, immediately after the `submissionID` parse block (before the `getSubmissionService().Rejudge(...)` call), insert:
+
+```go
+	// Django parity: rejudging a submission requires being able to rejudge its problem.
+	var sub models.Submission
+	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if !auth.CanRejudge(c, &sub.Problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to rejudge this submission"))
+		return
+	}
+```
+
+In `AdminSubmissionAbort`, immediately after the `submissionID` parse block (before the `getSubmissionService().Abort(...)` call), insert:
+
+```go
+	// Django parity: aborting another user's submission requires judge.abort_any_submission.
+	if !auth.HasPerm(c, "judge.abort_any_submission") {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to abort submissions"))
+		return
+	}
+```
+
+In `AdminSubmissionBatchRejudge`, immediately after the `c.BindJSON(&req)` block (before `filters := ...`), insert:
+
+```go
+	// Django parity: bulk rejudge requires judge.rejudge_submission_lot.
+	if !auth.HasPerm(c, "judge.rejudge_submission_lot") {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to batch-rejudge submissions"))
+		return
+	}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd claoj && go test ./integration/ -run TestAdminSubmissionAuthz_DeniesPlainStaff -v`
+Expected: PASS (all three → 403).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add claoj/api/v2/admin_submission.go claoj/integration/admin_submission_authz_test.go
+git commit -m "feat(admin): enforce per-object/permission authority on submission rejudge/abort/batch"
+```
+
+---
+
+### Task 11: Solution (editorial) editing authority (OOS-2)
+
+**Files:**
+- Modify: `claoj/api/v2/solution.go` (`AdminSolutionCreate`, `AdminSolutionUpdate`, `AdminSolutionDelete`)
+- Test: `claoj/integration/admin_solution_authz_test.go` (create)
+
+**Interfaces:**
+- Consumes: `auth.CanEditProblem`, `models.Solution{ProblemID}`. `solution.go` already imports `auth`, `db`, `models`.
+- Produces: creating/updating/deleting a problem's editorial requires `CanEditProblem` on that problem (a solution is the problem's editorial — v1: `Solution.is_accessible_by` delegates to `problem.is_editable_by`).
+
+- [ ] **Step 1: Write the failing test**
+
+Create `claoj/integration/admin_solution_authz_test.go`:
+
+```go
+package integration_test
+
+import (
+	"fmt"
+	"net/http"
+	"testing"
+
+	v2 "github.com/CLAOJ/claoj/api/v2"
+	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/integration"
+	"github.com/CLAOJ/claoj/models"
+	"github.com/stretchr/testify/require"
+)
+
+func TestAdminSolutionAuthz_DeniesPlainStaff(t *testing.T) {
+	testDB := integration.SetupIntegrationDB(t)
+	defer integration.CleanupDB(t, testDB)
+	// Solution is not in the harness AutoMigrate list — add it here.
+	require.NoError(t, testDB.DB.AutoMigrate(&models.Solution{}))
+
+	prob := models.Problem{Code: "sol_p", Name: "SolP", IsPublic: true}
+	require.NoError(t, testDB.DB.Create(&prob).Error)
+	sol := models.Solution{ProblemID: prob.ID, Content: "editorial"}
+	require.NoError(t, testDB.DB.Create(&sol).Error)
+
+	staff := integration.CreateTestUser(testDB.DB, "solstaff", "Password123!", true)
+	makeStaff(t, testDB.DB, staff.ID, true, false)
+	staffToken := loginToken(t, "solstaff", "Password123!")
+
+	g := integration.TestRouter()
+	g.Use(auth.RequiredMiddleware())
+	g.Use(auth.AdminRequiredMiddleware())
+	g.POST("/admin/solutions", v2.AdminSolutionCreate)
+	g.PATCH("/admin/solution/:id", v2.AdminSolutionUpdate)
+	g.DELETE("/admin/solution/:id", v2.AdminSolutionDelete)
+
+	hdr := map[string]string{"Authorization": "Bearer " + staffToken}
+
+	r := integration.MakeRequest(t, g, integration.HTTPRequest{Method: "PATCH", Path: fmt.Sprintf("/admin/solution/%d", sol.ID), Headers: hdr, Body: map[string]interface{}{"is_public": true}})
+	require.Equal(t, http.StatusForbidden, r.Code, "update: non-editor staff must be denied")
+
+	r = integration.MakeRequest(t, g, integration.HTTPRequest{Method: "DELETE", Path: fmt.Sprintf("/admin/solution/%d", sol.ID), Headers: hdr})
+	require.Equal(t, http.StatusForbidden, r.Code, "delete: non-editor staff must be denied")
+	var cnt int64
+	testDB.DB.Model(&models.Solution{}).Where("id = ?", sol.ID).Count(&cnt)
+	require.Equal(t, int64(1), cnt, "solution must survive the denied delete")
+
+	r = integration.MakeRequest(t, g, integration.HTTPRequest{Method: "POST", Path: "/admin/solutions", Headers: hdr, Body: map[string]interface{}{"problem_id": prob.ID, "content": "x"}})
+	require.Equal(t, http.StatusForbidden, r.Code, "create: non-editor staff must be denied")
+}
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd claoj && go test ./integration/ -run TestAdminSolutionAuthz_DeniesPlainStaff -v`
+Expected: FAIL — update/delete/create currently return 200/400 (is_staff-only), not 403.
+
+- [ ] **Step 3: Add the guards**
+
+In `AdminSolutionCreate`, REPLACE the existing "Check if problem exists" block:
+
+```go
+	// Check if problem exists
+	var problem models.Problem
+	if err := db.DB.First(&problem, input.ProblemID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, apiError("problem not found"))
+		return
+	}
+```
+
+with a preloaded load plus the authority check:
+
+```go
+	// Django parity: managing a problem's editorial requires edit authority over the problem.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, input.ProblemID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
+		return
+	}
+```
+
+In `AdminSolutionUpdate`, immediately after the solution is loaded (`db.DB.First(&solution, id)` error block), insert:
+
+```go
+	// Django parity: editing an editorial requires edit authority over its problem.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, solution.ProblemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
+		return
+	}
+```
+
+In `AdminSolutionDelete`, immediately after the solution is loaded (`db.DB.First(&solution, id)` error block, before `db.DB.Delete(&solution)`), insert the SAME block as in `AdminSolutionUpdate` above (resolve the parent problem from `solution.ProblemID`, preload Authors+Curators, deny unless `CanEditProblem`).
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd claoj && go test ./integration/ -run TestAdminSolutionAuthz_DeniesPlainStaff -v`
+Expected: PASS (update/delete/create → 403; solution survives the denied delete).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add claoj/api/v2/solution.go claoj/integration/admin_solution_authz_test.go
+git commit -m "feat(admin): require problem-edit authority to manage a problem's editorial (solution)"
+```
