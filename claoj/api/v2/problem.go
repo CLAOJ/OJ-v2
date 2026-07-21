@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -236,6 +238,43 @@ func ProblemDetail(c *gin.Context) {
 	})
 }
 
+var (
+	errPDFMediaUnavailable = errors.New("pdf media root not configured")
+	errPDFInvalidPath      = errors.New("invalid PDF path")
+)
+
+// resolveStatementPDFPath maps a problem's stored pdf_url to an on-disk file path.
+//
+// Two shapes are supported:
+//   - v2-native: a bare filename stored under the problem's data directory,
+//     e.g. "statement.pdf" -> data/problems/<code>/statement.pdf
+//   - v1-migrated: a site-relative media path served by the v1 stack,
+//     e.g. "/pdf/<uuid>.pdf" -> <v1MediaRoot>/pdf/<uuid>.pdf
+//
+// v1MediaRoot is the read-only mount of the v1 Django media directory
+// (config app.v1_media_root / env V1_MEDIA_ROOT). A v1-style path requested
+// with no media root configured yields errPDFMediaUnavailable (the caller 404s).
+// Any resolved path escaping its intended root yields errPDFInvalidPath.
+func resolveStatementPDFPath(pdfURL, code, v1MediaRoot string) (string, error) {
+	if strings.HasPrefix(pdfURL, "/") {
+		if v1MediaRoot == "" {
+			return "", errPDFMediaUnavailable
+		}
+		root := filepath.Clean(v1MediaRoot)
+		clean := filepath.Clean(filepath.Join(root, filepath.FromSlash(pdfURL)))
+		if clean != root && !strings.HasPrefix(clean, root+string(os.PathSeparator)) {
+			return "", errPDFInvalidPath
+		}
+		return clean, nil
+	}
+	base := filepath.Clean(filepath.Join("data", "problems", code))
+	clean := filepath.Clean(filepath.Join(base, pdfURL))
+	if clean != base && !strings.HasPrefix(clean, base+string(os.PathSeparator)) {
+		return "", errPDFInvalidPath
+	}
+	return clean, nil
+}
+
 // ProblemStatementPDF - GET /api/v2/problem/:code/pdf
 // Serves the PDF statement file for a problem
 func ProblemStatementPDF(c *gin.Context) {
@@ -260,18 +299,17 @@ func ProblemStatementPDF(c *gin.Context) {
 		return
 	}
 
-	// Determine PDF file path
-	// pdf_url can be either an absolute path or relative to problem data directory
-	pdfPath := problem.PdfURL
-	if !filepath.IsAbs(pdfPath) {
-		pdfPath = filepath.Join("data", "problems", code, pdfPath)
-	}
-
-	// Security: ensure path is within data directory
-	cleanPath := filepath.Clean(pdfPath)
-	dataPrefix := filepath.Clean("data")
-	if !strings.HasPrefix(cleanPath, dataPrefix) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid PDF path"})
+	// Resolve the stored pdf_url to an on-disk file. v2-native problems store a
+	// bare filename under data/problems/<code>/; v1-migrated problems store a
+	// site-relative media path like /pdf/<uuid>.pdf served from the v1 Django
+	// media directory (mounted read-only at config app.v1_media_root).
+	cleanPath, err := resolveStatementPDFPath(problem.PdfURL, code, config.C.App.V1MediaRoot)
+	if err != nil {
+		if errors.Is(err, errPDFMediaUnavailable) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "PDF statement not available"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid PDF path"})
+		}
 		return
 	}
 

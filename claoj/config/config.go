@@ -59,6 +59,7 @@ type AppConfig struct {
 	RequireTotpForAdmins bool   `mapstructure:"require_totp_for_admins"`
 	SiteFullURL          string `mapstructure:"site_full_url"`
 	DefaultLanguage      string `mapstructure:"default_language"`
+	V1MediaRoot          string `mapstructure:"v1_media_root"` // read-only mount of the v1 Django media dir; resolves v1-migrated /pdf/<uuid>.pdf statements
 }
 
 type EmailConfig struct {
@@ -128,6 +129,7 @@ func Load() {
 	v.SetDefault("app.require_totp_for_admins", false)
 	v.SetDefault("app.site_full_url", "http://localhost:8081")
 	v.SetDefault("app.default_language", "py3")
+	v.SetDefault("app.v1_media_root", "")
 	v.SetDefault("email.smtp_host", "")
 	v.SetDefault("email.smtp_port", 587)
 	v.SetDefault("email.smtp_user", "")
@@ -163,6 +165,7 @@ func Load() {
 	v.BindEnv("app.require_totp_for_admins", "REQUIRE_TOTP_FOR_ADMINS", "CLAOJ_REQUIRE_TOTP_FOR_ADMINS")
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
+	v.BindEnv("app.v1_media_root", "V1_MEDIA_ROOT", "CLAOJ_APP_V1_MEDIA_ROOT")
 
 	// Email
 	v.BindEnv("email.smtp_host", "SMTP_HOST", "CLAOJ_SMTP_HOST")
