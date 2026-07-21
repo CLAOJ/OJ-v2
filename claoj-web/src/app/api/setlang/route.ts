@@ -16,17 +16,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get current path or default to home
+        // localePrefix 'never': keep the same path, switch via cookie.
         const currentPath = path || '/';
-
-        // Build new path with new locale
-        const newPath = `/${locale}${currentPath === '/' ? '' : currentPath}`;
-
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
             locale,
-            redirect: newPath
+            redirect: currentPath,
         });
+        response.cookies.set('NEXT_LOCALE', locale, {
+            path: '/',
+            maxAge: 31536000,
+            sameSite: 'lax',
+        });
+        return response;
     } catch (error) {
         return NextResponse.json(
             { error: 'Invalid request' },
