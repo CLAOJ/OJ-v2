@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       description: t('home.description'),
       type: 'website',
       locale: locale === 'vi' ? 'vi_VN' : 'en_US',
-      url: `${SITE_URL}/${locale}`,
+      url: `${SITE_URL}`,
       siteName: 'CLAOJ',
     },
   };

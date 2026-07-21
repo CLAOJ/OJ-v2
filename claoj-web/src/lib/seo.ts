@@ -50,7 +50,7 @@ export const LOCALES = {
  * Generate canonical URL for a page
  */
 export function generateCanonicalUrl(path: string, locale: string): string {
-  return `${SITE_URL}/${locale}${path}`;
+  return `${SITE_URL}${path}`;   // no locale prefix (single URL per page, like v1)
 }
 
 /**
@@ -111,7 +111,7 @@ export function generateContestJsonLd(contest: {
     endDate: contest.end_time,
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-    url: `${SITE_URL}/contests/${contest.key}`,
+    url: `${SITE_URL}/contest/${contest.key}`,
     organizer: {
       '@type': 'Organization',
       name: SITE_NAME,
@@ -164,6 +164,7 @@ export function generateArticleJsonLd(article: {
   publish_on: string;
   authors: { username: string }[];
   id: string | number;
+  slug: string;
 }): JsonLdObj {
   return {
     '@context': 'https://schema.org',
@@ -184,10 +185,10 @@ export function generateArticleJsonLd(article: {
         url: `${SITE_URL}/static/icons/og_img.png`,
       },
     },
-    url: `${SITE_URL}/blog/${article.id}`,
+    url: `${SITE_URL}/post/${article.id}-${article.slug}`,
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `${SITE_URL}/blog/${article.id}`,
+      '@id': `${SITE_URL}/post/${article.id}-${article.slug}`,
     },
     keywords: 'competitive programming, algorithms, blog, tutorial',
   };
@@ -234,7 +235,7 @@ export function generateWebSiteJsonLd(): JsonLdObj {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${SITE_URL}/en/problems?q={search_term_string}`,
+        urlTemplate: `${SITE_URL}/problems?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },

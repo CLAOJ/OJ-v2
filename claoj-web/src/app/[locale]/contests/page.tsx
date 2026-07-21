@@ -23,7 +23,7 @@ export async function generateMetadata({
       description,
       type: 'website',
       locale: locale === 'vi' ? 'vi_VN' : 'en_US',
-      url: `${SITE_URL}/${locale}/contests`,
+      url: `${SITE_URL}/contests`,
       siteName: 'CLAOJ',
     },
   };
