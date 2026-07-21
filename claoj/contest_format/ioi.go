@@ -75,7 +75,7 @@ func (f *IOI16ContestFormat) UpdateParticipation(p *models.ContestParticipation)
 		d["points"] = d["points"].(float64) + res.MaxPoints
 
 		if cumtimeEnabled {
-			dt := float64(res.MinDate) - float64(p.RealStart.Unix())
+			dt := float64(res.MinDate) - float64(ParticipationStart(f.Contest, p).Unix())
 			if dt < 0 {
 				dt = 0
 			}

@@ -24,8 +24,10 @@ func (f *ECOOContestFormat) UpdateParticipation(p *models.ContestParticipation) 
 
 	// ECOO uses the score on the LAST non-CE/IE submission.
 	// Plus bonuses for first AC and time.
+	// Key by ContestProblem.id (cp.id), matching DMOJ and GetProblemBreakdown;
+	// pr.points still comes from the underlying judge_problem via cp.problem_id.
 	err := db.DB.Raw(`
-		SELECT cp.problem_id, pr.points as problem_points, cs.points, UNIX_TIMESTAMP(sub.date) as date_unix,
+		SELECT cp.id as problem_id, pr.points as problem_points, cs.points, UNIX_TIMESTAMP(sub.date) as date_unix,
 		       (SELECT COUNT(*) FROM judge_contestsubmission cs2 
 		        JOIN judge_submission sub2 ON sub2.id = cs2.submission_id 
 		        WHERE cs2.problem_id = cp.id AND cs2.participation_id = ? AND sub2.result NOT IN ('IE', 'CE')) as sub_count
@@ -62,8 +64,10 @@ func (f *ECOOContestFormat) UpdateParticipation(p *models.ContestParticipation) 
 	var totalScore float64
 	var totalCumtime float64
 
+	start := float64(ParticipationStart(f.Contest, p).Unix())
+
 	for _, res := range results {
-		dt := float64(res.DateUnix) - float64(p.RealStart.Unix())
+		dt := float64(res.DateUnix) - start
 		if dt < 0 {
 			dt = 0
 		}

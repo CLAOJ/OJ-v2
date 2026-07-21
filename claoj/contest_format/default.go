@@ -14,23 +14,36 @@ type DefaultContestFormat struct {
 
 func (f *DefaultContestFormat) UpdateParticipation(p *models.ContestParticipation) error {
 	var results []struct {
-		ProblemID uint
+		ProblemID uint // judge_contestproblem.id
 		MaxPoints float64
 		MaxTime   float64
 	}
 
-	// Fetch max points and latest time for each problem for this user in this contest
-	err := db.DB.Model(&models.Submission{}).
-		Select("problem_id, MAX(points) as max_points, MAX(UNIX_TIMESTAMP(date)) as max_time").
-		Where("user_id = ? AND problem_id IN (?)", p.UserID,
-			db.DB.Model(&models.ContestProblem{}).Select("problem_id").Where("contest_id = ?", p.ContestID),
-		).
-		Group("problem_id").
-		Scan(&results).Error
+	// DMOJ default format: for each contest problem, take the max points and the
+	// latest submission time across THIS participation's contest submissions only.
+	//
+	// This must read judge_contestsubmission (scoped to the participation), NOT
+	// judge_submission: the old query counted every submission the user ever made
+	// to the problems (including outside the contest) and used the archive-scale
+	// judge_submission.points instead of the contest-scale judge_contestsubmission.points,
+	// yielding scores that were both inflated in set and ~100x off in magnitude.
+	// It is grouped by cs.problem_id, which is the ContestProblem.id that
+	// FormatData is keyed by.
+	err := db.DB.Raw(`
+		SELECT cs.problem_id AS problem_id,
+		       MAX(cs.points) AS max_points,
+		       MAX(UNIX_TIMESTAMP(sub.date)) AS max_time
+		FROM judge_contestsubmission cs
+		INNER JOIN judge_submission sub ON sub.id = cs.submission_id
+		WHERE cs.participation_id = ?
+		GROUP BY cs.problem_id
+	`, p.ID).Scan(&results).Error
 
 	if err != nil {
 		return err
 	}
+
+	start := float64(ParticipationStart(f.Contest, p).Unix())
 
 	var totalPoints float64
 	var totalCumtime float64
@@ -38,9 +51,7 @@ func (f *DefaultContestFormat) UpdateParticipation(p *models.ContestParticipatio
 
 	for _, res := range results {
 		totalPoints += res.MaxPoints
-		// cumtime in DMOJ/CLAOJ is usually sum of (submission_time - contest_start) for non-zero points
-		// res.MaxTime is absolute unix timestamp
-		dt := res.MaxTime - float64(p.RealStart.Unix())
+		dt := res.MaxTime - start
 		if dt < 0 {
 			dt = 0
 		}
@@ -57,6 +68,7 @@ func (f *DefaultContestFormat) UpdateParticipation(p *models.ContestParticipatio
 
 	p.Score = math.Round(totalPoints*math.Pow10(f.Contest.PointsPrecision)) / math.Pow10(f.Contest.PointsPrecision)
 	p.Cumtime = uint(totalCumtime)
+	p.Tiebreaker = 0
 	p.FormatData = formatData
 
 	return db.DB.Save(p).Error

@@ -47,8 +47,10 @@ func (f *ICPCContestFormat) UpdateParticipation(p *models.ContestParticipation) 
 	var totalCumtime float64
 	var lastTime float64
 
+	start := float64(ParticipationStart(f.Contest, p).Unix())
+
 	for _, res := range results {
-		dt := float64(res.MinTime) - float64(p.RealStart.Unix())
+		dt := float64(res.MinTime) - start
 		if dt < 0 {
 			dt = 0
 		}
