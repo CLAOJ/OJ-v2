@@ -92,7 +92,7 @@ export default function LoginPage() {
                 setTotpUsername(result.username || data.username);
             } else if (result.user) {
                 // Redirect based on user type: admin -> /admin, normal -> previous page or home
-                router.push(getRedirectUrl(result.user.is_staff));
+                router.push(getRedirectUrl(result.user.is_staff || !!result.user.is_admin));
             }
         } catch (err: any) {
             setError(err.response?.data?.error || t('invalidCredentials'));
@@ -107,7 +107,7 @@ export default function LoginPage() {
         try {
             const user = await loginTotp(totpUsername, code);
             // Redirect based on user type: admin -> /admin, normal -> previous page or home
-            router.push(getRedirectUrl(user.is_staff));
+            router.push(getRedirectUrl(user.is_staff || !!user.is_admin));
         } catch (err: any) {
             setError(err.response?.data?.error || t('invalidTotpCode'));
         } finally {
@@ -125,7 +125,7 @@ export default function LoginPage() {
         try {
             const user = await loginWebAuthn(webAuthnUsername);
             // Redirect based on user type: admin -> /admin, normal -> previous page or home
-            router.push(getRedirectUrl(user.is_staff));
+            router.push(getRedirectUrl(user.is_staff || !!user.is_admin));
         } catch (err: any) {
             setError(err.response?.data?.error || t('webAuthnLoginFailed'));
         } finally {

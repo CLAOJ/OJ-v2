@@ -25,7 +25,9 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     const reduceMotion = useReducedMotion();
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-    if (!user?.is_staff) return null;
+    // Superuser-inclusive: admins (is_admin === is_superuser) bypass the staff
+    // gate, matching the backend admin route gate (is_staff OR is_superuser).
+    if (!user?.is_staff && !user?.is_admin) return null;
 
     return (
         <AnimatePresence>

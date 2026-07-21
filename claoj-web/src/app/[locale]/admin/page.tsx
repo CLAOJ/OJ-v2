@@ -30,12 +30,14 @@ export default function AdminDashboardPage() {
     const t = useTranslations('Admin');
 
     useEffect(() => {
-        if (!loading && !user?.is_staff) {
+        // Superuser-inclusive: admins (is_admin === is_superuser) may use the
+        // admin dashboard even without is_staff, matching the backend route gate.
+        if (!loading && !user?.is_staff && !user?.is_admin) {
             router.push('/');
         }
     }, [user, loading, router]);
 
-    if (loading || !user?.is_staff) {
+    if (loading || (!user?.is_staff && !user?.is_admin)) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]"
             >

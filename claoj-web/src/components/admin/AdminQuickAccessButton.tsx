@@ -17,7 +17,8 @@ export function AdminQuickAccessButton({ onClick }: AdminQuickAccessButtonProps)
     const [isHovered, setIsHovered] = useState(false);
     const [showPulse, setShowPulse] = useState(true);
 
-    if (!user?.is_staff) return null;
+    // Superuser-inclusive: admins bypass the staff gate (see backend route gate).
+    if (!user?.is_staff && !user?.is_admin) return null;
 
     return (
         <motion.button

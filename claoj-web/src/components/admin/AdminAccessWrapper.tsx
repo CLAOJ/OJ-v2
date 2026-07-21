@@ -16,7 +16,8 @@ export function AdminAccessWrapper({ children, showWelcomeBanner = false }: Admi
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [bannerDismissed, setBannerDismissed] = useState(false);
 
-    const isAdmin = user?.is_staff;
+    // Superuser-inclusive: admins bypass the staff gate (see backend route gate).
+    const isAdmin = user?.is_staff || user?.is_admin;
 
     return (
         <>

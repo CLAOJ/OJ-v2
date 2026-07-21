@@ -29,7 +29,8 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
         return () => clearInterval(timer);
     }, []);
 
-    if (!user?.is_staff || !isVisible) return null;
+    // Superuser-inclusive: admins bypass the staff gate (see backend route gate).
+    if ((!user?.is_staff && !user?.is_admin) || !isVisible) return null;
 
     const handleDismiss = () => {
         setIsVisible(false);

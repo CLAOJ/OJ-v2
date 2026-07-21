@@ -168,7 +168,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                             </Link>
 
                                             {/* Admin Section for Mobile */}
-                                            {user.is_staff && (
+                                            {(user.is_staff || user.is_admin) && (
                                                 <div className="space-y-2">
                                                     <Link
                                                         href="/admin"

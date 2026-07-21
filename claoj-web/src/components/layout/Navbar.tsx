@@ -93,13 +93,13 @@ export default function Navbar() {
                             {user ? (
                                 <>
                                     {/* Admin Badge */}
-                                    {user.is_staff && (
+                                    {(user.is_staff || user.is_admin) && (
                                         <AdminNavbarBadge onClick={() => setAdminSidebarOpen(true)} />
                                     )}
 
                                     <UserMenu
                                         username={user.username}
-                                        isStaff={user.is_staff}
+                                        isStaff={user.is_staff || user.is_admin}
                                         isOpen={userMenuOpen}
                                         onToggle={() => setUserMenuOpen(!userMenuOpen)}
                                         onClose={() => setUserMenuOpen(false)}
