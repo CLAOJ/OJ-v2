@@ -181,3 +181,54 @@ ProblemPageContent
 - When the PDF can't be fetched, the viewer shows a fallback with working links, not
   a blank box.
 - `next build` (Turbopack) succeeds; new + existing tests pass.
+
+---
+
+## 9. Amendment (2026-07-21) — v1-migrated PDF source resolution
+
+**Supersedes** the "no backend changes" decision (§3) and non-goal (§7). Discovered during live verification against the running combined stack.
+
+**Problem.** §2 assumed the v2 backend already serves every PDF problem. It does
+not. Real, v1-migrated problems (e.g. `01_02` "Chọn bi") store
+`pdf_url = /pdf/<uuid>.pdf` — a **v1 Django media URL**, with an empty
+`description`. For those:
+
+- `GET /api/v2/problem/:code/pdf` returns `400 {"error":"invalid PDF path"}` —
+  the handler (`claoj/api/v2/problem.go:263-276`) only accepts a bare filename
+  under `data/problems/<code>/` and rejects any absolute path outside `data/`.
+- The file is served only by the **v1** nginx (`location /pdf { root /media/; }`),
+  from the host media directory `claoj-data/media/`. The v2 origin has no route
+  to it, and `claoj_v2_backend` shares no docker network with the v1 nginx.
+
+So PDF problems were never viewable in v2 — the frontend work in §1-§8 is
+necessary but not sufficient. **Chosen fix (user-approved): the v2 backend
+resolves the PDF.** Because v2_backend cannot reach the v1 nginx over the
+network but the media is a plain host directory, the mechanism is a
+**read-only media mount + read from disk** (not an HTTP proxy): objectively
+cleaner — no network coupling, no SSRF surface — and keeps the endpoint's
+`CanViewProblem` access gate (an improvement over v1, which served the media
+URL ungated).
+
+**Backend change (`claoj`, this repo):**
+- New config `App.V1MediaRoot` (`mapstructure:"v1_media_root"`, env
+  `V1_MEDIA_ROOT` / `CLAOJ_APP_V1_MEDIA_ROOT`, default `""`).
+- New pure helper `resolveStatementPDFPath(pdfURL, code, v1MediaRoot) (string, error)`:
+  - bare filename → `data/problems/<code>/<file>` (v2-native, unchanged);
+  - leading-slash `/pdf/<uuid>.pdf` → `<v1MediaRoot>/pdf/<uuid>.pdf` (v1-migrated),
+    read from the mounted media dir;
+  - traversal outside the intended root → `errPDFInvalidPath`;
+  - leading-slash path but no `v1MediaRoot` configured → `errPDFMediaUnavailable`
+    (→ 404), preserving backward-compatible behavior for standalone v2.
+- `ProblemStatementPDF` calls the helper; the `CanViewProblem` gate, 10 MB cap,
+  content-type/inline headers, and streaming are unchanged.
+
+**Deployment change (`claoj-docker`, separate repo):** mount the v1 media
+directory read-only into `v2_backend` at `/v1media` and set
+`V1_MEDIA_ROOT=/v1media` on that service. The v2 nginx is NOT changed.
+
+**Frontend:** unchanged. The viewer keeps fetching `/api/problem/:code/pdf`,
+which now returns 200 for v1-migrated problems.
+
+**Non-goal (unchanged):** full external `http(s)://` `pdf_url` values are not
+proxied server-side (no such data exists; would add an SSRF surface). Only
+bare filenames and site-relative media paths are resolved.

@@ -4,14 +4,14 @@
 
 **Goal:** When a problem has a PDF statement (`pdf_url` set), render the PDF inline in the v2 (`claoj-web`) problem body instead of an empty box — at parity with v1.
 
-**Architecture:** Frontend-only. A new client-only `PdfStatementViewer` component fetches the PDF as a blob through the existing authenticated axios client and renders it with react-pdf (pdf.js). The problem page branches to the viewer when `pdf_url` is present; the pre-existing sidebar button + modal are kept and re-point at the same viewer. The Go backend is unchanged — it already returns `pdf_url` and streams the file at `GET /api/problem/:code/pdf`.
+**Architecture:** Mostly frontend. A new client-only `PdfStatementViewer` component fetches the PDF as a blob through the existing authenticated axios client and renders it with react-pdf (pdf.js). The problem page branches to the viewer when `pdf_url` is present; the pre-existing sidebar button + modal are kept and re-point at the same viewer. Tasks 1-4 are frontend. **Tasks 5-6 (added by the 2026-07-21 amendment) extend the Go backend** to resolve v1-migrated `pdf_url` values (`/pdf/<uuid>.pdf`) by reading them from a read-only mount of the v1 media directory — the frontend stays uniform (`GET /api/problem/:code/pdf` now returns 200 for those problems). See spec §9.
 
 **Tech Stack:** Next.js 16.1.6 (Turbopack) · React 19.2.3 · TypeScript · react-pdf v10 (pdf.js) · next-intl · @tanstack/react-query · Jest + ts-jest + React Testing Library (jsdom).
 
 ## Global Constraints
 
-- Work on branch `feat/web-inline-pdf-statement` (already created). All paths below are relative to `claoj-web/` unless noted.
-- No backend changes. Do not touch `claoj/` (the Go API).
+- Work on branch `feat/web-inline-pdf-statement` (already created). All paths below are relative to `claoj-web/` unless noted (Tasks 5-6 use `claoj/` and the separate `claoj-docker` repo).
+- Tasks 1-4 make no backend changes. Tasks 5-6 (amendment) DO change the Go backend (`claoj/`) and the deployment repo (`claoj-docker/`), scoped exactly as those tasks specify — nothing else in `claoj/` is touched.
 - The PDF is fetched via the shared axios client `api` (default export of `@/lib/api`) with `{ responseType: 'blob' }` — never a second un-authenticated fetch path. The endpoint enforces `CanViewProblem` and caps at 10 MB.
 - react-pdf's pdf.js worker uses `import.meta.url` and react-pdf ships `.css` files; both are isolated in a `pdfSetup` side-effect module so Jest (ts-jest, CommonJS) never transforms them.
 - The viewer is imported into the (server-prerendered) page via `next/dynamic(..., { ssr: false })` — react-pdf must never run during SSR.
@@ -525,3 +525,201 @@ git status
 **2. Placeholder scan:** No TBD/TODO; every code step shows complete code; the one conditional step (Task 4 Step 2) has an explicit trigger and full remedy code. ✓
 
 **3. Type consistency:** `PdfStatementViewer` is a default export taking `{ code: string; heightClass?: string }` in Task 2 and consumed with exactly those props in Task 3 (`code={code}`, and `code={code} heightClass="h-full"`). `problemPdfApi.getPdfUrl(code: string)` matches `src/lib/api.ts:318`. `api.get(url, { responseType: 'blob' })` matches the axios default export. i18n keys used by the viewer (`pdfViewer.loading`, `.pageCount`, `.error`, `.download`, `.openNewTab`, `.zoomIn`, `.zoomOut`) and the page (`pdfViewer.sidebarLabel`) all exist in the Task 3 Step 1-2 blocks. ✓
+
+---
+
+## Amendment (2026-07-21): backend resolution of v1-migrated PDFs
+
+Live verification revealed the frontend work (Tasks 1-4) is necessary but not sufficient: real problems store `pdf_url = /pdf/<uuid>.pdf` (a v1 Django media URL) which the v2 backend rejects with 400. See spec §9. Tasks 5-6 fix the source so `GET /api/problem/:code/pdf` returns the PDF; the frontend is unchanged.
+
+### Task 5: Backend resolves v1-migrated pdf_url (TDD)
+
+**Repo:** `OJ-v2/claoj` (Go). **Run from:** `f:\Coding\CLAOJ\OJ-v2\claoj`. Go 1.25 is on the host; run `go test ./api/v2/...` directly.
+
+**Files:**
+- Modify: `config/config.go` (add `App.V1MediaRoot` config field + default + env bind)
+- Modify: `api/v2/problem.go` (add helper + errors; rewrite the path-resolution block of `ProblemStatementPDF`)
+- Test: `api/v2/problem_pdf_path_test.go` (new; pure unit tests for the helper)
+
+**Interfaces:**
+- Produces: `resolveStatementPDFPath(pdfURL, code, v1MediaRoot string) (string, error)`; sentinel errors `errPDFMediaUnavailable`, `errPDFInvalidPath`; config field `config.C.App.V1MediaRoot`.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `api/v2/problem_pdf_path_test.go`:
+```go
+package v2
+
+import (
+	"errors"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestResolveStatementPDFPath(t *testing.T) {
+	t.Run("v2-native bare filename resolves under the problem data dir", func(t *testing.T) {
+		got, err := resolveStatementPDFPath("statement.pdf", "abc", "/v1media")
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Clean(filepath.Join("data", "problems", "abc", "statement.pdf")), got)
+	})
+
+	t.Run("v1-migrated media path resolves under the configured media root", func(t *testing.T) {
+		got, err := resolveStatementPDFPath("/pdf/e19aa92f.pdf", "abc", "/v1media")
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Clean(filepath.Join("/v1media", "pdf", "e19aa92f.pdf")), got)
+	})
+
+	t.Run("v1-migrated media path without a configured root is unavailable", func(t *testing.T) {
+		_, err := resolveStatementPDFPath("/pdf/e19aa92f.pdf", "abc", "")
+		assert.True(t, errors.Is(err, errPDFMediaUnavailable))
+	})
+
+	t.Run("path traversal in a v1 media path is rejected", func(t *testing.T) {
+		_, err := resolveStatementPDFPath("/pdf/../../etc/passwd", "abc", "/v1media")
+		assert.True(t, errors.Is(err, errPDFInvalidPath))
+	})
+
+	t.Run("path traversal in a v2-native filename is rejected", func(t *testing.T) {
+		_, err := resolveStatementPDFPath("../../../etc/passwd", "abc", "/v1media")
+		assert.True(t, errors.Is(err, errPDFInvalidPath))
+	})
+}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `go test ./api/v2/ -run TestResolveStatementPDFPath`
+Expected: FAIL to compile — `undefined: resolveStatementPDFPath` / `errPDFMediaUnavailable` / `errPDFInvalidPath`.
+
+- [ ] **Step 3: Add the config field**
+
+In `config/config.go`, in `AppConfig` add the field after `DefaultLanguage`:
+```go
+	DefaultLanguage      string `mapstructure:"default_language"`
+	V1MediaRoot          string `mapstructure:"v1_media_root"` // read-only mount of the v1 Django media dir; resolves v1-migrated /pdf/<uuid>.pdf statements
+```
+In `Load()`, add the default next to the other `app.*` defaults:
+```go
+	v.SetDefault("app.default_language", "py3")
+	v.SetDefault("app.v1_media_root", "")
+```
+and the env binding next to the other `app.*` binds:
+```go
+	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
+	v.BindEnv("app.v1_media_root", "V1_MEDIA_ROOT", "CLAOJ_APP_V1_MEDIA_ROOT")
+```
+
+- [ ] **Step 4: Add the helper + rewrite the handler's path resolution**
+
+In `api/v2/problem.go`, add `"errors"` to the stdlib imports and `"github.com/CLAOJ/claoj/config"` to the module imports. Then add the helper (place it directly above `func ProblemStatementPDF`):
+```go
+var (
+	errPDFMediaUnavailable = errors.New("pdf media root not configured")
+	errPDFInvalidPath      = errors.New("invalid PDF path")
+)
+
+// resolveStatementPDFPath maps a problem's stored pdf_url to an on-disk file path.
+//
+// Two shapes are supported:
+//   - v2-native: a bare filename stored under the problem's data directory,
+//     e.g. "statement.pdf" -> data/problems/<code>/statement.pdf
+//   - v1-migrated: a site-relative media path served by the v1 stack,
+//     e.g. "/pdf/<uuid>.pdf" -> <v1MediaRoot>/pdf/<uuid>.pdf
+//
+// v1MediaRoot is the read-only mount of the v1 Django media directory
+// (config app.v1_media_root / env V1_MEDIA_ROOT). A v1-style path requested
+// with no media root configured yields errPDFMediaUnavailable (the caller 404s).
+// Any resolved path escaping its intended root yields errPDFInvalidPath.
+func resolveStatementPDFPath(pdfURL, code, v1MediaRoot string) (string, error) {
+	if strings.HasPrefix(pdfURL, "/") {
+		if v1MediaRoot == "" {
+			return "", errPDFMediaUnavailable
+		}
+		root := filepath.Clean(v1MediaRoot)
+		clean := filepath.Clean(filepath.Join(root, filepath.FromSlash(pdfURL)))
+		if clean != root && !strings.HasPrefix(clean, root+string(os.PathSeparator)) {
+			return "", errPDFInvalidPath
+		}
+		return clean, nil
+	}
+	base := filepath.Clean(filepath.Join("data", "problems", code))
+	clean := filepath.Clean(filepath.Join(base, pdfURL))
+	if clean != base && !strings.HasPrefix(clean, base+string(os.PathSeparator)) {
+		return "", errPDFInvalidPath
+	}
+	return clean, nil
+}
+```
+In `ProblemStatementPDF`, replace the current path block:
+```go
+	// Determine PDF file path
+	// pdf_url can be either an absolute path or relative to problem data directory
+	pdfPath := problem.PdfURL
+	if !filepath.IsAbs(pdfPath) {
+		pdfPath = filepath.Join("data", "problems", code, pdfPath)
+	}
+
+	// Security: ensure path is within data directory
+	cleanPath := filepath.Clean(pdfPath)
+	dataPrefix := filepath.Clean("data")
+	if !strings.HasPrefix(cleanPath, dataPrefix) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid PDF path"})
+		return
+	}
+```
+with:
+```go
+	// Resolve the stored pdf_url to an on-disk file. v2-native problems store a
+	// bare filename under data/problems/<code>/; v1-migrated problems store a
+	// site-relative media path like /pdf/<uuid>.pdf served from the v1 Django
+	// media directory (mounted read-only at config app.v1_media_root).
+	cleanPath, err := resolveStatementPDFPath(problem.PdfURL, code, config.C.App.V1MediaRoot)
+	if err != nil {
+		if errors.Is(err, errPDFMediaUnavailable) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "PDF statement not available"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid PDF path"})
+		}
+		return
+	}
+```
+The following `os.Stat(cleanPath)` / size-cap / `os.ReadFile` / streaming block is unchanged. `fileInfo, err := os.Stat(cleanPath)` still compiles — `fileInfo` is new so `:=` is valid and `err` is reused.
+
+- [ ] **Step 5: Run the tests to verify they pass, and the package builds**
+
+Run: `go test ./api/v2/ -run TestResolveStatementPDFPath` then `go build ./...`
+Expected: test PASS (5 subtests); build clean — `filepath`/`strings`/`os` are all still used by the helper, and `errors` + `config` are now used.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add config/config.go api/v2/problem.go api/v2/problem_pdf_path_test.go
+git commit -m "feat(api): resolve v1-migrated pdf_url statements from mounted media root"
+```
+
+### Task 6: Deployment wiring (claoj-docker) + live verification
+
+**Repo:** `claoj-docker` (separate git repo at `f:\Coding\CLAOJ\CLAOJ\claoj-docker`). This makes the v1 media directory readable by `v2_backend` and turns the feature on via `V1_MEDIA_ROOT`. The v2 nginx is NOT changed.
+
+- [ ] **Step 1: Mount v1 media (read-only) into v2_backend and set the env**
+
+In `claoj/docker-compose.v2.yml`, under the `v2_backend` service, add the media mount and env — source must match the same `claoj-data/media` directory the v1 nginx serves as `/media`:
+```yaml
+    volumes:
+      - v2_data:/app/data
+      - ../../claoj-data/media:/v1media:ro
+    environment:
+      V1_MEDIA_ROOT: /v1media
+```
+Confirm the relative source path against how the v1 base compose binds `claoj-data/media`; adjust to match exactly.
+
+- [ ] **Step 2: Live verification (controller-run, against the running stack)**
+
+Rebuild the v2 backend + web images from this branch, recreate with the mount+env, then verify end-to-end:
+1. Backend endpoint: `curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:8090/api/problem/01_02/pdf` -> expect `200 application/pdf`.
+2. Browser: open `http://localhost:8090/problems/01_02` -> the statement body renders the "Chọn bi" PDF inline (pages visible, scrollable), not an empty box; Download / Open-in-new-tab work.
+3. A markdown-only problem still renders normally.
+4. `V1_MEDIA_ROOT` unset (or a v1-path problem on standalone v2) -> viewer shows the fallback card, not a blank box.
