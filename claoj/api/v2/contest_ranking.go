@@ -36,9 +36,12 @@ func ContestRanking(c *gin.Context) {
 		return
 	}
 
-	// Fetch all participations for this contest
+	// Fetch all participations for this contest.
+	// Usernames are resolved with an explicit JOIN below rather than
+	// Preload("User.User"), which does not populate the nested auth_user and
+	// left every "username" blank.
 	var participations []models.ContestParticipation
-	if err := db.DB.Preload("User.User").
+	if err := db.DB.
 		Where("contest_id = ? AND virtual = 0 AND is_disqualified = 0", ct.ID).
 		Order("score DESC, cumtime ASC, tiebreaker DESC").
 		Find(&participations).Error; err != nil {
@@ -54,6 +57,23 @@ func ContestRanking(c *gin.Context) {
 	userIDs := make([]uint, len(participations))
 	for i, p := range participations {
 		userIDs[i] = p.UserID
+	}
+
+	// Resolve usernames for each participation's profile id via auth_user.
+	usernameByProfile := make(map[uint]string, len(userIDs))
+	if len(userIDs) > 0 {
+		var nameRows []struct {
+			ProfileID uint
+			Username  string
+		}
+		db.DB.Table("judge_profile").
+			Select("judge_profile.id as profile_id, auth_user.username as username").
+			Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+			Where("judge_profile.id IN ?", userIDs).
+			Scan(&nameRows)
+		for _, r := range nameRows {
+			usernameByProfile[r.ProfileID] = r.Username
+		}
 	}
 
 	// Fetch ratings for all participants
@@ -112,7 +132,7 @@ func ContestRanking(c *gin.Context) {
 		}
 
 		row := RankingRow{
-			Username:        p.User.User.Username,
+			Username:        usernameByProfile[p.UserID],
 			Score:           p.Score,
 			Cumtime:         p.Cumtime,
 			Rank:            rankNum,

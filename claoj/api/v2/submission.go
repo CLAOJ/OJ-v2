@@ -105,7 +105,6 @@ func SubmissionDetail(c *gin.Context) {
 
 	var sub models.Submission
 	if err := db.DB.
-		Preload("User.User").
 		Preload("Problem").
 		Preload("Language").
 		Preload("Source").
@@ -120,6 +119,15 @@ func SubmissionDetail(c *gin.Context) {
 		c.JSON(http.StatusNotFound, apiError("submission not found"))
 		return
 	}
+
+	// Resolve the submitter's username via auth_user. Preload("User.User")
+	// does not populate the nested auth_user, so it must be joined explicitly.
+	var username string
+	db.DB.Table("judge_profile").
+		Select("auth_user.username").
+		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+		Where("judge_profile.id = ?", sub.UserID).
+		Scan(&username)
 
 	source := ""
 	if sub.Source != nil {
@@ -143,7 +151,7 @@ func SubmissionDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"id":          sub.ID,
 		"problem":     sub.Problem.Code,
-		"user":        sub.User.User.Username,
+		"user":        username,
 		"date":        sub.Date,
 		"language":    sub.Language.Key,
 		"status":      sub.Status,
