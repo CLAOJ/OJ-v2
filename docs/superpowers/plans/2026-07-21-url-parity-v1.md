@@ -396,6 +396,7 @@ git commit -m "feat(routes): submission detail at /submission/<id> (singular, v1
 - Modify: `src/app/[locale]/post/[slug]/page.tsx` (param `id`→`slug`, parse leading id, OG url)
 - Modify: `src/app/[locale]/post/[slug]/BlogPageContent.tsx` (param usage; keep `api.get(\`/blog/${id}\`)` with parsed id; breadcrumb `href="/blog"`→`"/post"`)
 - Modify (nav links `/blog/...` → `/post/<id>-<slug>`): `src/app/[locale]/post/page.tsx` (list, after rename), `src/app/[locale]/HomePageContent.tsx:250,292,332`, `src/app/[locale]/organization/[id]/blog/page.tsx:159`
+- Modify: `src/components/seo/ArticleJsonLd.tsx:33,36` — this is the **active** blog JSON-LD rendered on the post page; its `url`/`@id` currently point at `/blog/${article.id}` and must become `/post/${article.id}-${article.slug}` (see Step 3b).
 - **Do NOT modify** any `api.get(\`/blog/${...}\`)` endpoint string or `src/lib/api.ts:275` (`/blog/${blogId}/vote`).
 
 **Interfaces:**
@@ -430,7 +431,7 @@ In the default `BlogPage` export, replace `const { id } = await params;` with:
   const { slug } = await params;
   const id = parseLeadingId(slug);
 ```
-(`fetchBlogPost(id)` and `<ArticleJsonLd article={post} />` stay as-is.)
+(`fetchBlogPost(id)` and the `<ArticleJsonLd article={post} />` render call stay as-is — but the component itself is fixed in Step 3b.)
 
 - [ ] **Step 3: Update `post/[slug]/BlogPageContent.tsx`**
 
@@ -446,6 +447,18 @@ const res = await api.get<BlogPostDetail>(`/blog/${id}`);   // endpoint unchange
 ```tsx
 <Link href="/post"> ... </Link>   // was href="/blog"
 ```
+
+- [ ] **Step 3b: Fix the active blog JSON-LD component `src/components/seo/ArticleJsonLd.tsx`**
+
+This component is rendered on the post page and emits structured-data URLs. Its `article` arg already carries `id`; ensure it also carries `slug` (the type there — extend with `slug: string;` if missing; the `post` object passed in has it). Rewrite the two blog self-URLs (lines ~33 and ~36) from `/blog/${article.id}` to the v1 post URL:
+```tsx
+    url: `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${article.id}-${article.slug}`,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${article.id}-${article.slug}`,
+    },
+```
+Leave the author `/user/${a.username}` url (line ~23) unchanged — it is already singular/correct.
 
 - [ ] **Step 4: Update navigation links to posts (list, home, org-blog)**
 
@@ -557,17 +570,21 @@ git commit -m "feat(routes): organization detail at /organization/<id>-<slug> (v
 
 ---
 
-## Task 9: Correct the SEO surface (canonical, JSON-LD, hreflang, sitemap, robots)
+## Task 9: Correct the SEO surface (page og:urls, canonical, JSON-LD, hreflang, sitemap, robots)
 
 **Files:**
 - Modify: `src/lib/seo.ts`
 - Modify: `src/app/[locale]/layout.tsx:30-36`
 - Modify: `src/app/sitemap.ts`
 - Modify: `src/app/robots.ts`
+- Modify (page-level `generateMetadata` og:urls — drop the now-dead `/${locale}` prefix, singular route where renamed): `src/app/[locale]/page.tsx:20`, `src/app/[locale]/problems/page.tsx:26`, `src/app/[locale]/problem/[code]/page.tsx:42`, `src/app/[locale]/contests/page.tsx:26`, `src/app/[locale]/ratings/page.tsx:26`, `src/app/[locale]/user/[username]/page.tsx:42`
+- Already fixed earlier (verify only, do not re-edit): `src/app/[locale]/contest/[key]/page.tsx:46` og:url and `src/components/seo/ContestJsonLd.tsx:23` (Task 5 follow-up commit); blog og:url + `src/components/seo/ArticleJsonLd.tsx` (Task 7)
 
 **Interfaces:**
 - Consumes: the new route shapes from Tasks 4-8.
-- Produces: prefix-less, v1-matching canonical URLs, JSON-LD `url`s, sitemap entries, and single-URL hreflang.
+- Produces: prefix-less, v1-matching canonical URLs, page og:urls, JSON-LD `url`s, sitemap entries, and single-URL hreflang.
+
+**Why this task grew:** an audit during Task 5 found that EVERY page-level `generateMetadata` og:url builds `${SITE_URL}/${locale}/…` — the `/${locale}` segment became a dead route the moment Task 1 set `localePrefix: 'never'`, and renamed detail pages (problem, contest) additionally still named the plural route. The *active* JSON-LD is in `src/components/seo/*` (NOT the partly-dead `src/lib/seo.ts` helpers). `/user/...` JSON-LD urls are already singular and use `window.location.origin` (no locale) — leave them.
 
 - [ ] **Step 1: `src/lib/seo.ts` — prefix-less canonical + singular/slug JSON-LD urls**
 
@@ -594,6 +611,26 @@ export function generateCanonicalUrl(path: string, locale: string): string {
 ```ts
         urlTemplate: `${SITE_URL}/problems?q={search_term_string}`,
 ```
+
+- [ ] **Step 1b: Fix all page-level `generateMetadata` og:urls (drop `/${locale}`, singular routes)**
+
+Each of these files has an `openGraph.url` (or similar) building `${SITE_URL}/${locale}/…`. That URL is now dead (no locale-prefixed routes exist) and, for renamed pages, names the plural route. Rewrite each to the prefix-less, v1-matching URL:
+
+```ts
+// src/app/[locale]/page.tsx:20              → `${SITE_URL}`
+// src/app/[locale]/problems/page.tsx:26     → `${SITE_URL}/problems`
+// src/app/[locale]/problem/[code]/page.tsx:42 → `${SITE_URL}/problem/${code}`   (drop locale + singular)
+// src/app/[locale]/contests/page.tsx:26     → `${SITE_URL}/contests`
+// src/app/[locale]/ratings/page.tsx:26      → `${SITE_URL}/ratings`
+// src/app/[locale]/user/[username]/page.tsx:42 → `${SITE_URL}/user/${username}`  (drop locale; already singular)
+```
+
+Then sweep for any og:url this list missed — every remaining `${SITE_URL}/${locale}` and `/${locale}/` in a `generateMetadata`/openGraph context (e.g. submission, organization, stats, users pages if present) must lose the `/${locale}` and use the singular route if it was renamed:
+
+```bash
+grep -rnE '\$\{SITE_URL\}/\$\{locale\}|/\$\{locale\}/(problem|contest|submission|blog|post|user|organization)' src --include='*.tsx' --include='*.ts'
+```
+After this step that grep must return ONLY `src/lib/seo.ts:53` (the `generateCanonicalUrl` signature keeps its `locale` param for compatibility but no longer uses it — acceptable) and nothing in a live og:url. Confirm `src/components/seo/ContestJsonLd.tsx` and `ArticleJsonLd.tsx` are already singular/`post` (fixed in Tasks 5/7) — do not re-edit them; `PersonJsonLd.tsx`/`ProblemJsonLd.tsx` `/user/...` urls are correct as-is.
 
 - [ ] **Step 2: `src/app/[locale]/layout.tsx` — drop per-locale hreflang**
 
@@ -656,8 +693,10 @@ Also view-source a problem page: canonical + JSON-LD `url` are prefix-less and s
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/lib/seo.ts "src/app/[locale]/layout.tsx" src/app/sitemap.ts src/app/robots.ts
-git commit -m "feat(seo): prefix-less canonical/JSON-LD/sitemap, v1 URL parity"
+git add src/lib/seo.ts "src/app/[locale]/layout.tsx" src/app/sitemap.ts src/app/robots.ts \
+  "src/app/[locale]/page.tsx" "src/app/[locale]/problems/page.tsx" "src/app/[locale]/problem/[code]/page.tsx" \
+  "src/app/[locale]/contests/page.tsx" "src/app/[locale]/ratings/page.tsx" "src/app/[locale]/user/[username]/page.tsx"
+git commit -m "feat(seo): prefix-less canonical/og:url/JSON-LD/sitemap, v1 URL parity"
 ```
 
 ---
