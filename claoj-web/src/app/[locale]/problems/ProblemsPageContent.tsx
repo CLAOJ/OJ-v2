@@ -64,7 +64,7 @@ export default function ProblemsPageContent() {
     const launchRandomProblem = async () => {
         try {
             const res = await api.get<{ code: string }>('/problems/random');
-            router.push(`/problems/${res.data.code}`);
+            router.push(`/problem/${res.data.code}`);
         } catch (err) {
             // Failed to launch random problem - user will see error state
         }
@@ -187,7 +187,7 @@ export default function ProblemsPageContent() {
                         {hotProblems?.map(hp => (
                             <Link
                                 key={hp.code}
-                                href={`/problems/${hp.code}`}
+                                href={`/problem/${hp.code}`}
                                 className="block p-4 rounded-3xl bg-muted/50 border border-border hover:bg-muted hover:border-rose-500/30 transition-all group"
                             >
                                 <div className="flex flex-col gap-1">
@@ -256,7 +256,7 @@ export default function ProblemsPageContent() {
                                             <td className="px-6 py-8 font-black font-mono text-sm text-primary tracking-tighter">{p.code}</td>
                                             <td className="px-6 py-8">
                                                 <Link
-                                                    href={`/problems/${p.code}`}
+                                                    href={`/problem/${p.code}`}
                                                     className="font-black text-lg hover:text-primary transition-colors underline-offset-4 decoration-primary/20 hover:underline"
                                                 >
                                                     {p.name}

@@ -128,7 +128,7 @@ export default function AdminSolutionEditorPage() {
                     <div className="bg-card border rounded-lg p-4">
                         <h3 className="font-semibold mb-2">{t('admin.problem')}</h3>
                         <p className="text-lg">
-                            <Link href={`/problems/${solution.data.problem_code}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            <Link href={`/problem/${solution.data.problem_code}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                                 {solution.data.problem_code} - {solution.data.problem_name}
                             </Link>
                         </p>

@@ -547,7 +547,7 @@ export default function HomePageContent() {
                             {newProblems.map(problem => (
                                 <div key={problem.code} className="flex items-center justify-between">
                                     <Link
-                                        href={`/problems/${problem.code}`}
+                                        href={`/problem/${problem.code}`}
                                         className="text-sm font-bold hover:text-primary transition-colors truncate flex-grow"
                                     >
                                         {problem.name}

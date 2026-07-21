@@ -295,7 +295,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                                 <td className="px-4 py-3 text-sm font-bold text-muted-foreground">{idx + 1}</td>
                                                                 <td className="px-4 py-3">
                                                                     <Link
-                                                                        href={`/problems/${p.code}`}
+                                                                        href={`/problem/${p.code}`}
                                                                         className="text-sm font-black hover:text-primary transition-colors"
                                                                     >
                                                                         {p.code}
@@ -357,7 +357,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             {solvedData.map((p) => (
                                                 <Link
                                                     key={p.code}
-                                                    href={`/problems/${p.code}`}
+                                                    href={`/problem/${p.code}`}
                                                     className="px-3 py-1.5 rounded-lg border bg-muted/30 hover:bg-primary/10 hover:border-primary/50 hover:text-primary text-sm font-bold transition-all"
                                                 >
                                                     {p.code}

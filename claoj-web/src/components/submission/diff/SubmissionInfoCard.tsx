@@ -32,7 +32,7 @@ export function SubmissionInfoCard({ title, submission }: SubmissionInfoCardProp
             </div>
             <div className="space-y-2">
                 <Link
-                    href={`/problems/${submission.problem}`}
+                    href={`/problem/${submission.problem}`}
                     className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                 >
                     <FileCode size={16} />

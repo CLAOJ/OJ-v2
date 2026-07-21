@@ -119,7 +119,7 @@ export default function AdminProblemPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3 mb-1">
                                                     <Link
-                                                        href={`/problems/${problem.code}`}
+                                                        href={`/problem/${problem.code}`}
                                                         className="font-bold text-sm hover:text-primary transition-colors"
                                                     >
                                                         {problem.name}

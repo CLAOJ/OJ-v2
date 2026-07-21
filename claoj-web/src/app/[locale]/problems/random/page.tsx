@@ -13,7 +13,7 @@ export default function RandomProblemPage() {
     useEffect(() => {
         randomProblemApi.getRandomProblem()
             .then((res) => {
-                router.push(`/problems/${res.data.code}`);
+                router.push(`/problem/${res.data.code}`);
             })
             .catch((err) => {
                 setError('Failed to load random problem. Please try again.');

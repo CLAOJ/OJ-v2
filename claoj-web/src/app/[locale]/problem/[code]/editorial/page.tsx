@@ -67,7 +67,7 @@ export default function ProblemEditorialPage() {
                         {error || t('problem.editorial_not_found')}
                     </h2>
                     <Link
-                        href={`/problems/${code}`}
+                        href={`/problem/${code}`}
                         className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
                         {t('common.back_to_problem')}
@@ -82,7 +82,7 @@ export default function ProblemEditorialPage() {
             {/* Header */}
             <div className="mb-6">
                 <Link
-                    href={`/problems/${code}`}
+                    href={`/problem/${code}`}
                     className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block"
                 >
                     &larr; {t('common.back_to_problem')}

@@ -202,7 +202,7 @@ export default function SubmissionListPage() {
                                             </Link>
                                         </td>
                                         <td className="px-6 py-8">
-                                            <Link href={`/problems/${s.problem}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
+                                            <Link href={`/problem/${s.problem}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
                                                 <span className="font-black text-sm tracking-tight">{s.problem}</span>
                                                 <span className="text-[10px] font-black uppercase text-muted-foreground opacity-40">Problem Code</span>
                                             </Link>

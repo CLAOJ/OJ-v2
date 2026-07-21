@@ -193,7 +193,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                 {editorialData?.exists && (
                     <div className="bg-card border rounded-3xl p-6 shadow-sm">
                         <Link
-                            href={`/problems/${code}/editorial`}
+                            href={`/problem/${code}/editorial`}
                             className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none"
                         >
                             <BookOpen size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />

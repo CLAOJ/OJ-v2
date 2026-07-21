@@ -310,7 +310,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     <Link
-                                                        href={`/problems/${prob.code}?contest=${key}`}
+                                                        href={`/problem/${prob.code}?contest=${key}`}
                                                         className="block space-y-1 outline-none"
                                                     >
                                                         <h4 className="text-lg font-black group-hover:text-primary transition-colors">{prob.name}</h4>

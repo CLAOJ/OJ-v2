@@ -195,7 +195,7 @@ export default function AdminJudgeDetailPage() {
                             {judge.problems.map((problem) => (
                                 <div key={problem.code} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
                                     <Link
-                                        href={`/problems/${problem.code}`}
+                                        href={`/problem/${problem.code}`}
                                         className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
                                     >
                                         {problem.code}
