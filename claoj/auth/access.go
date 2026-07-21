@@ -191,3 +191,33 @@ func CanRejudge(c *gin.Context, problem *models.Problem) bool {
 	}
 	return access.HasPerm("judge.rejudge_submission") && CanEditProblem(c, problem)
 }
+
+// userIsOrgAdmin reports whether profileID is an administrator of the
+// organization (membership in judge_organization_admins). joinTable columns
+// are the Django defaults for Organization.admins.
+func userIsOrgAdmin(orgID, profileID uint) bool {
+	var count int64
+	db.DB.Table("judge_organization_admins").
+		Where("organization_id = ? AND profile_id = ?", orgID, profileID).
+		Count(&count)
+	return count > 0
+}
+
+// CanEditOrganization mirrors DMOJ organization-edit authority
+// (OJ/judge/models/profile.py:81 + org mixins): superuser, OR
+// judge.edit_all_organization, OR the judge.organization_admin bypass, OR being
+// an administrator of this specific organization.
+func CanEditOrganization(c *gin.Context, orgID uint) bool {
+	access := GetAccess(c)
+	if access.IsSuperuser && access.IsActive {
+		return true
+	}
+	if access.HasPerm("judge.edit_all_organization") {
+		return true
+	}
+	if access.HasPerm("judge.organization_admin") {
+		return true
+	}
+	profileID, ok := CurrentProfileID(c)
+	return ok && userIsOrgAdmin(orgID, profileID)
+}
