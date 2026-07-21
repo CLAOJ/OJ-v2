@@ -137,10 +137,14 @@ func AdminSolutionCreate(c *gin.Context) {
 		return
 	}
 
-	// Check if problem exists
+	// Django parity: managing a problem's editorial requires edit authority over the problem.
 	var problem models.Problem
-	if err := db.DB.First(&problem, input.ProblemID).Error; err != nil {
+	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, input.ProblemID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
 		return
 	}
 
@@ -216,6 +220,17 @@ func AdminSolutionUpdate(c *gin.Context) {
 	var solution models.Solution
 	if err := db.DB.First(&solution, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("solution not found"))
+		return
+	}
+
+	// Django parity: editing an editorial requires edit authority over its problem.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, solution.ProblemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
 		return
 	}
 
@@ -309,6 +324,17 @@ func AdminSolutionDelete(c *gin.Context) {
 	var solution models.Solution
 	if err := db.DB.First(&solution, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("solution not found"))
+		return
+	}
+
+	// Django parity: deleting an editorial requires edit authority over its problem.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, solution.ProblemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
 		return
 	}
 
