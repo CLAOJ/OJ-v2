@@ -156,7 +156,7 @@ export default function OrganizationBlogPage() {
                     {filteredPosts.map((post) => (
                         <Link
                             key={post.id}
-                            href={`/blog/${post.id}`}
+                            href={`/post/${post.id}-${post.slug}`}
                             className="group block bg-card border rounded-[2rem] p-6 md:p-8 hover:border-primary/30 hover:shadow-xl transition-all duration-300"
                         >
                             <div className="flex items-start justify-between gap-4 mb-4">

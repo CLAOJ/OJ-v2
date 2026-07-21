@@ -128,7 +128,7 @@ export default function BlogListPage() {
                                         </div>
 
                                         <Link
-                                            href={`/blog/${post.id}`}
+                                            href={`/post/${post.id}-${post.slug}`}
                                             className="h-12 flex items-center gap-3 px-8 rounded-2xl bg-primary text-primary-foreground font-black group/btn hover:scale-[1.03] active:scale-95 transition-all shadow-lg shadow-primary/20"
                                         >
                                             {t('readMore')}

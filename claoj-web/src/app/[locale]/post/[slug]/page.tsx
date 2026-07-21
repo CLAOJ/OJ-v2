@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import BlogPageContent from './BlogPageContent';
 import { ArticleJsonLd } from '@/components/seo';
 import api from '@/lib/api';
+import { parseLeadingId } from '@/utils/route';
 
 const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 
@@ -20,9 +21,10 @@ async function fetchBlogPost(id: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { locale, id } = await params;
+  const { locale, slug } = await params;
+  const id = parseLeadingId(slug);
 
   // Try to fetch blog post data
   const post = await fetchBlogPost(id);
@@ -42,7 +44,7 @@ export async function generateMetadata({
         publishedTime: post.publish_on,
         authors: authorNames ? [`@${authorNames}`] : [],
         locale: locale === 'vi' ? 'vi_VN' : 'en_US',
-        url: `${SITE_URL}/${locale}/blog/${id}`,
+        url: `${SITE_URL}/post/${slug}`,
         siteName: 'CLAOJ',
       },
     };
@@ -57,11 +59,12 @@ export async function generateMetadata({
 export default async function BlogPage({
   params,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale } = await params;
   const messages = await getMessages({ locale });
-  const { id } = await params;
+  const { slug } = await params;
+  const id = parseLeadingId(slug);
 
   // Fetch blog post data for JSON-LD
   const post = await fetchBlogPost(id);

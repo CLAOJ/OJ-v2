@@ -23,9 +23,11 @@ import MathRenderer from '@/components/ui/MathRenderer';
 import Comments from '@/components/common/Comments';
 import { toast } from 'sonner';
 import { blogVoteApi } from '@/lib/api';
+import { parseLeadingId } from '@/utils/route';
 
-export default function BlogPageContent({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function BlogPageContent({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = use(params);
+    const id = parseLeadingId(slug);
     const t = useTranslations('Blog');
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -58,7 +60,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ id: stri
     return (
         <div className="max-w-4xl mx-auto space-y-12 pb-20">
             <Link
-                href="/blog"
+                href="/post"
                 className="inline-flex items-center gap-2 text-sm font-black text-muted-foreground hover:text-primary transition-colors group"
             >
                 <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />

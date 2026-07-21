@@ -30,10 +30,10 @@ export default function ArticleJsonLd({ article }: ArticleJsonLdProps) {
         url: 'https://beta.claoj.edu.vn/static/icons/og_img.png',
       },
     },
-    url: `${typeof window !== 'undefined' ? window.location.origin : ''}/blog/${article.id}`,
+    url: `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${article.id}-${article.slug}`,
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `${typeof window !== 'undefined' ? window.location.origin : ''}/blog/${article.id}`,
+      '@id': `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${article.id}-${article.slug}`,
     },
     keywords: 'competitive programming, algorithms, blog, tutorial',
     wordCount: article.content.length,

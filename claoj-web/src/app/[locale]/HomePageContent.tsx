@@ -247,7 +247,7 @@ export default function HomePageContent() {
                             <BookOpen className="text-primary" size={24} />
                             Latest Blog Posts
                         </h2>
-                        <Link href="/blog" className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
+                        <Link href="/post" className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
                             View all <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -289,7 +289,7 @@ export default function HomePageContent() {
                                             <div className="flex-grow min-w-0">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <h3 className="text-xl font-bold hover:text-primary transition-colors">
-                                                        <Link href={`/blog/${post.id}`} className="hover:underline">
+                                                        <Link href={`/post/${post.id}-${post.slug}`} className="hover:underline">
                                                             {post.visible === false && <Lock size={14} className="inline text-red-500 mr-1" />}
                                                             {post.title}
                                                         </Link>
@@ -329,7 +329,7 @@ export default function HomePageContent() {
                                                 {index === 0 && (post.summary || (post.content && post.content.length > 200)) && (
                                                     <div className="mt-3">
                                                         <Link
-                                                            href={`/blog/${post.id}`}
+                                                            href={`/post/${post.id}-${post.slug}`}
                                                             className="text-sm font-bold text-primary hover:underline"
                                                         >
                                                             Continue reading...
