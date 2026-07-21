@@ -208,7 +208,7 @@ export default function SubmissionListPage() {
                                             </Link>
                                         </td>
                                         <td className="px-6 py-8 text-center">
-                                            <Link href={`/submissions/${s.id}`} className="outline-none">
+                                            <Link href={`/submission/${s.id}`} className="outline-none">
                                                 <Badge
                                                     variant={getStatusVariant(s.result || s.status)}
                                                     className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm hover:scale-105 transition-transform"

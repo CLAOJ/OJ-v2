@@ -103,7 +103,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
             return res.data;
         },
         onSuccess: (data) => {
-            router.push(`/submissions/${data.submission_id}`);
+            router.push(`/submission/${data.submission_id}`);
         },
         onError: (err: any) => {
             alert(err.response?.data?.error || 'Failed to submit code');

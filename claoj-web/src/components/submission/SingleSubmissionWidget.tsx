@@ -120,7 +120,7 @@ export default function SingleSubmissionWidget({
     if (compact) {
         return (
             <Link
-                href={`/submissions/${sub.id}`}
+                href={`/submission/${sub.id}`}
                 className={cn(
                     "block bg-card border rounded-xl p-3 hover:border-primary/50 transition-all group outline-none",
                     isGrading && "animate-pulse"
@@ -151,7 +151,7 @@ export default function SingleSubmissionWidget({
 
     return (
         <Link
-            href={`/submissions/${sub.id}`}
+            href={`/submission/${sub.id}`}
             className={cn(
                 "block bg-card border rounded-2xl p-6 hover:border-primary/50 hover:shadow-md transition-all group outline-none",
                 isGrading && "animate-pulse border-primary/30"

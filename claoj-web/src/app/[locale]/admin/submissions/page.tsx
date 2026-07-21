@@ -296,7 +296,7 @@ export default function AdminSubmissionPage() {
                                             </Link>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <Link href={`/submissions/${s.id}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
+                                            <Link href={`/submission/${s.id}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
                                                 <span className="font-bold text-sm tracking-tight">{s.problem}</span>
                                                 <span className="text-xs uppercase text-muted-foreground opacity-40">{t('submissions.problemCodeLabel')}</span>
                                             </Link>

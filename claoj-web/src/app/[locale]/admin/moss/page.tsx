@@ -159,7 +159,7 @@ export default function AdminMossPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1">
                                                     <Link
-                                                        href={`/submissions/${result.submission_id}`}
+                                                        href={`/submission/${result.submission_id}`}
                                                         className="font-medium text-sm hover:text-primary transition-colors"
                                                     >
                                                         {result.problem_code}
