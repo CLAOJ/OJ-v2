@@ -262,14 +262,16 @@ func resolveStatementPDFPath(pdfURL, code, v1MediaRoot string) (string, error) {
 		}
 		root := filepath.Clean(v1MediaRoot)
 		clean := filepath.Clean(filepath.Join(root, filepath.FromSlash(pdfURL)))
-		if clean != root && !strings.HasPrefix(clean, root+string(os.PathSeparator)) {
+		// Must resolve to a file strictly under the media root — reject the root
+		// directory itself (e.g. pdf_url "/") as well as anything that escapes it.
+		if clean == root || !strings.HasPrefix(clean, root+string(os.PathSeparator)) {
 			return "", errPDFInvalidPath
 		}
 		return clean, nil
 	}
 	base := filepath.Clean(filepath.Join("data", "problems", code))
 	clean := filepath.Clean(filepath.Join(base, pdfURL))
-	if clean != base && !strings.HasPrefix(clean, base+string(os.PathSeparator)) {
+	if clean == base || !strings.HasPrefix(clean, base+string(os.PathSeparator)) {
 		return "", errPDFInvalidPath
 	}
 	return clean, nil

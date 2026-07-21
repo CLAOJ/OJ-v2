@@ -36,4 +36,14 @@ func TestResolveStatementPDFPath(t *testing.T) {
 		_, err := resolveStatementPDFPath("../../../etc/passwd", "abc", "/v1media")
 		assert.True(t, errors.Is(err, errPDFInvalidPath))
 	})
+
+	t.Run("a v1 path resolving to the media root itself is rejected", func(t *testing.T) {
+		_, err := resolveStatementPDFPath("/", "abc", "/v1media")
+		assert.True(t, errors.Is(err, errPDFInvalidPath))
+	})
+
+	t.Run("an empty v2-native filename resolving to the data dir is rejected", func(t *testing.T) {
+		_, err := resolveStatementPDFPath("", "abc", "/v1media")
+		assert.True(t, errors.Is(err, errPDFInvalidPath))
+	})
 }
