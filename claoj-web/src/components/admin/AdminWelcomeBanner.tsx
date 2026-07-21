@@ -1,17 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Link } from '@/navigation';
-import {
-    Crown,
-    X,
-    Zap,
-    ChevronRight,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Crown, X, Clock, ChevronRight } from 'lucide-react';
 import { QUICK_ACTIONS, ADMIN_STATS } from './constants';
 
 interface AdminWelcomeBannerProps {
@@ -21,10 +15,14 @@ interface AdminWelcomeBannerProps {
 export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
     const { user } = useAuth();
     const t = useTranslations('Admin');
+    const reduceMotion = useReducedMotion();
     const [isVisible, setIsVisible] = useState(true);
-    const [currentTime, setCurrentTime] = useState(new Date());
+    // Filled on the client only: seeding with new Date() would render a
+    // different time on the server and trip a hydration mismatch.
+    const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
     useEffect(() => {
+        setCurrentTime(new Date());
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
@@ -37,127 +35,106 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
         onDismiss?.();
     };
 
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('en-US', {
+    const formatTime = (date: Date) =>
+        date.toLocaleTimeString('en-GB', {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
             hour12: false,
         });
-    };
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative mb-6 overflow-hidden rounded-2xl"
+        <motion.section
+            initial={reduceMotion ? false : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-6 bg-card border rounded-lg overflow-hidden"
         >
-            {/* Background effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-
-            {/* Grid pattern */}
-            <div
-                className="absolute inset-0 opacity-[0.03]"
-                style={{
-                    backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                                      linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-                    backgroundSize: '40px 40px',
-                }}
-            />
-
-            {/* Animated border */}
-            <div className="absolute inset-0 rounded-2xl border border-amber-500/20" />
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-
-            <div className="relative p-6">
+            <div className="p-6">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-amber-500/30 blur-2xl rounded-full animate-pulse" />
-                            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-xl shadow-amber-500/25">
-                                <Crown className="w-8 h-8 text-slate-950" />
-                            </div>
+                <div className="flex items-start justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 shrink-0 rounded-lg bg-primary flex items-center justify-center">
+                            <Crown className="w-6 h-6 text-primary-foreground" />
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <h2 className="text-2xl font-bold text-slate-100">
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h2 className="text-xl font-bold text-foreground">
                                     {t('shell.welcomeBack', { username: user.username })}
                                 </h2>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30">
                                     {user.is_admin ? t('shell.superAdmin') : t('layout.adminLabel')}
                                 </span>
                             </div>
-                            <p className="text-slate-400">
+                            <p className="text-sm text-muted-foreground">
                                 {t('shell.elevatedPrivileges')}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 shrink-0">
                         {/* Live clock */}
-                        <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900/50 border border-slate-800">
-                            <Zap className="w-4 h-4 text-amber-400" />
-                            <span className="text-lg font-mono font-bold text-slate-300 tracking-wider">
-                                {formatTime(currentTime)}
+                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                            <Clock className="w-4 h-4 text-primary" />
+                            <span className="text-sm font-mono font-semibold text-foreground tabular-nums">
+                                {currentTime ? formatTime(currentTime) : '--:--:--'}
                             </span>
                         </div>
 
-                        {/* Dismiss button */}
+                        {/* Dismiss */}
                         <button
                             onClick={handleDismiss}
-                            className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                            aria-label="Close"
+                            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Quick actions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {QUICK_ACTIONS.map((action, index) => (
                         <motion.div
-                            key={action.label}
-                            initial={{ opacity: 0, y: 10 }}
+                            key={action.id}
+                            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
+                            transition={{
+                                duration: 0.3,
+                                delay: reduceMotion ? 0 : 0.05 + index * 0.04,
+                                ease: [0.16, 1, 0.3, 1],
+                            }}
                         >
                             <Link
                                 href={action.href}
-                                className={cn(
-                                    'group flex items-center gap-3 p-4 rounded-xl',
-                                    'bg-slate-900/50 border border-slate-800',
-                                    'hover:border-slate-700 hover:bg-slate-800/50',
-                                    'transition-all duration-200'
-                                )}
+                                className="group flex items-center gap-3 p-3 rounded-lg bg-muted/50 border hover:border-primary/50 hover:bg-muted transition-colors"
                             >
-                                <action.icon className={cn('w-5 h-5', action.color)} />
-                                <span className="text-sm font-medium text-slate-300 group-hover:text-slate-200">
+                                <action.icon className="w-5 h-5 shrink-0 text-primary" />
+                                <span className="text-sm font-medium text-foreground truncate">
                                     {t(`shell.quickActions.${action.id}`)}
                                 </span>
-                                <ChevronRight className="w-4 h-4 text-slate-600 ml-auto group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
+                                <ChevronRight className="w-4 h-4 ml-auto shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
                             </Link>
                         </motion.div>
                     ))}
                 </div>
 
-                {/* Stats row */}
-                <div className="mt-6 pt-6 border-t border-slate-800/50 grid grid-cols-3 gap-4">
+                {/* Stats */}
+                <div className="mt-6 pt-5 border-t grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {ADMIN_STATS.map((stat) => (
-                        <div key={stat.label} className="text-center">
-                            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                        <div key={stat.id} className="text-center">
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">
                                 {t(`shell.stats.${stat.id}Label`)}
                             </p>
                             {stat.href ? (
-                                <Link href={stat.href} className={cn('text-sm font-semibold hover:underline', stat.color)}>
+                                <Link
+                                    href={stat.href}
+                                    className="text-sm font-semibold text-primary hover:underline"
+                                >
                                     {t(`shell.stats.${stat.id}Value`)}
                                 </Link>
                             ) : (
-                                <p className={cn('text-sm font-semibold', stat.color)}>
+                                <p className="text-sm font-semibold text-foreground">
                                     {t(`shell.stats.${stat.id}Value`)}
                                 </p>
                             )}
@@ -165,6 +142,6 @@ export function AdminWelcomeBanner({ onDismiss }: AdminWelcomeBannerProps) {
                     ))}
                 </div>
             </div>
-        </motion.div>
+        </motion.section>
     );
 }
