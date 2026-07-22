@@ -25,6 +25,9 @@ import {
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const TRENDING_LIMIT = 5;
+
 export default function ProblemsPageContent() {
     const t = useTranslations('Problems');
     const tCommon = useTranslations('Common');
@@ -36,9 +39,10 @@ export default function ProblemsPageContent() {
     const [sort, setSort] = useState<string>('code');
     const [order, setOrder] = useState<'asc' | 'desc'>('asc');
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
 
     const { data: problemData, isLoading } = useQuery({
-        queryKey: ['problems', search, status, pointsMin, pointsMax, sort, order, page],
+        queryKey: ['problems', search, status, pointsMin, pointsMax, sort, order, page, pageSize],
         queryFn: async () => {
             const params = new URLSearchParams({
                 search,
@@ -48,6 +52,7 @@ export default function ProblemsPageContent() {
                 sort,
                 order,
                 page: page.toString(),
+                page_size: pageSize.toString(),
             });
             const res = await api.get<PaginatedList<Problem>>(`/problems?${params.toString()}`);
             return res.data;
@@ -57,8 +62,10 @@ export default function ProblemsPageContent() {
     const { data: hotProblems } = useQuery({
         queryKey: ['hot-problems'],
         queryFn: async () => {
-            const res = await api.get<PaginatedList<Problem>>('/problems?sort=user_count&order=desc&limit=5');
-            return res.data.data;
+            const res = await api.get<PaginatedList<Problem>>(
+                `/problems?sort=user_count&order=desc&page_size=${TRENDING_LIMIT}`
+            );
+            return res.data.data.slice(0, TRENDING_LIMIT);
         }
     });
 
@@ -82,10 +89,13 @@ export default function ProblemsPageContent() {
 
     return (
         <div className="flex flex-col lg:flex-row gap-10 min-h-[calc(100vh-12rem)] animate-in fade-in duration-500 mt-4">
-            {/* Sidebar: Filters & Hot Problems */}
+            {/* Sidebar: Filters & Hot Problems.
+                Deliberately not sticky: the column is taller than a typical
+                viewport, so pinning it either overlaps the cards or clips the
+                last one behind an inner scrollbar. */}
             <aside className="w-full lg:w-80 flex flex-col gap-8 shrink-0">
                 {/* Advanced Filter Card */}
-                <div className="p-8 rounded-[3rem] bg-card border shadow-sm space-y-8 sticky top-4">
+                <div className="p-8 rounded-[3rem] bg-card border shadow-sm space-y-8">
                     <div className="flex items-center gap-3">
                         <SlidersHorizontal size={20} className="text-primary" />
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">{t('advancedFilters')}</h3>
@@ -207,6 +217,27 @@ export default function ProblemsPageContent() {
 
             {/* Main Content: Problems Table */}
             <div className="flex-grow flex flex-col gap-6 min-w-0">
+                {/* Rows-per-page selector */}
+                <div className="flex justify-end items-center gap-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{tCommon('perPage')}</span>
+                    <div className="flex gap-1 p-1 rounded-2xl bg-muted/30 border">
+                        {PAGE_SIZE_OPTIONS.map(size => (
+                            <button
+                                key={size}
+                                onClick={() => { setPageSize(size); setPage(1); }}
+                                className={cn(
+                                    "h-9 w-12 rounded-xl text-[11px] font-black transition-all",
+                                    pageSize === size
+                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                        : "text-muted-foreground hover:bg-muted"
+                                )}
+                            >
+                                {size}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="bg-card border rounded-[3rem] overflow-hidden shadow-sm">
                     <div className="overflow-x-auto selection:bg-primary/10">
                         <table className="w-full text-left border-collapse">
@@ -237,7 +268,7 @@ export default function ProblemsPageContent() {
                             </thead>
                             <tbody className="divide-y divide-muted/50">
                                 {isLoading ? (
-                                    [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                                    Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
                                         <tr key={i}><td colSpan={5} className="px-10 py-6"><Skeleton className="h-10 w-full rounded-2xl" /></td></tr>
                                     ))
                                 ) : (
@@ -302,7 +333,8 @@ export default function ProblemsPageContent() {
                     </div>
                     <button
                         onClick={() => setPage(p => p + 1)}
-                        className="px-8 h-12 rounded-2xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted"
+                        disabled={(problemData?.data.length ?? 0) < pageSize}
+                        className="px-8 h-12 rounded-2xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
                     >
                         {tCommon('next')}
                     </button>

@@ -609,7 +609,9 @@
     "user": "User",
     "solved": "Solved",
     "moreOrganizations": "+{count} more",
-    "showingUsers": "Showing {count} users"
+    "showingUsers": "Showing {count} users",
+    "rankBy": "Rank By",
+    "contributors": "Contributors"
   },
   "Common": {
     "loading": "Loading...",
@@ -683,7 +685,8 @@
     "wsConnected": "Connected",
     "wsConnecting": "Connecting...",
     "wsError": "Connection Error",
-    "wsDisconnected": "Disconnected"
+    "wsDisconnected": "Disconnected",
+    "perPage": "Per Page"
   },
   "Ratings": {
     "title": "Rating Leaderboard",

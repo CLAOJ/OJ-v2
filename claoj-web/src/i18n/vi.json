@@ -609,7 +609,9 @@
     "user": "Người dùng",
     "solved": "Đã giải",
     "moreOrganizations": "+{count} nữa",
-    "showingUsers": "Đang hiển thị {count} người dùng"
+    "showingUsers": "Đang hiển thị {count} người dùng",
+    "rankBy": "Xếp hạng theo",
+    "contributors": "Người đóng góp"
   },
   "Common": {
     "loading": "Đang tải...",
@@ -683,7 +685,8 @@
     "wsConnected": "Đã kết nối",
     "wsConnecting": "Đang kết nối...",
     "wsError": "Lỗi kết nối",
-    "wsDisconnected": "Đã ngắt kết nối"
+    "wsDisconnected": "Đã ngắt kết nối",
+    "perPage": "Mỗi trang"
   },
   "Ratings": {
     "title": "Bảng xếp hạng Rating",

@@ -22,17 +22,30 @@ import (
 // @Produce json
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Items per page" default(100)
+// @Param sort query string false "Ranking field: points, rating, contribution" default(points)
 // @Success 200 {object} map[string]interface{}
 // @Router /users [get]
 func UserList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
-	var profiles []models.Profile
 
+	// Rankings are always highest-first — only the ranked field varies.
+	// MySQL sorts NULL lowest, so unrated users fall to the end on rating DESC.
+	rankFields := map[string]string{
+		"points":       "judge_profile.performance_points DESC",
+		"rating":       "judge_profile.rating DESC",
+		"contribution": "judge_profile.contribution_points DESC",
+	}
+	orderBy, ok := rankFields[c.DefaultQuery("sort", "points")]
+	if !ok {
+		orderBy = rankFields["points"]
+	}
+
+	var profiles []models.Profile
 	if err := db.DB.
 		Preload("User").
 		Where("judge_profile.is_unlisted = ?", false).
 		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
-		Order("judge_profile.performance_points DESC").
+		Order(orderBy).
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&profiles).Error; err != nil {
@@ -41,24 +54,26 @@ func UserList(c *gin.Context) {
 	}
 
 	type Item struct {
-		Username          string  `json:"username"`
-		Points            float64 `json:"points"`
-		PerformancePoints float64 `json:"performance_points"`
-		Rating            *int    `json:"rating"`
-		ProblemCount      int     `json:"problem_count"`
-		DisplayRank       string  `json:"display_rank"`
-		AvatarURL         string  `json:"avatar_url"`
+		Username           string  `json:"username"`
+		Points             float64 `json:"points"`
+		PerformancePoints  float64 `json:"performance_points"`
+		Rating             *int    `json:"rating"`
+		ProblemCount       int     `json:"problem_count"`
+		ContributionPoints int     `json:"contribution_points"`
+		DisplayRank        string  `json:"display_rank"`
+		AvatarURL          string  `json:"avatar_url"`
 	}
 	items := make([]Item, len(profiles))
 	for i, p := range profiles {
 		items[i] = Item{
-			Username:          p.User.Username,
-			Points:            p.Points,
-			PerformancePoints: p.PerformancePoints,
-			Rating:            p.Rating,
-			ProblemCount:      p.ProblemCount,
-			DisplayRank:       p.DisplayRank,
-			AvatarURL:         getAvatarURL(&p),
+			Username:           p.User.Username,
+			Points:             p.Points,
+			PerformancePoints:  p.PerformancePoints,
+			Rating:             p.Rating,
+			ProblemCount:       p.ProblemCount,
+			ContributionPoints: p.ContributionPoints,
+			DisplayRank:        p.DisplayRank,
+			AvatarURL:          getAvatarURL(&p),
 		}
 	}
 	c.JSON(http.StatusOK, apiList(items))

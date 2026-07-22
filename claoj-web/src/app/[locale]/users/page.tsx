@@ -13,30 +13,39 @@ import {
     Search,
     Trophy,
     TrendingUp,
-    Hash,
+    ThumbsUp,
     ChevronLeft,
     ChevronRight,
-    RefreshCw,
-    User as UserIcon
+    RefreshCw
 } from 'lucide-react';
 import { cn, getRankColor } from '@/lib/utils';
+
+const PAGE_SIZE = 50;
+
+type RankBy = 'points' | 'rating' | 'contribution';
+
+const RANKINGS: { key: RankBy; icon: typeof Trophy; labelKey: 'points' | 'rating' | 'contributors' }[] = [
+    { key: 'points', icon: Trophy, labelKey: 'points' },
+    { key: 'rating', icon: TrendingUp, labelKey: 'rating' },
+    { key: 'contribution', icon: ThumbsUp, labelKey: 'contributors' },
+];
 
 export default function UsersListPage() {
     const t = useTranslations('Users');
     const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<'points' | 'rating' | 'problem_count'>('points');
-    const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+    const [rankBy, setRankBy] = useState<RankBy>('points');
 
-    // The /users API only supports page/page_size (always sorted by performance
-    // points DESC server-side) — search and sorting are applied client-side.
+    // Rankings are always highest-first server-side; only `search` is applied
+    // client-side, over the current page.
     const { data, isLoading } = useQuery({
-        queryKey: ['users', page],
+        queryKey: ['users', page, rankBy],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
-                page_size: '50',
+                page_size: PAGE_SIZE.toString(),
+                sort: rankBy,
             });
             const res = await api.get<PaginatedList<UserListItem>>(`/users?${params.toString()}`);
             return res.data;
@@ -44,25 +53,18 @@ export default function UsersListPage() {
     });
 
     const fetchedUsers = data?.data || [];
+    // Keep the server-assigned rank even when the search box narrows the list.
     const users = fetchedUsers
-        .filter(u =>
+        .map((user, index) => ({ user, rank: (page - 1) * PAGE_SIZE + index + 1 }))
+        .filter(({ user }) =>
             !search ||
-            u.username.toLowerCase().includes(search.toLowerCase()) ||
-            (u.display_name || '').toLowerCase().includes(search.toLowerCase())
-        )
-        .sort((a, b) => {
-            const av = a[sortBy] ?? 0;
-            const bv = b[sortBy] ?? 0;
-            return order === 'asc' ? Number(av) - Number(bv) : Number(bv) - Number(av);
-        });
+            user.username.toLowerCase().includes(search.toLowerCase()) ||
+            (user.display_name || '').toLowerCase().includes(search.toLowerCase())
+        );
 
-    const toggleSort = (field: 'points' | 'rating' | 'problem_count') => {
-        if (sortBy === field) {
-            setOrder(order === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortBy(field);
-            setOrder('desc');
-        }
+    const changeRanking = (key: RankBy) => {
+        setRankBy(key);
+        setPage(1);
     };
 
     return (
@@ -92,7 +94,7 @@ export default function UsersListPage() {
                             </div>
                             <button
                                 onClick={() => setPage(p => p + 1)}
-                                disabled={fetchedUsers.length < 50}
+                                disabled={fetchedUsers.length < PAGE_SIZE}
                                 className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
                             >
                                 <ChevronRight size={18} />
@@ -103,6 +105,7 @@ export default function UsersListPage() {
                     <button
                         onClick={() => {
                             setSearch('');
+                            setRankBy('points');
                             setPage(1);
                         }}
                         className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-auto"
@@ -112,8 +115,8 @@ export default function UsersListPage() {
                 </div>
             </div>
 
-            {/* Search and Sort Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6 rounded-[2.5rem] bg-card border shadow-sm">
+            {/* Search and Ranking Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 rounded-[2.5rem] bg-card border shadow-sm">
                 <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('search')}</label>
                     <div className="relative">
@@ -129,69 +132,22 @@ export default function UsersListPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('sortBy')}</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('rankBy')}</label>
                     <div className="flex gap-2">
-                        <button
-                            onClick={() => toggleSort('points')}
-                            className={cn(
-                                "flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-2",
-                                sortBy === 'points'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-muted/30 hover:bg-muted border-transparent"
-                            )}
-                        >
-                            <Trophy size={14} /> {t('points')}
-                        </button>
-                        <button
-                            onClick={() => toggleSort('rating')}
-                            className={cn(
-                                "flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-2",
-                                sortBy === 'rating'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-muted/30 hover:bg-muted border-transparent"
-                            )}
-                        >
-                            <TrendingUp size={14} /> {t('rating')}
-                        </button>
-                        <button
-                            onClick={() => toggleSort('problem_count')}
-                            className={cn(
-                                "flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-2",
-                                sortBy === 'problem_count'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-muted/30 hover:bg-muted border-transparent"
-                            )}
-                        >
-                            <Hash size={14} /> {t('solved')}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{tCommon('order')}</label>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setOrder('desc')}
-                            className={cn(
-                                "flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all",
-                                order === 'desc'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-muted/30 hover:bg-muted border-transparent"
-                            )}
-                        >
-                            {tCommon('highToLow')}
-                        </button>
-                        <button
-                            onClick={() => setOrder('asc')}
-                            className={cn(
-                                "flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all",
-                                order === 'asc'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-muted/30 hover:bg-muted border-transparent"
-                            )}
-                        >
-                            {tCommon('lowToHigh')}
-                        </button>
+                        {RANKINGS.map(({ key, icon: Icon, labelKey }) => (
+                            <button
+                                key={key}
+                                onClick={() => changeRanking(key)}
+                                className={cn(
+                                    "flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-2",
+                                    rankBy === key
+                                        ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
+                                        : "bg-muted/30 hover:bg-muted border-transparent"
+                                )}
+                            >
+                                <Icon size={14} /> {t(labelKey)}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -203,37 +159,24 @@ export default function UsersListPage() {
                             <tr className="bg-muted/30 border-b">
                                 <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">{t('rank')}</th>
                                 <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('user')}</th>
-                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer" onClick={() => toggleSort('points')}>
-                                    <div className="flex items-center justify-center gap-2">
-                                        {t('points')} {sortBy === 'points' && (order === 'asc' ? '↑' : '↓')}
-                                    </div>
+                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">
+                                    {rankBy === 'points' ? t('points') : rankBy === 'rating' ? t('rating') : t('contribution')}
                                 </th>
-                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer" onClick={() => toggleSort('rating')}>
-                                    <div className="flex items-center justify-center gap-2">
-                                        {t('rating')} {sortBy === 'rating' && (order === 'asc' ? '↑' : '↓')}
-                                    </div>
-                                </th>
-                                <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center cursor-pointer" onClick={() => toggleSort('problem_count')}>
-                                    <div className="flex items-center justify-center gap-2">
-                                        {t('solved')} {sortBy === 'problem_count' && (order === 'asc' ? '↑' : '↓')}
-                                    </div>
-                                </th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('organization')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
                             {isLoading ? (
                                 Array.from({ length: 15 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={6} className="px-10 py-6"><Skeleton className="h-16 w-full rounded-2xl" /></td>
+                                        <td colSpan={3} className="px-10 py-6"><Skeleton className="h-16 w-full rounded-2xl" /></td>
                                     </tr>
                                 ))
                             ) : (
-                                users.map((user, index) => (
+                                users.map(({ user, rank }) => (
                                     <tr key={user.username} className="hover:bg-muted/10 transition-colors group">
                                         <td className="px-10 py-8 text-center">
                                             <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-muted font-black text-sm text-muted-foreground">
-                                                {(page - 1) * 50 + index + 1}
+                                                {rank}
                                             </div>
                                         </td>
                                         <td className="px-6 py-8">
@@ -249,45 +192,27 @@ export default function UsersListPage() {
                                                 </div>
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
-                                                <Trophy size={14} className="mr-2" />
-                                                <span className="font-black">{Math.round(user.points)}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            {user.rating ? (
-                                                <Badge className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest", getRankColor(user.rating))}>
-                                                    {Math.round(user.rating)}
-                                                </Badge>
-                                            ) : (
-                                                <span className="text-muted-foreground text-[10px] font-black">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-xl bg-primary/5 text-primary border border-primary/10">
-                                                <Hash size={14} />
-                                                <span className="font-black">{user.problem_count}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            {user.organizations && user.organizations.length > 0 ? (
-                                                <div className="flex flex-col gap-1">
-                                                    {user.organizations.slice(0, 2).map(org => (
-                                                        <Link
-                                                            key={org.id}
-                                                            href={`/organization/${org.id}-${org.slug}`}
-                                                            className="text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
-                                                        >
-                                                            {org.name}
-                                                        </Link>
-                                                    ))}
-                                                    {user.organizations.length > 2 && (
-                                                        <span className="text-[10px] text-muted-foreground">{t('moreOrganizations', { count: user.organizations.length - 2 })}</span>
-                                                    )}
+                                        <td className="px-10 py-8 text-center">
+                                            {rankBy === 'points' && (
+                                                <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
+                                                    <Trophy size={14} className="mr-2" />
+                                                    <span className="font-black">{Math.round(user.performance_points)}</span>
                                                 </div>
-                                            ) : (
-                                                <span className="text-muted-foreground text-[10px] font-black uppercase opacity-50">{tCommon('none')}</span>
+                                            )}
+                                            {rankBy === 'rating' && (
+                                                user.rating ? (
+                                                    <Badge className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest", getRankColor(user.rating))}>
+                                                        {Math.round(user.rating)}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-[10px] font-black">-</span>
+                                                )
+                                            )}
+                                            {rankBy === 'contribution' && (
+                                                <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-xl bg-primary/5 text-primary border border-primary/10">
+                                                    <ThumbsUp size={14} />
+                                                    <span className="font-black">{user.contribution_points}</span>
+                                                </div>
                                             )}
                                         </td>
                                     </tr>

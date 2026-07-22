@@ -576,6 +576,7 @@ export interface UserListItem {
     performance_points: number;
     rating?: number | null;
     problem_count: number;
+    contribution_points: number;
     display_rank: string;
     avatar_url?: string;
     organizations?: { id: number; name: string; slug: string }[];
