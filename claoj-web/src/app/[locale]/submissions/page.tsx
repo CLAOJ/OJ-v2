@@ -9,8 +9,6 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
 import { useState } from 'react';
 import {
-    ChevronLeft,
-    ChevronRight,
     User,
     Hash,
     Code2,
@@ -23,6 +21,7 @@ import {
     BrainCircuit
 } from 'lucide-react';
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -32,6 +31,7 @@ export default function SubmissionListPage() {
     const t = useTranslations('Submissions');
     const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [userFilter, setUserFilter] = useState('');
     const [problemFilter, setProblemFilter] = useState('');
     const [resultFilter, setResultFilter] = useState('');
@@ -46,12 +46,12 @@ export default function SubmissionListPage() {
     });
 
     const { data, isLoading } = useQuery({
-        queryKey: ['submissions', page, userFilter, problemFilter, resultFilter, langFilter],
+        queryKey: ['submissions', page, pageSize, userFilter, problemFilter, resultFilter, langFilter],
         queryFn: async () => {
-            const res = await api.get<APIResponse<Submission[]>>('/submissions', {
+            const res = await api.get<PaginatedList<Submission>>('/submissions', {
                 params: {
                     page,
-                    page_size: 50,
+                    page_size: pageSize,
                     user: userFilter,
                     problem: problemFilter,
                     result: resultFilter,
@@ -77,30 +77,7 @@ export default function SubmissionListPage() {
                     <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
-                <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4 rounded-[2.5rem] border border-dashed">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">{tCommon('page')}</span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
-                            >
-                                <ChevronLeft size={18} />
-                            </button>
-                            <div className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-black text-xs flex items-center shadow-lg shadow-primary/20">
-                                {page}
-                            </div>
-                            <button
-                                onClick={() => setPage(p => p + 1)}
-                                disabled={submissions.length < 50}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
-                            >
-                                <ChevronRight size={18} />
-                            </button>
-                        </div>
-                    </div>
-
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => {
                             setUserFilter('');
@@ -109,7 +86,7 @@ export default function SubmissionListPage() {
                             setLangFilter('');
                             setPage(1);
                         }}
-                        className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 items-end mt-auto"
+                        className="h-12 px-6 rounded-2xl bg-muted/30 border hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
                     >
                         <RefreshCw size={14} /> {tCommon('reset')}
                     </button>
@@ -246,6 +223,14 @@ export default function SubmissionListPage() {
                     </table>
                 </div>
             </div>
+
+            <PaginationBar
+                page={page}
+                onPageChange={setPage}
+                total={data?.total}
+                pageSize={pageSize}
+                onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+            />
         </div>
     );
 }

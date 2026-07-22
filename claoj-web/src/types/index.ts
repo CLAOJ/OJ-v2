@@ -5,6 +5,8 @@ export interface APIResponse<T> {
 
 export interface PaginatedList<T> {
     data: T[];
+    /** Total matching rows. Absent on endpoints that don't report a count. */
+    total?: number;
 }
 
 export interface Problem {

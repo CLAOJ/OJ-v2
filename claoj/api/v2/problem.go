@@ -13,6 +13,7 @@ import (
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ProblemList – GET /api/v2/problems
@@ -52,9 +53,10 @@ func ProblemList(c *gin.Context) {
 	// organization-private problems (is_public + is_organization_private) leak
 	// to every user (Django parity: Problem.get_visible_problems).
 	visExpr, visArgs := auth.VisibleProblemFilter(c)
-	q := db.DB.Preload("Group").
-		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.partial, judge_problem.is_public, judge_problem.user_count, judge_problem.ac_rate, judge_problem.group_id, judge_problem.date").
-		Where(visExpr, visArgs...)
+	// Filters are applied to a bare Model query so the same statement can be
+	// branched (via Session) into both a COUNT and the page fetch. Counting a
+	// query that carries an explicit multi-column Select produces invalid SQL.
+	q := db.DB.Model(&models.Problem{}).Where(visExpr, visArgs...)
 
 	if search != "" {
 		q = q.Where("code LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
@@ -92,14 +94,21 @@ func ProblemList(c *gin.Context) {
 		order = "asc"
 	}
 
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
 	var problems []models.Problem
-	q = q.Order("judge_problem." + dbField + " " + order).
+	if err := q.Session(&gorm.Session{}).
+		Preload("Group").
+		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.partial, judge_problem.is_public, judge_problem.user_count, judge_problem.ac_rate, judge_problem.group_id, judge_problem.date").
+		Order("judge_problem." + dbField + " " + order).
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
-		Find(&problems)
-
-	if q.Error != nil {
-		c.JSON(http.StatusInternalServerError, apiError(q.Error.Error()))
+		Find(&problems).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
 
@@ -140,7 +149,7 @@ func ProblemList(c *gin.Context) {
 			IsSolved:  solvedIDs[p.ID],
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
 // RandomProblem – GET /api/v2/problems/random

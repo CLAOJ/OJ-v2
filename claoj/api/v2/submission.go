@@ -11,6 +11,7 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 	"github.com/pmezard/go-difflib/difflib"
+	"gorm.io/gorm"
 )
 
 // SubmissionList – GET /api/v2/submissions
@@ -30,8 +31,7 @@ func SubmissionList(c *gin.Context) {
 		Joins("JOIN auth_user au ON au.id = jp.user_id").
 		Joins("JOIN judge_problem pr ON pr.id = judge_submission.problem_id").
 		Joins("JOIN judge_language l ON l.id = judge_submission.language_id").
-		Where(visExpr, visArgs...).
-		Order("judge_submission.date DESC")
+		Where(visExpr, visArgs...)
 
 	if userFilter != "" {
 		q = q.Where("au.username = ?", userFilter)
@@ -46,7 +46,12 @@ func SubmissionList(c *gin.Context) {
 		q = q.Where("l.key = ?", langFilter)
 	}
 
-	q = q.Offset((page - 1) * pageSize).Limit(pageSize)
+	// Branch the filtered statement: one COUNT for the pager, one page fetch.
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
 
 	type Row struct {
 		ID          uint      `json:"id"`
@@ -70,11 +75,12 @@ func SubmissionList(c *gin.Context) {
 		LangKey     string
 	}
 
-	q = q.Select(
-		"judge_submission.*, au.username, pr.code as problem_code, pr.name as problem_name, l.key as lang_key",
-	)
-
-	if err := q.Find(&rows).Error; err != nil {
+	if err := q.Session(&gorm.Session{}).
+		Select("judge_submission.*, au.username, pr.code as problem_code, pr.name as problem_name, l.key as lang_key").
+		Order("judge_submission.date DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
@@ -95,7 +101,7 @@ func SubmissionList(c *gin.Context) {
 			Memory:      r.Submission.Memory,
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
 // SubmissionDetail – GET /api/v2/submission/:id

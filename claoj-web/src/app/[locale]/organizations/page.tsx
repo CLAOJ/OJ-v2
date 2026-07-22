@@ -11,25 +11,25 @@ import {
     Users,
     Search,
     Building2,
-    ChevronLeft,
-    ChevronRight,
     RefreshCw,
     Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 
 export default function OrganizationsListPage() {
     const t = useTranslations('Organizations');
     const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
 
     const { data, isLoading } = useQuery({
-        queryKey: ['organizations', page, search],
+        queryKey: ['organizations', page, pageSize, search],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
-                page_size: '50',
+                page_size: pageSize.toString(),
                 search,
             });
             const res = await api.get<{ data: Organization[]; total: number }>(`/organizations?${params.toString()}`);
@@ -38,7 +38,6 @@ export default function OrganizationsListPage() {
     });
 
     const organizations = data?.data || [];
-    const total = data?.total || 0;
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700 mt-4 pb-20">
@@ -51,36 +50,13 @@ export default function OrganizationsListPage() {
                     <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
-                <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4 rounded-[2.5rem] border border-dashed">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">{tCommon('page')}</span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
-                            >
-                                <ChevronLeft size={18} />
-                            </button>
-                            <div className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-black text-xs flex items-center shadow-lg shadow-primary/20">
-                                {page}
-                            </div>
-                            <button
-                                onClick={() => setPage(p => p + 1)}
-                                disabled={organizations.length < 50}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
-                            >
-                                <ChevronRight size={18} />
-                            </button>
-                        </div>
-                    </div>
-
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => {
                             setSearch('');
                             setPage(1);
                         }}
-                        className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-auto"
+                        className="h-12 px-6 rounded-2xl bg-muted/30 border hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
                     >
                         <RefreshCw size={14} /> {tCommon('reset')}
                     </button>
@@ -164,18 +140,20 @@ export default function OrganizationsListPage() {
                 )}
             </div>
 
-            {total > 0 && (
-                <div className="text-center text-sm text-muted-foreground font-bold">
-                    {t('showingCount', { count: organizations.length, total })}
-                </div>
-            )}
-
             {!isLoading && organizations.length === 0 && (
                 <div className="text-center py-20">
                     <Building2 size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
                     <p className="text-muted-foreground font-bold">{t('noneFound')}</p>
                 </div>
             )}
+
+            <PaginationBar
+                page={page}
+                onPageChange={setPage}
+                total={data?.total}
+                pageSize={pageSize}
+                onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+            />
         </div>
     );
 }

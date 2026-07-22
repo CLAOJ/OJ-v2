@@ -13,6 +13,7 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/scoring"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // UserList – GET /api/v2/users
@@ -40,11 +41,19 @@ func UserList(c *gin.Context) {
 		orderBy = rankFields["points"]
 	}
 
-	var profiles []models.Profile
-	if err := db.DB.
-		Preload("User").
+	q := db.DB.Model(&models.Profile{}).
 		Where("judge_profile.is_unlisted = ?", false).
-		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
+		Joins("JOIN auth_user au ON au.id = judge_profile.user_id")
+
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var profiles []models.Profile
+	if err := q.Session(&gorm.Session{}).
+		Preload("User").
 		Order(orderBy).
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
@@ -76,7 +85,7 @@ func UserList(c *gin.Context) {
 			AvatarURL:          getAvatarURL(&p),
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
 // UserDetail – GET /api/v2/user/:user

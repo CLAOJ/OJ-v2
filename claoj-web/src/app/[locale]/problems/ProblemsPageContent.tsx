@@ -24,8 +24,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const TRENDING_LIMIT = 5;
 
 export default function ProblemsPageContent() {
@@ -217,27 +217,6 @@ export default function ProblemsPageContent() {
 
             {/* Main Content: Problems Table */}
             <div className="flex-grow flex flex-col gap-6 min-w-0">
-                {/* Rows-per-page selector */}
-                <div className="flex justify-end items-center gap-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{tCommon('perPage')}</span>
-                    <div className="flex gap-1 p-1 rounded-2xl bg-muted/30 border">
-                        {PAGE_SIZE_OPTIONS.map(size => (
-                            <button
-                                key={size}
-                                onClick={() => { setPageSize(size); setPage(1); }}
-                                className={cn(
-                                    "h-9 w-12 rounded-xl text-[11px] font-black transition-all",
-                                    pageSize === size
-                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                        : "text-muted-foreground hover:bg-muted"
-                                )}
-                            >
-                                {size}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
                 <div className="bg-card border rounded-[3rem] overflow-hidden shadow-sm">
                     <div className="overflow-x-auto selection:bg-primary/10">
                         <table className="w-full text-left border-collapse">
@@ -319,26 +298,15 @@ export default function ProblemsPageContent() {
                     </div>
                 </div>
 
-                {/* Simple Pagination */}
-                <div className="flex justify-center gap-4 py-8">
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-8 h-12 rounded-2xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                        {tCommon('previous')}
-                    </button>
-                    <div className="h-12 flex items-center px-6 rounded-2xl bg-primary text-primary-foreground font-black text-xs">
-                        {tCommon('page')} {page}
-                    </div>
-                    <button
-                        onClick={() => setPage(p => p + 1)}
-                        disabled={(problemData?.data.length ?? 0) < pageSize}
-                        className="px-8 h-12 rounded-2xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                        {tCommon('next')}
-                    </button>
-                </div>
+                <PaginationBar
+                    page={page}
+                    onPageChange={setPage}
+                    total={problemData?.total}
+                    pageSize={pageSize}
+                    onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+                />
+
+                <div className="pb-8" />
             </div>
         </div>
     );

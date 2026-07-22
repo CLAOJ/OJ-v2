@@ -10,16 +10,17 @@ import { useState } from 'react';
 import { Trophy, Search, TrendingUp, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRankBadgeColor, getRankTitle } from '@/lib/utils';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import { Link } from '@/navigation';
 
 export default function RatingsPageContent() {
     const t = useTranslations('Ratings');
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const limit = 50;
+    const [limit, setLimit] = useState(PAGE_SIZE_OPTIONS[1]);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['ratings-leaderboard', page, search],
+        queryKey: ['ratings-leaderboard', page, limit, search],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -31,7 +32,6 @@ export default function RatingsPageContent() {
         }
     });
 
-    const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-20 animate-in fade-in duration-700 mt-4">
@@ -182,28 +182,13 @@ export default function RatingsPageContent() {
                 )}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex justify-center gap-2">
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-6 py-3 rounded-xl font-black border bg-card disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-                    >
-                        {t('previous')}
-                    </button>
-                    <span className="px-6 py-3 rounded-xl font-black border bg-card">
-                        {page} / {totalPages}
-                    </span>
-                    <button
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="px-6 py-3 rounded-xl font-black border bg-card disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-                    >
-                        {t('next')}
-                    </button>
-                </div>
-            )}
+            <PaginationBar
+                page={page}
+                onPageChange={setPage}
+                total={data?.total}
+                pageSize={limit}
+                onPageSizeChange={size => { setLimit(size); setPage(1); }}
+            />
         </div>
     );
 }

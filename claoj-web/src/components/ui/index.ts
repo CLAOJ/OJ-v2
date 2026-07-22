@@ -16,5 +16,6 @@ export { default as CodeEditor } from './CodeEditor';
 
 // New reusable components
 export { Pagination, SimplePagination } from './Pagination';
+export { PaginationBar, PAGE_SIZE_OPTIONS } from './PaginationBar';
 export { ConfirmDialog, DeleteConfirmDialog } from './ConfirmDialog';
 export { SearchInput, AdminSearchInput } from './SearchInput';

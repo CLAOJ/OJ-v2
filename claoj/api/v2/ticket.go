@@ -53,7 +53,16 @@ func TicketList(c *gin.Context) {
 		query = query.Where("NOT EXISTS (SELECT 1 FROM judge_ticket_assignees WHERE judge_ticket_assignees.ticket_id = judge_ticket.id)")
 	}
 
-	if err := query.
+	// Count from the same filtered statement rather than a hand-rebuilt copy,
+	// which previously drifted: it never applied the `assigned` filter, so the
+	// pager over-reported pages whenever that filter was active.
+	var total int64
+	if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	if err := query.Session(&gorm.Session{}).
 		Order("time DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
@@ -61,22 +70,6 @@ func TicketList(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
-
-	// Get total count with filters
-	var total int64
-	countQuery := db.DB.Model(&models.Ticket{})
-	if !auth.HasPerm(c, "judge.change_ticket") {
-		countQuery = countQuery.Where("user_id = ?", profile.ID)
-	}
-	if search != "" {
-		countQuery = countQuery.Where("title LIKE ? OR notes LIKE ?", "%"+search+"%", "%"+search+"%")
-	}
-	if status == "open" {
-		countQuery = countQuery.Where("is_open = ?", true)
-	} else if status == "closed" {
-		countQuery = countQuery.Where("is_open = ?", false)
-	}
-	countQuery.Count(&total)
 
 	type Item struct {
 		ID           uint      `json:"id"`

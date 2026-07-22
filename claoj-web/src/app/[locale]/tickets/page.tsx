@@ -13,13 +13,12 @@ import {
     Plus,
     Search,
     Clock,
-    ChevronLeft,
-    ChevronRight,
     RefreshCw,
     AlertCircle,
     CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -32,17 +31,18 @@ export default function TicketListPage() {
     const router = useRouter();
     const { user, loading } = useAuth();
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
     const isAuthenticated = !!user;
 
     const { data, isLoading } = useQuery({
-        queryKey: ['tickets', page, search, statusFilter],
+        queryKey: ['tickets', page, pageSize, search, statusFilter],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
-                page_size: '50',
+                page_size: pageSize.toString(),
                 search,
                 status: statusFilter !== 'all' ? statusFilter : '',
             });
@@ -52,7 +52,6 @@ export default function TicketListPage() {
     });
 
     const tickets = data?.items || [];
-    const total = data?.total || 0;
 
     if (!isAuthenticated) {
         router.push('/login');
@@ -212,28 +211,13 @@ export default function TicketListPage() {
                 </div>
             )}
 
-            {/* Pagination */}
-            {total > 0 && (
-                <div className="flex justify-center gap-4">
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-6 h-12 rounded-xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                        {t('previousButton')}
-                    </button>
-                    <div className="h-12 flex items-center px-6 rounded-xl bg-primary text-primary-foreground font-black text-xs">
-                        {t('pageLabel', { page })}
-                    </div>
-                    <button
-                        onClick={() => setPage(p => p + 1)}
-                        disabled={tickets.length < 50}
-                        className="px-6 h-12 rounded-xl bg-card border font-black text-xs uppercase tracking-widest transition-all hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                        {t('nextButton')}
-                    </button>
-                </div>
-            )}
+            <PaginationBar
+                page={page}
+                onPageChange={setPage}
+                total={data?.total}
+                pageSize={pageSize}
+                onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+            />
         </div>
     );
 }

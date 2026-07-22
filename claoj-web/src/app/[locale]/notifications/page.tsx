@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { Bell, Check, Trash2, Loader2, Inbox } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -23,8 +24,8 @@ export default function NotificationsPage() {
     const t = useTranslations('Notification');
     const [filter, setFilter] = useState('all');
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const queryClient = useQueryClient();
-    const pageSize = 20;
 
     const NOTIFICATION_TYPES = [
         { value: 'all', label: t('filterAll') },
@@ -43,7 +44,7 @@ export default function NotificationsPage() {
 
     // Fetch notifications
     const { data, isLoading } = useQuery({
-        queryKey: ['notifications', 'list', filter, page],
+        queryKey: ['notifications', 'list', filter, page, pageSize],
         queryFn: async () => {
             let url = `/notifications?page=${page}&page_size=${pageSize}`;
             if (filter === 'unread') {
@@ -85,7 +86,6 @@ export default function NotificationsPage() {
     });
 
     const notifications: Notification[] = data?.results || [];
-    const totalPages = data?.total_pages || 1;
 
     const getNotificationIcon = (type: string) => {
         switch (type) {
@@ -246,28 +246,13 @@ export default function NotificationsPage() {
                 )}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-4">
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-4 py-2 rounded-xl border font-bold hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                        {t('previous')}
-                    </button>
-                    <span className="px-4 py-2 font-medium text-muted-foreground">
-                        {t('pageOf', { page, totalPages })}
-                    </span>
-                    <button
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="px-4 py-2 rounded-xl border font-bold hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                        {t('next')}
-                    </button>
-                </div>
-            )}
+            <PaginationBar
+                page={page}
+                onPageChange={setPage}
+                total={data?.total}
+                pageSize={pageSize}
+                onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+            />
         </div>
     );
 }

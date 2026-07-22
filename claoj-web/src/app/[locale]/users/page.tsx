@@ -14,13 +14,10 @@ import {
     Trophy,
     TrendingUp,
     ThumbsUp,
-    ChevronLeft,
-    ChevronRight,
     RefreshCw
 } from 'lucide-react';
 import { cn, getRankColor } from '@/lib/utils';
-
-const PAGE_SIZE = 50;
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 
 type RankBy = 'points' | 'rating' | 'contribution';
 
@@ -34,17 +31,18 @@ export default function UsersListPage() {
     const t = useTranslations('Users');
     const tCommon = useTranslations('Common');
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
     const [rankBy, setRankBy] = useState<RankBy>('points');
 
     // Rankings are always highest-first server-side; only `search` is applied
     // client-side, over the current page.
     const { data, isLoading } = useQuery({
-        queryKey: ['users', page, rankBy],
+        queryKey: ['users', page, pageSize, rankBy],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
-                page_size: PAGE_SIZE.toString(),
+                page_size: pageSize.toString(),
                 sort: rankBy,
             });
             const res = await api.get<PaginatedList<UserListItem>>(`/users?${params.toString()}`);
@@ -55,7 +53,7 @@ export default function UsersListPage() {
     const fetchedUsers = data?.data || [];
     // Keep the server-assigned rank even when the search box narrows the list.
     const users = fetchedUsers
-        .map((user, index) => ({ user, rank: (page - 1) * PAGE_SIZE + index + 1 }))
+        .map((user, index) => ({ user, rank: (page - 1) * pageSize + index + 1 }))
         .filter(({ user }) =>
             !search ||
             user.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -78,37 +76,14 @@ export default function UsersListPage() {
                     <p className="text-muted-foreground font-black opacity-80">{t('subtitle')}</p>
                 </header>
 
-                <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4 rounded-[2.5rem] border border-dashed">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">{tCommon('page')}</span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
-                            >
-                                <ChevronLeft size={18} />
-                            </button>
-                            <div className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-black text-xs flex items-center shadow-lg shadow-primary/20">
-                                {page}
-                            </div>
-                            <button
-                                onClick={() => setPage(p => p + 1)}
-                                disabled={fetchedUsers.length < PAGE_SIZE}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-20 transition-all"
-                            >
-                                <ChevronRight size={18} />
-                            </button>
-                        </div>
-                    </div>
-
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => {
                             setSearch('');
                             setRankBy('points');
                             setPage(1);
                         }}
-                        className="h-10 px-6 rounded-xl bg-muted/50 hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-auto"
+                        className="h-12 px-6 rounded-2xl bg-muted/30 border hover:bg-muted font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
                     >
                         <RefreshCw size={14} /> {tCommon('reset')}
                     </button>
@@ -223,11 +198,13 @@ export default function UsersListPage() {
                 </div>
             </div>
 
-            {users.length > 0 && (
-                <div className="text-center text-sm text-muted-foreground font-bold">
-                    {t('showingUsers', { count: users.length })}
-                </div>
-            )}
+            <PaginationBar
+                page={page}
+                onPageChange={setPage}
+                total={data?.total}
+                pageSize={pageSize}
+                onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+            />
         </div>
     );
 }
