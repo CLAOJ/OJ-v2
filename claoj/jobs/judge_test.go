@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -105,6 +106,7 @@ func TestEnqueueJudgeSubmission_QueueTaskIDAndPayload(t *testing.T) {
 	assert.Equal(t, "judge", optValue(s.enqueues[0], asynq.QueueOpt))
 	assert.Equal(t, "sub-7", optValue(s.enqueues[0], asynq.TaskIDOpt))
 	assert.Equal(t, 2, optValue(s.enqueues[0], asynq.MaxRetryOpt))
+	assert.Equal(t, 30*time.Minute, optValue(s.enqueues[0], asynq.TimeoutOpt))
 
 	var payload map[string]interface{}
 	require.NoError(t, json.Unmarshal(s.payloads[0], &payload))
@@ -155,6 +157,19 @@ func TestEnqueueJudgeSubmission_ConflictButTaskGoneRequeues(t *testing.T) {
 	assert.Len(t, s.enqueues, 2)
 }
 
+func TestEnqueueJudgeSubmission_LookupFailureIsPropagated(t *testing.T) {
+	setupJudgeDB(t)
+	s := useStubQueue(t)
+	s.enqErrs = []error{asynq.ErrTaskIDConflict}
+	s.infoErr = errors.New("redis down")
+
+	err := EnqueueJudgeSubmission(7)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, s.infoErr)
+	assert.Len(t, s.enqueues, 1) // no second enqueue after the failed lookup
+	assert.Empty(t, s.deleted)
+}
+
 func TestAbortJudgeSubmission(t *testing.T) {
 	t.Run("pending is deleted", func(t *testing.T) {
 		s := useStubQueue(t)
@@ -173,6 +188,13 @@ func TestAbortJudgeSubmission(t *testing.T) {
 	t.Run("unknown task is a no-op", func(t *testing.T) {
 		s := useStubQueue(t)
 		s.infoErr = asynq.ErrTaskNotFound
+		require.NoError(t, AbortJudgeSubmission(7))
+		assert.Empty(t, s.deleted)
+		assert.Empty(t, s.cancelled)
+	})
+	t.Run("missing queue is a no-op", func(t *testing.T) {
+		s := useStubQueue(t)
+		s.infoErr = asynq.ErrQueueNotFound
 		require.NoError(t, AbortJudgeSubmission(7))
 		assert.Empty(t, s.deleted)
 		assert.Empty(t, s.cancelled)
