@@ -26,6 +26,7 @@ func readSecretFromFile(filePath string) string {
 // Config holds all application configuration.
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
+	Judge    JudgeConfig    `mapstructure:"judge"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	App      AppConfig      `mapstructure:"app"`
@@ -36,6 +37,12 @@ type Config struct {
 type ServerConfig struct {
 	Port string `mapstructure:"port"`
 	Mode string `mapstructure:"mode"` // gin mode: debug | release
+}
+
+type JudgeConfig struct {
+	// Name of the judge_judge row all v2 judge agents share; its online/load
+	// columns are kept in sync from asynq heartbeats. Empty = don't sync.
+	Name string `mapstructure:"name"`
 }
 
 type DatabaseConfig struct {
@@ -115,6 +122,7 @@ func Load() {
 	v.SetDefault("server.port", "8081")
 	v.SetDefault("server.mode", "debug")
 	v.SetDefault("database.dsn", "")
+	v.SetDefault("judge.name", "")
 	v.SetDefault("redis.addr", "127.0.0.1:6379")
 	v.SetDefault("redis.password", "")
 	v.SetDefault("redis.db", 0)
@@ -159,6 +167,7 @@ func Load() {
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
 	v.BindEnv("app.v1_media_root", "V1_MEDIA_ROOT", "CLAOJ_APP_V1_MEDIA_ROOT")
+	v.BindEnv("judge.name", "JUDGE_NAME", "CLAOJ_JUDGE_NAME")
 
 	// Email
 	v.BindEnv("email.smtp_host", "SMTP_HOST", "CLAOJ_SMTP_HOST")
