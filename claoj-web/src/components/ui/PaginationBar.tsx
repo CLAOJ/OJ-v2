@@ -65,24 +65,24 @@ export function PaginationBar({
     return (
         <div
             className={cn(
-                'flex flex-col-reverse sm:flex-row items-center justify-between gap-4 px-6 py-5 rounded-[2rem] bg-card border',
+                'flex flex-col-reverse sm:flex-row items-center justify-between gap-4 px-6 py-5 rounded-md bg-card border',
                 className
             )}
         >
             {onPageSizeChange ? (
                 <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    <span className="text-xs font-medium text-muted-foreground">
                         {t('perPage')}
                     </span>
-                    <div className="flex gap-1 p-1 rounded-2xl bg-muted/30 border">
+                    <div className="flex gap-1 p-1 rounded-md bg-muted/30 border">
                         {pageSizeOptions.map(size => (
                             <button
                                 key={size}
                                 onClick={() => onPageSizeChange(size)}
                                 className={cn(
-                                    'h-9 w-12 rounded-xl text-[11px] font-black transition-all',
+                                    'h-9 w-12 rounded-xl text-[11px] font-medium transition-all',
                                     pageSize === size
-                                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                        ? 'bg-primary text-primary-foreground'
                                         : 'text-muted-foreground hover:bg-muted'
                                 )}
                             >
@@ -112,9 +112,9 @@ export function PaginationBar({
                             onClick={() => onPageChange(pageNum)}
                             aria-current={page === pageNum ? 'page' : undefined}
                             className={cn(
-                                'min-w-10 h-10 px-3 rounded-xl text-xs font-black transition-all',
+                                'min-w-10 h-10 px-3 rounded-xl text-xs font-medium transition-all',
                                 page === pageNum
-                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                    ? 'bg-primary text-primary-foreground'
                                     : 'bg-muted/30 border hover:bg-muted text-muted-foreground'
                             )}
                         >
@@ -122,7 +122,7 @@ export function PaginationBar({
                         </button>
                     ))
                 ) : (
-                    <div className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-black text-xs flex items-center shadow-lg shadow-primary/20">
+                    <div className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-medium text-xs flex items-center">
                         {t('page')} {page}
                     </div>
                 )}
@@ -138,12 +138,12 @@ export function PaginationBar({
             </div>
 
             {knowsTotal ? (
-                <div className="text-[11px] font-bold text-muted-foreground">
+                <div className="text-[11px] font-medium text-muted-foreground">
                     {t.rich('paginationShowing', {
                         from: firstItem,
                         to: lastItem,
                         total,
-                        b: chunks => <span className="font-black text-foreground">{chunks}</span>,
+                        b: chunks => <span className="font-medium text-foreground">{chunks}</span>,
                     })}
                 </div>
             ) : (

@@ -23,7 +23,7 @@ describe('Input Component', () => {
         render(<Input />);
         const input = screen.getByRole('textbox');
         expect(input).toHaveClass('flex');
-        expect(input).toHaveClass('h-10');
+        expect(input).toHaveClass('h-9');
         expect(input).toHaveClass('rounded-md');
         expect(input).toHaveClass('border');
     });

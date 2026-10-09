@@ -18,7 +18,7 @@ describe('Button Component', () => {
         const { container } = render(<Button>Test</Button>);
         const button = container.firstChild as HTMLElement;
         expect(button).toHaveClass('bg-primary');
-        expect(button).toHaveClass('h-10');
+        expect(button).toHaveClass('h-9');
     });
 
     it('applies variant variants', () => {
@@ -49,13 +49,13 @@ describe('Button Component', () => {
 
     it('applies size variants', () => {
         const { rerender } = render(<Button size="sm">Small</Button>);
-        expect(screen.getByRole('button')).toHaveClass('h-9');
+        expect(screen.getByRole('button')).toHaveClass('h-8');
 
         rerender(<Button size="lg">Large</Button>);
-        expect(screen.getByRole('button')).toHaveClass('h-11');
+        expect(screen.getByRole('button')).toHaveClass('h-10');
 
         rerender(<Button size="icon">Icon</Button>);
-        expect(screen.getByRole('button')).toHaveClass('h-10 w-10');
+        expect(screen.getByRole('button')).toHaveClass('h-9 w-9');
     });
 
     it('applies loading state', () => {
@@ -128,7 +128,7 @@ describe('buttonVariants function', () => {
     it('returns correct class string for default variant', () => {
         const result = buttonVariants({ variant: 'default', size: 'default' });
         expect(result).toContain('bg-primary');
-        expect(result).toContain('h-10');
+        expect(result).toContain('h-9');
     });
 
     it('returns correct class string for destructive variant', () => {
@@ -144,7 +144,7 @@ describe('buttonVariants function', () => {
     it('combines multiple variants', () => {
         const result = buttonVariants({ variant: 'outline', size: 'lg', loading: true });
         expect(result).toContain('border');
-        expect(result).toContain('h-11');
+        expect(result).toContain('h-10');
         expect(result).toContain('pointer-events-none');
     });
 });

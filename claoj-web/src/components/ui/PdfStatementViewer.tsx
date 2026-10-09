@@ -62,15 +62,15 @@ export default function PdfStatementViewer({ code, variant = 'inline' }: PdfStat
 
     if (status === 'error') {
         return (
-            <div className="bg-card border rounded-3xl shadow-sm">
-                <div className="flex flex-col items-center justify-center gap-4 p-10 text-center">
+            <div className="bg-card border rounded-md shadow-sm">
+                <div className="flex flex-col items-center justify-center gap-4 p-4 text-center">
                     <FileText size={40} className="text-red-500" />
                     <p className="text-sm text-muted-foreground">{t('pdfViewer.error')}</p>
                     <div className="flex items-center gap-2">
-                        <a href={downloadUrl} download className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-bold text-sm">
+                        <a href={downloadUrl} download className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm">
                             <Download size={16} /> {t('pdfViewer.download')}
                         </a>
-                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 border rounded-lg font-bold text-sm">
+                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 border rounded-lg font-medium text-sm">
                             <ArrowUpRight size={16} /> {t('pdfViewer.openNewTab')}
                         </a>
                     </div>
@@ -80,9 +80,9 @@ export default function PdfStatementViewer({ code, variant = 'inline' }: PdfStat
     }
 
     return (
-        <div className={`bg-card border rounded-3xl shadow-sm overflow-hidden flex flex-col ${variant === 'modal' ? 'h-full' : ''}`}>
+        <div className={`bg-card border rounded-md shadow-sm overflow-hidden flex flex-col ${variant === 'modal' ? 'h-full' : ''}`}>
             <div className="flex items-center justify-between gap-2 border-b p-3">
-                <span className="text-xs font-bold text-muted-foreground">
+                <span className="text-xs font-medium text-muted-foreground">
                     {status === 'ready' ? t('pdfViewer.pageCount', { count: numPages }) : t('pdfViewer.loading')}
                 </span>
                 <div className="flex items-center gap-1">
