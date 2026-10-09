@@ -34,16 +34,16 @@ export default function RatingsPageContent() {
 
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-20 animate-in fade-in duration-700 mt-4">
+        <div className="max-w-7xl mx-auto space-y-4 pb-20 mt-4">
             {/* Header */}
-            <div className="relative overflow-hidden rounded-[3rem] border bg-card shadow-2xl shadow-primary/5">
+            <div className="relative overflow-hidden rounded-md border bg-card">
                 <div className="absolute top-0 right-0 p-16 opacity-5 pointer-events-none rotate-12">
                     <Trophy size={240} className="text-primary" />
                 </div>
 
-                <div className="p-10 md:p-14 space-y-6 relative">
+                <div className="p-4 md:p-6 space-y-6 relative">
                     <div className="space-y-4">
-                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+                        <h1 className="text-4xl md:text-6xl font-semibold tracking-tighter leading-none">
                             {t('title')}
                         </h1>
                         <p className="text-lg font-medium text-muted-foreground max-w-2xl">
@@ -53,9 +53,9 @@ export default function RatingsPageContent() {
 
                     {/* Stats */}
                     <div className="flex flex-wrap gap-4 pt-4">
-                        <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-primary/5 border border-primary/20">
+                        <div className="flex items-center gap-3 px-6 py-3 rounded-md bg-primary/5 border border-primary/20">
                             <Users size={20} className="text-primary" />
-                            <span className="text-sm font-black">
+                            <span className="text-sm font-medium">
                                 {data?.total ?? 0} {t('ratedUsers')}
                             </span>
                         </div>
@@ -75,30 +75,30 @@ export default function RatingsPageContent() {
                             setSearch(e.target.value);
                             setPage(1);
                         }}
-                        className="w-full pl-12 pr-4 py-4 rounded-2xl border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                        className="w-full pl-12 pr-4 py-4 rounded-md border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
                     />
                 </div>
             </div>
 
             {/* Leaderboard Table */}
-            <div className="rounded-[3rem] border bg-card shadow-2xl shadow-primary/5 overflow-hidden">
+            <div className="rounded-md border bg-card overflow-hidden">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-muted/30 border-b">
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">
+                                <th className="px-10 py-6 text-xs font-medium text-muted-foreground w-20 text-center">
                                     {t('rank')}
                                 </th>
-                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                                <th className="px-8 py-6 text-xs font-medium text-muted-foreground">
                                     {t('user')}
                                 </th>
-                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">
+                                <th className="px-8 py-6 text-xs font-medium text-muted-foreground text-center">
                                     {t('rating')}
                                 </th>
-                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">
+                                <th className="px-8 py-6 text-xs font-medium text-muted-foreground text-center w-32">
                                     {t('contests')}
                                 </th>
-                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">
+                                <th className="px-8 py-6 text-xs font-medium text-muted-foreground text-center w-32">
                                     {t('highest')}
                                 </th>
                             </tr>
@@ -110,7 +110,7 @@ export default function RatingsPageContent() {
                                         <div className="flex items-center justify-center gap-2">
                                             {entry.rank === 1 && <Trophy size={16} className="text-amber-500" />}
                                             <span className={cn(
-                                                "inline-flex items-center justify-center w-8 h-8 rounded-xl font-black text-sm",
+                                                "inline-flex items-center justify-center w-8 h-8 rounded-xl font-medium text-sm",
                                                 entry.rank === 1 ? "bg-amber-500 text-white" :
                                                     entry.rank === 2 ? "bg-zinc-400 text-white" :
                                                         entry.rank === 3 ? "bg-orange-600 text-white" :
@@ -127,7 +127,7 @@ export default function RatingsPageContent() {
                                                 alt={entry.username}
                                                 className="w-10 h-10 rounded-full border-2 border-muted"
                                             />
-                                            <span className="font-black text-base hover:text-primary transition-colors">
+                                            <span className="font-medium text-base hover:text-primary transition-colors">
                                                 {entry.username}
                                             </span>
                                         </Link>
@@ -135,26 +135,26 @@ export default function RatingsPageContent() {
                                     <td className="px-8 py-6 text-center">
                                         <div className="flex flex-col items-center gap-1">
                                             <span className={cn(
-                                                "text-xs font-black px-3 py-1 rounded-md",
+                                                "text-xs font-medium px-3 py-1 rounded-md",
                                                 getRankBadgeColor(entry.rating),
                                                 "text-white"
                                             )}>
                                                 {entry.rating}
                                             </span>
-                                            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                                            <span className="text-xs text-muted-foreground font-medium ">
                                                 {getRankTitle(entry.rating)}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-center">
-                                        <div className="flex items-center justify-center gap-2 text-sm font-black">
+                                        <div className="flex items-center justify-center gap-2 text-sm font-medium">
                                             <TrendingUp size={14} className="text-muted-foreground" />
                                             {entry.contests_attended}
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-center">
                                         <span className={cn(
-                                            "text-xs font-black px-2 py-0.5 rounded-md",
+                                            "text-xs font-medium px-2 py-0.5 rounded-md",
                                             getRankBadgeColor(entry.highest_rating),
                                             "text-white"
                                         )}>
@@ -169,15 +169,15 @@ export default function RatingsPageContent() {
 
                 {isLoading && (
                     <div className="p-24 space-y-4">
-                        <Skeleton className="h-20 w-full rounded-2xl" />
-                        <Skeleton className="h-20 w-full rounded-2xl opacity-60" />
-                        <Skeleton className="h-20 w-full rounded-2xl opacity-30" />
+                        <Skeleton className="h-20 w-full rounded-md" />
+                        <Skeleton className="h-20 w-full rounded-md opacity-60" />
+                        <Skeleton className="h-20 w-full rounded-md opacity-30" />
                     </div>
                 )}
 
                 {!isLoading && data?.data.length === 0 && (
                     <div className="p-24 text-center text-muted-foreground">
-                        <p className="text-lg font-black">{t('noResults')}</p>
+                        <p className="text-lg font-semibold">{t('noResults')}</p>
                     </div>
                 )}
             </div>

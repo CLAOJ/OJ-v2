@@ -126,32 +126,32 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         }
     }, [ranking, status, activeTab]);
 
-    if (isFetching) return <div className="p-8 max-w-7xl mx-auto"><Skeleton className="h-[60vh] w-full rounded-[3rem]" /></div>;
+    if (isFetching) return <div className="p-8 max-w-7xl mx-auto"><Skeleton className="h-[60vh] w-full rounded-md" /></div>;
     if (!contest) return <div className="p-8 text-center text-muted-foreground">{t('notFound')}</div>;
 
     const isRunning = dayjs().isAfter(contest.start_time) && dayjs().isBefore(contest.end_time);
     const isPast = dayjs().isAfter(contest.end_time);
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-20 animate-in fade-in duration-700 mt-4">
+        <div className="max-w-7xl mx-auto space-y-4 pb-20 mt-4">
             {/* Contest Header */}
-            <div className="relative overflow-hidden rounded-[3rem] border bg-card shadow-2xl shadow-primary/5">
+            <div className="relative overflow-hidden rounded-md border bg-card">
                 <div className="absolute top-0 right-0 p-16 opacity-5 pointer-events-none rotate-12">
                     <Trophy size={240} className="text-primary" />
                 </div>
 
-                <div className="p-10 md:p-14 md:pb-8 space-y-8 relative">
+                <div className="p-4 md:p-6 md:pb-4 space-y-4 relative">
                     <div className="space-y-4">
                         <div className="flex flex-wrap items-center gap-4">
-                            <Badge variant="outline" className="px-4 py-1.5 rounded-full border-primary/20 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest shadow-sm">
+                            <Badge variant="outline" className="px-4 py-1.5 rounded border-primary/20 bg-primary/5 text-primary text-xs font-medium shadow-sm">
                                 {t('formatBadge', { format: contest.format ?? '' })}
                             </Badge>
-                            <div className="flex items-center gap-2 text-xs font-black text-muted-foreground bg-muted/30 px-4 py-1.5 rounded-full border border-dashed tracking-wide">
+                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/30 px-4 py-1.5 rounded border border-dashed tracking-wide">
                                 <Clock size={14} className="text-primary" />
                                 {timeLeft}
                             </div>
                         </div>
-                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+                        <h1 className="text-4xl md:text-6xl font-semibold tracking-tighter leading-none">
                             {contest.name}
                         </h1>
                     </div>
@@ -162,25 +162,25 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 onClick={() => requireAuth(() => joinContest(), tAuth('loginToJoinContest'))}
                                 disabled={isJoining || contest.is_joined}
                                 className={cn(
-                                    "px-10 h-14 rounded-2xl font-black transition-all shadow-xl flex items-center gap-3",
+                                    "px-4 h-10 rounded-md font-medium transition-all flex items-center gap-3",
                                     contest.is_joined
                                         ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default"
-                                        : "bg-primary text-primary-foreground hover:scale-[1.02] active:scale-95 shadow-primary/20"
+                                        : "bg-primary text-primary-foreground "
                                 )}
                             >
                                 {contest.is_joined ? <CheckCircle2 size={20} /> : <Play size={20} fill="currentColor" />}
                                 {contest.is_joined ? t('participating') : t('joinContest')}
                             </button>
                         )}
-                        <div className="flex items-center gap-2 px-6 h-14 rounded-2xl bg-card border font-black text-sm shadow-sm group">
-                            <BarChart3 size={18} className="text-primary group-hover:scale-110 transition-transform" />
+                        <div className="flex items-center gap-2 px-6 h-10 rounded-md bg-card border font-medium text-sm shadow-sm group">
+                            <BarChart3 size={18} className="text-muted-foreground" />
                             {contest.is_rated ? t('rated') : t('unrated')}
                         </div>
                     </div>
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="px-10 md:px-14 border-t bg-muted/10">
+                <div className="px-4 md:px-6 border-t bg-muted/10">
                     <div className="flex gap-10 overflow-x-auto no-scrollbar whitespace-nowrap">
                         {[
                             { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, href: null },
@@ -192,7 +192,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 key={tab.id}
                                 onClick={() => tab.href ? window.location.href = tab.href : setActiveTab(tab.id as any)}
                                 className={cn(
-                                    "relative py-6 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-all cursor-pointer",
+                                    "relative py-6 text-xs font-medium flex items-center gap-3 transition-all cursor-pointer",
                                     activeTab === tab.id ? "text-primary scale-105" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
@@ -215,17 +215,17 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.98 }}
-                        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+                        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
                     >
-                        <div className="lg:col-span-2 space-y-8">
-                            <section className="p-10 rounded-[3rem] border bg-card shadow-sm space-y-8 min-h-[40vh]">
+                        <div className="lg:col-span-2 space-y-4">
+                            <section className="p-4 rounded-md border bg-card shadow-sm space-y-4 min-h-[40vh]">
                                 <div className="space-y-4">
-                                    <h2 className="text-3xl font-black tracking-tight">{t('dashboard')}</h2>
+                                    <h2 className="text-3xl font-semibold tracking-tight">{t('dashboard')}</h2>
                                     <div className="h-1.5 w-20 bg-primary rounded-full" />
                                 </div>
 
                                 {contest.summary && (
-                                    <div className="bg-muted/30 border border-dashed rounded-[2rem] p-8 text-sm font-medium leading-relaxed italic text-muted-foreground">
+                                    <div className="bg-muted/30 border border-dashed rounded-md p-4 text-sm font-medium leading-relaxed italic text-muted-foreground">
                                         {contest.summary}
                                     </div>
                                 )}
@@ -235,25 +235,25 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 </div>
                             </section>
 
-                            <section className="pt-10">
+                            <section className="pt-4">
                                 <Comments page={`c/${key}`} />
                             </section>
                         </div>
 
                         <div className="space-y-6">
-                            <section className="p-8 rounded-[3rem] border bg-card shadow-sm space-y-8">
-                                <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-3">
+                            <section className="p-4 rounded-md border bg-card shadow-sm space-y-4">
+                                <h3 className="text-xs font-semibold text-primary flex items-center gap-3">
                                     <Info size={16} />
                                     {t('rulesAndFormat')}
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{t('contestSystem')}</p>
-                                        <p className="text-sm font-black">{contest.format} (DMOJ)</p>
+                                        <p className="text-xs font-medium text-muted-foreground ">{t('contestSystem')}</p>
+                                        <p className="text-sm font-medium">{contest.format} (DMOJ)</p>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{t('timeConstraint')}</p>
-                                        <p className="text-sm font-black">{contest.time_limit ? t('minutesCount', { count: contest.time_limit / 60 }) : t('infiniteWindow')}</p>
+                                        <p className="text-xs font-medium text-muted-foreground ">{t('timeConstraint')}</p>
+                                        <p className="text-sm font-medium">{contest.time_limit ? t('minutesCount', { count: contest.time_limit / 60 }) : t('infiniteWindow')}</p>
                                     </div>
                                     <div className="pt-4 border-t space-y-4">
                                         <div className="flex items-center justify-between text-xs font-bold">
@@ -268,21 +268,21 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 </div>
                             </section>
 
-                            <section className="p-8 rounded-[3rem] bg-zinc-900 text-zinc-100 border border-zinc-800 shadow-xl space-y-8">
-                                <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-3">
+                            <section className="p-4 rounded-md bg-zinc-900 text-zinc-100 border border-zinc-800 space-y-4">
+                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-3">
                                     <Clock size={16} />
                                     {t('timeline')}
                                 </h3>
                                 <div className="space-y-6 relative pl-4 border-l border-zinc-700">
                                     <div className="relative">
                                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{t('startTime')}</p>
-                                        <p className="text-sm font-black">{dayjs(contest.start_time).format('HH:mm, DD MMM YYYY')}</p>
+                                        <p className="text-xs font-medium text-zinc-500 ">{t('startTime')}</p>
+                                        <p className="text-sm font-medium">{dayjs(contest.start_time).format('HH:mm, DD MMM YYYY')}</p>
                                     </div>
                                     <div className="relative">
                                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-rose-500" />
-                                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{t('endTime')}</p>
-                                        <p className="text-sm font-black">{dayjs(contest.end_time).format('HH:mm, DD MMM YYYY')}</p>
+                                        <p className="text-xs font-medium text-zinc-500 ">{t('endTime')}</p>
+                                        <p className="text-sm font-medium">{dayjs(contest.end_time).format('HH:mm, DD MMM YYYY')}</p>
                                     </div>
                                 </div>
                             </section>
@@ -299,22 +299,22 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                         className="space-y-4"
                     >
                         {contest.problems.length > 0 ? (
-                            <div className="bg-card border rounded-[3rem] overflow-hidden shadow-sm">
+                            <div className="bg-card border rounded-md overflow-hidden shadow-sm">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-muted/30 border-b">
-                                            <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-24 text-center">#</th>
-                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('problem')}</th>
-                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{tCommon('status')}</th>
-                                            <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{t('points')}</th>
-                                            <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{t('acRate')}</th>
+                                            <th className="px-10 py-6 text-xs font-medium text-muted-foreground w-24 text-center">#</th>
+                                            <th className="px-6 py-6 text-xs font-medium text-muted-foreground">{t('problem')}</th>
+                                            <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-32">{tCommon('status')}</th>
+                                            <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-32">{t('points')}</th>
+                                            <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center w-32">{t('acRate')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
                                         {contest.problems.map((prob, idx) => (
                                             <tr key={prob.code} className="group hover:bg-muted/10 transition-colors">
                                                 <td className="px-10 py-6 text-center">
-                                                    <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center font-black text-sm text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                    <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center font-medium text-sm text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                                                         {String.fromCharCode(65 + idx)}
                                                     </div>
                                                 </td>
@@ -323,8 +323,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                         href={`/problem/${prob.code}?contest=${key}`}
                                                         className="block space-y-1 outline-none"
                                                     >
-                                                        <h4 className="text-lg font-black group-hover:text-primary transition-colors">{prob.name}</h4>
-                                                        <div className="text-[10px] font-mono font-bold text-muted-foreground uppercase opacity-50">{prob.code}</div>
+                                                        <h4 className="text-lg font-semibold group-hover:text-primary transition-colors">{prob.name}</h4>
+                                                        <div className="text-xs font-mono font-bold text-muted-foreground opacity-50">{prob.code}</div>
                                                     </Link>
                                                 </td>
                                                 <td className="px-6 py-6 text-center">
@@ -339,11 +339,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-6 text-center">
-                                                    <span className="text-sm font-black">{prob.points}</span>
+                                                    <span className="text-sm font-medium">{prob.points}</span>
                                                 </td>
                                                 <td className="px-10 py-6 text-center">
                                                     <div className="flex flex-col items-center gap-1.5">
-                                                        <span className="text-xs font-black">{Math.round(prob.ac_rate)}%</span>
+                                                        <span className="text-xs font-medium">{Math.round(prob.ac_rate)}%</span>
                                                         <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
                                                             <div className="h-full bg-primary" style={{ width: `${prob.ac_rate}%` }} />
                                                         </div>
@@ -355,10 +355,10 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 </table>
                             </div>
                         ) : (
-                            <div className="p-24 text-center rounded-[3rem] border border-dashed bg-card flex flex-col items-center gap-4">
+                            <div className="p-24 text-center rounded-md border border-dashed bg-card flex flex-col items-center gap-4">
                                 <Lock size={64} className="text-primary opacity-10 animate-pulse" />
                                 <div className="space-y-1">
-                                    <p className="text-lg font-black tracking-tight">{t('accessRestricted')}</p>
+                                    <p className="text-lg font-semibold tracking-tight">{t('accessRestricted')}</p>
                                     <p className="text-sm font-medium text-muted-foreground">{t('problemsVisibleAfterStart')}</p>
                                 </div>
                             </div>
@@ -372,24 +372,24 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="rounded-[3rem] border bg-card shadow-2xl shadow-primary/5 overflow-hidden"
+                        className="rounded-md border bg-card overflow-hidden"
                     >
                         {/* Scoreboard Header with Live Indicator */}
-                        <div className="flex items-center justify-between px-8 py-4 border-b bg-muted/30">
+                        <div className="flex items-center justify-between px-4 py-4 border-b bg-muted/30">
                             <div className="flex items-center gap-3">
                                 <BarChart3 size={20} className="text-primary" />
-                                <h3 className="text-sm font-black uppercase tracking-widest">{t('scoreboard')}</h3>
+                                <h3 className="text-sm font-semibold ">{t('scoreboard')}</h3>
                             </div>
                             <div className="flex items-center gap-2">
                                 {isRunning && status === 'connected' && (
-                                    <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold animate-pulse">
+                                    <span className="flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-500 text-xs font-medium animate-pulse">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                         <Wifi size={14} />
                                         <span className="hidden sm:inline">{t('live')}</span>
                                     </span>
                                 )}
                                 {lastLiveUpdate && (
-                                    <span className="text-[10px] text-muted-foreground font-medium">
+                                    <span className="text-xs text-muted-foreground font-medium">
                                         {t('updatedAgo', { time: dayjs(lastLiveUpdate).fromNow() })}
                                     </span>
                                 )}
@@ -399,16 +399,16 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-muted/30 border-b">
-                                        <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground w-20 text-center">{t('rank')}</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('competitor')}</th>
-                                        <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-24">{t('rating')}</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('total')}</th>
+                                        <th className="px-10 py-6 text-xs font-medium text-muted-foreground w-20 text-center">{t('rank')}</th>
+                                        <th className="px-8 py-6 text-xs font-medium text-muted-foreground">{t('competitor')}</th>
+                                        <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-24">{t('rating')}</th>
+                                        <th className="px-8 py-6 text-xs font-medium text-muted-foreground text-center">{t('total')}</th>
                                         {ranking?.problems.map((p, i) => (
-                                            <th key={i} className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center w-28">
+                                            <th key={i} className="px-4 py-6 text-xs font-medium text-muted-foreground text-center w-28">
                                                 {p.label}
                                             </th>
                                         ))}
-                                        <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('window')}</th>
+                                        <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center">{t('window')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/50">
@@ -416,7 +416,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                         <tr key={row.username} className="hover:bg-muted/5 transition-colors">
                                             <td className="px-10 py-8 text-center">
                                                 <span className={cn(
-                                                    "inline-flex items-center justify-center w-9 h-9 rounded-xl font-black text-sm",
+                                                    "inline-flex items-center justify-center w-9 h-9 rounded-xl font-medium text-sm",
                                                     row.rank === 1 ? "bg-amber-500 text-white shadow-[0_5px_15px_rgba(245,158,11,0.4)]" :
                                                         row.rank === 2 ? "bg-zinc-400 text-white" :
                                                             row.rank === 3 ? "bg-orange-600 text-white" :
@@ -426,7 +426,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                 </span>
                                             </td>
                                             <td className="px-8 py-8">
-                                                <Link href={`/user/${row.username}`} className="font-black text-base hover:text-primary transition-colors">
+                                                <Link href={`/user/${row.username}`} className="font-medium text-base hover:text-primary transition-colors">
                                                     {row.username}
                                                 </Link>
                                             </td>
@@ -435,7 +435,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                     {row.rating ? (
                                                         <>
                                                             <span className={cn(
-                                                                "text-xs font-black px-2 py-0.5 rounded-md",
+                                                                "text-xs font-medium px-2 py-0.5 rounded-md",
                                                                 getRankBadgeColor(row.rating),
                                                                 "text-white"
                                                             )}>
@@ -443,7 +443,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                             </span>
                                                             {row.rating_change !== undefined && row.rating_change !== null && (
                                                                 <span className={cn(
-                                                                    "text-[10px] font-black",
+                                                                    "text-xs font-medium",
                                                                     getRatingChangeColor(row.rating_change)
                                                                 )}>
                                                                     {formatRatingChange(row.rating_change)}
@@ -451,11 +451,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground font-black">{tCommon('notAvailable')}</span>
+                                                        <span className="text-xs text-muted-foreground font-medium">{tCommon('notAvailable')}</span>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-8 text-center font-black text-primary text-xl tracking-tighter">
+                                            <td className="px-8 py-8 text-center font-semibold text-primary text-xl tracking-tighter">
                                                 {Math.round(row.score)}
                                             </td>
                                             {row.breakdown.map((b: any, i) => (
@@ -463,19 +463,19 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                     {b ? (
                                                         <div className="space-y-1.5">
                                                             <div className={cn(
-                                                                "text-sm font-black text-white px-2 py-1 rounded-lg inline-block min-w-[50px] shadow-sm",
+                                                                "text-sm font-medium text-white px-2 py-1 rounded-lg inline-block min-w-[50px] shadow-sm",
                                                                 b.points > 0 ? "bg-emerald-500" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800"
                                                             )}>
                                                                 {b.points}
                                                             </div>
-                                                            <div className="text-[10px] text-muted-foreground font-black opacity-50">
+                                                            <div className="text-xs text-muted-foreground font-medium opacity-50">
                                                                 {b.time ? `${Math.round(b.time / 60)}m` : '-'}
                                                             </div>
                                                         </div>
                                                     ) : <span className="text-muted-foreground/30 text-lg">·</span>}
                                                 </td>
                                             ))}
-                                            <td className="px-10 py-8 text-center font-black font-mono text-xs text-muted-foreground">
+                                            <td className="px-10 py-8 text-center font-medium font-mono text-xs text-muted-foreground">
                                                 {Math.floor(row.cumtime / 60)}m
                                             </td>
                                         </tr>
@@ -484,9 +484,9 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             </table>
                             {isRankingFetching && (
                                 <div className="p-24 space-y-4">
-                                    <Skeleton className="h-16 w-full rounded-2xl" />
-                                    <Skeleton className="h-16 w-full rounded-2xl opacity-60" />
-                                    <Skeleton className="h-16 w-full rounded-2xl opacity-30" />
+                                    <Skeleton className="h-16 w-full rounded-md" />
+                                    <Skeleton className="h-16 w-full rounded-md opacity-60" />
+                                    <Skeleton className="h-16 w-full rounded-md opacity-30" />
                                 </div>
                             )}
                         </div>
