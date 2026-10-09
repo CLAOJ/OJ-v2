@@ -111,15 +111,15 @@ export default function ContestParticipationsPage() {
                                     key={row.username}
                                     className={cn(
                                         "hover:bg-muted/5 transition-colors",
-                                        row.is_disqualified && "bg-red-50/50 dark:bg-red-950/20"
+                                        row.is_disqualified && "bg-destructive/10"
                                     )}
                                 >
                                     <td className="px-6 py-4 text-center">
                                         <span className={cn(
                                             "inline-flex items-center justify-center w-8 h-8 rounded-lg font-black text-xs",
-                                            row.rank === 1 ? "bg-amber-500 text-white" :
+                                            row.rank === 1 ? "bg-warning text-black" :
                                             row.rank === 2 ? "bg-zinc-400 text-white" :
-                                            row.rank === 3 ? "bg-orange-600 text-white" :
+                                            row.rank === 3 ? "bg-warning/50 text-foreground" :
                                             "bg-muted text-muted-foreground"
                                         )}>
                                             {row.rank}

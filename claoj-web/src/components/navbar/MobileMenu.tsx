@@ -46,7 +46,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
     return (
         <>
             <button
-                className="md:hidden p-2 text-muted-foreground hover:text-foreground"
+                className="xl:hidden p-2 text-muted-foreground hover:text-foreground"
                 onClick={onToggle}
                 aria-expanded={isOpen}
                 aria-controls="mobile-menu"
@@ -61,7 +61,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                     <>
                         {/* Backdrop */}
                         <motion.div
-                            className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm md:hidden"
+                            className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm xl:hidden"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -80,7 +80,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={drawerTransition}
-                            className="fixed right-0 top-0 z-[60] flex h-[100dvh] w-[85%] max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-2xl md:hidden"
+                            className="fixed right-0 top-0 z-[60] flex h-[100dvh] w-[85%] max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-2xl xl:hidden"
                         >
                             {/* Drawer header with its own close control (the navbar toggle
                                 sits under the backdrop while the drawer is open). */}
@@ -155,7 +155,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                             </Link>
                                             <Link
                                                 href="/register"
-                                                className="flex items-center justify-center h-12 rounded bg-primary text-white font-bold hover:bg-primary/90 transition-all"
+                                                className="flex items-center justify-center h-12 rounded bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all"
                                                 onClick={onToggle}
                                             >
                                                 {t('signup')}
@@ -177,7 +177,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                                 <div className="space-y-2">
                                                     <Link
                                                         href="/admin"
-                                                        className="flex items-center gap-3 p-4 rounded bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 font-bold border border-amber-500/30"
+                                                        className="flex items-center gap-3 p-4 rounded bg-warning/15 text-warning font-bold border border-warning/30"
                                                         onClick={onToggle}
                                                     >
                                                         <Crown size={20} />

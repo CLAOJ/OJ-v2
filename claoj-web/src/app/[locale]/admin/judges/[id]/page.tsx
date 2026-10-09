@@ -1,12 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
 import { adminJudgeApi } from '@/lib/adminApi';
-import { AdminJudgeDetail } from '@/types';
-import Link from 'next/link';
+import { Link } from '@/navigation';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import {
@@ -22,8 +22,9 @@ import {
     FileText,
     Code,
     CheckCircle,
-    XCircle,
-    ArrowLeft
+    ArrowLeft,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 
 export default function AdminJudgeDetailPage() {
@@ -39,6 +40,20 @@ export default function AdminJudgeDetailPage() {
     });
 
     const judge = judgeResponse?.data;
+    // null = untouched, so the field tracks the server value until edited.
+    const [draft, setDraft] = useState<string | null>(null);
+    const description = draft ?? judge?.description ?? '';
+    const [showKey, setShowKey] = useState(false);
+
+    const updateMutation = useMutation({
+        mutationFn: (judgeId: number) => adminJudgeApi.update(judgeId, { description }),
+        onSuccess: () => {
+            toast.success(t('judgeDetail.descriptionSaved'));
+            setDraft(null);
+            queryClient.invalidateQueries({ queryKey: ['admin-judge', id] });
+        },
+        onError: () => toast.error(t('judgeDetail.descriptionSaveFailed')),
+    });
 
     const blockMutation = useMutation({
         mutationFn: (judgeId: number) => adminJudgeApi.block(judgeId),
@@ -83,7 +98,7 @@ export default function AdminJudgeDetailPage() {
             <div className="text-center py-12">
                 <Server size={48} className="mx-auto text-muted-foreground opacity-20" />
                 <h2 className="text-xl font-semibold mt-4">{t('judgeDetail.notFoundTitle')}</h2>
-                <Link href="/admin/judges" className="text-blue-600 dark:text-blue-400 hover:underline mt-2 inline-block">
+                <Link href="/admin/judges" className="text-accent hover:underline mt-2 inline-block">
                     {t('judgeDetail.backToJudges')}
                 </Link>
             </div>
@@ -134,7 +149,7 @@ export default function AdminJudgeDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${judge.online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted/50 text-muted-foreground'}`}>
+                        <div className={`p-2 rounded-lg ${judge.online ? 'bg-success/10 text-success' : 'bg-muted/50 text-muted-foreground'}`}>
                             {judge.online ? <Wifi size={20} /> : <WifiOff size={20} />}
                         </div>
                         <div>
@@ -145,7 +160,7 @@ export default function AdminJudgeDetailPage() {
                 </div>
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                        <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Activity size={20} />
                         </div>
                         <div>
@@ -156,7 +171,7 @@ export default function AdminJudgeDetailPage() {
                 </div>
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+                        <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Wifi size={20} />
                         </div>
                         <div>
@@ -167,7 +182,7 @@ export default function AdminJudgeDetailPage() {
                 </div>
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                        <div className="p-2 rounded-lg bg-warning/10 text-warning">
                             <Clock size={20} />
                         </div>
                         <div>
@@ -196,7 +211,7 @@ export default function AdminJudgeDetailPage() {
                                 <div key={problem.code} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
                                     <Link
                                         href={`/problem/${problem.code}`}
-                                        className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                        className="font-medium text-accent hover:underline"
                                     >
                                         {problem.code}
                                     </Link>
@@ -229,12 +244,26 @@ export default function AdminJudgeDetailPage() {
             </div>
 
             {/* Description */}
-            {judge.description && (
-                <div className="bg-card rounded-2xl p-6 border">
-                    <h3 className="font-bold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{judge.description}</p>
+            <div className="bg-card rounded-2xl p-6 border">
+                <label htmlFor="judge-description" className="block font-bold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</label>
+                <textarea
+                    id="judge-description"
+                    rows={4}
+                    value={description}
+                    onChange={e => setDraft(e.target.value)}
+                    placeholder={t('judgeDetail.descriptionPlaceholder')}
+                    className="w-full rounded-md border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                <div className="mt-3 flex justify-end">
+                    <button
+                        onClick={() => updateMutation.mutate(judge.id)}
+                        disabled={updateMutation.isPending || description === (judge.description ?? '')}
+                        className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                    >
+                        {updateMutation.isPending ? t('common.saving') : t('common.saveChanges')}
+                    </button>
                 </div>
-            )}
+            </div>
 
             {/* Additional Info */}
             <div className="bg-card rounded-2xl p-6 border">
@@ -255,7 +284,18 @@ export default function AdminJudgeDetailPage() {
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('judgeDetail.authKeyLabel')}</div>
-                            <div className="font-mono text-sm truncate max-w-[200px]">{judge.auth_key}</div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm truncate max-w-[200px]">
+                                    {showKey ? judge.auth_key : '•'.repeat(16)}
+                                </span>
+                                <button
+                                    onClick={() => setShowKey(v => !v)}
+                                    aria-label={showKey ? t('judgeDetail.hideKey') : t('judgeDetail.showKey')}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground"
+                                >
+                                    {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -292,7 +332,7 @@ export default function AdminJudgeDetailPage() {
                     <button
                         onClick={() => disableMutation.mutate(judge.id)}
                         disabled={disableMutation.isPending}
-                        className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 flex items-center gap-2 font-medium disabled:opacity-50"
+                        className="px-4 py-2 rounded-xl bg-warning/10 text-warning hover:bg-warning/20 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
                         <Power size={18} className="rotate-180" /> {t('judgeDetail.disableButton')}
                     </button>

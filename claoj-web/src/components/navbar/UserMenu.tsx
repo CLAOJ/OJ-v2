@@ -59,7 +59,7 @@ export default function UserMenu({
                 aria-haspopup="true"
             >
                 <User size={16} />
-                <span className="hidden md:inline">{username}</span>
+                <span className="hidden 2xl:inline">{username}</span>
                 <ChevronDown size={14} className={cn("transition-transform", isOpen && "rotate-180")} />
             </button>
 
@@ -88,12 +88,12 @@ export default function UserMenu({
                             <>
                                 <Link
                                     href="/admin"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 border-l-2 border-amber-500 transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm bg-warning/10 hover:bg-warning/20 transition-colors"
                                     onClick={onClose}
                                     role="menuitem"
                                 >
-                                    <Crown size={16} className="text-amber-500" />
-                                    <span className="font-semibold text-amber-500">{t('adminDashboard')}</span>
+                                    <Crown size={16} className="text-warning" />
+                                    <span className="font-semibold text-warning">{t('adminDashboard')}</span>
                                 </Link>
                                 <div className="px-4 py-1.5 border-t border-border/50">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">{t('quickAccess')}</p>

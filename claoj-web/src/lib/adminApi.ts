@@ -717,3 +717,39 @@ export const adminLanguageLimitApi = {
     delete: (id: number) =>
         api.delete<{ success: boolean; message: string }>(`/admin/language-limit/${id}`),
 };
+
+// ============================================================
+// ADMIN AUDIT LOG API
+// ============================================================
+
+export interface AuditLogEntry {
+    id: string; // stream ID, e.g. "1721300000000-0"
+    user_id: number;
+    username: string;
+    action: string;
+    resource: string;
+    resource_id: string;
+    ip_address: string;
+    user_agent: string;
+    details: string;
+    status: string;
+    created_at: string;
+}
+
+export interface AuditLogFilters {
+    action?: string;
+    resource?: string;
+    status?: string;
+    user_id?: string;
+    start_date?: string; // YYYY-MM-DD
+    end_date?: string;
+}
+
+export const adminAuditLogApi = {
+    // Mounted at /audit-logs (not /admin/...) behind the admin route gate.
+    list: (page: number = 1, pageSize: number = 50, filters: AuditLogFilters = {}) => {
+        const params = new URLSearchParams({ page: page.toString(), page_size: pageSize.toString() });
+        Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+        return api.get<{ results: AuditLogEntry[]; total: number }>(`/audit-logs?${params.toString()}`);
+    },
+};

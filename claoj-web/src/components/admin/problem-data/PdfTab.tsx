@@ -77,12 +77,12 @@ export function PdfTab({ code }: PdfTabProps) {
 
                 {hasPdf ? (
                     <div className="space-y-4">
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <div className="p-4 bg-success/10  border border-success/30  rounded-lg">
+                            <div className="flex items-center gap-2 text-success ">
                                 <Check size={18} />
                                 <span className="font-medium">{t('pdfConfigured')}</span>
                             </div>
-                            <p className="text-sm mt-2 text-green-600 dark:text-green-500">
+                            <p className="text-sm mt-2 text-success ">
                                 {t('pdfCurrentFile', { file: problemData.pdf_url ?? '' })}
                             </p>
                         </div>
@@ -109,8 +109,8 @@ export function PdfTab({ code }: PdfTabProps) {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                            <p className="text-amber-700 dark:text-amber-400">
+                        <div className="p-4 bg-warning/10  border border-warning/30  rounded-lg">
+                            <p className="text-warning ">
                                 {t('pdfNotConfigured')}
                             </p>
                         </div>

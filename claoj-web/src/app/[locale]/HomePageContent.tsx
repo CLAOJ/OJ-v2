@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { AdminWelcomeBanner } from '@/components/admin';
+import { AdminWelcomeBanner } from '@/components/admin/AdminWelcomeBanner';
 import {
     Flame,
     Trophy,
@@ -373,7 +373,7 @@ export default function HomePageContent() {
                     {upcomingContests && upcomingContests.length > 0 && (
                         <div className="bg-card border rounded-xl overflow-hidden">
                             <div className="bg-muted px-4 py-3 border-b border-primary-50">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                                     <Calendar className="text-primary" size={18} />
                                     {t('upcomingContests')}
                                 </h3>
@@ -412,7 +412,7 @@ export default function HomePageContent() {
                 {/* Ongoing Contests (Desktop - Right Sidebar Only) */}
                 {ongoingContests && ongoingContests.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                             <Trophy className="text-yellow-500" size={16} />
                             {t('ongoingContests')}
                         </h3>
@@ -440,7 +440,7 @@ export default function HomePageContent() {
                 {/* Upcoming Contests */}
                 {upcomingContests && upcomingContests.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                             <Calendar className="text-primary" size={16} />
                             {t('upcomingContests')}
                         </h3>
@@ -465,7 +465,7 @@ export default function HomePageContent() {
                 {/* Top Rating Users (limit 10) */}
                 {topRatingUsers && topRatingUsers.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                             <Trophy className="text-primary" size={16} />
                             {t('topRatingUsers')}
                         </h3>
@@ -503,7 +503,7 @@ export default function HomePageContent() {
                 {/* Top Scorers (limit 10) */}
                 {topScorers && topScorers.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                             <Star className="text-yellow-500" size={16} />
                             {t('topScorers')}
                         </h3>
@@ -543,7 +543,7 @@ export default function HomePageContent() {
                 {/* New Problems (limit 10) */}
                 {newProblems && newProblems.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                             <TrendingUp className="text-primary" size={16} />
                             {t('newProblems')}
                         </h3>
@@ -556,7 +556,7 @@ export default function HomePageContent() {
                                     >
                                         {problem.name}
                                     </Link>
-                                    <span className="px-2 py-0.5 bg-muted rounded text-xs font-bold text-gray-300 ml-2">
+                                    <span className="px-2 py-0.5 bg-muted rounded text-xs font-bold text-muted-foreground ml-2">
                                         {problem.points}
                                     </span>
                                 </div>
@@ -568,7 +568,7 @@ export default function HomePageContent() {
                 {/* Comment Stream */}
                 {recentComments && recentComments.length > 0 && (
                     <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                             <MessageSquare className="text-primary" size={16} />
                             <span className="mr-2">{t('commentStream')}</span>
                             <a href="https://discord.gg/xdMrcJHxZv" target="_blank" rel="noreferrer">
@@ -587,7 +587,7 @@ export default function HomePageContent() {
                                             {comment.author_name}
                                         </Link>
                                         {' → '}
-                                        <Link href={comment.link} className="text-gray-300 hover:text-white truncate block">
+                                        <Link href={comment.link} className="text-foreground hover:text-accent truncate block">
                                             {comment.page_title}
                                         </Link>
                                     </li>

@@ -132,9 +132,9 @@ export default function EditContestPage() {
             <div className="p-6 rounded-2xl border bg-card">
                 <div className="flex items-center gap-3 mb-4">
                     {isLocked ? (
-                        <Lock className="text-amber-500" size={24} />
+                        <Lock className="text-warning" size={24} />
                     ) : (
-                        <Unlock className="text-emerald-500" size={24} />
+                        <Unlock className="text-success" size={24} />
                     )}
                     <h2 className="text-xl font-bold">{t('contests.submissionLockTitle')}</h2>
                 </div>
@@ -142,7 +142,7 @@ export default function EditContestPage() {
                     {t('contests.submissionLockDesc')}
                 </p>
                 {isLocked && lockedAfter && (
-                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-sm mb-4">
+                    <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning text-sm mb-4">
                         <p className="font-medium">{t('contests.currentlyLockedMsg')}</p>
                         <p>{t('contests.lockedAfterMsg', { time: lockedAfter.toLocaleString() })}</p>
                     </div>

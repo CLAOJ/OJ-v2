@@ -9,21 +9,18 @@ import { AdminSubmission } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
+import { toast } from 'sonner';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 import {
-    Search,
     BrainCircuit,
     User,
     Hash,
-    Clock,
-    Filter,
     RefreshCw,
-    ChevronLeft,
-    ChevronRight,
     StopCircle,
-    CheckCircle,
+    Calculator,
     AlertTriangle
 } from 'lucide-react';
-import { getStatusColor, getStatusVariant, cn } from '@/lib/utils';
+import { getStatusVariant, cn } from '@/lib/utils';
 
 export default function AdminSubmissionPage() {
     const t = useTranslations('Admin');
@@ -62,6 +59,26 @@ export default function AdminSubmissionPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
         }
+    });
+
+    const rescoreMutation = useMutation({
+        mutationFn: (id: number) => adminSubmissionApi.rescore(id),
+        onSuccess: () => {
+            toast.success(t('submissions.rescoreSuccess'));
+            queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
+        },
+        onError: () => toast.error(t('submissions.rescoreError')),
+    });
+
+    // Recomputes scores from stored per-case results (e.g. after changing
+    // point values) without sending anything back to the judges.
+    const rescoreAllMutation = useMutation({
+        mutationFn: (code: string) => adminSubmissionApi.rescoreAll(code),
+        onSuccess: (res) => {
+            toast.success(t('submissions.rescoreAllSuccess', { count: res.data.rescored, total: res.data.total }));
+            queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
+        },
+        onError: () => toast.error(t('submissions.rescoreError')),
     });
 
     const submissions = data?.data || [];
@@ -130,7 +147,19 @@ export default function AdminSubmissionPage() {
                     <p className="text-muted-foreground mt-1">{t('submissions.subtitle')}</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={() => {
+                            if (confirm(t('submissions.rescoreAllConfirm', { problem: problemFilter }))) {
+                                rescoreAllMutation.mutate(problemFilter);
+                            }
+                        }}
+                        disabled={!problemFilter || rescoreAllMutation.isPending}
+                        title={problemFilter ? undefined : t('submissions.rescoreAllHint')}
+                        className="px-4 py-2 rounded-xl border bg-card hover:bg-muted transition-colors text-sm font-bold flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <Calculator size={18} /> {t('submissions.rescoreAllButton')}
+                    </button>
                     <button
                         onClick={() => setShowBatchModal(true)}
                         className="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-bold flex items-center gap-2"
@@ -168,7 +197,7 @@ export default function AdminSubmissionPage() {
                         {batchPreview && (
                             <div className={cn(
                                 "p-4 rounded-xl mb-4 flex items-center gap-3",
-                                batchPreview.count > 0 ? "bg-amber-500/10 text-amber-600" : "bg-muted"
+                                batchPreview.count > 0 ? "bg-warning/10 text-warning" : "bg-muted"
                             )}>
                                 <AlertTriangle size={20} />
                                 <div>
@@ -329,10 +358,19 @@ export default function AdminSubmissionPage() {
                                                     disabled={rejudgeMutation.isPending}
                                                     className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold flex items-center gap-1"
                                                 >
-                                                    <RefreshCw size={14} className={rejudgeMutation.isPending ? 'animate-spin' : ''} />
+                                                    <RefreshCw size={14} className={rejudgeMutation.isPending && rejudgeMutation.variables === s.id ? 'animate-spin' : ''} />
                                                     {t('submissions.rejudgeButton')}
                                                 </button>
-                                                {(s.status === 'P' || s.status === 'G') && (
+                                                <button
+                                                    onClick={() => rescoreMutation.mutate(s.id)}
+                                                    disabled={rescoreMutation.isPending && rescoreMutation.variables === s.id}
+                                                    title={t('submissions.rescoreHint')}
+                                                    className="px-3 py-1.5 rounded-lg border hover:bg-muted transition-colors text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                                                >
+                                                    <Calculator size={14} />
+                                                    {t('submissions.rescoreButton')}
+                                                </button>
+                                                {(s.status === 'QU' || s.status === 'P' || s.status === 'G') && (
                                                     <button
                                                         onClick={() => {
                                                             if (confirm(t('submissions.abortConfirm'))) {
@@ -355,34 +393,9 @@ export default function AdminSubmissionPage() {
                     </table>
                 </div>
 
-                {/* Pagination */}
-                {submissions.length > 0 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
-                        <div className="text-sm text-muted-foreground">
-                            {t('submissions.showingCount', { shown: submissions.length, total: data?.total || 0 })}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-50 transition-all"
-                            >
-                                <ChevronLeft size={18} />
-                            </button>
-                            <div className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-sm flex items-center shadow-lg shadow-primary/20">
-                                {page}
-                            </div>
-                            <button
-                                onClick={() => setPage(p => p + 1)}
-                                disabled={submissions.length < 50}
-                                className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center hover:bg-muted disabled:opacity-50 transition-all"
-                            >
-                                <ChevronRight size={18} />
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
+
+            <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={50} />
         </div>
     );
 }

@@ -111,7 +111,7 @@ export default function AdminJudgesPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                        <div className="p-2 rounded-lg bg-success/10 text-success">
                             <Wifi size={20} />
                         </div>
                         <div>
@@ -122,7 +122,7 @@ export default function AdminJudgesPage() {
                 </div>
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
+                        <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
                             <WifiOff size={20} />
                         </div>
                         <div>
@@ -133,7 +133,7 @@ export default function AdminJudgesPage() {
                 </div>
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                        <div className="p-2 rounded-lg bg-warning/10 text-warning">
                             <Shield size={20} />
                         </div>
                         <div>
@@ -144,7 +144,7 @@ export default function AdminJudgesPage() {
                 </div>
                 <div className="bg-card rounded-2xl p-4 border">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                        <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Power size={20} />
                         </div>
                         <div>
@@ -257,7 +257,7 @@ export default function AdminJudgesPage() {
                                                 <button
                                                     onClick={() => disableMutation.mutate(judge.id)}
                                                     disabled={disableMutation.isPending}
-                                                    className="px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 flex items-center gap-1.5 font-medium text-sm"
+                                                    className="px-3 py-2 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 flex items-center gap-1.5 font-medium text-sm"
                                                     title={t('judges.disableTitle')}
                                                 >
                                                     <Power size={16} className="rotate-180" />

@@ -20,7 +20,7 @@ export default function DesktopNav() {
     const t = useTranslations('Navbar');
 
     return (
-        <nav className="hidden md:flex items-center gap-1" aria-label={t('mainNavigation')}>
+        <nav className="hidden xl:flex items-center gap-1" aria-label={t('mainNavigation')}>
             <span className="text-muted-foreground/50 mx-1">|</span>
             {NAV_LINKS.map((link) => (
                 <Link

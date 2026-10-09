@@ -1216,49 +1216,40 @@
       "moss": "MOSS",
       "groups": "Groups",
       "navigationBars": "Navigation",
-      "miscConfigs": "Misc Config"
+      "miscConfigs": "Misc Config",
+      "dashboard": "Dashboard",
+      "contestTags": "Contest Tags",
+      "auditLog": "Audit Log"
     },
     "layout": {
       "adminLabel": "Admin",
       "panelTitle": "Admin Panel",
       "loggedInAs": "Logged in as",
-      "logout": "Logout"
+      "logout": "Logout",
+      "superAdmin": "Superuser",
+      "staff": "Staff",
+      "backToSite": "Back to site",
+      "openMenu": "Open admin menu",
+      "closeMenu": "Close admin menu"
     },
     "dashboard": {
-      "title": "Admin Dashboard",
-      "welcome": "Welcome back, {username}",
-      "systemOperational": "System Operational",
-      "createProblemAction": "Create Problem",
-      "createContestAction": "Create Contest",
-      "viewUsersAction": "View Users",
-      "systemStatsAction": "System Stats",
-      "problemsDesc": "Manage problem library, create new problems, and organize problem groups.",
-      "problemsStat": "View all problems",
-      "contestsDesc": "Create and manage contests, set up ratings, and monitor participation.",
-      "contestsStat": "Manage contests",
-      "usersDesc": "Manage user accounts, ban/unban users, and assign roles.",
-      "usersStat": "View user list",
-      "submissionsDesc": "Monitor submission queue, rejudge submissions, and view statistics.",
-      "submissionsStat": "View submissions",
-      "blogDesc": "Create, edit, and manage blog posts and announcements.",
-      "blogStat": "Manage posts",
-      "ticketsDesc": "Handle user support tickets, bug reports, and feature requests.",
-      "ticketsStat": "View tickets",
-      "languagesDesc": "Configure supported programming languages and their settings.",
-      "languagesStat": "Manage languages",
-      "navigationDesc": "Customize navigation bars and menu structure.",
-      "navigationStat": "Edit navigation",
-      "groupsDesc": "Manage user groups, permissions, and access control.",
-      "groupsStat": "Manage groups",
-      "platformOverview": "Platform Overview",
-      "systemStatusLabel": "System Status",
-      "systemStatusValue": "All Systems Operational",
-      "userActivityLabel": "User Activity",
-      "userActivityDesc": "View detailed analytics in",
-      "statisticsLink": "Statistics",
-      "adminLevelLabel": "Admin Level",
-      "superAdministrator": "Super Administrator",
-      "staffMember": "Staff Member"
+      "title": "Dashboard",
+      "welcome": "Signed in as {username}",
+      "newProblem": "New problem",
+      "newContest": "New contest",
+      "newPost": "New post",
+      "recentSubmissions": "Recent submissions",
+      "viewAll": "View all",
+      "noSubmissions": "No submissions yet.",
+      "judgesOnline": "Judges · {online}/{total} online",
+      "manage": "Manage",
+      "noJudges": "No judges have connected.",
+      "load": "load {load}",
+      "openTickets": "Open tickets · {count}",
+      "noOpenTickets": "No open tickets.",
+      "unassigned": "unassigned",
+      "recentChanges": "Recent changes",
+      "noChanges": "No changes recorded yet."
     },
     "users": {
       "title": "Users",
@@ -1504,7 +1495,15 @@
       "batchRejudgeConfirm": "Are you sure you want to rejudge {count} submissions?",
       "batchRejudgeSuccess": "Successfully queued {count} submissions for rejudge",
       "batchRejudgeError": "Failed to execute batch rejudge",
-      "errorPrefix": "Error: "
+      "errorPrefix": "Error: ",
+      "rescoreButton": "Rescore",
+      "rescoreHint": "Recalculate the score from stored test results without rejudging",
+      "rescoreSuccess": "Submission rescored",
+      "rescoreError": "Rescore failed. Try again.",
+      "rescoreAllButton": "Rescore problem",
+      "rescoreAllHint": "Filter by a problem code first",
+      "rescoreAllConfirm": "Recalculate scores for every submission to {problem}? Nothing is sent back to the judges.",
+      "rescoreAllSuccess": "Rescored {count} of {total} submissions"
     },
     "judges": {
       "title": "Judges",
@@ -1543,7 +1542,12 @@
       "unblockButton": "Unblock Judge",
       "blockButton": "Block Judge",
       "enableButton": "Enable Judge",
-      "disableButton": "Disable Judge"
+      "disableButton": "Disable Judge",
+      "descriptionSaved": "Description saved",
+      "descriptionSaveFailed": "Could not save the description. Try again.",
+      "descriptionPlaceholder": "Where this judge runs, who maintains it, anything staff should know.",
+      "showKey": "Show auth key",
+      "hideKey": "Hide auth key"
     },
     "organizations": {
       "title": "Organizations",
@@ -2002,41 +2006,6 @@
       "uploadingButton": "Uploading...",
       "uploadButton": "Upload Test Case{suffix}"
     },
-    "shell": {
-      "commandCenter": "Command Center",
-      "superAdmin": "Super Admin",
-      "staffRole": "Staff",
-      "secureSession": "Secure Admin Session",
-      "manageBadge": "Manage",
-      "sections": {
-        "overview": "Overview",
-        "problems": "Problems",
-        "contests": "Contests",
-        "users": "Users",
-        "submissions": "Submissions",
-        "blog": "Blog Posts",
-        "tickets": "Tickets",
-        "languages": "Languages",
-        "navigation": "Navigation",
-        "roles": "Groups"
-      },
-      "welcomeBack": "Welcome back, {username}",
-      "elevatedPrivileges": "You have elevated privileges. Manage the platform wisely.",
-      "quickActions": {
-        "newProblem": "New Problem",
-        "newContest": "New Contest",
-        "manageUsers": "Manage Users",
-        "analytics": "Analytics"
-      },
-      "stats": {
-        "systemStatusLabel": "System Status",
-        "systemStatusValue": "Operational",
-        "activeUsersLabel": "Active Users",
-        "activeUsersValue": "View Analytics",
-        "pendingTicketsLabel": "Pending Tickets",
-        "pendingTicketsValue": "Check Now"
-      }
-    },
     "problemForm": {
       "settingsTitle": "Settings",
       "isPublicLabel": "Public (visible to users)",
@@ -2073,6 +2042,46 @@
       "noReportUrl": "No report URL",
       "analyze": "Analyze",
       "showingCount": "Showing {shown} of {total} results"
+    },
+    "navGroups": {
+      "content": "Content",
+      "community": "Community",
+      "judging": "Judging",
+      "system": "System"
+    },
+    "banner": {
+      "label": "Staff shortcuts",
+      "dashboard": "Admin dashboard",
+      "dismiss": "Hide staff shortcuts"
+    },
+    "auditLog": {
+      "title": "Audit Log",
+      "subtitle": "Every request made through the admin API, newest first.",
+      "columns": {
+        "time": "Time",
+        "user": "User",
+        "action": "Action",
+        "resource": "Resource",
+        "status": "Result",
+        "ip": "IP address"
+      },
+      "all": "All",
+      "actions": {
+        "CREATE": "Created",
+        "UPDATE": "Updated",
+        "DELETE": "Deleted",
+        "VIEW": "Viewed"
+      },
+      "statuses": {
+        "success": "Succeeded",
+        "failure": "Failed"
+      },
+      "resourcePlaceholder": "e.g. problem",
+      "from": "From",
+      "to": "To",
+      "unavailable": "The audit log could not be loaded. Check that the audit store is running, then refresh.",
+      "empty": "No entries match these filters.",
+      "toggleDetails": "Show request details"
     }
   }
 }

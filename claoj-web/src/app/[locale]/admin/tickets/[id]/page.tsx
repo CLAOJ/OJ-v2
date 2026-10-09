@@ -216,7 +216,7 @@ export default function AdminTicketDetailPage() {
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4 flex-1">
                         {ticket.is_open ? (
-                            <AlertCircle size={32} className="text-amber-500 flex-shrink-0" />
+                            <AlertCircle size={32} className="text-warning flex-shrink-0" />
                         ) : (
                             <CheckCircle2 size={32} className="text-muted-foreground flex-shrink-0" />
                         )}

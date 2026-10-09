@@ -43,12 +43,6 @@
     --color-rating-master: #ff981a;
     --color-rating-grandmaster: #ff1a1a;
 
-    /* Problem status colors */
-    --color-solved: #69f0ae;
-    --color-attempted: #ffd54f;
-    --color-unsolved: #90a4ae;
-    --color-first-solve: #004d40;
-
     /* UI colors - Dark theme based on #263238 */
     --background: 195 19% 13%;         /* #1c2429 - main page bg */
     --foreground: 200 23% 83%;         /* #cfd8dc - text */
@@ -73,6 +67,8 @@
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 210 40% 98%;
+    --success: 151 82% 68%;            /* #69f0ae - score_ac (dark) */
+    --warning: 34 100% 50%;            /* #ff8f00 - link200 (dark) */
 
     --border: 195 19% 28%;             /* #3b4d56 */
     --input: 195 19% 23%;
@@ -86,31 +82,51 @@
     --sidebox-shadow: 0 6px 10px 0 rgb(0 0 0 / 30%);
   }
 
+  /* Light theme — vars-default.scss from v1 */
   .light {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 100%;           /* #fff  - pageBg */
+    --foreground: 0 0% 13%;            /* #212121 - primary90 */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 174 100% 29%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 199 89% 48%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --popover-foreground: 0 0% 13%;
+    --primary: 174 100% 29%;           /* #009688 - button_color */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;             /* #f5f5f5 - primary5 */
+    --secondary-foreground: 200 19% 18%;
+    --muted: 200 12% 95%;              /* #eceff1 - primary10 */
+    --muted-foreground: 200 18% 40%;   /* #546e7a - primary60 */
+    --accent: 199 98% 41%;             /* #0288d1 - link75 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 66% 47%;          /* #c62828 - announcement_red */
+    --destructive-foreground: 0 0% 100%;
+    --success: 123 41% 39%;            /* #388e3c - score_ac */
+    --warning: 38 100% 50%;            /* #ffa000 - link200 */
+    --border: 210 6% 80%;              /* #c8ccd0 - primary25 */
+    --input: 210 6% 80%;
     --ring: 174 100% 29%;
 
-    /* Sidebox colors for light mode */
-    --sidebox-bg: #f1f5f9;
-    --sidebox-header-bg: #e2e8f0;
-    --sidebox-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+    --sidebox-bg: #fff;
+    --sidebox-header-bg: #f5f5f5;
+    --sidebox-shadow: 0 6px 10px 0 rgb(0 0 0 / 15%);
+  }
+
+  /* v1 keeps the blue-grey navbar (#263238) in both themes; re-scope the
+     tokens so everything inside it reads as the dark palette. */
+  .site-nav {
+    --card: 200 19% 18%;               /* #263238 */
+    --card-foreground: 200 18% 88%;
+    --foreground: 200 18% 88%;         /* #eceff1-ish */
+    --muted: 200 18% 33%;              /* #455a64 - nav hover */
+    --muted-foreground: 200 15% 63%;   /* #90a4ae - nav text */
+    --border: 200 19% 28%;
+    --primary: 174 42% 51%;            /* #4db6ac - nav active */
+    --primary-foreground: 200 19% 18%;
+    --popover: 200 19% 18%;
+    --popover-foreground: 200 18% 88%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 200 19% 18%;
+    color-scheme: dark;
   }
 }
 
@@ -129,6 +145,9 @@
 
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
@@ -149,11 +168,51 @@
   --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Original CLAOJ specific colors */
-  --color-solved: #69f0ae;
-  --color-attempted: #ffd54f;
-  --color-unsolved: #90a4ae;
-  --color-rating-none: #aaa;
+}
+
+/* v1's neutrals are Material Blue Grey. Remapping Tailwind's neutral scales
+   here keeps every hardcoded slate/gray/zinc utility on the v1 palette. */
+@theme {
+  --color-slate-50: #eceff1;
+  --color-slate-100: #cfd8dc;
+  --color-slate-200: #b0bec5;
+  --color-slate-300: #90a4ae;
+  --color-slate-400: #78909c;
+  --color-slate-500: #607d8b;
+  --color-slate-600: #546e7a;
+  --color-slate-700: #455a64;
+  --color-slate-800: #37474f;
+  --color-slate-900: #263238;
+  --color-slate-950: #1c2429;
+
+  --color-gray-50: #eceff1;
+  --color-gray-100: #cfd8dc;
+  --color-gray-200: #b0bec5;
+  --color-gray-300: #90a4ae;
+  --color-gray-400: #78909c;
+  --color-gray-500: #607d8b;
+  --color-gray-600: #546e7a;
+  --color-gray-700: #455a64;
+  --color-gray-800: #37474f;
+  --color-gray-900: #263238;
+  --color-gray-950: #1c2429;
+
+  --color-zinc-50: #eceff1;
+  --color-zinc-100: #cfd8dc;
+  --color-zinc-200: #b0bec5;
+  --color-zinc-300: #90a4ae;
+  --color-zinc-400: #78909c;
+  --color-zinc-500: #607d8b;
+  --color-zinc-600: #546e7a;
+  --color-zinc-700: #455a64;
+  --color-zinc-800: #37474f;
+  --color-zinc-900: #263238;
+  --color-zinc-950: #1c2429;
+}
+
+/* Browser surfaces carry the palette too. */
+::selection {
+  background: hsl(var(--primary) / 0.3);
 }
 
 @layer base {

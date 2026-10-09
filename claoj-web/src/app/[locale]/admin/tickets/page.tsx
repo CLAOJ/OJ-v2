@@ -232,7 +232,7 @@ export default function AdminTicketListPage() {
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
                                         {ticket.is_open ? (
-                                            <AlertCircle size={20} className="text-amber-500 flex-shrink-0" />
+                                            <AlertCircle size={20} className="text-warning flex-shrink-0" />
                                         ) : (
                                             <CheckCircle2 size={20} className="text-muted-foreground flex-shrink-0" />
                                         )}
@@ -285,7 +285,7 @@ export default function AdminTicketListPage() {
                                 </div>
                                 <div className="flex-shrink-0">
                                     {ticket.is_open ? (
-                                        <Badge className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
+                                        <Badge className="text-[10px] font-black uppercase tracking-widest bg-warning/10 text-warning border-warning/20">
                                             {t('openBadge')}
                                         </Badge>
                                     ) : (

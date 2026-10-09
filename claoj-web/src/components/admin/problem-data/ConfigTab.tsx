@@ -47,7 +47,7 @@ export function ConfigTab({ code, data }: ConfigTabProps) {
                     </div>
                     {data?.has_custom_checker && (
                         <div className="p-3 bg-muted rounded-lg">
-                            <div className="flex items-center gap-2 text-green-600">
+                            <div className="flex items-center gap-2 text-success">
                                 <Check size={16} />
                                 <span className="font-medium">{t('customCheckerConfigured')}</span>
                             </div>
@@ -68,7 +68,7 @@ export function ConfigTab({ code, data }: ConfigTabProps) {
                     </div>
                     {data?.has_custom_grader && (
                         <div className="p-3 bg-muted rounded-lg">
-                            <div className="flex items-center gap-2 text-green-600">
+                            <div className="flex items-center gap-2 text-success">
                                 <Check size={16} />
                                 <span className="font-medium">{t('customGraderConfigured')}</span>
                             </div>
@@ -91,7 +91,7 @@ export function ConfigTab({ code, data }: ConfigTabProps) {
                     )}>
                         {data?.has_generator_yml ? (
                             <>
-                                <Check size={16} className="text-green-600" />
+                                <Check size={16} className="text-success" />
                                 <span className="font-medium">{t('generatorConfigured')}</span>
                             </>
                         ) : (
@@ -104,7 +104,7 @@ export function ConfigTab({ code, data }: ConfigTabProps) {
                     )}>
                         {data?.has_init_yml ? (
                             <>
-                                <Check size={16} className="text-green-600" />
+                                <Check size={16} className="text-success" />
                                 <span className="font-medium">{t('initYmlPresent')}</span>
                             </>
                         ) : (

@@ -73,7 +73,7 @@ export default function AdminMossPage() {
             case 'completed':
                 return <CheckCircle size={18} className="text-success" />;
             case 'processing':
-                return <Clock size={18} className="text-amber-500 animate-spin" />;
+                return <Clock size={18} className="text-warning animate-spin" />;
             case 'failed':
                 return <XCircle size={18} className="text-destructive" />;
             default:
@@ -83,7 +83,7 @@ export default function AdminMossPage() {
 
     const getSimilarityColor = (percentage: number) => {
         if (percentage >= 80) return 'text-destructive font-bold';
-        if (percentage >= 50) return 'text-amber-500 font-medium';
+        if (percentage >= 50) return 'text-warning font-medium';
         return 'text-success';
     };
 

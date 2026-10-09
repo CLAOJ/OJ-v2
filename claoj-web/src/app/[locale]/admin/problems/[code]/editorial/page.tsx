@@ -114,7 +114,7 @@ export default function AdminSolutionEditorPage() {
     return (
         <div className="container mx-auto py-8">
             <div className="mb-6">
-                <Link href="/admin/problems" className="text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href="/admin/problems" className="text-accent  hover:underline">
                     &larr; {t('admin.back_to_problems')}
                 </Link>
                 <h1 className="text-3xl font-bold mt-2">
@@ -128,7 +128,7 @@ export default function AdminSolutionEditorPage() {
                     <div className="bg-card border rounded-lg p-4">
                         <h3 className="font-semibold mb-2">{t('admin.problem')}</h3>
                         <p className="text-lg">
-                            <Link href={`/problem/${solution.data.problem_code}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            <Link href={`/problem/${solution.data.problem_code}`} className="text-accent  hover:underline">
                                 {solution.data.problem_code} - {solution.data.problem_name}
                             </Link>
                         </p>
@@ -229,7 +229,7 @@ export default function AdminSolutionEditorPage() {
                     {isEdit && (
                         <button
                             onClick={() => deleteMutation.mutate()}
-                            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            className="px-6 py-2 bg-destructive text-white rounded-lg hover:bg-destructive"
                         >
                             {t('admin.delete')}
                         </button>

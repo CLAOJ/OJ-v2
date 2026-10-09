@@ -5,7 +5,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { Ticket } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import WebSocketStatusIndicator from '@/components/common/WebSocketStatus';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Logo from '@/components/navbar/Logo';
 import DesktopNav from '@/components/navbar/DesktopNav';
@@ -13,25 +13,13 @@ import LanguageSwitcher from '@/components/navbar/LanguageSwitcher';
 import ThemeToggle from '@/components/navbar/ThemeToggle';
 import UserMenu from '@/components/navbar/UserMenu';
 import MobileMenu from '@/components/navbar/MobileMenu';
-import { useContestTimer } from '@/hooks/useContestTimer';
 import { rememberLoginRedirect } from '@/lib/loginRedirect';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const t = useTranslations('Navbar');
-    const tContest = useTranslations('Contest');
-    const [mounted, setMounted] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-    // Contest timer state (placeholder - in real app, this would come from context)
-    const [inContest] = useState(false);
-    const [contestEndTime] = useState<Date | null>(null);
-    const { currentTime, formatTimeRemaining } = useContestTimer(inContest, contestEndTime);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     const handleLoginRedirect = () => {
         // rememberLoginRedirect filters out the credential pages, so clicking
@@ -42,13 +30,13 @@ export default function Navbar() {
 
     return (
         <>
-            <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur-md shadow-lg">
+            <header className="site-nav sticky top-0 z-50 w-full border-b bg-card text-foreground shadow-md">
                 <div className="container mx-auto px-4">
                     <div className="flex h-16 items-center justify-between">
                         {/* Logo and Nav Links */}
                         <div className="flex items-center gap-6">
                             {/* Logo */}
-                            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                            <Link href="/" className="flex shrink-0 items-center gap-2 hover:opacity-80 transition-opacity">
                                 <Logo />
                             </Link>
 
@@ -62,26 +50,26 @@ export default function Navbar() {
                             {user && (
                                 <Link
                                     href="/ticket/create"
-                                    className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 transition-colors text-xs font-bold"
+                                    className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors text-xs font-bold"
                                     title={t('report')}
                                 >
                                     <Ticket size={14} />
-                                    <span>{t('reportShort')}</span>
+                                    <span className="hidden 2xl:inline">{t('reportShort')}</span>
                                 </Link>
                             )}
 
                             {/* Language Flags (moved into the drawer on mobile) */}
-                            <div className="hidden md:block">
+                            <div className="hidden xl:block">
                                 <LanguageSwitcher />
                             </div>
 
                             {/* Theme Toggle */}
-                            <div className="hidden md:block">
+                            <div className="hidden xl:block">
                                 <ThemeToggle />
                             </div>
 
                             {/* WebSocket Status (moved into the drawer on mobile) */}
-                            <div className="hidden md:block">
+                            <div className="hidden 2xl:block">
                                 <WebSocketStatusIndicator />
                             </div>
 
@@ -101,7 +89,7 @@ export default function Navbar() {
                                     />
                                 </>
                             ) : (
-                                <div className="hidden md:flex items-center gap-2">
+                                <div className="hidden xl:flex items-center gap-2">
                                     <button
                                         onClick={handleLoginRedirect}
                                         className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded hover:bg-accent/10 transition-colors"
@@ -110,7 +98,7 @@ export default function Navbar() {
                                     </button>
                                     <Link
                                         href="/register"
-                                        className="px-4 py-1.5 rounded bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all"
+                                        className="px-4 py-1.5 rounded bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
                                     >
                                         {t('signup')}
                                     </Link>
@@ -123,17 +111,6 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Contest Timer Banner */}
-                {inContest && currentTime && (
-                    <div className="bg-card border-t border-b border-primary px-4 py-2 text-center">
-                        <Link href="/contest/current" className="text-sm font-medium text-white">
-                            <span className="text-primary">{t('currentContest')}</span>{' '}
-                            <span className="font-bold">{t('contestNamePlaceholder')}</span>{' '}
-                            <span className="mx-2">|</span>{' '}
-                            <span className="text-yellow-400">{tContest('endsIn')} {formatTimeRemaining()}</span>
-                        </Link>
-                    </div>
-                )}
             </header>
         </>
     );

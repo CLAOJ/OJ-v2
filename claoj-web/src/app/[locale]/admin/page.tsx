@@ -1,353 +1,282 @@
 'use client';
 
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { useRouter } from '@/navigation';
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import {
-    LayoutDashboard,
-    Users,
-    Code,
-    Trophy,
-    FileText,
-    MessageSquare,
-    Settings,
-    Activity,
-    Globe,
-    Shield,
-    BarChart3,
-    Zap,
-    TrendingUp,
-    ArrowRight
-} from 'lucide-react';
 import { Link } from '@/navigation';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/providers/AuthProvider';
+import {
+    adminUserApi,
+    adminProblemApi,
+    adminContestApi,
+    adminOrganizationApi,
+    adminSubmissionApi,
+    adminTicketApi,
+    adminJudgeApi,
+    adminAuditLogApi,
+} from '@/lib/adminApi';
+import { formatDate } from '@/lib/date';
+import { cn, getStatusColor } from '@/lib/utils';
+import { statusKey } from '@/lib/submissionStatus';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Code2, Globe, BookOpen, ChevronRight } from 'lucide-react';
+
+// Live panels poll; inventory totals load once per visit.
+const REFRESH_MS = 30_000;
+
+function Panel({ title, href, linkLabel, children, className }: {
+    title: string;
+    href?: string;
+    linkLabel?: string;
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <section className={cn('rounded-md border bg-card overflow-hidden', className)}>
+            <header className="flex items-center justify-between gap-2 px-4 py-2.5 border-b bg-secondary/60">
+                <h2 className="text-sm font-semibold">{title}</h2>
+                {href && (
+                    <Link href={href} className="text-xs text-accent hover:underline flex items-center gap-0.5">
+                        {linkLabel}
+                        <ChevronRight size={14} />
+                    </Link>
+                )}
+            </header>
+            {children}
+        </section>
+    );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+    return <p className="px-4 py-6 text-sm text-muted-foreground text-center">{children}</p>;
+}
+
+function Rows({ n }: { n: number }) {
+    return (
+        <div className="p-4 space-y-2">
+            {Array.from({ length: n }, (_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+        </div>
+    );
+}
 
 export default function AdminDashboardPage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
     const t = useTranslations('Admin');
+    const tSub = useTranslations('Submissions');
+    const { user } = useAuth();
 
-    useEffect(() => {
-        // Superuser-inclusive: admins (is_admin === is_superuser) may use the
-        // admin dashboard even without is_staff, matching the backend route gate.
-        if (!loading && !user?.is_staff && !user?.is_admin) {
-            router.push('/');
-        }
-    }, [user, loading, router]);
-
-    if (loading || (!user?.is_staff && !user?.is_admin)) {
-        return (
-            <div className="flex items-center justify-center min-h-[60vh]"
-            >
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-            </div>
-        );
-    }
-
-    const ADMIN_CARDS = [
-        {
-            id: 'problems',
-            title: t('nav.problems'),
-            description: t('dashboard.problemsDesc'),
-            icon: Code,
-            href: '/admin/problems',
-            color: 'from-blue-500 to-cyan-500',
-            bgColor: 'bg-blue-500/10',
-            borderColor: 'border-blue-500/20',
-            stats: t('dashboard.problemsStat'),
-        },
-        {
-            id: 'contests',
-            title: t('nav.contests'),
-            description: t('dashboard.contestsDesc'),
-            icon: Trophy,
-            href: '/admin/contests',
-            color: 'from-amber-500 to-orange-500',
-            bgColor: 'bg-amber-500/10',
-            borderColor: 'border-amber-500/20',
-            stats: t('dashboard.contestsStat'),
-        },
-        {
-            id: 'users',
-            title: t('nav.users'),
-            description: t('dashboard.usersDesc'),
-            icon: Users,
-            href: '/admin/users',
-            color: 'from-violet-500 to-purple-500',
-            bgColor: 'bg-violet-500/10',
-            borderColor: 'border-violet-500/20',
-            stats: t('dashboard.usersStat'),
-        },
-        {
-            id: 'submissions',
-            title: t('nav.submissions'),
-            description: t('dashboard.submissionsDesc'),
-            icon: Activity,
-            href: '/admin/submissions',
-            color: 'from-rose-500 to-pink-500',
-            bgColor: 'bg-rose-500/10',
-            borderColor: 'border-rose-500/20',
-            stats: t('dashboard.submissionsStat'),
-        },
-        {
-            id: 'blog',
-            title: t('nav.blogPosts'),
-            description: t('dashboard.blogDesc'),
-            icon: FileText,
-            href: '/admin/blog-posts',
-            color: 'from-indigo-500 to-blue-500',
-            bgColor: 'bg-indigo-500/10',
-            borderColor: 'border-indigo-500/20',
-            stats: t('dashboard.blogStat'),
-        },
-        {
-            id: 'tickets',
-            title: t('nav.tickets'),
-            description: t('dashboard.ticketsDesc'),
-            icon: MessageSquare,
-            href: '/admin/tickets',
-            color: 'from-cyan-500 to-sky-500',
-            bgColor: 'bg-cyan-500/10',
-            borderColor: 'border-cyan-500/20',
-            stats: t('dashboard.ticketsStat'),
-        },
-        {
-            id: 'languages',
-            title: t('nav.languages'),
-            description: t('dashboard.languagesDesc'),
-            icon: Globe,
-            href: '/admin/languages',
-            color: 'from-fuchsia-500 to-pink-500',
-            bgColor: 'bg-fuchsia-500/10',
-            borderColor: 'border-fuchsia-500/20',
-            stats: t('dashboard.languagesStat'),
-        },
-        {
-            id: 'navigation',
-            title: t('nav.navigationBars'),
-            description: t('dashboard.navigationDesc'),
-            icon: LayoutDashboard,
-            href: '/admin/navigation-bars',
-            color: 'from-lime-500 to-green-500',
-            bgColor: 'bg-lime-500/10',
-            borderColor: 'border-lime-500/20',
-            stats: t('dashboard.navigationStat'),
-        },
-        {
-            id: 'roles',
-            title: t('nav.groups'),
-            description: t('dashboard.groupsDesc'),
-            icon: Shield,
-            href: '/admin/groups',
-            color: 'from-red-500 to-rose-500',
-            bgColor: 'bg-red-500/10',
-            borderColor: 'border-red-500/20',
-            stats: t('dashboard.groupsStat'),
-        },
+    const sources = [
+        { key: 'problems', href: '/admin/problems', fetch: () => adminProblemApi.list(1, 1) },
+        { key: 'contests', href: '/admin/contests', fetch: () => adminContestApi.list(1, 1) },
+        { key: 'users', href: '/admin/users', fetch: () => adminUserApi.list(1, 1) },
+        { key: 'organizations', href: '/admin/organizations', fetch: () => adminOrganizationApi.list(1, 1) },
     ];
+    const counts = useQueries({
+        queries: sources.map(s => ({
+            queryKey: ['admin-dashboard', s.key],
+            queryFn: async () => (await s.fetch()).data.total,
+        })),
+    });
 
-    const QUICK_ACTIONS = [
-        { label: t('dashboard.createProblemAction'), href: '/admin/problems/create', icon: Code, color: 'text-blue-400' },
-        { label: t('dashboard.createContestAction'), href: '/admin/contests/create', icon: Trophy, color: 'text-amber-400' },
-        { label: t('dashboard.viewUsersAction'), href: '/admin/users', icon: Users, color: 'text-violet-400' },
-        { label: t('dashboard.systemStatsAction'), href: '/stats', icon: BarChart3, color: 'text-emerald-400' },
-    ];
+    const submissions = useQuery({
+        queryKey: ['admin-dashboard', 'submissions'],
+        queryFn: async () => (await adminSubmissionApi.list(1, 10)).data.data,
+        refetchInterval: REFRESH_MS,
+    });
+
+    const tickets = useQuery({
+        queryKey: ['admin-dashboard', 'tickets'],
+        queryFn: async () => (await adminTicketApi.list(1, 5, { status: 'open' })).data,
+        refetchInterval: REFRESH_MS,
+    });
+
+    const judges = useQuery({
+        queryKey: ['admin-dashboard', 'judges'],
+        queryFn: async () => (await adminJudgeApi.list(1, 100)).data.data,
+        refetchInterval: REFRESH_MS,
+    });
+
+    // Every GET is audited too; the dashboard only cares about changes.
+    const changes = useQuery({
+        queryKey: ['admin-dashboard', 'audit'],
+        queryFn: async () => (await adminAuditLogApi.list(1, 100)).data.results.filter(e => e.action !== 'VIEW').slice(0, 8),
+        refetchInterval: REFRESH_MS,
+    });
+
+    const inventory = sources.map((s, i) => ({ label: t(`nav.${s.key}`), href: s.href, q: counts[i] }));
+
+    const judgeList = judges.data ?? [];
+    const onlineCount = judgeList.filter(j => j.online && !j.is_disabled && !j.is_blocked).length;
 
     return (
-        <div className="space-y-8"
-        >
-            {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800"
-            >
-                {/* Background effects */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-
-                <div className="relative p-8"
-                >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-                    >
-                        <div>
-                            <div className="flex items-center gap-3 mb-2"
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25"
-                                >
-                                    <Settings className="w-6 h-6 text-slate-950" />
-                                </div>
-                                <div>
-                                    <h1 className="text-3xl font-bold text-slate-100"
-                                    >
-                                        {t('dashboard.title')}
-                                    </h1>
-                                    <p className="text-slate-400">
-                                        {t('dashboard.welcome', { username: user.username })}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2"
-                        >
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-sm text-slate-400"
-                            >
-                                {t('dashboard.systemOperational')}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="mt-6 pt-6 border-t border-slate-800/50 grid grid-cols-2 md:grid-cols-4 gap-3"
-                    >
-                        {QUICK_ACTIONS.map((action, index) => (
-                            <motion.div
-                                key={action.label}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 + index * 0.05 }}
-                            >
-                                <Link
-                                    href={action.href}
-                                    className={cn(
-                                        'flex items-center gap-2 p-3 rounded-lg',
-                                        'bg-slate-900/50 border border-slate-800',
-                                        'hover:border-slate-700 hover:bg-slate-800/50',
-                                        'transition-all duration-200 group'
-                                    )}
-                                >
-                                    <action.icon className={cn('w-4 h-4', action.color)} />
-                                    <span className="text-sm font-medium text-slate-300 group-hover:text-slate-200"
-                                    >
-                                        {action.label}
-                                    </span>
-                                    <ArrowRight className="w-3 h-3 text-slate-600 ml-auto group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
-                                </Link>
-                            </motion.div>
-                        ))}
-                    </div>
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        {t('dashboard.welcome', { username: user?.username ?? '' })}
+                    </p>
                 </div>
-            </motion.div>
-
-            {/* Admin Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            >
-                {ADMIN_CARDS.map((card, index) => (
-                    <motion.div
-                        key={card.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 + index * 0.05 }}
-                    >
+                <div className="flex flex-wrap gap-2">
+                    {[
+                        { href: '/admin/problems/create', label: t('dashboard.newProblem'), icon: Code2 },
+                        { href: '/admin/contests/create', label: t('dashboard.newContest'), icon: Globe },
+                        { href: '/admin/blog-posts', label: t('dashboard.newPost'), icon: BookOpen },
+                    ].map((a, i) => (
                         <Link
-                            href={card.href}
+                            key={a.href}
+                            href={a.href}
                             className={cn(
-                                'block h-full p-6 rounded-xl border transition-all duration-200 group',
-                                'bg-card hover:shadow-lg',
-                                card.borderColor,
-                                'hover:border-opacity-50'
+                                'inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium transition-colors',
+                                i === 0
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                    : 'border bg-card hover:bg-muted'
                             )}
                         >
-                            <div className="flex items-start justify-between mb-4"
-                            >
-                                <div
-                                    className={cn(
-                                        'w-12 h-12 rounded-xl flex items-center justify-center',
-                                        'bg-gradient-to-br text-white shadow-lg',
-                                        card.color,
-                                        'group-hover:scale-110 transition-transform duration-200'
-                                    )}
-                                >
-                                    <card.icon className="w-6 h-6" />
-                                </div>
-                                <ArrowRight className="w-5 h-5 text-slate-600 group-hover:text-slate-400 group-hover:translate-x-1 transition-all" />
-                            </div>
-
-                            <h3 className="text-lg font-bold text-slate-100 mb-2"
-                            >
-                                {card.title}
-                            </h3>
-                            <p className="text-sm text-slate-400 mb-4"
-                            >
-                                {card.description}
-                            </p>
-
-                            <div className="pt-4 border-t border-slate-800/50"
-                            >
-                                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider"
-                                >
-                                    {card.stats}
-                                </span>
-                            </div>
+                            <a.icon size={16} />
+                            {a.label}
                         </Link>
-                    </motion.div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Inventory */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 rounded-md border bg-card divide-x divide-y lg:divide-y-0">
+                {inventory.map(item => (
+                    <Link key={item.href} href={item.href} className="group px-4 py-3 hover:bg-muted/60 transition-colors">
+                        <div className="text-xs text-muted-foreground">{item.label}</div>
+                        <div className="mt-0.5 text-2xl font-semibold tabular-nums">
+                            {item.q.isLoading ? <Skeleton className="h-8 w-16" /> : item.q.isError ? '—' : item.q.data?.toLocaleString()}
+                        </div>
+                    </Link>
                 ))}
             </div>
 
-            {/* System Status */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="rounded-xl border bg-card p-6"
-            >
-                <div className="flex items-center gap-2 mb-4"
+            <div className="grid gap-6 lg:grid-cols-3">
+                {/* Recent submissions */}
+                <Panel
+                    title={t('dashboard.recentSubmissions')}
+                    href="/admin/submissions"
+                    linkLabel={t('dashboard.viewAll')}
+                    className="lg:col-span-2"
                 >
-                    <Zap className="w-5 h-5 text-amber-500" />
-                    <h2 className="text-lg font-bold text-slate-100"
+                    {submissions.isLoading ? <Rows n={8} /> : !submissions.data?.length ? (
+                        <Empty>{t('dashboard.noSubmissions')}</Empty>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <tbody className="divide-y">
+                                    {submissions.data.map(s => {
+                                        const code = s.result ?? s.status;
+                                        return (
+                                            <tr key={s.id} className="hover:bg-muted/40">
+                                                <td className="px-4 py-2 tabular-nums">
+                                                    <Link href={`/submission/${s.id}`} className="text-accent hover:underline">#{s.id}</Link>
+                                                </td>
+                                                <td className="px-2 py-2 font-medium truncate max-w-[10rem]">
+                                                    <Link href={`/user/${s.user}`} className="hover:underline">{s.user}</Link>
+                                                </td>
+                                                <td className="px-2 py-2 truncate max-w-[12rem]">
+                                                    <Link href={`/problem/${s.problem}`} className="hover:underline">{s.problem}</Link>
+                                                </td>
+                                                <td className={cn('px-2 py-2 font-semibold whitespace-nowrap', getStatusColor(code))}>
+                                                    {tSub(`status.${statusKey(code)}`)}
+                                                </td>
+                                                <td className="px-4 py-2 text-right text-muted-foreground whitespace-nowrap">
+                                                    {formatDate(s.date)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </Panel>
+
+                <div className="space-y-6">
+                    {/* Judges */}
+                    <Panel
+                        title={judges.data ? t('dashboard.judgesOnline', { online: onlineCount, total: judgeList.length }) : t('nav.judges')}
+                        href="/admin/judges"
+                        linkLabel={t('dashboard.manage')}
                     >
-                        {t('dashboard.platformOverview')}
-                    </h2>
+                        {judges.isLoading ? <Rows n={3} /> : !judgeList.length ? (
+                            <Empty>{t('dashboard.noJudges')}</Empty>
+                        ) : (
+                            <ul className="divide-y text-sm">
+                                {judgeList.map(j => {
+                                    const state = j.is_blocked ? 'blocked' : j.is_disabled ? 'disabled' : j.online ? 'online' : 'offline';
+                                    return (
+                                        <li key={j.id}>
+                                            <Link href={`/admin/judges/${j.id}`} className="flex items-center gap-2.5 px-4 py-2 hover:bg-muted/40">
+                                                <span
+                                                    aria-hidden
+                                                    className={cn('w-2 h-2 rounded-full shrink-0', {
+                                                        'bg-success': state === 'online',
+                                                        'bg-muted-foreground/40': state === 'offline',
+                                                        'bg-warning': state === 'disabled',
+                                                        'bg-destructive': state === 'blocked',
+                                                    })}
+                                                />
+                                                <span className="font-medium truncate flex-1">{j.name}</span>
+                                                <span className="text-xs text-muted-foreground tabular-nums">
+                                                    {state === 'online' && j.load != null ? t('dashboard.load', { load: j.load.toFixed(2) }) : t(`judges.${state}`)}
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </Panel>
+
+                    {/* Open tickets */}
+                    <Panel
+                        title={tickets.data ? t('dashboard.openTickets', { count: tickets.data.total }) : t('nav.tickets')}
+                        href="/admin/tickets"
+                        linkLabel={t('dashboard.viewAll')}
+                    >
+                        {tickets.isLoading ? <Rows n={3} /> : !tickets.data?.items.length ? (
+                            <Empty>{t('dashboard.noOpenTickets')}</Empty>
+                        ) : (
+                            <ul className="divide-y text-sm">
+                                {tickets.data.items.map(tk => (
+                                    <li key={tk.id}>
+                                        <Link href={`/admin/tickets/${tk.id}`} className="block px-4 py-2 hover:bg-muted/40">
+                                            <div className="font-medium truncate">{tk.title}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {tk.user} · {formatDate(tk.created)}
+                                                {!tk.assignees.length && <span className="text-warning"> · {t('dashboard.unassigned')}</span>}
+                                            </div>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Panel>
                 </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                >
-                    <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-800"
-                    >
-                        <div className="flex items-center gap-2 mb-2"
-                        >
-                            <TrendingUp className="w-4 h-4 text-emerald-400" />
-                            <span className="text-sm text-slate-400"
-                            >{t('dashboard.systemStatusLabel')}</span>
-                        </div>
-                        <p className="text-lg font-semibold text-emerald-400"
-                        >
-                            {t('dashboard.systemStatusValue')}
-                        </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-800"
-                    >
-                        <div className="flex items-center gap-2 mb-2"
-                        >
-                            <Users className="w-4 h-4 text-blue-400" />
-                            <span className="text-sm text-slate-400"
-                            >{t('dashboard.userActivityLabel')}</span>
-                        </div>
-                        <p className="text-lg font-semibold text-slate-200"
-                        >
-                            {t('dashboard.userActivityDesc')} <Link href="/stats" className="text-primary hover:underline">{t('dashboard.statisticsLink')}</Link>
-                        </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-800"
-                    >
-                        <div className="flex items-center gap-2 mb-2"
-                        >
-                            <Shield className="w-4 h-4 text-violet-400" />
-                            <span className="text-sm text-slate-400"
-                            >{t('dashboard.adminLevelLabel')}</span>
-                        </div>
-                        <p className="text-lg font-semibold text-slate-200"
-                        >
-                            {user.is_admin ? t('dashboard.superAdministrator') : t('dashboard.staffMember')}
-                        </p>
-                    </div>
-                </div>
-            </motion.div>
+            {/* Recent changes */}
+            <Panel title={t('dashboard.recentChanges')} href="/admin/audit-logs" linkLabel={t('dashboard.viewAll')}>
+                {changes.isLoading ? <Rows n={4} /> : changes.isError ? (
+                    <Empty>{t('auditLog.unavailable')}</Empty>
+                ) : !changes.data?.length ? (
+                    <Empty>{t('dashboard.noChanges')}</Empty>
+                ) : (
+                    <ul className="divide-y text-sm">
+                        {changes.data.map(e => (
+                            <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 px-4 py-2">
+                                <span className="font-medium">{e.username}</span>
+                                <span className={cn('text-xs font-semibold', e.status === 'failure' ? 'text-destructive' : 'text-muted-foreground')}>
+                                    {t(`auditLog.actions.${e.action}`)}
+                                </span>
+                                <span className="font-mono text-xs">{e.resource}{e.resource_id && ` #${e.resource_id}`}</span>
+                                <span className="ml-auto text-xs text-muted-foreground">{formatDate(e.created_at)}</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </Panel>
         </div>
     );
 }
