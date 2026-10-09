@@ -182,14 +182,14 @@ export default function SubmissionListPage() {
                                         <td className="px-6 py-8">
                                             <Link href={`/problem/${s.problem}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
                                                 <span className="font-medium text-sm tracking-tight">{s.problem_name || s.problem}</span>
-                                                <span className="text-xs font-mono font-medium text-muted-foreground opacity-40">{s.problem}</span>
+                                                <span className="text-xs uppercase font-mono font-medium text-muted-foreground opacity-40">{s.problem}</span>
                                             </Link>
                                         </td>
                                         <td className="px-6 py-8 text-center">
                                             <Link href={`/submission/${s.id}`} className="outline-none">
                                                 <Badge
                                                     variant={getStatusVariant(s.result || s.status)}
-                                                    className="px-4 py-1.5 rounded text-xs font-medium shadow-sm"
+                                                    className="px-4 py-1.5 rounded text-xs font-medium uppercase shadow-sm"
                                                 >
                                                     {s.result || s.status}
                                                 </Badge>

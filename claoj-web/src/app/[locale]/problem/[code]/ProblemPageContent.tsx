@@ -190,7 +190,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                 {/* Submissions Links */}
                 <div className="bg-card border rounded-md p-6 shadow-sm space-y-3">
-                    <h3 className="text-xs font-medium text-muted-foreground mb-4">{t('activity')}</h3>
+                    <h3 className="text-xs font-semibold text-muted-foreground mb-4">{t('activity')}</h3>
                     <Link
                         href={`/submissions?problem=${problem.code}`}
                         className="flex items-center justify-between group p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
@@ -257,7 +257,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                 {/* Technical Details */}
                 <div className="bg-card border rounded-md p-6 shadow-sm space-y-6">
-                    <h3 className="text-xs font-medium text-muted-foreground">{t('details')}</h3>
+                    <h3 className="text-xs font-semibold text-muted-foreground">{t('details')}</h3>
 
                     <div className="space-y-4">
                         <div className="flex flex-col gap-1.5">
@@ -420,7 +420,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
             {/* PDF Viewer Modal */}
             {showPdfViewer && problem.pdf_url && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 ">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="relative w-full h-full max-w-7xl mx-auto p-4">
                         {/* Modal header */}
                         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">

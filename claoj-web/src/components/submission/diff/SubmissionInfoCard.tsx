@@ -23,7 +23,7 @@ export function SubmissionInfoCard({ title, submission }: SubmissionInfoCardProp
     return (
         <div className="bg-card border rounded-md p-6 space-y-3">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-sm font-semibold text-muted-foreground">
                     {title}
                 </h3>
                 <Badge variant={getStatusVariant(submission.result || '')}>

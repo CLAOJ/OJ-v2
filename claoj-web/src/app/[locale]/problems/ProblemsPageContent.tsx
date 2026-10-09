@@ -98,7 +98,7 @@ export default function ProblemsPageContent() {
                 <div className="p-4 rounded-md bg-card border shadow-sm space-y-4">
                     <div className="flex items-center gap-3">
                         <SlidersHorizontal size={20} className="text-muted-foreground" />
-                        <h3 className="text-xs font-medium text-primary">{t('advancedFilters')}</h3>
+                        <h3 className="text-xs font-semibold text-primary">{t('advancedFilters')}</h3>
                     </div>
 
                     <div className="space-y-6">
@@ -188,7 +188,7 @@ export default function ProblemsPageContent() {
                         <Flame size={120} className="text-muted-foreground" />
                     </div>
 
-                    <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-3 relative z-10">
+                    <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-3 relative z-10">
                         <Flame size={16} />
                         {t('trendingNow')}
                     </h3>
