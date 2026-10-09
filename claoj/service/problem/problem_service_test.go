@@ -21,12 +21,16 @@ type ProblemServiceTestSuite struct {
 func (s *ProblemServiceTestSuite) SetupTest() {
 	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	s.Require().NoError(err)
+	sqlDB, err := database.DB()
+	s.Require().NoError(err)
+	sqlDB.SetMaxOpenConns(1)
 
 	s.database = database
 	db.DB = database
 
 	// Migrate schema
 	err = database.AutoMigrate(
+		&models.AuthUser{},
 		&models.Problem{},
 		&models.ProblemGroup{},
 		&models.ProblemType{},
@@ -403,4 +407,81 @@ func TestListProblemsRequest_Validation(t *testing.T) {
 	resp, err = service.ListProblems(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 100, resp.PageSize)
+}
+
+func (s *ProblemServiceTestSuite) TestUpdateProblem_FullListsReplace() {
+	group := s.createTestGroup("g1")
+	p := s.createTestProblem("FULL1", "Full", group.ID)
+	a1 := s.createTestProfile("alice")
+	a2 := s.createTestProfile("bob")
+	ty := s.createTestType("dp")
+	lang := s.createTestLanguage("C++17", "CPP17")
+
+	authors := []uint{a1.ID, a2.ID}
+	types := []uint{ty.ID}
+	langs := []uint{lang.ID}
+	curators := []uint{a2.ID}
+	_, err := s.service.UpdateProblem(UpdateProblemRequest{
+		ProblemCode: p.Code, AuthorIDs: &authors, TypeIDs: &types, AllowedLangIDs: &langs, CuratorIDs: &curators,
+	})
+	s.Require().NoError(err)
+
+	got, err := s.service.GetProblem(GetProblemRequest{ProblemCode: p.Code})
+	s.Require().NoError(err)
+	s.ElementsMatch(authors, got.AuthorIDs)
+	s.Equal(types, got.TypeIDs)
+	s.Equal(langs, got.AllowedLangIDs)
+	s.Equal(curators, got.CuratorIDs)
+	s.ElementsMatch([]string{"alice", "bob"}, []string{got.Authors[0].Username, got.Authors[1].Username})
+
+	authors = []uint{a2.ID}
+	_, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, AuthorIDs: &authors})
+	s.Require().NoError(err)
+	got, _ = s.service.GetProblem(GetProblemRequest{ProblemCode: p.Code})
+	s.Equal([]uint{a2.ID}, got.AuthorIDs)
+	s.Equal(types, got.TypeIDs, "omitted type_ids must stay unchanged")
+	s.Equal(langs, got.AllowedLangIDs, "omitted allowed_lang_ids must stay unchanged")
+}
+
+func (s *ProblemServiceTestSuite) TestUpdateProblem_EmptyListClears() {
+	group := s.createTestGroup("g2")
+	p := s.createTestProblem("CLR1", "Clear", group.ID)
+	a := s.createTestProfile("carol")
+	authors := []uint{a.ID}
+	_, err := s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, AuthorIDs: &authors})
+	s.Require().NoError(err)
+
+	none := []uint{}
+	_, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, AuthorIDs: &none})
+	s.Require().NoError(err)
+	got, _ := s.service.GetProblem(GetProblemRequest{ProblemCode: p.Code})
+	s.Empty(got.AuthorIDs)
+	s.NotNil(got.AuthorIDs)
+}
+
+func (s *ProblemServiceTestSuite) TestUpdateProblem_UnknownIDRollsBackEverything() {
+	group := s.createTestGroup("g3")
+	p := s.createTestProblem("RB1", "Before", group.ID)
+	name := "After"
+	bad := []uint{424242}
+	_, err := s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, Name: &name, AuthorIDs: &bad})
+	s.Require().Error(err)
+
+	got, _ := s.service.GetProblem(GetProblemRequest{ProblemCode: p.Code})
+	s.Equal("Before", got.Name, "a failed relation must roll back the scalar update too")
+}
+
+func (s *ProblemServiceTestSuite) TestUpdateProblem_GroupID() {
+	g1 := s.createTestGroup("g4")
+	g2 := s.createTestGroup("g5")
+	p := s.createTestProblem("GRP1", "Group", g1.ID)
+
+	_, err := s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, GroupID: &g2.ID})
+	s.Require().NoError(err)
+	got, _ := s.service.GetProblem(GetProblemRequest{ProblemCode: p.Code})
+	s.Equal(g2.ID, got.GroupID)
+
+	missing := uint(98765)
+	_, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, GroupID: &missing})
+	s.ErrorIs(err, ErrInvalidGroup)
 }

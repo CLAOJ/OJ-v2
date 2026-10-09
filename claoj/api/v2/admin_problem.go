@@ -76,9 +76,7 @@ func AdminProblemDetail(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"problem": profile,
-	})
+	c.JSON(http.StatusOK, profile)
 }
 
 // AdminProblemCreate - POST /api/v2/admin/problems
@@ -150,6 +148,12 @@ func AdminProblemUpdate(c *gin.Context) {
 		MemoryLimit       *uint    `json:"memory_limit"`
 		IsManuallyManaged *bool    `json:"is_manually_managed"`
 		PdfURL            *string  `json:"pdf_url"`
+		GroupID           *uint    `json:"group_id"`
+		AuthorIDs         *[]uint  `json:"author_ids"`
+		CuratorIDs        *[]uint  `json:"curator_ids"`
+		TesterIDs         *[]uint  `json:"tester_ids"`
+		TypeIDs           *[]uint  `json:"type_ids"`
+		AllowedLangIDs    *[]uint  `json:"allowed_lang_ids"`
 		AddTypeIDs        []uint   `json:"add_type_ids"`
 		RemoveTypeIDs     []uint   `json:"remove_type_ids"`
 		AddAuthorIDs      []uint   `json:"add_author_ids"`
@@ -174,6 +178,12 @@ func AdminProblemUpdate(c *gin.Context) {
 		MemoryLimit:       input.MemoryLimit,
 		IsManuallyManaged: input.IsManuallyManaged,
 		PdfURL:            input.PdfURL,
+		GroupID:           input.GroupID,
+		AuthorIDs:         input.AuthorIDs,
+		CuratorIDs:        input.CuratorIDs,
+		TesterIDs:         input.TesterIDs,
+		TypeIDs:           input.TypeIDs,
+		AllowedLangIDs:    input.AllowedLangIDs,
 		AddTypeIDs:        input.AddTypeIDs,
 		RemoveTypeIDs:     input.RemoveTypeIDs,
 		AddAuthorIDs:      input.AddAuthorIDs,
