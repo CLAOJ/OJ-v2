@@ -455,3 +455,22 @@ serving through a backend/web recreate (no 502, no manual restart).
 **Rollback.** `claoj-docker/claoj/scripts/rollback.sh backend sha-<short>` pins a
 service to an immutable build (freezing Watchtower); `... backend latest` resumes
 auto-updates.
+
+## Judges and horizontal scaling (k3s / Docker Swarm)
+
+Submissions are queued in Redis (asynq queue `judge`); `claoj-judge`
+replicas pull from it and POST results to the backend's
+`/internal/judge/event`. Nothing dials into a judge, so backend and judge
+are both plain replicated services with the same shape on k3s and Swarm:
+
+- `backend`: N replicas, env `JUDGE_NAME`. Route only `/api/` to it from the
+  public ingress/nginx; `/internal/` must stay cluster-internal.
+- `judge`: M replicas of `claoj/claoj-judge-agent`, `SYS_PTRACE`, stop grace
+  ≥ 30 s, env `REDIS_ADDR`, `REDIS_DB` (= backend's), `BACKEND_URL` (the
+  backend Service), `JUDGE_NAME`, `JUDGE_KEY`. No Service or ports.
+- `problems`: the single v1 problems folder, mounted read-only on judges.
+  Multi-node: NFS-export it from the host that owns it.
+- backend `/app/data` (v2 PDFs): one shared RWX volume across backend replicas.
+- The backend refuses to start without Redis.
+- Scale judges with replicas; there is no per-judge admin step (all share one
+  `judge_judge` row).

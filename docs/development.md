@@ -290,20 +290,19 @@ a standalone judge container at the host instead of at `v2_backend`
 Stop the compose-managed `v2_judge` first — otherwise two processes present
 the same `Vịt Toàn Năng` identity to two different bridges and flap.
 
-**6.2 Run**, passing the identity explicitly (overrides the id/key baked into
-`judge.yml`, which defaults to v1's `Vịt Con` — the same override pattern
-`v1_judge`/`v2_judge` use in `docker-compose.v2.yml`):
+**6.2 Run a judge** against the host-run backend (`:8081`) and host Redis:
 
 ```bash
 docker run -d --name claoj_judge_local --cap-add SYS_PTRACE \
-  -v "F:\Coding\CLAOJ\CLAOJ\claoj-data\problems:/problems" \
-  claoj/judge-tiervnoj \
-  run -p 9997 -A 0.0.0.0 -a 9998 -c /problems/judge.yml host.docker.internal \
-  "Vịt Toàn Năng" <V2_JUDGE_KEY, from .env>
+  -v "F:\Coding\CLAOJ\CLAOJ\claoj-data\problems:/problems:ro" \
+  -e REDIS_ADDR=host.docker.internal:6379 -e REDIS_DB=2 \
+  -e BACKEND_URL=http://host.docker.internal:8081 \
+  -e JUDGE_NAME="Vịt Toàn Năng" -e JUDGE_KEY=<V2_JUDGE_KEY, from .env> \
+  claoj/claoj-judge-agent
 ```
 
-On connect you'll see `bridge [...]: authenticated as Vịt Toàn Năng` in the
-host-run backend's log, and `GET /api/judges` reports it `online`.
+The backend needs `JUDGE_NAME="Vịt Toàn Năng"`; within 30 s `GET /api/judges`
+reports it `online`. Nothing connects to the judge: it pulls from Redis.
 
 **6.3 Submit and watch it grade** (against the host-run backend on `:8081`):
 
