@@ -15,37 +15,48 @@ func NewContestProblemService() *ContestProblemService {
 	return &ContestProblemService{}
 }
 
-// ContestProblemInfo holds contest problem information.
+// ContestProblemInfo is one contest problem row as the admin sees it.
 type ContestProblemInfo struct {
-	ID        uint
-	ProblemID uint
-	Code      string
-	Name      string
-	Points    int
-	Order     uint
-	Partial   bool
+	ID          uint   `json:"id"`
+	ProblemID   uint   `json:"problem_id"`
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Points      int    `json:"points"`
+	Partial     bool   `json:"partial"`
+	IsPretested bool   `json:"is_pretested"`
+	Order       uint   `json:"order"`
 }
 
-// GetContestProblems retrieves all problems for a contest.
+// ContestProblemInput is one row of a full contest problem list. Its
+// position in the list is its order. Omitted fields keep the existing
+// row's value, or the defaults (100 points, partial) for a new row.
+type ContestProblemInput struct {
+	ProblemID   uint  `json:"problem_id"`
+	Points      *int  `json:"points"`
+	Partial     *bool `json:"partial"`
+	IsPretested *bool `json:"is_pretested"`
+}
+
+// GetContestProblems retrieves all problems for a contest, in order.
 func (s *ContestProblemService) GetContestProblems(contestID uint) ([]ContestProblemInfo, error) {
 	var contestProblems []models.ContestProblem
-	if err := db.DB.Where("contest_id = ?", contestID).Order("`order` ASC").Find(&contestProblems).Error; err != nil {
+	if err := db.DB.Preload("Problem").Where("contest_id = ?", contestID).Order("`order` ASC").Find(&contestProblems).Error; err != nil {
 		return nil, err
 	}
 
 	problems := make([]ContestProblemInfo, len(contestProblems))
 	for i, cp := range contestProblems {
 		problems[i] = ContestProblemInfo{
-			ID:        cp.ID,
-			ProblemID: cp.ProblemID,
-			Code:      cp.Problem.Code,
-			Name:      cp.Problem.Name,
-			Points:    cp.Points,
-			Order:     cp.Order,
-			Partial:   cp.Partial,
+			ID:          cp.ID,
+			ProblemID:   cp.ProblemID,
+			Code:        cp.Problem.Code,
+			Name:        cp.Problem.Name,
+			Points:      cp.Points,
+			Partial:     cp.Partial,
+			IsPretested: cp.IsPretested,
+			Order:       cp.Order,
 		}
 	}
-
 	return problems, nil
 }
 

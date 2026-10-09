@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -71,3 +72,44 @@ func TestAdminProblemUpdate_UnknownAuthorIs400(t *testing.T) {
 }
 
 var _ gin.HandlerFunc = AdminProblemDetail
+
+func TestAdminContestDetail_IsFlatWithProblemsAndSeconds(t *testing.T) {
+	setupAdminDetailDB(t)
+	limit := int64(5400 * 1_000_000)
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	c := models.Contest{Key: "tik25", Name: "TiK25", StartTime: start, EndTime: start.Add(5 * time.Hour), TimeLimit: &limit}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+	p := models.Problem{Code: "knap", Name: "Knapsack"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.ContestProblem{ContestID: c.ID, ProblemID: p.ID, Points: 100, Order: 1}).Error)
+
+	router := authedRouter(1, http.MethodGet, "/admin/contest/:key", AdminContestDetail)
+	w := doRequest(router, http.MethodGet, "/admin/contest/tik25", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, "tik25", body["key"])
+	require.Equal(t, float64(5400), body["time_limit"])
+	problems := body["problems"].([]any)
+	require.Len(t, problems, 1)
+	require.Equal(t, "knap", problems[0].(map[string]any)["code"])
+	require.NotContains(t, body, "contest")
+}
+
+func TestAdminContestUpdate_TimeLimitSecondsAndBadFormat(t *testing.T) {
+	setupAdminDetailDB(t)
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	c := models.Contest{Key: "c2", Name: "C2", StartTime: start, EndTime: start.Add(time.Hour)}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+
+	router := authedRouter(1, http.MethodPatch, "/admin/contest/:key", AdminContestUpdate)
+	w := doRequest(router, http.MethodPatch, "/admin/contest/c2", `{"time_limit": 1800}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var stored models.Contest
+	require.NoError(t, db.DB.First(&stored, c.ID).Error)
+	require.Equal(t, int64(1800*1_000_000), *stored.TimeLimit)
+
+	w = doRequest(router, http.MethodPatch, "/admin/contest/c2", `{"format_name": "nope"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}

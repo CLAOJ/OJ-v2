@@ -13,6 +13,24 @@ import (
 // ADMIN CONTEST MANAGEMENT API
 // ============================================================
 
+// secondsToMicros converts the admin API's seconds to Django's
+// DurationField microseconds. nil stays nil; 0 is passed through so the
+// update path can clear the limit.
+func secondsToMicros(seconds *int64) *int64 {
+	if seconds == nil {
+		return nil
+	}
+	us := *seconds * 1_000_000
+	return &us
+}
+
+func positiveOrNil(v *int64) *int64 {
+	if v == nil || *v <= 0 {
+		return nil
+	}
+	return v
+}
+
 // AdminContestList - GET /api/v2/admin/contests
 func AdminContestList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
@@ -77,22 +95,7 @@ func AdminContestDetail(c *gin.Context) {
 		return
 	}
 
-	problems := make([]gin.H, len(resp.Problems))
-	for i, p := range resp.Problems {
-		problems[i] = gin.H{
-			"id":         p.ID,
-			"problem_id": p.ProblemID,
-			"code":       p.Code,
-			"name":       p.Name,
-			"points":     p.Points,
-			"order":      p.Order,
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"contest":  resp.Contest,
-		"problems": problems,
-	})
+	c.JSON(http.StatusOK, resp)
 }
 
 // AdminContestCreate - POST /api/v2/admin/contests
@@ -144,7 +147,7 @@ func AdminContestCreate(c *gin.Context) {
 		Summary:               input.Summary,
 		StartTime:             startTime,
 		EndTime:               endTime,
-		TimeLimit:             input.TimeLimit,
+		TimeLimit:             positiveOrNil(secondsToMicros(input.TimeLimit)),
 		IsVisible:             input.IsVisible,
 		IsRated:               input.IsRated,
 		FormatName:            input.FormatName,
@@ -183,22 +186,29 @@ func AdminContestUpdate(c *gin.Context) {
 	key := c.Param("key")
 
 	var input struct {
-		Name                  *string `json:"name"`
-		Description           *string `json:"description"`
-		Summary               *string `json:"summary"`
-		StartTime             *string `json:"start_time"`
-		EndTime               *string `json:"end_time"`
-		IsVisible             *bool   `json:"is_visible"`
-		IsRated               *bool   `json:"is_rated"`
-		AccessCode            *string `json:"access_code"`
-		HideProblemTags       *bool   `json:"hide_problem_tags"`
-		RunPretestsOnly       *bool   `json:"run_pretests_only"`
-		IsOrganizationPrivate *bool   `json:"is_organization_private"`
-		AddProblemIDs         []uint  `json:"add_problem_ids"`
-		RemoveProblemIDs      []uint  `json:"remove_problem_ids"`
-		UpdateTimeLimit       *int64  `json:"update_time_limit"`
-		AddTagIDs             []uint  `json:"add_tag_ids"`
-		RemoveTagIDs          []uint  `json:"remove_tag_ids"`
+		Name                  *string                        `json:"name"`
+		Description           *string                        `json:"description"`
+		Summary               *string                        `json:"summary"`
+		StartTime             *string                        `json:"start_time"`
+		EndTime               *string                        `json:"end_time"`
+		TimeLimit             *int64                         `json:"time_limit"` // seconds; 0 clears
+		IsVisible             *bool                          `json:"is_visible"`
+		IsRated               *bool                          `json:"is_rated"`
+		AccessCode            *string                        `json:"access_code"`
+		HideProblemTags       *bool                          `json:"hide_problem_tags"`
+		RunPretestsOnly       *bool                          `json:"run_pretests_only"`
+		IsOrganizationPrivate *bool                          `json:"is_organization_private"`
+		FormatName            *string                        `json:"format_name"`
+		FormatConfig          *string                        `json:"format_config"`
+		AuthorIDs             *[]uint                        `json:"author_ids"`
+		CuratorIDs            *[]uint                        `json:"curator_ids"`
+		TesterIDs             *[]uint                        `json:"tester_ids"`
+		TagIDs                *[]uint                        `json:"tag_ids"`
+		Problems              *[]contest.ContestProblemInput `json:"problems"`
+		AddProblemIDs         []uint                         `json:"add_problem_ids"`
+		RemoveProblemIDs      []uint                         `json:"remove_problem_ids"`
+		AddTagIDs             []uint                         `json:"add_tag_ids"`
+		RemoveTagIDs          []uint                         `json:"remove_tag_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -213,24 +223,34 @@ func AdminContestUpdate(c *gin.Context) {
 		Summary:               input.Summary,
 		StartTime:             input.StartTime,
 		EndTime:               input.EndTime,
+		TimeLimit:             secondsToMicros(input.TimeLimit),
 		IsVisible:             input.IsVisible,
 		IsRated:               input.IsRated,
 		AccessCode:            input.AccessCode,
 		HideProblemTags:       input.HideProblemTags,
 		RunPretestsOnly:       input.RunPretestsOnly,
 		IsOrganizationPrivate: input.IsOrganizationPrivate,
-		TimeLimit:             input.UpdateTimeLimit,
+		FormatName:            input.FormatName,
+		FormatConfig:          input.FormatConfig,
+		AuthorIDs:             input.AuthorIDs,
+		CuratorIDs:            input.CuratorIDs,
+		TesterIDs:             input.TesterIDs,
+		TagIDs:                input.TagIDs,
+		Problems:              input.Problems,
 		AddProblemIDs:         input.AddProblemIDs,
 		RemoveProblemIDs:      input.RemoveProblemIDs,
 		AddTagIDs:             input.AddTagIDs,
 		RemoveTagIDs:          input.RemoveTagIDs,
 	})
 	if err != nil {
-		if errors.Is(err, contest.ErrContestNotFound) {
+		switch {
+		case errors.Is(err, contest.ErrContestNotFound):
 			c.JSON(http.StatusNotFound, apiError("contest not found"))
-			return
+		case errors.Is(err, contest.ErrContestProblemHasSubmissions):
+			c.JSON(http.StatusConflict, apiError(err.Error()))
+		default:
+			c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
 

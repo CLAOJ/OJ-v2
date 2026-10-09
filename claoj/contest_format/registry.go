@@ -28,3 +28,10 @@ func GetFormat(name string, contest *models.Contest, config models.JSONField) Co
 func Register(name string, gen Generator) {
 	registry[name] = gen
 }
+
+// IsRegistered reports whether name is a known format. GetFormat silently
+// falls back to "default", so validation has to ask explicitly.
+func IsRegistered(name string) bool {
+	_, ok := registry[name]
+	return ok
+}
