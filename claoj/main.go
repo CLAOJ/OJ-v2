@@ -6,7 +6,6 @@ import (
 	"github.com/CLAOJ/claoj/api"
 	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/CLAOJ/claoj/auth/tokenstore"
-	"github.com/CLAOJ/claoj/bridge"
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
@@ -60,14 +59,6 @@ func main() {
 		log.Printf("warning: audit log in-memory; entries reset on restart")
 	}
 
-	// 4. Start the Judge Bridge TCP server
-	judgeBridge := bridge.NewServer()
-	go func() {
-		if err := judgeBridge.Start(); err != nil {
-			log.Fatalf("bridge: %v", err)
-		}
-	}()
-
 	// 5. Initialize Asynq Background Tasks
 	jobs.InitClient()
 	go jobs.StartWorker()
@@ -76,7 +67,7 @@ func main() {
 	events.InitHub()
 
 	// 7. Set bridge server reference for API handlers
-	v2.SetBridgeServer(judgeBridge)
+	v2.SetBridgeServer(jobs.JudgeAborter{})
 
 	// 8. Build router and run
 	r := api.NewRouter()
