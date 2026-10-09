@@ -72,7 +72,7 @@ Deployment: `CLAOJ/claoj-docker/claoj/docker-compose.v2.yml` (separate git repo)
 
 **Files:** none
 
-- [ ] **Step 1: Create branches**
+- [x] **Step 1: Create branches**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2 && git switch -c feat/judge-pull-queue
@@ -81,7 +81,7 @@ cd /f/Coding/CLAOJ/CLAOJ/claoj-docker && git switch -c feat/judge-pull-queue
 
 `OJ-v2` has unrelated uncommitted `claoj-web` changes on `main`; leave them alone — never `git add -A`, always add explicit paths.
 
-- [ ] **Step 2: Record the backend test baseline**
+- [x] **Step 2: Record the backend test baseline**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2/claoj && go vet ./... && go test ./... 2>&1 | tail -40
@@ -111,7 +111,7 @@ Write down any package that already fails. Later tasks must not add failures; pr
   - `func jobs.SetMockEnqueue(fn func(*asynq.Task, ...asynq.Option) (*asynq.TaskInfo, error))`
   - Removed: `jobs.SetBridge`, `jobs.BridgeRouter`, `jobs.HandleJudgeSubmissionTask`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `claoj/jobs/judge_test.go`:
 
@@ -298,12 +298,12 @@ func TestAbortJudgeSubmission(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go test ./jobs/ -run 'Judge|Build|Abort' -v`
 Expected: compile FAIL — `undefined: getTaskInfo`, `undefined: BuildSubmissionRequest`, etc.
 
-- [ ] **Step 3: Rewrite `claoj/jobs/judge.go`**
+- [x] **Step 3: Rewrite `claoj/jobs/judge.go`**
 
 Replace the whole file with:
 
@@ -466,7 +466,7 @@ type JudgeAborter struct{}
 func (JudgeAborter) Abort(subID uint) error { return AbortJudgeSubmission(subID) }
 ```
 
-- [ ] **Step 4: Update `claoj/jobs/server.go`**
+- [x] **Step 4: Update `claoj/jobs/server.go`**
 
 Add the Inspector next to `Client`, create it in `InitClient`, and stop serving judge work in `StartWorker`:
 
@@ -500,7 +500,7 @@ In `StartWorker`, change the `Queues` map and remove the judge handler:
 	mux.HandleFunc(TypeUserExport, HandleUserExportTask)
 ```
 
-- [ ] **Step 5: Remove the bridge injection from `claoj/main.go`**
+- [x] **Step 5: Remove the bridge injection from `claoj/main.go`**
 
 Delete the line:
 
@@ -510,7 +510,7 @@ Delete the line:
 
 (`judgeBridge` is still used by `v2.SetBridgeServer` until Task 3.)
 
-- [ ] **Step 6: Update the integration mock in `claoj/integration/helpers.go`**
+- [x] **Step 6: Update the integration mock in `claoj/integration/helpers.go`**
 
 ```go
 	jobs.SetMockEnqueue(func(task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
@@ -519,12 +519,12 @@ Delete the line:
 	})
 ```
 
-- [ ] **Step 7: Run tests to verify they pass**
+- [x] **Step 7: Run tests to verify they pass**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go build ./... && go test ./jobs/ -v && go test ./integration/...`
 Expected: jobs tests PASS; integration no new failures vs Task 0 baseline.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -555,7 +555,7 @@ git log -1 --format=%s
   - `func jobs.SyncJudgeStatus(judgeName string) error`
   - `func jobs.RunJudgeStatusLoop(ctx context.Context, judgeName string, every time.Duration)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `claoj/jobs/judge_status_test.go`:
 
@@ -626,12 +626,12 @@ func TestSyncJudgeStatus_OfflineWhenNoJudgeWorker(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go test ./jobs/ -run SyncJudgeStatus -v`
 Expected: compile FAIL — `undefined: listServers`, `undefined: SyncJudgeStatus`.
 
-- [ ] **Step 3: Implement `claoj/jobs/judge_status.go`**
+- [x] **Step 3: Implement `claoj/jobs/judge_status.go`**
 
 ```go
 package jobs
@@ -699,12 +699,12 @@ func RunJudgeStatusLoop(ctx context.Context, judgeName string, every time.Durati
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go test ./jobs/ -v`
 Expected: PASS (all jobs tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -739,7 +739,7 @@ git log -1 --format=%s
   - `func bridge.EventHandler(c *gin.Context)` — route `POST /internal/judge/event`; 204 ok, 400 malformed, 401 bad/blocked credentials, 500 DB error
   - Removed: `bridge.Server`, `bridge.NewServer`, `bridge.Manager`, `bridge.Handler`, `bridge.Connection`, `config.C.Bridge`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Delete `claoj/bridge/bridge_test.go` (it only tests the TCP `Manager`/`Handler` being removed). Create `claoj/bridge/handler_test.go`:
 
@@ -926,18 +926,18 @@ func TestEvent_UnknownPacketIsIgnored(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go test ./bridge/ -v`
 Expected: compile FAIL — `undefined: EventHandler`.
 
-- [ ] **Step 3: Delete the TCP bridge files**
+- [x] **Step 3: Delete the TCP bridge files**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2 && git rm claoj/bridge/server.go claoj/bridge/submit.go claoj/bridge/bridge_test.go
 ```
 
-- [ ] **Step 4: Rewrite `claoj/bridge/packet.go`**
+- [x] **Step 4: Rewrite `claoj/bridge/packet.go`**
 
 ```go
 package bridge
@@ -965,7 +965,7 @@ func (p Packet) SubmissionID() (uint, bool) {
 }
 ```
 
-- [ ] **Step 5: Rewrite `claoj/bridge/handler.go`**
+- [x] **Step 5: Rewrite `claoj/bridge/handler.go`**
 
 ```go
 package bridge
@@ -1264,7 +1264,7 @@ func truncate(s string, n int) string {
 }
 ```
 
-- [ ] **Step 6: Create `claoj/bridge/http.go`**
+- [x] **Step 6: Create `claoj/bridge/http.go`**
 
 ```go
 package bridge
@@ -1324,7 +1324,7 @@ func authenticateJudge(r *http.Request) (*models.Judge, bool) {
 }
 ```
 
-- [ ] **Step 7: Register the route in `claoj/api/router.go`**
+- [x] **Step 7: Register the route in `claoj/api/router.go`**
 
 Add `"github.com/CLAOJ/claoj/bridge"` to the imports, and right after the `/metrics` route:
 
@@ -1334,7 +1334,7 @@ Add `"github.com/CLAOJ/claoj/bridge"` to the imports, and right after the `/metr
 	r.POST("/internal/judge/event", bridge.EventHandler)
 ```
 
-- [ ] **Step 8: Update `claoj/main.go`**
+- [x] **Step 8: Update `claoj/main.go`**
 
 Delete the whole block:
 
@@ -1356,19 +1356,19 @@ Replace `v2.SetBridgeServer(judgeBridge)` with:
 
 Remove the `"github.com/CLAOJ/claoj/bridge"` import.
 
-- [ ] **Step 9: Remove the bridge config from `claoj/config/config.go`**
+- [x] **Step 9: Remove the bridge config from `claoj/config/config.go`**
 
 Delete the `Bridge BridgeConfig \`mapstructure:"bridge"\`` field, the `BridgeConfig` type, `v.SetDefault("bridge.addr", ":9999")`, and `v.BindEnv("bridge.addr", "BRIDGE_ADDR", "CLAOJ_BRIDGE_ADDR")`. Then confirm nothing else uses it:
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && grep -rn "C.Bridge\|BridgeConfig\|bridge.addr" --include=*.go .`
 Expected: no output.
 
-- [ ] **Step 10: Run tests to verify they pass**
+- [x] **Step 10: Run tests to verify they pass**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go vet ./... && go test ./bridge/ -v && go test ./...`
 Expected: bridge tests PASS; no new failures vs Task 0 baseline.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -1400,7 +1400,7 @@ git log -1 --format=%s
 - Consumes: `jobs.RunJudgeStatusLoop` (Task 2), `jobs.JudgeAborter` (Task 1)
 - Produces: `config.C.Judge.Name string` (env `JUDGE_NAME` / `CLAOJ_JUDGE_NAME`)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `claoj/config/judge_config_test.go`:
 
@@ -1421,12 +1421,12 @@ func TestLoad_JudgeName(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go test ./config/ -run JudgeName -v`
 Expected: compile FAIL — `C.Judge undefined`.
 
-- [ ] **Step 3: Add the config**
+- [x] **Step 3: Add the config**
 
 In `claoj/config/config.go`, add the field to `Config` (after `Server`):
 
@@ -1454,7 +1454,7 @@ Add with the other defaults and env bindings:
 	v.BindEnv("judge.name", "JUDGE_NAME", "CLAOJ_JUDGE_NAME")
 ```
 
-- [ ] **Step 4: Make Redis mandatory in `claoj/cache/cache.go`**
+- [x] **Step 4: Make Redis mandatory in `claoj/cache/cache.go`**
 
 First check no test calls `cache.Connect`:
 
@@ -1472,7 +1472,7 @@ Replace the ping branch in `Connect`:
 	log.Printf("cache: connected to Redis at %s", cfg.Addr)
 ```
 
-- [ ] **Step 5: Rewrite `claoj/main.go`**
+- [x] **Step 5: Rewrite `claoj/main.go`**
 
 ```go
 package main
@@ -1530,12 +1530,12 @@ func main() {
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj && go vet ./... && go test ./...`
 Expected: PASS; no new failures vs Task 0 baseline.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -1569,7 +1569,7 @@ git log -1 --format=%s
   - `var errNoChild`
   - test helpers in `dmoj_test.go`: `startChild(t, key) (*Child, string)`, `fakeJudge(t, addr, key) net.Conn`
 
-- [ ] **Step 1: Delete the dead prototypes and reset the module**
+- [x] **Step 1: Delete the dead prototypes and reset the module**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -1592,7 +1592,7 @@ go 1.25.0
 cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && rm -f go.sum && go get github.com/hibiken/asynq@v0.26.0 github.com/stretchr/testify@v1.11.1
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `claoj-judge/dmoj_test.go`:
 
@@ -1711,12 +1711,12 @@ func TestChild_SendWithoutJudge(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go test -timeout 60s ./... -v`
 Expected: compile FAIL — `undefined: NewChild`, `undefined: writePacket`.
 
-- [ ] **Step 4: Implement `claoj-judge/dmoj.go`**
+- [x] **Step 4: Implement `claoj-judge/dmoj.go`**
 
 ```go
 package main
@@ -1901,12 +1901,12 @@ func (c *Child) KeepAlive(every time.Duration) {
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go mod tidy && go vet ./... && go test -timeout 60s ./... -v`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -1935,7 +1935,7 @@ git log -1 --format=%s
 - Consumes: `Packet` (Task 5)
 - Produces: `type Forwarder struct{ URL, Name, Key string; Client *http.Client; MaxWait, Backoff time.Duration }`; `(*Forwarder).Post(p Packet) error`; `var errUnauthorized`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `claoj-judge/forward_test.go`:
 
@@ -2025,12 +2025,12 @@ func TestForwarder_GivesUpAfterMaxWait(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go test -timeout 60s -run Forwarder -v`
 Expected: compile FAIL — `undefined: Forwarder`.
 
-- [ ] **Step 3: Implement `claoj-judge/forward.go`**
+- [x] **Step 3: Implement `claoj-judge/forward.go`**
 
 ```go
 package main
@@ -2107,12 +2107,12 @@ func (f *Forwarder) postOnce(body []byte) (int, error) {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go vet ./... && go test -timeout 60s ./... -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -2140,7 +2140,7 @@ git log -1 --format=%s
   - `(*Agent).ProcessTask(ctx context.Context, t *asynq.Task) error` (implements `asynq.Handler`)
   - `(*Agent).grade(ctx context.Context, req Packet, giveUp bool) error`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `claoj-judge/grade_test.go`:
 
@@ -2308,12 +2308,12 @@ func TestGrade_NoChildFailsTheTask(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go test -timeout 60s -run Grade -v`
 Expected: compile FAIL — `undefined: Agent`.
 
-- [ ] **Step 3: Implement `claoj-judge/grade.go`**
+- [x] **Step 3: Implement `claoj-judge/grade.go`**
 
 ```go
 package main
@@ -2352,15 +2352,17 @@ func (a *Agent) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 	retried, _ := asynq.GetRetryCount(ctx)
 	maxRetry, _ := asynq.GetMaxRetry(ctx)
-	// Earlier attempts only fail when the judge died mid-grade; on the last
-	// one, assume this submission kills tiervnoj and report IE instead.
+	// A failed attempt is not necessarily a crash: asynq counts every handler
+	// error and lease expiry, so SIGTERM mid-grade, an errNoChild reconnect
+	// gap and a >5min backend outage all land here too. On the last attempt
+	// the retry budget is exhausted — report IE instead of retrying forever.
 	return a.grade(ctx, req, retried > 0 && retried >= maxRetry)
 }
 
 func (a *Agent) grade(ctx context.Context, req Packet, giveUp bool) error {
 	id := req.SubmissionID()
 	if giveUp {
-		return a.post(Packet{"name": "internal-error", "submission-id": id, "message": "judge crashed while grading this submission"})
+		return a.post(Packet{"name": "internal-error", "submission-id": id, "message": "judge task failed after exhausting its retries"})
 	}
 	if err := a.child.Send(req); err != nil {
 		return err
@@ -2397,12 +2399,12 @@ func (a *Agent) grade(ctx context.Context, req Packet, giveUp bool) error {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go vet ./... && go test -timeout 60s ./... -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -2431,7 +2433,7 @@ git log -1 --format=%s
 - Consumes: `NewChild`, `Child.Serve/KeepAlive/Ready`, `Forwarder`, `errUnauthorized`, `Agent` (Tasks 5–7)
 - Produces: binary `claoj-judge`; env contract `REDIS_ADDR` (required), `REDIS_PASSWORD`, `REDIS_DB` (default 0), `BACKEND_URL` (required), `JUDGE_NAME` (required), `JUDGE_KEY` (required), `JUDGE_YML` (default `/problems/judge.yml`), `CHILD_PORT` (default 9999), `TIERVNOJ_ENTRY` (default `/judge/.docker/entry`); image built `FROM claoj/judge-tiervnoj`
 
-- [ ] **Step 1: Implement `claoj-judge/main.go`**
+- [x] **Step 1: Implement `claoj-judge/main.go`**
 
 ```go
 // Command claoj-judge pulls submissions from the asynq "judge" queue,
@@ -2548,12 +2550,12 @@ func mustEnv(k string) string {
 }
 ```
 
-- [ ] **Step 2: Build and vet**
+- [x] **Step 2: Build and vet**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && go mod tidy && go vet ./... && go build -o /dev/null . && go test ./...`
 Expected: no errors; tests PASS.
 
-- [ ] **Step 3: Create `claoj-judge/Dockerfile`**
+- [x] **Step 3: Create `claoj-judge/Dockerfile`**
 
 ```dockerfile
 # Agent + the v1 grading engine. Build the tiervnoj image first
@@ -2573,12 +2575,12 @@ COPY --from=build /claoj-judge /usr/local/bin/claoj-judge
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/claoj-judge"]
 ```
 
-- [ ] **Step 4: Build the image**
+- [x] **Step 4: Build the image**
 
 Run: `cd /f/Coding/CLAOJ/OJ-v2/claoj-judge && docker image inspect claoj/judge-tiervnoj >/dev/null && docker build -t claoj/claoj-judge-agent .`
 Expected: `naming to docker.io/claoj/claoj-judge-agent` (if the inspect fails, build tiervnoj first: `docker build -t claoj/judge-tiervnoj /f/Coding/CLAOJ/CLAOJ/claoj-docker/judge/tiervnoj`).
 
-- [ ] **Step 5: Create `claoj-judge/README.md`**
+- [x] **Step 5: Create `claoj-judge/README.md`**
 
 ```markdown
 # claoj-judge
@@ -2608,7 +2610,7 @@ stop grace period > 25 s.
     go test ./...
 ```
 
-- [ ] **Step 6: Add a judge test job to `.github/workflows/ci-cd.yml`**
+- [x] **Step 6: Add a judge test job to `.github/workflows/ci-cd.yml`**
 
 In `changes.outputs` add `judge: ${{ steps.filter.outputs.judge }}`; in the paths filter add:
 
@@ -2640,7 +2642,7 @@ Add the job after `test-backend`:
 
 (No image push: the base image `claoj/judge-tiervnoj` is built locally, not published.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /f/Coding/CLAOJ/OJ-v2
@@ -2665,7 +2667,7 @@ git log -1 --format=%s
 **Interfaces:**
 - Consumes: agent env contract (Task 8), backend `JUDGE_NAME` (Task 4)
 
-- [ ] **Step 1: Update `docker-compose.v2.yml`**
+- [x] **Step 1: Update `docker-compose.v2.yml`**
 
 In `v2_backend`: change `networks: [db, site, judge, v2]` to `networks: [db, site, v2]`, and add to its `environment:`:
 
@@ -2702,12 +2704,12 @@ Leave `v1_judge` exactly as it is.
 
 In `CLAOJ/claoj-docker/claoj/local/v2.local.env` delete `BRIDGE_ADDR=:9997`. Do the same in the production env file on the VPS during cutover (Task 10 Step 8).
 
-- [ ] **Step 3: Validate compose**
+- [x] **Step 3: Validate compose**
 
 Run: `cd /f/Coding/CLAOJ/CLAOJ/claoj-docker/claoj && docker compose -f docker-compose.local.yml -f docker-compose.v2.yml config --quiet && echo OK`
 Expected: `OK`.
 
-- [ ] **Step 4: Update docs**
+- [x] **Step 4: Update docs**
 
 In `OJ-v2/docs/development.md`, replace the §6.2 "run a judge against the host-run backend" block (the `docker run … claoj/judge-tiervnoj … host.docker.internal` command and the `bridge [...]: authenticated` note) with:
 
@@ -2750,7 +2752,7 @@ are both plain replicated services with the same shape on k3s and Swarm:
   `judge_judge` row).
 ```
 
-- [ ] **Step 5: Commit both repos**
+- [x] **Step 5: Commit both repos**
 
 ```bash
 cd /f/Coding/CLAOJ/CLAOJ/claoj-docker
@@ -2778,7 +2780,7 @@ git log -1 --format=%s
 
 **Files:** none (verification only). Any bug found → fix in the owning task's files with a regression test, commit, rerun this task.
 
-- [ ] **Step 1: Build and start the stack**
+- [x] **Step 1: Build and start the stack**
 
 ```bash
 cd /f/Coding/CLAOJ/CLAOJ/claoj-docker/claoj
@@ -2789,11 +2791,11 @@ docker compose -f docker-compose.local.yml -f docker-compose.v2.yml logs -f v2_j
 
 Expected in judge logs (after tiervnoj self-tests): `child: tiervnoj connected`, then `judge "Vịt Toàn Năng" ready`. Backend log has no `bridge:` listener line.
 
-- [ ] **Step 2: Judge shows online**
+- [x] **Step 2: Judge shows online**
 
 Within 30 s: `curl -s localhost:8090/api/judges` lists `Vịt Toàn Năng` as online. If not: compare `REDIS_DB` of `v2_backend` and `v2_judge` first.
 
-- [ ] **Step 3: Grade one of each verdict on `aplusb`**
+- [x] **Step 3: Grade one of each verdict on `aplusb`**
 
 Log in and submit through `localhost:8090` as in `docs/development.md` §6.3 / §7.2, with language `PY3`:
 
@@ -2806,17 +2808,17 @@ Log in and submit through `localhost:8090` as in `docs/development.md` §6.3 / �
 
 Poll `GET /api/submission/<id>`: status goes `QU → P → G → D` (or `CE`), and the live page updates without reload (websocket).
 
-- [ ] **Step 4: Engine-feature problems reach a verdict, never IE**
+- [x] **Step 4: Engine-feature problems reach a verdict, never IE**
 
 Submit `print(0)` (PY3) to `01_01` (file_io), `alphabet` (bridged checker), `halloween_tree` (batched). Expected: each ends `D` with a result other than `IE`.
 
-- [ ] **Step 5: Abort, rejudge, crash**
+- [x] **Step 5: Abort, rejudge, crash**
 
 - Submit `while True: pass` and abort it from admin while `G` → ends `AB`.
 - Rejudge a finished submission from admin twice quickly → graded once, ends `D`.
 - Submit `while True: pass`, then `docker kill` the judge container while it is `G` (`docker compose … ps -q v2_judge`). Compose restarts it; within ~1–2 min the submission is graded again and ends `TLE` (not stuck at `G`).
 
-- [ ] **Step 6: Two backends, two judges**
+- [x] **Step 6: Two backends, two judges**
 
 ```bash
 docker compose -f docker-compose.local.yml -f docker-compose.v2.yml up -d --scale v2_judge=2
@@ -2831,7 +2833,7 @@ docker start claoj_v2_backend_2
 
 (`ghcr.io/claoj/claoj-go:latest` is the tag Step 1 built; the compose project is `claoj`, so networks are `claoj_v2`, `claoj_db`, `claoj_site` — confirm with `docker network ls`.) Submit 6 submissions in a row → all reach `D`; `docker compose … logs v2_judge` shows both judge replicas grading. Stop `claoj_v2_backend_2` mid-grade → the submission still finishes. Clean up: `docker rm -f claoj_v2_backend_2`.
 
-- [ ] **Step 7: Idle reconnect**
+- [x] **Step 7: Idle reconnect**
 
 Leave the stack idle for 6 minutes (longer than tiervnoj's 300 s socket timeout), then submit `print(0)` to `aplusb` → ends `D`.
 

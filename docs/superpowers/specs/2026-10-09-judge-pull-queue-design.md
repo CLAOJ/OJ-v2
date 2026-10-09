@@ -1,7 +1,7 @@
 # Judge pull-queue redesign (horizontal scaling on k3s / Docker Swarm)
 
 Date: 2026-10-09
-Status: draft — awaiting review
+Status: implemented — Tasks 0–10 built and reviewed on branch `feat/judge-pull-queue` (whole-branch review 2026-10-10: 0 Critical / 4 Important, all four closed by its fix wave, approved on scoped re-review). Open: Task 10 Step 8, the production cutover (human), and Task 9 Step 2's `BRIDGE_ADDR` removal from the local `v2.local.env` (human).
 
 ## Goal
 
