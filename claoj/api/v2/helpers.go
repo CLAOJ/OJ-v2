@@ -86,6 +86,14 @@ func apiError(msg string) gin.H {
 	return gin.H{"error": "An error occurred. Please try again."}
 }
 
+// apiUserError is like apiError but returns the message to the client.
+// Only for deliberate, user-safe validation messages (e.g. "the problem
+// X has submissions and cannot be removed"); never for raw error strings.
+func apiUserError(msg string) gin.H {
+	log.Printf("API user error: %s", msg)
+	return gin.H{"error": msg}
+}
+
 // apiList is a helper for consistent list responses
 func apiList(data interface{}) gin.H {
 	return gin.H{"data": data}

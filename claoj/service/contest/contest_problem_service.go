@@ -2,6 +2,8 @@
 package contest
 
 import (
+	"fmt"
+
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"gorm.io/gorm"
@@ -96,7 +98,7 @@ func (s *ContestProblemService) AddProblemsToContest(contestID uint, problemIDs 
 		cp := models.ContestProblem{
 			ContestID: contestID,
 			ProblemID: p.ID,
-			Points:    100,
+			Points:    defaultContestProblemPoints,
 			Partial:   true,
 			Order:     order,
 		}
@@ -197,4 +199,117 @@ func containsUint(slice []uint, item uint) bool {
 		}
 	}
 	return false
+}
+
+const defaultContestProblemPoints = 100
+
+// ReplaceContestProblems makes the contest's problem rows exactly items,
+// in that order. Existing rows are updated in place (their ids are what
+// judge_contestsubmission references); unlisted rows are deleted unless
+// they already have contest submissions. Run inside the caller's tx.
+func (s *ContestProblemService) ReplaceContestProblems(tx *gorm.DB, contestID uint, items []ContestProblemInput) error {
+	listed := make(map[uint]bool, len(items))
+	ids := make([]uint, 0, len(items))
+	for _, it := range items {
+		if listed[it.ProblemID] {
+			return fmt.Errorf("%w: problem %d is listed twice", ErrUnknownProblem, it.ProblemID)
+		}
+		if it.Points != nil && *it.Points < 0 {
+			return ErrInvalidPoints
+		}
+		listed[it.ProblemID] = true
+		ids = append(ids, it.ProblemID)
+	}
+	if len(ids) > 0 {
+		var n int64
+		if err := tx.Model(&models.Problem{}).Where("id IN ?", ids).Count(&n).Error; err != nil {
+			return err
+		}
+		if int(n) != len(ids) {
+			return ErrUnknownProblem
+		}
+	}
+
+	var existing []models.ContestProblem
+	if err := tx.Preload("Problem").Where("contest_id = ?", contestID).Find(&existing).Error; err != nil {
+		return err
+	}
+	byProblem := make(map[uint]models.ContestProblem, len(existing))
+	for _, cp := range existing {
+		byProblem[cp.ProblemID] = cp
+	}
+
+	for _, cp := range existing {
+		if listed[cp.ProblemID] {
+			continue
+		}
+		var subs int64
+		if err := tx.Model(&models.ContestSubmission{}).Where("problem_id = ?", cp.ID).Count(&subs).Error; err != nil {
+			return err
+		}
+		if subs > 0 {
+			return fmt.Errorf("%w: %s", ErrContestProblemHasSubmissions, cp.Problem.Code)
+		}
+		if err := tx.Delete(&models.ContestProblem{}, cp.ID).Error; err != nil {
+			return err
+		}
+	}
+
+	for i, it := range items {
+		cp, ok := byProblem[it.ProblemID]
+		if !ok {
+			cp = models.ContestProblem{
+				ContestID: contestID,
+				ProblemID: it.ProblemID,
+				Points:    defaultContestProblemPoints,
+				Partial:   true,
+			}
+		}
+		cp.Order = uint(i + 1)
+		if it.Points != nil {
+			cp.Points = *it.Points
+		}
+		if it.Partial != nil {
+			cp.Partial = *it.Partial
+		}
+		if it.IsPretested != nil {
+			cp.IsPretested = *it.IsPretested
+		}
+		cp.Problem = models.Problem{}
+		cp.Contest = models.Contest{}
+		if err := tx.Omit("Problem", "Contest").Save(&cp).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// mergeLegacyProblemEdits turns add/remove id lists into a full ordered
+// list (current order, removals dropped, additions appended) so the legacy
+// form gets the same submission protection as the full list.
+func (s *ContestProblemService) mergeLegacyProblemEdits(tx *gorm.DB, contestID uint, add, remove []uint) ([]ContestProblemInput, error) {
+	var current []models.ContestProblem
+	if err := tx.Where("contest_id = ?", contestID).Order("`order` ASC").Find(&current).Error; err != nil {
+		return nil, err
+	}
+	removed := make(map[uint]bool, len(remove))
+	for _, id := range remove {
+		removed[id] = true
+	}
+	present := make(map[uint]bool, len(current)+len(add))
+	items := make([]ContestProblemInput, 0, len(current)+len(add))
+	for _, cp := range current {
+		if removed[cp.ProblemID] {
+			continue
+		}
+		present[cp.ProblemID] = true
+		items = append(items, ContestProblemInput{ProblemID: cp.ProblemID})
+	}
+	for _, id := range add {
+		if !present[id] && !removed[id] {
+			present[id] = true
+			items = append(items, ContestProblemInput{ProblemID: id})
+		}
+	}
+	return items, nil
 }

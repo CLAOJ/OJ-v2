@@ -113,3 +113,20 @@ func TestAdminContestUpdate_TimeLimitSecondsAndBadFormat(t *testing.T) {
 	w = doRequest(router, http.MethodPatch, "/admin/contest/c2", `{"format_name": "nope"}`)
 	require.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestAdminContestUpdate_RemovingSolvedProblemIs409(t *testing.T) {
+	setupAdminDetailDB(t)
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	c := models.Contest{Key: "c409", Name: "C", StartTime: start, EndTime: start.Add(time.Hour)}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+	p := models.Problem{Code: "hard", Name: "Hard"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+	cp := models.ContestProblem{ContestID: c.ID, ProblemID: p.ID, Points: 100, Order: 1}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&cp).Error)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.ContestSubmission{SubmissionID: 1, ProblemID: cp.ID, ParticipationID: 1}).Error)
+
+	router := authedRouter(1, http.MethodPatch, "/admin/contest/:key", AdminContestUpdate)
+	w := doRequest(router, http.MethodPatch, "/admin/contest/c409", `{"problems": []}`)
+	require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "hard")
+}

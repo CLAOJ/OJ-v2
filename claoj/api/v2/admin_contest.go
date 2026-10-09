@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj/service/contest"
+	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/gin-gonic/gin"
 )
 
@@ -247,7 +248,15 @@ func AdminContestUpdate(c *gin.Context) {
 		case errors.Is(err, contest.ErrContestNotFound):
 			c.JSON(http.StatusNotFound, apiError("contest not found"))
 		case errors.Is(err, contest.ErrContestProblemHasSubmissions):
-			c.JSON(http.StatusConflict, apiError(err.Error()))
+			c.JSON(http.StatusConflict, apiUserError(err.Error()))
+		case errors.Is(err, contest.ErrInvalidTime),
+			errors.Is(err, contest.ErrInvalidSchedule),
+			errors.Is(err, contest.ErrUnknownFormat),
+			errors.Is(err, contest.ErrInvalidFormatConfig),
+			errors.Is(err, contest.ErrUnknownProblem),
+			errors.Is(err, contest.ErrInvalidPoints),
+			errors.Is(err, relations.ErrUnknownID):
+			c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
 		default:
 			c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		}

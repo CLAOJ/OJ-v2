@@ -273,9 +273,20 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 	return &detail.ContestProfile, nil
 }
 
-// applyProblems is completed in Task 4 (full problems list + legacy merge).
+// applyProblems writes the contest problem list: the full list when given,
+// otherwise the legacy add/remove lists folded into one.
 func (s *ContestService) applyProblems(tx *gorm.DB, contestID uint, req UpdateContestRequest) error {
-	return nil
+	if req.Problems != nil {
+		return s.problems.ReplaceContestProblems(tx, contestID, *req.Problems)
+	}
+	if len(req.AddProblemIDs) == 0 && len(req.RemoveProblemIDs) == 0 {
+		return nil
+	}
+	items, err := s.problems.mergeLegacyProblemEdits(tx, contestID, req.AddProblemIDs, req.RemoveProblemIDs)
+	if err != nil {
+		return err
+	}
+	return s.problems.ReplaceContestProblems(tx, contestID, items)
 }
 
 // DeleteContest performs a soft delete by hiding the contest.

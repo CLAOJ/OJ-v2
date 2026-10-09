@@ -153,3 +153,93 @@ func TestGetContest_ProblemsCarryCodeAndName(t *testing.T) {
 	require.Len(t, got.Problems, 1)
 	require.Equal(t, "aplusb", got.Problems[0].Code)
 }
+
+func ip(v int) *int    { return &v }
+func bp(v bool) *bool  { return &v }
+
+func contestRows(t *testing.T, contestID uint) []models.ContestProblem {
+	t.Helper()
+	var rows []models.ContestProblem
+	require.NoError(t, db.DB.Where("contest_id = ?", contestID).Order("`order`").Find(&rows).Error)
+	return rows
+}
+
+func TestReplaceContestProblems_UpdatesInPlaceInsertsAndOrders(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "rp")
+	p1, p2, p3 := newProblem(t, "p1"), newProblem(t, "p2"), newProblem(t, "p3")
+	existing := models.ContestProblem{ContestID: c.ID, ProblemID: p1.ID, Points: 100, Partial: true, Order: 1}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&existing).Error)
+
+	items := []ContestProblemInput{
+		{ProblemID: p2.ID, Points: ip(250)},
+		{ProblemID: p1.ID, Partial: bp(false)},
+		{ProblemID: p3.ID},
+	}
+	require.NoError(t, db.DB.Transaction(func(tx *gorm.DB) error {
+		return NewContestProblemService().ReplaceContestProblems(tx, c.ID, items)
+	}))
+
+	rows := contestRows(t, c.ID)
+	require.Len(t, rows, 3)
+	require.Equal(t, []uint{p2.ID, p1.ID, p3.ID}, []uint{rows[0].ProblemID, rows[1].ProblemID, rows[2].ProblemID})
+	require.Equal(t, 250, rows[0].Points)
+	require.Equal(t, existing.ID, rows[1].ID, "existing row must keep its id")
+	require.Equal(t, 100, rows[1].Points, "omitted points keep the existing value")
+	require.False(t, rows[1].Partial)
+	require.Equal(t, 100, rows[2].Points, "new rows default to 100 points")
+	require.True(t, rows[2].Partial)
+}
+
+func TestReplaceContestProblems_RefusesRemovingProblemWithSubmissions(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "subs")
+	p1, p2 := newProblem(t, "keep"), newProblem(t, "solved")
+	cp1 := models.ContestProblem{ContestID: c.ID, ProblemID: p1.ID, Points: 100, Order: 1}
+	cp2 := models.ContestProblem{ContestID: c.ID, ProblemID: p2.ID, Points: 100, Order: 2}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&cp1).Error)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&cp2).Error)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.ContestSubmission{SubmissionID: 1, ProblemID: cp2.ID, ParticipationID: 1}).Error)
+
+	_, err := NewContestService().UpdateContest(UpdateContestRequest{
+		ContestKey: c.Key,
+		Name:       strp("changed"),
+		Problems:   &[]ContestProblemInput{{ProblemID: p1.ID}},
+	})
+	require.ErrorIs(t, err, ErrContestProblemHasSubmissions)
+	require.Contains(t, err.Error(), "solved")
+	require.Len(t, contestRows(t, c.ID), 2, "nothing may be deleted")
+	var stored models.Contest
+	require.NoError(t, db.DB.First(&stored, c.ID).Error)
+	require.Equal(t, "subs", stored.Name, "the whole update must roll back")
+}
+
+func TestReplaceContestProblems_RejectsUnknownDuplicateAndNegative(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "bad")
+	p := newProblem(t, "only")
+	svc := NewContestProblemService()
+	run := func(items []ContestProblemInput) error {
+		return db.DB.Transaction(func(tx *gorm.DB) error { return svc.ReplaceContestProblems(tx, c.ID, items) })
+	}
+	require.ErrorIs(t, run([]ContestProblemInput{{ProblemID: 404}}), ErrUnknownProblem)
+	require.ErrorIs(t, run([]ContestProblemInput{{ProblemID: p.ID}, {ProblemID: p.ID}}), ErrUnknownProblem)
+	require.ErrorIs(t, run([]ContestProblemInput{{ProblemID: p.ID, Points: ip(-1)}}), ErrInvalidPoints)
+	require.Empty(t, contestRows(t, c.ID))
+}
+
+func TestUpdateContest_LegacyAddRemoveProblems(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "legacy")
+	p1, p2 := newProblem(t, "l1"), newProblem(t, "l2")
+	svc := NewContestService()
+
+	_, err := svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, AddProblemIDs: []uint{p1.ID, p2.ID}})
+	require.NoError(t, err)
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, RemoveProblemIDs: []uint{p1.ID}})
+	require.NoError(t, err)
+	rows := contestRows(t, c.ID)
+	require.Len(t, rows, 1)
+	require.Equal(t, p2.ID, rows[0].ProblemID)
+	require.Equal(t, uint(1), rows[0].Order)
+}
