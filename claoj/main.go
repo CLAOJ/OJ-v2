@@ -70,7 +70,6 @@ func main() {
 
 	// 5. Initialize Asynq Background Tasks
 	jobs.InitClient()
-	jobs.SetBridge(judgeBridge)
 	go jobs.StartWorker()
 
 	// 6. Initialize Websocket Event Hub
