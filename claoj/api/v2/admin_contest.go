@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/service/contest"
@@ -39,8 +40,14 @@ func AdminContestList(c *gin.Context) {
 	resp, err := getContestService().ListContests(contest.ListContestsRequest{
 		Page:     page,
 		PageSize: pageSize,
+		Search:   strings.TrimSpace(c.Query("search")),
+		Status:   c.Query("status"),
 	})
 	if err != nil {
+		if errors.Is(err, contest.ErrInvalidStatus) {
+			c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}

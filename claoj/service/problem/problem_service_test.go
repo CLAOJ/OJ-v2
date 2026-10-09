@@ -485,3 +485,36 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem_GroupID() {
 	_, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: p.Code, GroupID: &missing})
 	s.ErrorIs(err, ErrInvalidGroup)
 }
+
+func (s *ProblemServiceTestSuite) TestListProblems_FiltersAndCountsFilteredTotal() {
+	g1 := s.createTestGroup("ga")
+	g2 := s.createTestGroup("gb")
+	s.createTestProblem("dijkstra", "Shortest Path", g1.ID)
+	s.createTestProblem("knapsack", "Knapsack", g2.ID)
+	priv := s.createTestProblem("secret", "Hidden Dijkstra", g1.ID)
+	s.Require().NoError(s.database.Model(&priv).Update("is_public", false).Error)
+
+	resp, err := s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Search: "dijkstra"})
+	s.Require().NoError(err)
+	s.Equal(int64(2), resp.Total, "matches code or name, case-insensitively")
+
+	public := true
+	resp, _ = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Search: "dijkstra", IsPublic: &public})
+	s.Equal(int64(1), resp.Total)
+	s.Equal("dijkstra", resp.Problems[0].Code)
+
+	resp, _ = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, GroupID: g2.ID})
+	s.Equal(int64(1), resp.Total)
+	s.Equal("knapsack", resp.Problems[0].Code)
+}
+
+func (s *ProblemServiceTestSuite) TestListProblems_SearchIsLiteral() {
+	g := s.createTestGroup("gl")
+	s.createTestProblem("a_b", "Underscore", g.ID)
+	s.createTestProblem("axb", "Other", g.ID)
+
+	resp, err := s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Search: "a_b"})
+	s.Require().NoError(err)
+	s.Equal(int64(1), resp.Total)
+	s.Equal("a_b", resp.Problems[0].Code)
+}

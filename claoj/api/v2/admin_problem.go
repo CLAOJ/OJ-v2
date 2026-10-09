@@ -3,6 +3,8 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/CLAOJ/claoj/service/problem"
 	"github.com/gin-gonic/gin"
@@ -16,9 +18,19 @@ import (
 func AdminProblemList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 
+	var isPublic *bool
+	if v := c.Query("is_public"); v != "" {
+		b := v == "true" || v == "1"
+		isPublic = &b
+	}
+	groupID, _ := strconv.ParseUint(c.Query("group_id"), 10, 32)
+
 	resp, err := getProblemService().ListProblems(problem.ListProblemsRequest{
 		Page:     page,
 		PageSize: pageSize,
+		Search:   strings.TrimSpace(c.Query("search")),
+		IsPublic: isPublic,
+		GroupID:  uint(groupID),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

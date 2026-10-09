@@ -118,6 +118,9 @@ type GetProblemRequest struct {
 type ListProblemsRequest struct {
 	Page     int
 	PageSize int
+	Search   string // code or name contains (literal)
+	IsPublic *bool
+	GroupID  uint
 }
 
 // ListProblemsResponse holds the response for listing problems.
@@ -170,19 +173,29 @@ func (s *ProblemService) ListProblems(req ListProblemsRequest) (*ListProblemsRes
 		GroupName string `gorm:"column:group_name"`
 	}
 
-	query := db.DB.Table("judge_problem").
-		Joins("LEFT JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
-		Select("judge_problem.*, judge_problemgroup.name as group_name").
-		Order("judge_problem.date DESC")
+	filter := func(q *gorm.DB) *gorm.DB {
+		if req.Search != "" {
+			p := db.ContainsPattern(req.Search)
+			q = q.Where("(judge_problem.code LIKE ? ESCAPE '!' OR judge_problem.name LIKE ? ESCAPE '!')", p, p)
+		}
+		if req.IsPublic != nil {
+			q = q.Where("judge_problem.is_public = ?", *req.IsPublic)
+		}
+		if req.GroupID != 0 {
+			q = q.Where("judge_problem.group_id = ?", req.GroupID)
+		}
+		return q
+	}
 
-	// Get total count
 	var total int64
-	if err := db.DB.Model(&models.Problem{}).Count(&total).Error; err != nil {
+	if err := filter(db.DB.Table("judge_problem")).Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Get paginated results
-	if err := query.
+	if err := filter(db.DB.Table("judge_problem").
+		Joins("LEFT JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
+		Select("judge_problem.*, judge_problemgroup.name as group_name")).
+		Order("judge_problem.date DESC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Scan(&problems).Error; err != nil {

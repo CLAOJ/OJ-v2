@@ -42,17 +42,41 @@ func (s *ContestService) ListContests(req ListContestsRequest) (*ListContestsRes
 		req.PageSize = 100
 	}
 
-	var contests []models.Contest
-	query := db.DB.Order("start_time DESC")
+	now := req.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
+	filter := func(q *gorm.DB) (*gorm.DB, error) {
+		if req.Search != "" {
+			p := db.ContainsPattern(req.Search)
+			q = q.Where("(`key` LIKE ? ESCAPE '!' OR name LIKE ? ESCAPE '!')", p, p)
+		}
+		switch req.Status {
+		case "":
+		case "upcoming":
+			q = q.Where("start_time > ?", now)
+		case "ongoing":
+			q = q.Where("start_time <= ? AND end_time > ?", now, now)
+		case "past":
+			q = q.Where("end_time <= ?", now)
+		default:
+			return nil, ErrInvalidStatus
+		}
+		return q, nil
+	}
 
-	// Get total count
+	countQ, err := filter(db.DB.Model(&models.Contest{}))
+	if err != nil {
+		return nil, err
+	}
 	var total int64
-	if err := db.DB.Model(&models.Contest{}).Count(&total).Error; err != nil {
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Get paginated results
-	if err := query.
+	listQ, _ := filter(db.DB.Model(&models.Contest{}))
+	var contests []models.Contest
+	if err := listQ.Order("start_time DESC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&contests).Error; err != nil {

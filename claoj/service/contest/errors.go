@@ -19,4 +19,5 @@ var (
 	ErrUnknownProblem               = errors.New("contest: unknown or duplicate problem in problems list")
 	ErrInvalidPoints                = errors.New("contest: problem points must not be negative")
 	ErrContestProblemHasSubmissions = errors.New("contest: problem has contest submissions and cannot be removed")
+	ErrInvalidStatus                = errors.New("contest: status must be upcoming, ongoing or past")
 )

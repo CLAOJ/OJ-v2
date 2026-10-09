@@ -243,3 +243,30 @@ func TestUpdateContest_LegacyAddRemoveProblems(t *testing.T) {
 	require.Equal(t, p2.ID, rows[0].ProblemID)
 	require.Equal(t, uint(1), rows[0].Order)
 }
+
+func TestListContests_SearchAndStatus(t *testing.T) {
+	setupContestDB(t)
+	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	mk := func(key, name string, start time.Time) {
+		c := models.Contest{Key: key, Name: name, StartTime: start, EndTime: start.Add(2 * time.Hour)}
+		require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+	}
+	mk("past1", "Halloween Contest", now.Add(-48*time.Hour))
+	mk("live1", "Live Round", now.Add(-time.Hour))
+	mk("next1", "Next Halloween", now.Add(24*time.Hour))
+	svc := NewContestService()
+
+	resp, err := svc.ListContests(ListContestsRequest{Page: 1, PageSize: 10, Search: "halloween", Now: now})
+	require.NoError(t, err)
+	require.Equal(t, int64(2), resp.Total)
+
+	for status, key := range map[string]string{"past": "past1", "ongoing": "live1", "upcoming": "next1"} {
+		resp, err = svc.ListContests(ListContestsRequest{Page: 1, PageSize: 10, Status: status, Now: now})
+		require.NoError(t, err)
+		require.Equal(t, int64(1), resp.Total, status)
+		require.Equal(t, key, resp.Contests[0].Key, status)
+	}
+
+	_, err = svc.ListContests(ListContestsRequest{Page: 1, PageSize: 10, Status: "soon"})
+	require.ErrorIs(t, err, ErrInvalidStatus)
+}

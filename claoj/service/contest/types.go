@@ -142,6 +142,9 @@ type GetContestRequest struct {
 type ListContestsRequest struct {
 	Page     int
 	PageSize int
+	Search   string    // key or name contains (literal)
+	Status   string    // "", "upcoming", "ongoing", "past"
+	Now      time.Time // zero = time.Now(); tests pin it
 }
 
 // ListContestsResponse holds the response for listing contests.
