@@ -34,15 +34,17 @@ func (a *Agent) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 	retried, _ := asynq.GetRetryCount(ctx)
 	maxRetry, _ := asynq.GetMaxRetry(ctx)
-	// Earlier attempts only fail when the judge died mid-grade; on the last
-	// one, assume this submission kills tiervnoj and report IE instead.
+	// A failed attempt is not necessarily a crash: asynq counts every handler
+	// error and lease expiry, so SIGTERM mid-grade, an errNoChild reconnect
+	// gap and a >5min backend outage all land here too. On the last attempt
+	// the retry budget is exhausted — report IE instead of retrying forever.
 	return a.grade(ctx, req, retried > 0 && retried >= maxRetry)
 }
 
 func (a *Agent) grade(ctx context.Context, req Packet, giveUp bool) error {
 	id := req.SubmissionID()
 	if giveUp {
-		return a.post(Packet{"name": "internal-error", "submission-id": id, "message": "judge crashed while grading this submission"})
+		return a.post(Packet{"name": "internal-error", "submission-id": id, "message": "judge task failed after exhausting its retries"})
 	}
 	if err := a.child.Send(req); err != nil {
 		return err
