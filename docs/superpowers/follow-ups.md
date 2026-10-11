@@ -36,11 +36,6 @@ Carried from the batch reviews and the whole-branch review (plan
 - `claoj/bridge/handler.go` — narrow parked race: an abort-timeout's own
   `submission-terminated` can race a leftover terminal packet into an immediate rejudge's
   event channel; replay-corrected by any later rejudge. Plan-mandated design.
-- `docs/deployment.md` (§9.6 step 1 example) — the §5 `docker run` sample hardcodes
-  `-e REDIS_DB=0` while this document's own env table says 2; prefer
-  `REDIS_DB=<same as backend>`.
-- `docs/deployment.md` (§9.6 provenance note) — `git show 05946a7:claoj/jobs/judge.go:56` is
-  not runnable git syntax; use `git show 05946a7:claoj/jobs/judge.go | sed -n '56p'`.
 - `docs/deployment.md` (§9.6 step 1) — the asynq inspection loop omits `asynq:{q}:active`;
   in-flight tasks self-heal into `retry`, which is inspected.
 - `local/v2.local.env` (claoj-docker main checkout, gitignored) — still sets `BRIDGE_ADDR=:9997`;

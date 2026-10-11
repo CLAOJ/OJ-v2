@@ -214,7 +214,7 @@ the backend needs no judge-specific listener:
 ```bash
 docker run -d --name claoj_judge --cap-add SYS_PTRACE \
   -v /srv/problems:/problems:ro \
-  -e REDIS_ADDR=<redis-host>:6379 -e REDIS_DB=0 \
+  -e REDIS_ADDR=<redis-host>:6379 -e REDIS_DB=<same as the backend's REDIS_DB> \
   -e BACKEND_URL=http://<backend-host>:8081 \
   -e JUDGE_NAME=<judge_judge.name> -e JUDGE_KEY=<judge_judge.auth_key> \
   claoj/claoj-judge-agent
@@ -438,7 +438,7 @@ be removed with `cleanup_v2_tables.sql` per §7.
 
 Run this before/while switching to the pull-queue backend. The **pre-cutover**
 backend is the last build that still writes judge tasks to the asynq queue
-`critical` (`git show 05946a7:claoj/jobs/judge.go:56`); the new backend worker
+`critical` (`git show 05946a7:claoj/jobs/judge.go | sed -n '56p'`); the new backend worker
 serves only `default`/`low` (`jobs/server.go`) and the agent pulls queue
 `judge`, so **nothing consumes `critical` after the switch** — any task left
 there is orphaned and its submission stays `QU` forever.
@@ -486,18 +486,16 @@ curl -s -o /dev/null -w '%{http_code}\n' --max-time 10 \
 ```
 
 **Step 4 — pre-cutover verification gate (run these before switching).**
-The local e2e run (Task 10) never exercised these four; run them on the live
+The local e2e run (Task 10) never exercised these three; run them on the live
 stack and record the evidence in the cutover record:
 
-- **`archive:` problem:** submit `print(0)` (PY3) to a problem whose data
-  storage is `archive:` → ends `D` with a result other than `IE`.
 - **Abort of a *queued* submission:** submit, and while it is still `QU`
   (before any judge picks it up) `POST /api/admin/submission/<id>/abort` →
   ends `AB`, and the asynq `judge` queue holds no `sub-<id>` task
   (`docker exec claoj_redis redis-cli -n 2 --scan --pattern 'asynq:{judge}:*'`
   shows nothing for that id).
 - **AC/WA/CE/TLE attribution across both backends:** submit all four verdicts
-  (`print(sum(...))`→AC, `print(0)`→WA, `def (`→CE, `while True: pass`→TLE)
+  (a correct solution→AC (on `aplusb` the input is N then N pairs, so a one-line `print(sum(...))` is WA), `print(0)`→WA, `def (`→CE, `while True: pass`→TLE)
   to v1 (Django at `/`) and to v2 (`/api/.../submit`) and confirm each lands
   on its own stack's judge — v1 rows graded by the `Vịt Con` judge, v2 rows by
   `Vịt Toàn Năng`.
