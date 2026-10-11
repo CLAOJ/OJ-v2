@@ -64,7 +64,10 @@ func BlogList(c *gin.Context) {
 
 // BlogDetail – GET /api/v2/blog/:id
 func BlogDetail(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	var post models.BlogPost
 	if err := db.DB.Preload("Authors.User").
 		Preload("Organization").
@@ -107,7 +110,10 @@ func BlogDetail(c *gin.Context) {
 
 // BlogVoteHandler – POST /api/v2/blog/:id/vote
 func BlogVoteHandler(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return

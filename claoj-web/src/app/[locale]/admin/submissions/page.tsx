@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { adminSubmissionApi } from '@/lib/adminApi';
+import { adminSubmissionApi, adminErrorMessage } from '@/lib/adminApi';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
@@ -17,6 +18,7 @@ import {
     Hash,
     RefreshCw,
     StopCircle,
+    Trash2,
     Calculator,
     AlertTriangle
 } from 'lucide-react';
@@ -31,6 +33,7 @@ export default function AdminSubmissionPage() {
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [batchPreview, setBatchPreview] = useState<{ count: number; message: string } | null>(null);
     const [isExecutingBatch, setIsExecutingBatch] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
     const queryClient = useQueryClient();
 
     const { page, filters, setFilters, setPage, reset } = useListParams(FILTER_KEYS);
@@ -57,6 +60,16 @@ export default function AdminSubmissionPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
         }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: number) => adminSubmissionApi.delete(id),
+        onSuccess: () => {
+            toast.success(t('submissions.deleteSuccess'));
+            queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
+        },
+        onError: (err) => toast.error(adminErrorMessage(err, t('submissions.deleteError'))),
+        onSettled: () => setDeleteTarget(null),
     });
 
     const rescoreMutation = useMutation({
@@ -380,6 +393,14 @@ export default function AdminSubmissionPage() {
                                                         {t('submissions.abortButton')}
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => setDeleteTarget(s.id)}
+                                                    disabled={deleteMutation.isPending || STATUS_CODES.includes(s.status)}
+                                                    className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-medium flex items-center gap-1"
+                                                >
+                                                    <Trash2 size={14} />
+                                                    {t('submissions.deleteButton')}
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -392,6 +413,17 @@ export default function AdminSubmissionPage() {
             </div>
 
             <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={50} />
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={() => deleteTarget !== null && deleteMutation.mutate(deleteTarget)}
+                title={t('submissions.deleteTitle')}
+                description={t('submissions.deleteConfirm')}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                isLoading={deleteMutation.isPending}
+            />
         </div>
     );
 }

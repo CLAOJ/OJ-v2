@@ -5,9 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminJudge } from '@/types';
-import { adminJudgeApi } from '@/lib/adminApi';
+import { adminJudgeApi, adminErrorMessage } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/Dialog';
 import Link from 'next/link';
 import {
     Search,
@@ -20,7 +24,10 @@ import {
     Wifi,
     WifiOff,
     Shield,
-    ShieldOff
+    ShieldOff,
+    Plus,
+    Trash2,
+    Copy
 } from 'lucide-react';
 
 export default function AdminJudgesPage() {
@@ -28,6 +35,12 @@ export default function AdminJudgesPage() {
     const [search, setSearch] = useState('');
 
     const queryClient = useQueryClient();
+
+    const [showCreate, setShowCreate] = useState(false);
+    const [form, setForm] = useState({ name: '', auth_key: '', description: '' });
+    const [created, setCreated] = useState<{ name: string; auth_key: string } | null>(null);
+    const [copied, setCopied] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<AdminJudge | null>(null);
 
     const { data, isLoading, refetch } = useQuery({
         queryKey: ['admin-judges'],
@@ -41,6 +54,32 @@ export default function AdminJudgesPage() {
             return res.data;
         }
     });
+
+    const createMutation = useMutation({
+        mutationFn: () => adminJudgeApi.create({
+            name: form.name.trim(),
+            auth_key: form.auth_key || undefined,
+            description: form.description || undefined,
+        }),
+        onSuccess: (res) => setCreated({ name: res.data.name, auth_key: res.data.auth_key }),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: number) => adminJudgeApi.delete(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-judges'] });
+            setDeleteTarget(null);
+        }
+    });
+
+    const closeCreate = () => {
+        setShowCreate(false);
+        setCreated(null);
+        setCopied(false);
+        setForm({ name: '', auth_key: '', description: '' });
+        createMutation.reset();
+        queryClient.invalidateQueries({ queryKey: ['admin-judges'] });
+    };
 
     const blockMutation = useMutation({
         mutationFn: (id: number) => adminJudgeApi.block(id),
@@ -88,6 +127,9 @@ export default function AdminJudgesPage() {
                 </div>
 
                 <div className="flex gap-2">
+                    <Button onClick={() => setShowCreate(true)}>
+                        <Plus size={18} /> {t('judges.addButton')}
+                    </Button>
                     <button
                         onClick={() => refetch()}
                         className="px-4 py-2 rounded-xl bg-card border hover:bg-primary/5 flex items-center gap-2 font-medium"
@@ -263,6 +305,14 @@ export default function AdminJudgesPage() {
                                                     <Power size={16} className="rotate-180" />
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={() => { deleteMutation.reset(); setDeleteTarget(judge); }}
+                                                disabled={judge.online}
+                                                className="px-3 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-1.5 font-medium text-sm disabled:opacity-50"
+                                                title={judge.online ? t('judges.deleteOfflineOnly') : t('judges.deleteTitle')}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -271,6 +321,82 @@ export default function AdminJudgesPage() {
                     )}
                 </div>
             )}
+
+            <Dialog open={showCreate} onOpenChange={(open) => { if (!open) closeCreate(); }} className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle id="create-judge-title">
+                        {created ? t('judges.createdTitle') : t('judges.createTitle')}
+                    </DialogTitle>
+                </DialogHeader>
+                {created ? (
+                    <>
+                        <DialogContent className="space-y-3">
+                            <p className="text-sm text-muted-foreground">{t('judges.createdHint')}</p>
+                            <div className="text-sm font-medium">{created.name}</div>
+                            <div className="flex gap-2">
+                                <Input readOnly value={created.auth_key} className="font-mono" aria-label={t('judges.authKeyLabel')} />
+                                <Button
+                                    variant="outline"
+                                    onClick={() => navigator.clipboard.writeText(created.auth_key).then(() => setCopied(true))}
+                                >
+                                    <Copy size={16} /> {copied ? t('judges.copied') : t('judges.copyKey')}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                        <DialogFooter>
+                            <Button onClick={closeCreate}>{t('common.close')}</Button>
+                        </DialogFooter>
+                    </>
+                ) : (
+                    <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }}>
+                        <DialogContent className="space-y-4">
+                            <div>
+                                <label htmlFor="judge-name" className="text-sm font-medium text-muted-foreground block mb-2">{t('judges.nameLabel')}</label>
+                                <Input id="judge-name" required maxLength={50} value={form.name}
+                                    onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label htmlFor="judge-key" className="text-sm font-medium text-muted-foreground block mb-2">{t('judges.authKeyLabel')}</label>
+                                <Input id="judge-key" value={form.auth_key} placeholder={t('judges.authKeyPlaceholder')}
+                                    onChange={(e) => setForm({ ...form, auth_key: e.target.value })} />
+                            </div>
+                            <div>
+                                <label htmlFor="judge-desc" className="text-sm font-medium text-muted-foreground block mb-2">{t('judges.descriptionLabel')}</label>
+                                <Input id="judge-desc" value={form.description}
+                                    onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                            </div>
+                            {createMutation.isError && (
+                                <p role="alert" className="text-sm text-destructive">
+                                    {adminErrorMessage(createMutation.error, t('judges.saveError'))}
+                                </p>
+                            )}
+                        </DialogContent>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={closeCreate}>{t('common.cancel')}</Button>
+                            <Button type="submit" disabled={createMutation.isPending || !form.name.trim()}>
+                                {t('judges.createButton')}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                )}
+            </Dialog>
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+                title={t('judges.deleteTitle')}
+                description={t('judges.deleteConfirm', { name: deleteTarget?.name ?? '' })}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                isLoading={deleteMutation.isPending}
+            >
+                {deleteMutation.isError && (
+                    <p role="alert" className="text-sm text-destructive">
+                        {adminErrorMessage(deleteMutation.error, t('judges.deleteError'))}
+                    </p>
+                )}
+            </ConfirmDialog>
         </div>
     );
 }

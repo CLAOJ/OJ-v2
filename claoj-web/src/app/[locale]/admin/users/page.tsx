@@ -6,9 +6,13 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { AdminUser, AdminUserUpdateRequest } from '@/types';
-import { adminUserApi } from '@/lib/adminApi';
+import { adminUserApi, adminErrorMessage } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Switch } from '@/components/ui/Switch';
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/Dialog';
 import { Link } from '@/navigation';
 import {
     Search,
@@ -21,7 +25,9 @@ import {
     Settings,
     Shield,
     Clock,
-    Users
+    Users,
+    Plus,
+    KeyRound
 } from 'lucide-react';
 
 export default function AdminUserPage() {
@@ -31,7 +37,11 @@ export default function AdminUserPage() {
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editForm, setEditForm] = useState<AdminUserUpdateRequest>({});
-    const [banDays, setBanDays] = useState(7);
+    const emptyCreate = { username: '', email: '', password: '', full_name: '', is_active: true };
+    const [showCreate, setShowCreate] = useState(false);
+    const [createForm, setCreateForm] = useState(emptyCreate);
+    const [passwordTarget, setPasswordTarget] = useState<AdminUser | null>(null);
+    const [newPassword, setNewPassword] = useState('');
 
     const queryClient = useQueryClient();
     const router = useRouter();
@@ -50,12 +60,40 @@ export default function AdminUserPage() {
     });
 
     const banMutation = useMutation({
-        mutationFn: ({ id, reason, days }: { id: number; reason: string; days: number }) =>
-            adminUserApi.ban(id, reason, days),
+        mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+            adminUserApi.ban(id, reason),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
             setShowEditModal(false);
             setSelectedUser(null);
+        }
+    });
+
+    const closeCreate = () => {
+        setShowCreate(false);
+        setCreateForm(emptyCreate);
+    };
+
+    const createMutation = useMutation({
+        mutationFn: () => adminUserApi.create({
+            username: createForm.username.trim(),
+            email: createForm.email.trim(),
+            password: createForm.password,
+            full_name: createForm.full_name || undefined,
+            is_active: createForm.is_active,
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+            closeCreate();
+        }
+    });
+
+    const passwordMutation = useMutation({
+        mutationFn: ({ id, password }: { id: number; password: string }) =>
+            adminUserApi.setPassword(id, password),
+        onSuccess: () => {
+            setPasswordTarget(null);
+            setNewPassword('');
         }
     });
 
@@ -95,6 +133,10 @@ export default function AdminUserPage() {
                     <p className="text-muted-foreground mt-1">{t('users.subtitle')}</p>
                 </div>
 
+                <div className="flex gap-2 w-full md:w-auto">
+                <Button onClick={() => { createMutation.reset(); setShowCreate(true); }}>
+                    <Plus size={18} /> {t('users.createButton')}
+                </Button>
                 <div className="relative w-full md:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                     <input
@@ -104,6 +146,7 @@ export default function AdminUserPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                </div>
                 </div>
             </div>
 
@@ -208,6 +251,14 @@ export default function AdminUserPage() {
                                                     >
                                                         <Edit size={18} />
                                                     </button>
+                                                    <button
+                                                        onClick={() => { passwordMutation.reset(); setNewPassword(''); setPasswordTarget(user); }}
+                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        title={t('users.setPasswordButton')}
+                                                        aria-label={t('users.setPasswordButton')}
+                                                    >
+                                                        <KeyRound size={18} />
+                                                    </button>
                                                     {!user.is_active ? (
                                                         <button
                                                             onClick={() => unbanMutation.mutate(user.id)}
@@ -221,7 +272,6 @@ export default function AdminUserPage() {
                                                             onClick={() => {
                                                                 setSelectedUser(user);
                                                                 setEditForm({ ban_reason: '' });
-                                                                setBanDays(7);
                                                                 setShowEditModal(true);
                                                             }}
                                                             className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
@@ -295,20 +345,7 @@ export default function AdminUserPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-muted-foreground block mb-2">
-                                        {t('users.banDurationLabel')}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                                        value={banDays}
-                                        onChange={(e) => setBanDays(Number(e.target.value))}
-                                        min={1}
-                                        max={365}
-                                    />
-                                </div>
+                            <div>
                                 <div>
                                     <label className="text-sm font-medium text-muted-foreground block mb-2">
                                         {t('users.newStatusLabel')}
@@ -336,7 +373,7 @@ export default function AdminUserPage() {
                             {editForm.ban_reason ? (
                                 <button
                                     onClick={() => {
-                                        banMutation.mutate({ id: selectedUser.id, reason: editForm.ban_reason || '', days: banDays });
+                                        banMutation.mutate({ id: selectedUser.id, reason: editForm.ban_reason || '' });
                                     }}
                                     disabled={banMutation.isPending}
                                     className="px-4 py-2 rounded-xl bg-destructive text-white hover:bg-destructive/90 transition-colors"
@@ -364,6 +401,76 @@ export default function AdminUserPage() {
                     </div>
                 </div>
             )}
+
+            <Dialog open={showCreate} onOpenChange={(open) => { if (!open) closeCreate(); }} className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle id="create-user-title">{t('users.createTitle')}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }}>
+                    <DialogContent className="space-y-4">
+                        <div>
+                            <label htmlFor="new-username" className="text-sm font-medium text-muted-foreground block mb-2">{t('users.usernameLabel')}</label>
+                            <Input id="new-username" required autoComplete="off" value={createForm.username}
+                                onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} />
+                        </div>
+                        <div>
+                            <label htmlFor="new-email" className="text-sm font-medium text-muted-foreground block mb-2">{t('users.emailLabel')}</label>
+                            <Input id="new-email" type="email" required autoComplete="off" value={createForm.email}
+                                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
+                        </div>
+                        <div>
+                            <label htmlFor="new-password" className="text-sm font-medium text-muted-foreground block mb-2">{t('users.passwordLabel')}</label>
+                            <Input id="new-password" type="password" required autoComplete="new-password" value={createForm.password}
+                                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
+                            <p className="text-xs text-muted-foreground mt-1">{t('users.passwordHint')}</p>
+                        </div>
+                        <div>
+                            <label htmlFor="new-fullname" className="text-sm font-medium text-muted-foreground block mb-2">{t('users.fullNameLabel')}</label>
+                            <Input id="new-fullname" value={createForm.full_name}
+                                onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })} />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Switch id="new-active" checked={createForm.is_active}
+                                onCheckedChange={(v) => setCreateForm({ ...createForm, is_active: v })} />
+                            <label htmlFor="new-active" className="text-sm font-medium">{t('users.activeLabel')}</label>
+                        </div>
+                        {createMutation.isError && (
+                            <p role="alert" className="text-sm text-destructive">
+                                {adminErrorMessage(createMutation.error, t('users.saveError'))}
+                            </p>
+                        )}
+                    </DialogContent>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={closeCreate}>{t('common.cancel')}</Button>
+                        <Button type="submit" disabled={createMutation.isPending}>{t('users.createSubmit')}</Button>
+                    </DialogFooter>
+                </form>
+            </Dialog>
+
+            <Dialog open={passwordTarget !== null} onOpenChange={(open) => { if (!open) setPasswordTarget(null); }} className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle id="set-password-title">{t('users.setPasswordTitle', { username: passwordTarget?.username ?? '' })}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); if (passwordTarget) passwordMutation.mutate({ id: passwordTarget.id, password: newPassword }); }}>
+                    <DialogContent className="space-y-4">
+                        <div>
+                            <label htmlFor="set-password" className="text-sm font-medium text-muted-foreground block mb-2">{t('users.newPasswordLabel')}</label>
+                            <Input id="set-password" type="password" required autoComplete="new-password" value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)} />
+                            <p className="text-xs text-muted-foreground mt-1">{t('users.passwordHint')}</p>
+                        </div>
+                        {passwordMutation.isError && (
+                            <p role="alert" className="text-sm text-destructive">
+                                {adminErrorMessage(passwordMutation.error, t('users.saveError'))}
+                            </p>
+                        )}
+                    </DialogContent>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setPasswordTarget(null)}>{t('common.cancel')}</Button>
+                        <Button type="submit" disabled={passwordMutation.isPending}>{t('users.setPasswordSubmit')}</Button>
+                    </DialogFooter>
+                </form>
+            </Dialog>
         </div>
     );
 }

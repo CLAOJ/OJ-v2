@@ -9,6 +9,8 @@ import type {
     AdminJudge,
     AdminJudgeDetail,
     AdminJudgeUpdateRequest,
+    AdminJudgeCreateRequest,
+    AdminUserCreateRequest,
     AdminOrganization,
     AdminSubmission,
     Group,
@@ -162,8 +164,14 @@ export const adminUserApi = {
     delete: (id: number) =>
         api.delete(`/admin/user/${id}`),
 
-    ban: (id: number, reason: string, days: number) =>
-        api.post(`/admin/user/${id}/ban`, { reason, day: days }),
+    ban: (id: number, reason: string) =>
+        api.post(`/admin/user/${id}/ban`, { reason }),
+
+    create: (data: AdminUserCreateRequest) =>
+        api.post<{ success: boolean; user: { id: number; username: string } }>('/admin/users', data),
+
+    setPassword: (id: number, password: string) =>
+        api.post<{ success: boolean }>(`/admin/user/${id}/password`, { password }),
 
     unban: (id: number) =>
         api.post(`/admin/user/${id}/unban`),
@@ -275,6 +283,12 @@ export const adminJudgeApi = {
 
     update: (id: number, data: AdminJudgeUpdateRequest) =>
         api.patch(`/admin/judge/${id}`, data),
+
+    create: (data: AdminJudgeCreateRequest) =>
+        api.post<{ id: number; name: string; auth_key: string }>('/admin/judges', data),
+
+    delete: (id: number) =>
+        api.delete<{ success: boolean }>(`/admin/judge/${id}`),
 };
 
 // ============================================================
@@ -365,6 +379,9 @@ export const adminSubmissionApi = {
 
     abort: (id: number) =>
         api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/abort`),
+
+    delete: (id: number) =>
+        api.delete<{ success: boolean; message: string }>(`/admin/submission/${id}`),
 
     batchRejudge: (data: BatchRejudgeRequest) =>
         api.post<BatchRejudgeResponse>('/admin/submissions/batch-rejudge', data),
@@ -481,6 +498,9 @@ export const adminTicketApi = {
 
     updateNotes: (id: number, notes: string) =>
         api.patch<{ message: string }>(`/admin/ticket/${id}/notes`, { notes }),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/ticket/${id}`),
 };
 
 // ============================================================
@@ -746,3 +766,10 @@ export const adminMossApi = {
     clear: (key: string) =>
         api.delete<{ deleted: number }>(`/admin/contest/${key}/moss`),
 };
+
+// Backend messages for 400/403/409 are written for end users; anything else gets the fallback.
+export function adminErrorMessage(err: unknown, fallback: string): string {
+    const res = (err as { response?: { status?: number; data?: { error?: unknown } } })?.response;
+    const msg = res?.data?.error;
+    return [400, 403, 409].includes(res?.status ?? 0) && typeof msg === 'string' && msg ? msg : fallback;
+}

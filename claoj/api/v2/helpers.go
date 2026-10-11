@@ -114,6 +114,21 @@ func parseUint(s string, result *uint) error {
 	return nil
 }
 
+// numericParam returns the named path param when it is a base-10 unsigned
+// integer; otherwise it writes a 400 and returns ok=false.
+//
+// GORM treats a non-numeric string passed as an inline condition
+// (db.First(&x, s)) as raw SQL, so every :id that reaches such a call as a
+// string must pass through here first.
+func numericParam(c *gin.Context, name string) (string, bool) {
+	s := c.Param(name)
+	if _, err := strconv.ParseUint(s, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError("invalid "+name))
+		return "", false
+	}
+	return s, true
+}
+
 // ============================================================
 // STANDARDIZED ERROR HANDLING HELPERS
 // ============================================================

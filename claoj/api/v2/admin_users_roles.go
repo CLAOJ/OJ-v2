@@ -173,6 +173,22 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 	}
 
+	// Changing the email of a staff/superuser account would let a non-superuser
+	// take it over through the password-reset flow, so it is superuser-only.
+	if input.Email != nil && !auth.GetAccess(c).IsSuperuser {
+		var target models.AuthUser
+		err := db.DB.Joins("JOIN judge_profile ON judge_profile.user_id = auth_user.id").
+			Where("judge_profile.id = ?", uint(userID)).First(&target).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		if err == nil && (target.IsStaff || target.IsSuperuser) {
+			c.JSON(http.StatusForbidden, apiUserError("superuser access required to change the email of a staff account"))
+			return
+		}
+	}
+
 	// is_staff / is_superuser changes are superuser-only. This writes
 	// directly to Django's auth_user row (id, is_staff, is_superuser),
 	// which is a different primary key than the judge_profile.id used as
@@ -274,7 +290,9 @@ func AdminUserBan(c *gin.Context) {
 
 	var input struct {
 		Reason string `json:"reason" binding:"required"`
-		Day    int    `json:"day" binding:"required"`
+		// Accepted for older clients and ignored: judge_profile has no
+		// ban-expiry column, so every ban lasts until an unban.
+		Day int `json:"day"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {

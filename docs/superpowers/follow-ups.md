@@ -67,3 +67,45 @@ Parked by the task reviews and the final review of
   slightly stale now that `QU` is accepted.
 - `docs/deployment.md` §9.6 — `redis-cli -n 2` is hardcoded in Step 1 and Step 4 (the Redis DB
   index is deployment-specific); the AC/WA/CE/TLE bullet has a hard-to-scan nested parenthetical.
+
+## 2026-10-11 — `feat/admin-crud-gaps` (admin CRUD gaps)
+
+Parked by the task reviews and the final review of
+`docs/superpowers/plans/2026-10-11-admin-crud-gaps.md`; none blocks the merge:
+
+- Not built, needs its own design: a real (hard) delete for problem, contest, organization and
+  user. Their `DELETE` endpoints still only hide the row. Django owns the shared database and
+  has v1-only tables and signal handlers (`judge/signals.py`) that a Go cascade would miss.
+- `claoj/service/submission/delete.go` — deleting a submission does not rewrite
+  `score=-9999` for a disqualified participation and does not update
+  `judge_problem.user_count` / `ac_rate` (v1's `submission_delete` signal does both). The Go
+  grading path (`claoj/bridge/handler.go` `onGradingEnd`) has the same gaps; there is no Go
+  port of `update_stats`.
+- `claoj/service/submission/delete.go` — the status check runs outside the delete
+  transaction, so a concurrent rejudge could slip in between.
+- `claoj/api/v2/admin_judge_crud.go` — the online check and the delete are not atomic; a
+  duplicate-name race returns 500 instead of 409 (same in `createAccount`,
+  `claoj/api/v2/register.go`). The `judged_on_id = NULL` update is one statement and may hold
+  many row locks for a long-lived judge.
+- Judge keys are now shown only once, at creation; there is no re-key UI (the API accepts
+  `auth_key` on `PATCH /admin/judge/:id` with `judge.change_judge`, judge offline).
+- `claoj/middleware/audit.go` — the raw query string is stored unredacted. No admin route
+  takes a secret in the query today.
+- `claoj/api/router.go` — contest clarification answer/delete sit in the `protected` group
+  and are therefore not audited. Other pre-existing admin routes (user update/ban/delete,
+  judge block/enable/assignments, ticket assign/notes) are staff-only with no Django permission.
+- `claoj/api/v2/admin_user_create.go` — `mail.ParseAddress` accepts `Name <a@b.c>`; no length
+  checks on `email` / `full_name`; no test for `RefreshStore.RevokeAllForUser`.
+- `claoj/api/v2/contest/contest.go` — `parseInt` uses `Sscanf("%d")`, so `1abc` parses as 1;
+  the package's `apiError` passes messages through, unlike `v2.apiError`.
+- `claoj/api/v2/id_param_test.go` — no row for the `rid` guard in `HandleOrganizationRequest`.
+- `claoj/api/v2/admin_submission.go`, `ticket.go` — 404s return the generic message;
+  `AdminTicketDelete` maps any lookup error to 404.
+- `claoj-web/src/app/[locale]/admin/users/page.tsx` — the set-password dialog keeps the typed
+  password in state until reopened and gives no success feedback; a leftover single-child
+  wrapper `div` in the ban modal.
+- `claoj-web/src/app/[locale]/admin/judges/page.tsx` — the create dialog can be closed while
+  the request is pending, leaving a stale "created" state on reopen.
+- New Go files were committed with LF line endings while the working copy is CRLF (cosmetic).
+- Manual browser checks of the new dialogs and delete buttons were not run: they need a
+  backend and an admin login.

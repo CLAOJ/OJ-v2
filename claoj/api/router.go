@@ -101,6 +101,8 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/user/:id", v2.AdminUserDelete)
 			admin.POST("/admin/user/:id/ban", v2.AdminUserBan)
 			admin.POST("/admin/user/:id/unban", v2.AdminUserUnban)
+			admin.POST("/admin/users", auth.RequirePerm("auth.add_user"), v2.AdminUserCreate)
+			admin.POST("/admin/user/:id/password", auth.RequirePerm("auth.change_user"), v2.AdminUserSetPassword)
 
 			// Django group (role) management — writes rows in Django's own auth tables
 			admin.GET("/admin/groups", v2.AdminGroupList)
@@ -149,6 +151,7 @@ func NewRouter() *gin.Engine {
 			// Problem Clarifications
 			admin.POST("/admin/problem/:code/clarification", auth.RequireProblemEdit(), v2.ProblemClarificationCreate)
 			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
+			admin.PATCH("/admin/problem/clarification/:id", v2.ProblemClarificationUpdate)
 			// Problem Data
 			admin.GET("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemData)
 			admin.POST("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataUpload)
@@ -179,6 +182,8 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/judge/:id/enable", v2.AdminJudgeEnable)
 			admin.POST("/admin/judge/:id/disable", v2.AdminJudgeDisable)
 			admin.PATCH("/admin/judge/:id", v2.AdminJudgeUpdate)
+			admin.POST("/admin/judges", auth.RequirePerm("judge.add_judge"), v2.AdminJudgeCreate)
+			admin.DELETE("/admin/judge/:id", auth.RequirePerm("judge.delete_judge"), v2.AdminJudgeDelete)
 
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)
@@ -190,6 +195,7 @@ func NewRouter() *gin.Engine {
 			admin.GET("/admin/submissions", v2.AdminSubmissionList)
 			admin.POST("/admin/submission/:id/rejudge", v2.AdminSubmissionRejudge)
 			admin.POST("/admin/submission/:id/abort", v2.AdminSubmissionAbort)
+			admin.DELETE("/admin/submission/:id", auth.RequirePerm("judge.delete_submission"), v2.AdminSubmissionDelete)
 			admin.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
 			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
@@ -249,6 +255,7 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/ticket/:id/toggle", v2.AdminTicketToggleOpen)
 			admin.POST("/admin/ticket/:id/set-contributive", v2.AdminTicketSetContributive)
 			admin.PATCH("/admin/ticket/:id/notes", v2.AdminTicketUpdateNotes)
+			admin.DELETE("/admin/ticket/:id", auth.RequirePerm("judge.delete_ticket"), v2.AdminTicketDelete)
 
 		// Navigation Bars
 		admin.GET("/admin/navigation-bars", v2.AdminNavigationBarList)
@@ -407,6 +414,7 @@ func NewRouter() *gin.Engine {
 			// Contest clarifications (protected write)
 			protected.POST("/contest/:key/clarifications", contestHandlers.ContestClarificationCreate)
 			protected.POST("/contest/:key/clarification/:id/answer", contestHandlers.ContestClarificationAnswer)
+			protected.DELETE("/contest/:key/clarification/:id", contestHandlers.ContestClarificationDelete)
 
 			// Blogs
 			protected.POST("/blog/:id/vote", v2.BlogVoteHandler)

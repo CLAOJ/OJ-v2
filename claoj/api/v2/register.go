@@ -25,6 +25,85 @@ type RegisterRequest struct {
 	Timezone string `json:"timezone"`
 }
 
+// newAccount is what createAccount needs to insert an auth_user row and its
+// judge_profile.
+type newAccount struct {
+	Username       string
+	Email          string
+	HashedPassword string
+	FullName       string
+	Language       string // judge_language.key; empty means the site default
+	Timezone       string // empty means UTC
+	IsActive       bool
+}
+
+var (
+	errUsernameTaken = errors.New("username already taken")
+	errEmailTaken    = errors.New("email already taken")
+)
+
+// createAccount inserts the auth_user and judge_profile rows inside tx and
+// returns the new profile. Callers validate the username and password first.
+func createAccount(tx *gorm.DB, a newAccount) (models.Profile, error) {
+	var count int64
+	tx.Model(&models.AuthUser{}).Where("username = ?", a.Username).Count(&count)
+	if count > 0 {
+		return models.Profile{}, errUsernameTaken
+	}
+	tx.Model(&models.AuthUser{}).Where("email = ?", a.Email).Count(&count)
+	if count > 0 {
+		return models.Profile{}, errEmailTaken
+	}
+
+	user := models.AuthUser{
+		Username:   a.Username,
+		Email:      a.Email,
+		Password:   a.HashedPassword,
+		FirstName:  a.FullName,
+		IsActive:   a.IsActive,
+		DateJoined: time.Now(),
+	}
+	if err := tx.Create(&user).Error; err != nil {
+		return models.Profile{}, err
+	}
+	// GORM skips boolean zero values on columns with a default, so is_active
+	// has to be written explicitly.
+	if err := tx.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", a.IsActive).Error; err != nil {
+		return models.Profile{}, err
+	}
+
+	langKey := a.Language
+	if langKey == "" {
+		langKey = config.C.App.DefaultLanguage
+	}
+	var lang models.Language
+	if err := tx.Where("`key` = ?", langKey).First(&lang).Error; err != nil {
+		// fallback to any
+		tx.First(&lang)
+	}
+
+	tz := a.Timezone
+	if tz == "" {
+		tz = "UTC"
+	}
+
+	profile := models.Profile{
+		UserID:     user.ID,
+		LanguageID: lang.ID,
+		Timezone:   tz,
+		LastAccess: time.Now(),
+		// judge_profile.math_engine is varchar(4) with Django choices
+		// tex/svg/mml/jax/auto. "auto" is v1's MATHOID_DEFAULT_TYPE; the
+		// old "mathjax" value overflowed the column (Error 1406) and broke
+		// registration entirely.
+		MathEngine: "auto",
+	}
+	if err := tx.Create(&profile).Error; err != nil {
+		return models.Profile{}, err
+	}
+	return profile, nil
+}
+
 // Register – POST /api/v2/auth/register
 func Register(c *gin.Context) {
 	var req RegisterRequest
@@ -52,73 +131,19 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	var userID uint
-	var userEmail string
-	var userName string
-
+	var profile models.Profile
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		// 3. Check uniqueness
-		var count int64
-		tx.Model(&models.AuthUser{}).Where("username = ?", req.Username).Count(&count)
-		if count > 0 {
-			return errors.New("username already taken")
-		}
-		tx.Model(&models.AuthUser{}).Where("email = ?", req.Email).Count(&count)
-		if count > 0 {
-			return errors.New("email already taken")
-		}
-
-		// 4. Create AuthUser - set IsActive=false until email is verified
-		user := models.AuthUser{
-			Username:   req.Username,
-			Email:      req.Email,
-			Password:   hashedPassword,
-			FirstName:  req.FullName,
-			IsActive:   false, // Require email verification before activation
-			DateJoined: time.Now(),
-		}
-		if err := tx.Create(&user).Error; err != nil {
-			return err
-		}
-
-		// GORM ignores boolean zero values with defaults, so we need to explicitly update is_active
-		if err := tx.Model(&models.AuthUser{}).Where("id = ?", user.ID).Update("is_active", false).Error; err != nil {
-			return err
-		}
-
-		userID = user.ID
-		userEmail = user.Email
-		userName = user.Username
-
-		// 5. Get default language/timezone if missing
-		langKey := req.Language
-		if langKey == "" {
-			langKey = config.C.App.DefaultLanguage
-		}
-		var lang models.Language
-		if err := tx.Where("`key` = ?", langKey).First(&lang).Error; err != nil {
-			// fallback to any
-			tx.First(&lang)
-		}
-
-		tz := req.Timezone
-		if tz == "" {
-			tz = "UTC"
-		}
-
-		// 6. Create Profile
-		profile := models.Profile{
-			UserID:     user.ID,
-			LanguageID: lang.ID,
-			Timezone:   tz,
-			LastAccess: time.Now(),
-			// judge_profile.math_engine is varchar(4) with Django choices
-			// tex/svg/mml/jax/auto. "auto" is v1's MATHOID_DEFAULT_TYPE; the
-			// old "mathjax" value overflowed the column (Error 1406) and broke
-			// registration entirely.
-			MathEngine: "auto",
-		}
-		return tx.Create(&profile).Error
+		var txErr error
+		profile, txErr = createAccount(tx, newAccount{
+			Username:       req.Username,
+			Email:          req.Email,
+			HashedPassword: hashedPassword,
+			FullName:       req.FullName,
+			Language:       req.Language,
+			Timezone:       req.Timezone,
+			IsActive:       false, // require email verification before activation
+		})
+		return txErr
 	})
 
 	if err != nil {
@@ -128,7 +153,7 @@ func Register(c *gin.Context) {
 
 	// Send verification email asynchronously
 	go func() {
-		if err := SendVerificationEmailOnRegistration(userID, userEmail, userName); err != nil {
+		if err := SendVerificationEmailOnRegistration(profile.UserID, req.Email, req.Username); err != nil {
 			// Log error but don't fail registration
 		}
 	}()

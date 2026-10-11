@@ -348,3 +348,42 @@ func AdminProblemRescoreAll(c *gin.Context) {
 		"problem_code":   code,
 	})
 }
+
+// AdminSubmissionDelete - DELETE /api/v2/admin/submission/:id
+// Permanently deletes a finished submission and recalculates the points it fed.
+func AdminSubmissionDelete(c *gin.Context) {
+	var submissionID uint
+	if err := parseUint(c.Param("id"), &submissionID); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission ID"))
+		return
+	}
+
+	// Django parity: without judge.edit_all_problem a user may only delete
+	// submissions of problems they author or curate.
+	var sub models.Submission
+	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &sub.Problem) {
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to delete this submission"))
+		return
+	}
+
+	if err := getSubmissionService().Delete(submission.DeleteRequest{SubmissionID: submissionID}); err != nil {
+		switch {
+		case errors.Is(err, submission.ErrSubmissionNotFound):
+			c.JSON(http.StatusNotFound, apiError("submission not found"))
+		case errors.Is(err, submission.ErrSubmissionInProgress):
+			c.JSON(http.StatusConflict, apiUserError("submission is still being judged; abort it first"))
+		default:
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Submission deleted",
+	})
+}

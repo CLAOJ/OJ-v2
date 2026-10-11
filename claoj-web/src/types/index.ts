@@ -498,7 +498,7 @@ export interface AdminJudge {
     online: boolean;
     is_blocked: boolean;
     is_disabled: boolean;
-    auth_key: string;
+    auth_key?: string;
     last_ip: string;
     ping?: number;
     load?: number;
@@ -511,7 +511,23 @@ export interface AdminJudgeDetail extends AdminJudge {
     runtimes: { key: string; name: string; version: string }[];
 }
 
+export interface AdminJudgeCreateRequest {
+    name: string;
+    auth_key?: string;
+    description?: string;
+}
+
+export interface AdminUserCreateRequest {
+    username: string;
+    email: string;
+    password: string;
+    full_name?: string;
+    is_active?: boolean;
+}
+
 export interface AdminJudgeUpdateRequest {
+    name?: string;
+    auth_key?: string;
     description?: string;
     problem_ids?: number[];
     runtime_ids?: number[];

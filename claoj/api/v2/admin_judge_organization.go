@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/organization"
@@ -38,7 +40,6 @@ func AdminJudgeList(c *gin.Context) {
 		Name      string `json:"name"`
 		Online    bool   `json:"online"`
 		IsBlocked bool   `json:"is_blocked"`
-		AuthKey   string `json:"auth_key"`
 		LastIP    string `json:"last_ip"`
 	}
 	items := make([]Item, len(judges))
@@ -52,7 +53,6 @@ func AdminJudgeList(c *gin.Context) {
 			Name:      j.Name,
 			Online:    j.Online,
 			IsBlocked: j.IsBlocked,
-			AuthKey:   j.AuthKey,
 			LastIP:    ip,
 		}
 	}
@@ -66,7 +66,10 @@ func AdminJudgeList(c *gin.Context) {
 
 // AdminJudgeBlock - POST /api/v2/admin/judge/:id/block
 func AdminJudgeBlock(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -84,7 +87,10 @@ func AdminJudgeBlock(c *gin.Context) {
 
 // AdminJudgeUnblock - POST /api/v2/admin/judge/:id/unblock
 func AdminJudgeUnblock(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -172,7 +178,10 @@ func AdminJudgeDetail(c *gin.Context) {
 
 // AdminJudgeEnable - POST /api/v2/admin/judge/:id/enable
 func AdminJudgeEnable(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -190,7 +199,10 @@ func AdminJudgeEnable(c *gin.Context) {
 
 // AdminJudgeDisable - POST /api/v2/admin/judge/:id/disable
 func AdminJudgeDisable(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -222,6 +234,8 @@ func AdminJudgeUpdate(c *gin.Context) {
 	}
 
 	var input struct {
+		Name        *string `json:"name"`
+		AuthKey     *string `json:"auth_key"`
 		Description *string `json:"description"`
 		ProblemIDs  []uint  `json:"problem_ids"`
 		RuntimeIDs  []uint  `json:"runtime_ids"`
@@ -232,13 +246,54 @@ func AdminJudgeUpdate(c *gin.Context) {
 		return
 	}
 
+	// name + auth_key are the judge's login; changing them lets the caller
+	// impersonate the judge, so it needs the Django change permission.
+	if (input.Name != nil || input.AuthKey != nil) && !auth.HasPerm(c, "judge.change_judge") {
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to rename or re-key a judge"))
+		return
+	}
+
+	// An online judge keeps its old identity; renaming or re-keying it would
+	// make every later event fail authentication.
+	if (input.Name != nil || input.AuthKey != nil) && judge.Online {
+		c.JSON(http.StatusConflict, apiUserError("judge is online; stop the judge agent before renaming or re-keying it"))
+		return
+	}
+
 	updates := make(map[string]interface{})
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" || utf8.RuneCountInString(name) > judgeNameMaxLen {
+			c.JSON(http.StatusBadRequest, apiUserError("name is required and must be at most 50 characters"))
+			return
+		}
+		taken, err := judgeNameTaken(name, judge.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		if taken {
+			c.JSON(http.StatusConflict, apiUserError("a judge with this name already exists"))
+			return
+		}
+		updates["name"] = name
+	}
+	if input.AuthKey != nil {
+		if *input.AuthKey == "" || utf8.RuneCountInString(*input.AuthKey) > judgeAuthKeyMaxLen {
+			c.JSON(http.StatusBadRequest, apiUserError("auth_key must be 1 to 100 characters"))
+			return
+		}
+		updates["auth_key"] = *input.AuthKey
+	}
 	if input.Description != nil {
 		updates["description"] = *input.Description
 	}
 
 	if len(updates) > 0 {
-		db.DB.Model(&judge).Updates(updates)
+		if err := db.DB.Model(&judge).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
 	}
 
 	// Update problem assignments

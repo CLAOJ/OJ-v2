@@ -1,6 +1,7 @@
 package contest
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -33,7 +34,8 @@ func ContestClarificationList(c *gin.Context) {
 		Where("contest_id = ?", contest.ID).
 		Order("is_answered ASC, `time` DESC").
 		Find(&clarifications).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		log.Printf("contest: list clarifications for %s: %v", contestKey, err)
+		c.JSON(http.StatusInternalServerError, apiError("failed to load clarifications"))
 		return
 	}
 
@@ -134,9 +136,8 @@ func ContestClarificationAnswer(c *gin.Context) {
 	}
 
 	contestKey := c.Param("key")
-	clarificationID := c.Param("id")
-	var clarID int
-	if _, err := parseInt(clarificationID); err != nil {
+	clarID, err := parseInt(c.Param("id"))
+	if err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid clarification id"))
 		return
 	}
@@ -174,6 +175,48 @@ func ContestClarificationAnswer(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "clarification answered",
+	})
+}
+
+// ContestClarificationDelete – DELETE /api/v2/contest/:key/clarification/:id
+// Contest editors may delete a clarification of their contest.
+func ContestClarificationDelete(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
+		return
+	}
+
+	clarID, err := parseInt(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid clarification id"))
+		return
+	}
+
+	var contest models.Contest
+	if err := db.DB.Preload("Authors").Preload("Curators").Where("`key` = ?", c.Param("key")).First(&contest).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	// Django parity: only contest editors may manage clarifications.
+	if !auth.CanEditContest(c, &contest) {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	res := db.DB.Where("id = ? AND contest_id = ?", clarID, contest.ID).Delete(&models.ContestClarification{})
+	if res.Error != nil {
+		log.Printf("contest clarification delete %d: %v", clarID, res.Error)
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete clarification"))
+		return
+	}
+	if res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, apiError("clarification not found"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "clarification deleted",
 	})
 }
 

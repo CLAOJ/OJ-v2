@@ -104,10 +104,65 @@ func ProblemClarificationCreate(c *gin.Context) {
 	})
 }
 
+// ProblemClarificationUpdate – PATCH /api/v2/admin/problem/clarification/:id
+// Admin endpoint to edit the text of a problem clarification
+func ProblemClarificationUpdate(c *gin.Context) {
+	var id uint
+	if err := parseUint(c.Param("id"), &id); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError("invalid id"))
+		return
+	}
+
+	var clarification models.ProblemClarification
+	if err := db.DB.First(&clarification, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, apiError("clarification not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	// v1 parity: only editors of the parent problem may edit its clarifications.
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").
+		First(&problem, clarification.ProblemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &problem) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem"))
+		return
+	}
+
+	var req struct {
+		Description string `json:"description" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	if err := db.DB.Model(&clarification).Update("description", req.Description).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":          clarification.ID,
+		"problem_id":  clarification.ProblemID,
+		"description": req.Description,
+		"date":        clarification.Date,
+	})
+}
+
 // ProblemClarificationDelete – DELETE /api/v2/admin/problem/clarification/:id
 // Admin endpoint to delete a problem clarification
 func ProblemClarificationDelete(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var clarification models.ProblemClarification
 	if err := db.DB.First(&clarification, id).Error; err != nil {

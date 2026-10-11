@@ -157,7 +157,10 @@ func TicketCreate(c *gin.Context) {
 // TicketDetail - GET /api/v2/ticket/:id
 // Gets the contents of a ticket and its messages
 func TicketDetail(c *gin.Context) {
-	ticketID := c.Param("id")
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -332,7 +335,10 @@ func AdminTicketList(c *gin.Context) {
 // AdminTicketDetail - GET /admin/ticket/:id
 // Gets full ticket details including notes and assignees (admin only)
 func AdminTicketDetail(c *gin.Context) {
-	ticketID := c.Param("id")
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var ticket models.Ticket
 	if err := db.DB.Preload("User.User").Preload("Assignees.User").Preload("Messages.User.User").First(&ticket, ticketID).Error; err != nil {
@@ -503,4 +509,36 @@ func AdminTicketUpdateNotes(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "notes updated"})
+}
+
+// AdminTicketDelete - DELETE /admin/ticket/:id
+// Permanently deletes a ticket with its messages and assignee links (admin only)
+func AdminTicketDelete(c *gin.Context) {
+	ticketID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ticket ID"})
+		return
+	}
+
+	var ticket models.Ticket
+	if err := db.DB.First(&ticket, ticketID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+		return
+	}
+
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("ticket_id = ?", ticket.ID).Delete(&models.TicketMessage{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&ticket).Association("Assignees").Clear(); err != nil {
+			return err
+		}
+		return tx.Delete(&ticket).Error
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete ticket"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "ticket deleted"})
 }
