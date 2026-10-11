@@ -1335,7 +1335,9 @@
       "undisqualifyButton": "Undisqualify",
       "disqualifyButton": "Disqualify",
       "disqualifyError": "Failed to disqualify participation",
-      "undisqualifyError": "Failed to undisqualify participation"
+      "undisqualifyError": "Failed to undisqualify participation",
+      "saved": "Contest saved",
+      "saveFailed": "Could not save: {error}"
     },
     "contestTags": {
       "title": "Contest Tags",
@@ -1400,7 +1402,9 @@
       "loadingProblem": "Loading problem...",
       "editProblemTitle": "Edit Problem",
       "manageDataLink": "Manage Data",
-      "clarificationsLink": "Clarifications"
+      "clarificationsLink": "Clarifications",
+      "saved": "Problem saved",
+      "saveFailed": "Could not save: {error}"
     },
     "problemData": {
       "title": "Problem Data Management",
@@ -1941,6 +1945,12 @@
       "noTicketsFoundDesc": "Try adjusting your filters.",
       "pageLabel": "Page {page}"
     },
+    "picker": {
+      "searchPlaceholder": "Type to search…",
+      "searching": "Searching…",
+      "noResults": "No matches",
+      "remove": "Remove {label}"
+    },
     "contestForm": {
       "basicInfoTitle": "Basic Information",
       "keyLabel": "Contest Key *",
@@ -1967,8 +1977,8 @@
       "startTimeRequired": "Start time is required",
       "endTimeLabel": "End Time *",
       "endTimeRequired": "End time is required",
-      "timeLimitLabel": "Time Limit per Problem (seconds, optional)",
-      "timeLimitPlaceholder": "Default: Use problem time limits",
+      "timeLimitLabel": "Time window per participant (minutes, optional)",
+      "timeLimitPlaceholder": "Empty: everyone has the whole contest",
       "problemsTitle": "Problems",
       "problemsDesc": "Select problems to include in the contest. You can reorder them after creation.",
       "selectedProblemsCount": "Selected: {count} problem(s)",

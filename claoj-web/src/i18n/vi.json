@@ -1335,7 +1335,9 @@
       "undisqualifyButton": "Hủy loại",
       "disqualifyButton": "Loại",
       "disqualifyError": "Loại người tham gia thất bại",
-      "undisqualifyError": "Hủy loại người tham gia thất bại"
+      "undisqualifyError": "Hủy loại người tham gia thất bại",
+      "saved": "Đã lưu kỳ thi",
+      "saveFailed": "Không lưu được: {error}"
     },
     "contestTags": {
       "title": "Thẻ kỳ thi",
@@ -1400,7 +1402,9 @@
       "loadingProblem": "Đang tải bài toán...",
       "editProblemTitle": "Sửa bài toán",
       "manageDataLink": "Quản lý dữ liệu",
-      "clarificationsLink": "Thắc mắc"
+      "clarificationsLink": "Thắc mắc",
+      "saved": "Đã lưu bài tập",
+      "saveFailed": "Không lưu được: {error}"
     },
     "problemData": {
       "title": "Quản lý dữ liệu bài toán",
@@ -1941,6 +1945,12 @@
       "noTicketsFoundDesc": "Hãy thử điều chỉnh bộ lọc của bạn.",
       "pageLabel": "Trang {page}"
     },
+    "picker": {
+      "searchPlaceholder": "Nhập để tìm…",
+      "searching": "Đang tìm…",
+      "noResults": "Không có kết quả",
+      "remove": "Bỏ {label}"
+    },
     "contestForm": {
       "basicInfoTitle": "Thông tin cơ bản",
       "keyLabel": "Mã kỳ thi *",
@@ -1967,8 +1977,8 @@
       "startTimeRequired": "Thời gian bắt đầu là bắt buộc",
       "endTimeLabel": "Thời gian kết thúc *",
       "endTimeRequired": "Thời gian kết thúc là bắt buộc",
-      "timeLimitLabel": "Giới hạn thời gian mỗi bài (giây, tùy chọn)",
-      "timeLimitPlaceholder": "Mặc định: Dùng giới hạn thời gian của bài toán",
+      "timeLimitLabel": "Thời gian làm bài cho mỗi thí sinh (phút, không bắt buộc)",
+      "timeLimitPlaceholder": "Để trống: thí sinh làm trong toàn bộ thời gian kỳ thi",
       "problemsTitle": "Bài toán",
       "problemsDesc": "Chọn bài toán để đưa vào kỳ thi. Bạn có thể sắp xếp lại thứ tự sau khi tạo.",
       "selectedProblemsCount": "Đã chọn: {count} bài toán",

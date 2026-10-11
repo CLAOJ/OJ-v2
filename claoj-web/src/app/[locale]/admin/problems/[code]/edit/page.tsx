@@ -1,8 +1,9 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useParams } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import { adminProblemApi } from '@/lib/adminApi';
 import { problemToFormData } from '@/lib/adminForms';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
@@ -13,7 +14,6 @@ import { Link } from '@/navigation';
 export default function EditProblemPage() {
     const t = useTranslations('Admin');
     const params = useParams();
-    const router = useRouter();
     const code = params.code as string;
 
     const { data: problemData, isLoading: isLoadingProblem } = useQuery({
@@ -24,19 +24,25 @@ export default function EditProblemPage() {
         }
     });
 
+    const queryClient = useQueryClient();
     const updateMutation = useMutation({
         mutationFn: ({ code, data }: { code: string; data: ProblemFormData }) =>
             adminProblemApi.update(code, data),
         onSuccess: () => {
-            router.push(`/admin/problems`);
-        }
+            toast.success(t('problems.saved'));
+            queryClient.invalidateQueries({ queryKey: ['admin-problem-detail', code] });
+        },
+        onError: (err: unknown) => {
+            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? String(err);
+            toast.error(t('problems.saveFailed', { error: msg }));
+        },
     });
 
     const handleSubmit = async (data: ProblemFormData) => {
         await updateMutation.mutateAsync({ code, data });
     };
 
-    if (isLoadingProblem) {
+    if (isLoadingProblem || !problemData) {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-muted-foreground">{t('problems.loadingProblem')}</div>
@@ -45,6 +51,7 @@ export default function EditProblemPage() {
     }
 
     const initialData = problemData ? problemToFormData(problemData) : undefined;
+    const initialAuthors = problemData.authors.map(a => ({ id: a.id, label: a.username }));
 
     return (
         <div className="space-y-6">
@@ -84,6 +91,7 @@ export default function EditProblemPage() {
             {/* Form */}
             <ProblemForm
                 initialData={initialData}
+                initialAuthors={initialAuthors}
                 onSubmit={handleSubmit}
                 isLoading={updateMutation.isPending}
             />

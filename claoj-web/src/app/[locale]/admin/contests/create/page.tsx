@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminContestApi } from '@/lib/adminApi';
+import { contestFormToCreate } from '@/lib/adminForms';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
 import { Trophy, ArrowLeft } from 'lucide-react';
@@ -14,7 +15,7 @@ export default function CreateContestPage() {
     const router = useRouter();
 
     const createMutation = useMutation({
-        mutationFn: (data: ContestFormData) => adminContestApi.create(data),
+        mutationFn: (data: ContestFormData) => adminContestApi.create(contestFormToCreate(data)),
         onSuccess: (response) => {
             if (response.data.contest?.key) {
                 router.push(`/admin/contests`);

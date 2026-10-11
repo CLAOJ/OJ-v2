@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { adminProblemGroupApi, adminProblemTypeApi } from '@/lib/adminApi';
 import { BasicInfoSection } from './problem-form/BasicInfoSection';
+import type { EntityOption } from './EntityPicker';
 
 // The taxonomy selects need every group/type, not a page of them.
 const TAXONOMY_PAGE_SIZE = 500;
@@ -33,6 +34,7 @@ export interface ProblemFormData {
 
 export interface ProblemFormProps {
     initialData?: ProblemFormData;
+    initialAuthors?: EntityOption[];
     onSubmit: (data: ProblemFormData) => Promise<void>;
     isLoading?: boolean;
 }
@@ -53,12 +55,7 @@ interface Language {
     key: string;
 }
 
-interface UserProfile {
-    id: number;
-    username: string;
-}
-
-export default function ProblemForm({ initialData, onSubmit, isLoading }: ProblemFormProps) {
+export default function ProblemForm({ initialData, initialAuthors, onSubmit, isLoading }: ProblemFormProps) {
     const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ProblemFormData>({
         defaultValues: {
             code: initialData?.code || '',
@@ -72,6 +69,10 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
             memory_limit: initialData?.memory_limit ? Math.round(initialData.memory_limit / 1024) : 256,
             is_manually_managed: initialData?.is_manually_managed ?? false,
             pdf_url: initialData?.pdf_url || '',
+            group_id: initialData?.group_id,
+            type_ids: initialData?.type_ids ?? [],
+            author_ids: initialData?.author_ids ?? [],
+            allowed_lang_ids: initialData?.allowed_lang_ids ?? [],
         }
     });
 
@@ -103,14 +104,6 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
         queryKey: ['languages'],
         queryFn: async () => {
             const res = await api.get('/languages');
-            return res.data;
-        }
-    });
-
-    const { data: users } = useQuery<{ data: UserProfile[] }>({
-        queryKey: ['admin-users-list'],
-        queryFn: async () => {
-            const res = await api.get('/admin/users?page=1&page_size=1000');
             return res.data;
         }
     });
@@ -167,11 +160,11 @@ export default function ProblemForm({ initialData, onSubmit, isLoading }: Proble
             />
 
             <AuthorsSection
-                users={users}
                 languages={languages}
                 selectedAuthors={selectedAuthors}
+                initialAuthors={initialAuthors}
                 selectedLangs={selectedLangs}
-                onAuthorToggle={(userId, checked) => handleMultiSelect('author_ids', userId, checked)}
+                onAuthorsChange={(ids) => setValue('author_ids', ids)}
                 onLangToggle={(langId, checked) => handleMultiSelect('allowed_lang_ids', langId, checked)}
             />
 
