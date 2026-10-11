@@ -1,6 +1,7 @@
 package contest
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -204,7 +205,8 @@ func ContestClarificationDelete(c *gin.Context) {
 
 	res := db.DB.Where("id = ? AND contest_id = ?", clarID, contest.ID).Delete(&models.ContestClarification{})
 	if res.Error != nil {
-		c.JSON(http.StatusInternalServerError, apiError(res.Error.Error()))
+		log.Printf("contest clarification delete %d: %v", clarID, res.Error)
+		c.JSON(http.StatusInternalServerError, apiError("failed to delete clarification"))
 		return
 	}
 	if res.RowsAffected == 0 {
