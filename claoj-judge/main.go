@@ -30,8 +30,26 @@ func main() {
 	}
 	port := env("CHILD_PORT", "9999")
 
-	// 1. Loopback bridge for tiervnoj.
+	// 1. Loopback bridge for tiervnoj. The forwarder is wired in before
+	// tiervnoj spawns: every authenticated handshake reports the executor
+	// list as a "judge-runtimes" event, synchronously ahead of Ready(), so
+	// the first report always beats the queue's first task — and every
+	// reconnect reports it again, which is what keeps the backend's
+	// delete-then-insert honest after a reconnect.
+	fwd := &Forwarder{
+		URL:     strings.TrimRight(backendURL, "/") + "/internal/judge/event",
+		Name:    name,
+		Key:     key,
+		Client:  &http.Client{Timeout: 30 * time.Second},
+		MaxWait: 5 * time.Minute,
+		Backoff: 500 * time.Millisecond,
+	}
 	child := NewChild(key)
+	child.onRuntimes = func(p Packet) {
+		if err := fwd.Post(p); err != nil {
+			log.Printf("judge-runtimes: %v", err)
+		}
+	}
 	ln, err := net.Listen("tcp", "127.0.0.1:"+port)
 	if err != nil {
 		log.Fatalf("listen: %v", err)
@@ -58,14 +76,6 @@ func main() {
 	log.Printf("judge %q ready", name)
 
 	// 3. Pull work.
-	fwd := &Forwarder{
-		URL:     strings.TrimRight(backendURL, "/") + "/internal/judge/event",
-		Name:    name,
-		Key:     key,
-		Client:  &http.Client{Timeout: 30 * time.Second},
-		MaxWait: 5 * time.Minute,
-		Backoff: 500 * time.Millisecond,
-	}
 	agent := &Agent{child: child, abortWait: 30 * time.Second}
 	agent.post = func(p Packet) error {
 		err := fwd.Post(p)

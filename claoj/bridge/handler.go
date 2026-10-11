@@ -26,6 +26,12 @@ var statusOrder = map[string]int{"AC": 0, "SC": 1, "WA": 2, "MLE": 3, "TLE": 4, 
 // judge is the authenticated judge_judge row. Every branch must be safe to
 // replay: the agent re-POSTs a packet whose response it never received.
 func HandleEvent(judge *models.Judge, pkt Packet) error {
+	// judge-runtimes carries no submission-id: it reports the executors
+	// tiervnoj announced in its handshake (v1's RuntimeVersion rewrite).
+	if pkt.Name() == "judge-runtimes" {
+		return onJudgeRuntimes(judge, pkt)
+	}
+
 	subID, ok := pkt.SubmissionID()
 	if !ok {
 		return fmt.Errorf("%w: %q has no submission-id", ErrBadPacket, pkt.Name())
