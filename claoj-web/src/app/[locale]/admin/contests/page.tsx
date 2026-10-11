@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/Button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
-import { AdminContest } from '@/types';
 import { adminContestApi } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
+import { useListParams } from '@/hooks/useListParams';
+import { useDebounce } from '@/hooks/useDebounce';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 import {
     Search,
     Tag,
@@ -27,27 +28,26 @@ import {
     Copy as CopyIcon
 } from 'lucide-react';
 
+const FILTER_KEYS = ['search', 'status'] as const;
+const PAGE_SIZE = 50;
+
 export default function AdminContestPage() {
     const t = useTranslations('Admin');
-    const [page, setPage] = useState(1);
-    const [search, setSearch] = useState('');
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [selectedContest, setSelectedContest] = useState<{ key: string; name: string } | null>(null);
 
     const queryClient = useQueryClient();
     const router = useRouter();
 
-    const { data, isLoading, refetch } = useQuery({
-        queryKey: ['admin-contests', page, search],
-        queryFn: async () => {
-            const res = await api.get<{
-                data: AdminContest[];
-                total: number;
-                page: number;
-                page_size: number;
-            }>(`/admin/contests?page=${page}&page_size=50&search=${search}`);
-            return res.data;
-        }
+    const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
+    const search = useDebounce(filters.search ?? '', 300);
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['admin-contests', page, search, filters.status],
+        queryFn: async () => (await adminContestApi.list(page, PAGE_SIZE, {
+            search,
+            status: filters.status as 'upcoming' | 'ongoing' | 'past' | undefined,
+        })).data,
     });
 
     const deleteMutation = useMutation({
@@ -58,11 +58,6 @@ export default function AdminContestPage() {
     });
 
     const contests = data?.data || [];
-
-    const filteredContests = contests.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.key.toLowerCase().includes(search.toLowerCase())
-    );
 
     return (
         <div className="space-y-6">
@@ -75,17 +70,28 @@ export default function AdminContestPage() {
                     <p className="text-muted-foreground mt-1">{t('contests.subtitle')}</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <div className="relative w-full md:w-80">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
                             placeholder={t('contests.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            value={filters.search ?? ''}
+                            onChange={(e) => setFilters({ search: e.target.value })}
                         />
                     </div>
+                    <select
+                        aria-label={t('contests.statusFilter')}
+                        className="h-10 px-3 rounded-xl bg-card border"
+                        value={filters.status ?? ''}
+                        onChange={(e) => setFilters({ status: e.target.value })}
+                    >
+                        <option value="">{t('contests.statusAll')}</option>
+                        <option value="upcoming">{t('contests.statusUpcoming')}</option>
+                        <option value="ongoing">{t('contests.statusOngoing')}</option>
+                        <option value="past">{t('contests.statusPast')}</option>
+                    </select>
                     <div className="flex gap-2">
                         <Link
                             href="/admin/contests/tags"
@@ -122,14 +128,14 @@ export default function AdminContestPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {filteredContests.length === 0 ? (
+                                {contests.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
                                             {t('contests.noContestsFound')}
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredContests.map((contest) => (
+                                    contests.map((contest) => (
                                         <tr key={contest.key} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-sm mb-1">{contest.name}</div>
@@ -206,36 +212,11 @@ export default function AdminContestPage() {
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {filteredContests.length > 0 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
-                            <div className="text-sm text-muted-foreground">
-                                {t('contests.showingCount', { shown: filteredContests.length, total: data?.total || 0 })}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
-                                >
-                                    {t('common.previous')}
-                                </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
-                                    {page}
-                                </div>
-                                <button
-                                    onClick={() => setPage(p => p + 1)}
-                                    disabled={filteredContests.length < 50}
-                                    className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
-                                >
-                                    {t('common.next')}
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
             
+            <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={PAGE_SIZE} />
+
             {/* Clone Modal */}
             {selectedContest && (
                 <CloneContestModal

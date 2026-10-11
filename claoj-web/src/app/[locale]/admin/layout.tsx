@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname, useRouter } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -204,7 +204,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 <main className="p-4 lg:p-8 max-w-[1400px]">
-                    {children}
+                    <Suspense fallback={null}>{children}</Suspense>
                 </main>
             </div>
         </div>

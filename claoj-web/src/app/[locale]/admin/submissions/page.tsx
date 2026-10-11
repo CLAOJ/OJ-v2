@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
 import { adminSubmissionApi } from '@/lib/adminApi';
-import { AdminSubmission } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
 import { toast } from 'sonner';
 import { PaginationBar } from '@/components/ui/PaginationBar';
+import { useListParams } from '@/hooks/useListParams';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
     BrainCircuit,
     User,
@@ -22,30 +22,28 @@ import {
 } from 'lucide-react';
 import { getStatusVariant, cn } from '@/lib/utils';
 
+const FILTER_KEYS = ['user', 'problem', 'result', 'status', 'language'] as const;
+const PAGE_SIZE = 50;
+const STATUS_CODES = ['QU', 'P', 'G'];
+
 export default function AdminSubmissionPage() {
     const t = useTranslations('Admin');
-    const [page, setPage] = useState(1);
-    const [userFilter, setUserFilter] = useState('');
-    const [problemFilter, setProblemFilter] = useState('');
-    const [resultFilter, setResultFilter] = useState('');
-    const [langFilter, setLangFilter] = useState('');
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [batchPreview, setBatchPreview] = useState<{ count: number; message: string } | null>(null);
     const [isExecutingBatch, setIsExecutingBatch] = useState(false);
     const queryClient = useQueryClient();
 
+    const { page, filters, setFilters, setPage, reset } = useListParams(FILTER_KEYS);
+    const debounced = useDebounce(filters, 300);
+
     const { data, isLoading, refetch } = useQuery({
-        queryKey: ['admin-submissions', page, userFilter, problemFilter, resultFilter, langFilter],
-        queryFn: async () => {
-            const res = await api.get<{
-                data: AdminSubmission[];
-                total: number;
-                page: number;
-                page_size: number;
-            }>(`/admin/submissions?page=${page}&page_size=50&user=${userFilter}&problem=${problemFilter}&result=${resultFilter}&language=${langFilter}`);
-            return res.data;
-        }
+        queryKey: ['admin-submissions', page, debounced],
+        queryFn: async () => (await adminSubmissionApi.list(page, PAGE_SIZE, debounced)).data,
     });
+    const userFilter = filters.user ?? '';
+    const problemFilter = filters.problem ?? '';
+    const langFilter = filters.language ?? '';
+    const verdictFilter = filters.result ?? filters.status ?? '';
 
     const rejudgeMutation = useMutation({
         mutationFn: (id: number) => adminSubmissionApi.rejudge(id),
@@ -83,23 +81,24 @@ export default function AdminSubmissionPage() {
 
     const submissions = data?.data || [];
 
-    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'RE', 'IE', 'CE', 'AB', 'QU', 'P', 'G'];
+    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'AB', 'QU', 'P', 'G'];
 
     // Batch rejudge preview
     const handleBatchPreview = async () => {
         setIsExecutingBatch(false);
-        const filters: any = {};
+        const batch: Record<string, string> = {};
 
         // For text-based filters (username, problem code), we need to resolve to IDs first
         // For now, pass them as string filters and let backend handle resolution
-        if (userFilter) filters.username = userFilter;
-        if (problemFilter) filters.problem_code = problemFilter;
-        if (resultFilter) filters.result = resultFilter;
-        if (langFilter) filters.language = langFilter;
+        if (userFilter) batch.username = userFilter;
+        if (problemFilter) batch.problem_code = problemFilter;
+        if (filters.result) batch.result = filters.result;
+        if (filters.status) batch.status = filters.status;
+        if (langFilter) batch.language = langFilter;
 
         try {
             const res = await adminSubmissionApi.batchRejudge({
-                filters,
+                filters: batch,
                 dry_run: true
             });
             setBatchPreview({ count: res.data.count, message: res.data.message });
@@ -114,15 +113,16 @@ export default function AdminSubmissionPage() {
         if (!confirm(t('submissions.batchRejudgeConfirm', { count: batchPreview.count }))) return;
 
         setIsExecutingBatch(true);
-        const filters: any = {};
-        if (userFilter) filters.username = userFilter;
-        if (problemFilter) filters.problem_code = problemFilter;
-        if (resultFilter) filters.result = resultFilter;
-        if (langFilter) filters.language = langFilter;
+        const batch: Record<string, string> = {};
+        if (userFilter) batch.username = userFilter;
+        if (problemFilter) batch.problem_code = problemFilter;
+        if (filters.result) batch.result = filters.result;
+        if (filters.status) batch.status = filters.status;
+        if (langFilter) batch.language = langFilter;
 
         try {
             await adminSubmissionApi.batchRejudge({
-                filters,
+                filters: batch,
                 dry_run: false
             });
             alert(t('submissions.batchRejudgeSuccess', { count: batchPreview.count }));
@@ -167,14 +167,7 @@ export default function AdminSubmissionPage() {
                         <RefreshCw size={18} /> {t('submissions.batchRejudgeButton')}
                     </button>
                     <button
-                        onClick={() => {
-                            setUserFilter('');
-                            setProblemFilter('');
-                            setResultFilter('');
-                            setLangFilter('');
-                            setPage(1);
-                            refetch();
-                        }}
+                        onClick={() => reset()}
                         className="px-3 py-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-sm font-medium flex items-center gap-2"
                     >
                         <RefreshCw size={16} /> {t('submissions.resetFiltersButton')}
@@ -249,7 +242,7 @@ export default function AdminSubmissionPage() {
                             placeholder={t('submissions.searchUserPlaceholder')}
                             className="w-full h-10 pl-10 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={userFilter}
-                            onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
+                            onChange={(e) => setFilters({ user: e.target.value })}
                         />
                     </div>
                 </div>
@@ -263,7 +256,7 @@ export default function AdminSubmissionPage() {
                             placeholder={t('submissions.problemCodePlaceholder')}
                             className="w-full h-10 pl-10 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
                             value={problemFilter}
-                            onChange={(e) => { setProblemFilter(e.target.value); setPage(1); }}
+                            onChange={(e) => setFilters({ problem: e.target.value })}
                         />
                     </div>
                 </div>
@@ -272,8 +265,11 @@ export default function AdminSubmissionPage() {
                     <label className="text-xs font-bold uppercase text-muted-foreground ml-1">{t('submissions.verdictLabel')}</label>
                     <select
                         className="w-full h-10 px-3 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
-                        value={resultFilter}
-                        onChange={(e) => { setResultFilter(e.target.value); setPage(1); }}
+                        value={verdictFilter}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setFilters(STATUS_CODES.includes(v) ? { status: v, result: '' } : { result: v, status: '' });
+                        }}
                     >
                         <option value="">{t('submissions.allResultsOption')}</option>
                         {results.map(r => <option key={r} value={r}>{r}</option>)}
@@ -287,7 +283,7 @@ export default function AdminSubmissionPage() {
                         placeholder={t('submissions.languageFilterPlaceholder')}
                         className="w-full h-10 px-3 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
                         value={langFilter}
-                        onChange={(e) => { setLangFilter(e.target.value); setPage(1); }}
+                        onChange={(e) => setFilters({ language: e.target.value })}
                     />
                 </div>
             </div>
