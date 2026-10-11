@@ -1,131 +1,105 @@
-// Package moss provides integration with the MOSS plagiarism detection system
+// Package moss is a client for the MOSS (Measure Of Software Similarity)
+// server protocol, the same exchange as the official moss script, mosspy,
+// and the DMOJ moss library v1 uses.
 package moss
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
-	"strconv"
+	"net"
+	"strings"
+	"time"
 )
 
-// Config holds MOSS configuration
-type Config struct {
-	UserID      string // MOSS user ID (required)
-	Language    string // Programming language (e.g., "java", "cc", "py")
-	Comment     string // Optional comment for the submission
-	MaxMatches  int    // Maximum number of matches to report
-	ShowLongest bool   // Show only longest matches
+const DefaultAddr = "moss.stanford.edu:7690"
+
+// ErrLanguageRejected means the server does not support the language.
+var ErrLanguageRejected = errors.New("moss: language not accepted by server")
+
+// Client submits one batch of files per Submit call.
+type Client struct {
+	UserID     string        // MOSS account id (numeric string)
+	Addr       string        // default DefaultAddr
+	MaxMatches int           // -m: ignore code appearing in more files; default 10
+	Show       int           // -n: matching file pairs to report; default 250
+	Timeout    time.Duration // whole exchange; default 5 minutes
 }
 
-// DefaultLanguageMapping maps CLAOJ language IDs to MOSS languages
-var DefaultLanguageMapping = map[string]string{
-	"py":    "python",
-	"py3":   "python3",
-	"c":     "c",
-	"cpp":   "cc",
-	"cpp14": "cc14",
-	"cpp17": "cc17",
-	"cpp20": "cc20",
-	"java":  "java",
-	"js":    "js",
-	"go":    "go",
-	"rs":    "rust",
-	"cs":    "csharp",
-	"rb":    "ruby",
-	"scala": "scala",
-	"kt":    "kotlin",
-	"swift": "swift",
-	"php":   "php",
-	"hs":    "haskell",
-	"sql":   "sql",
+// File is one program; Name is how it appears in the report.
+type File struct {
+	Name    string
+	Content []byte
 }
 
-// Submission represents a single submission to MOSS
-type Submission struct {
-	UserID   string
-	FileID   int
-	Content  string
-	FileName string
-}
-
-// Result holds MOSS analysis results
-type Result struct {
-	SimilarityURL string   `json:"similarity_url"`
-	Matches       []Match  `json:"matches,omitempty"`
-	SubmissionIDs []uint   `json:"submission_ids"`
-	Message       string   `json:"message"`
-}
-
-// Match represents a similarity match between two submissions
-type Match struct {
-	Submission1 uint `json:"submission_1"`
-	Submission2 uint `json:"submission_2"`
-	Lines       int  `json:"lines"`
-	Percentage1 int  `json:"percentage_1"`
-	Percentage2 int  `json:"percentage_2"`
-}
-
-// SendSubmission sends a submission to MOSS and returns the result URL
-// For production, you would connect to moss.stanford.edu:7755
-func SendSubmission(config *Config, submissions []*Submission) (*Result, error) {
-	if config.UserID == "" {
-		return nil, fmt.Errorf("MOSS user ID is required")
+// Submit uploads files in MOSS language lang (e.g. "cc", "java") and
+// returns the report URL.
+func (c *Client) Submit(lang, comment string, files []File) (string, error) {
+	addr := c.Addr
+	if addr == "" {
+		addr = DefaultAddr
+	}
+	maxMatches, show, timeout := c.MaxMatches, c.Show, c.Timeout
+	if maxMatches == 0 {
+		maxMatches = 10
+	}
+	if show == 0 {
+		show = 250
+	}
+	if timeout == 0 {
+		timeout = 5 * time.Minute
 	}
 
-	// For now, we return instructions for web-based submission
-	return createWebSubmission(config, submissions), nil
-}
-
-// createWebSubmission creates a result for web-based MOSS submission
-func createWebSubmission(config *Config, submissions []*Submission) *Result {
-	instructions := "To analyze these submissions with MOSS:\n"
-	instructions += "1. Visit http://moss.stanford.edu/\n"
-	instructions += "2. Upload the following submission files:\n"
-	for _, sub := range submissions {
-		instructions += fmt.Sprintf("   - %s (Submission #%d)\n", sub.FileName, sub.FileID)
+	conn, err := net.DialTimeout("tcp", addr, 30*time.Second)
+	if err != nil {
+		return "", fmt.Errorf("moss: connect %s: %w", addr, err)
 	}
-	instructions += fmt.Sprintf("3. Select language: %s\n", config.Language)
-	instructions += "4. Submit for analysis"
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 
-	return &Result{
-		SimilarityURL: "http://moss.stanford.edu/",
-		SubmissionIDs: extractSubmissionIDs(submissions),
-		Message:       instructions,
+	w := bufio.NewWriter(conn)
+	r := bufio.NewReader(conn)
+
+	fmt.Fprintf(w, "moss %s\n", c.UserID)
+	fmt.Fprintf(w, "directory 0\n")
+	fmt.Fprintf(w, "X 0\n")
+	fmt.Fprintf(w, "maxmatches %d\n", maxMatches)
+	fmt.Fprintf(w, "show %d\n", show)
+	fmt.Fprintf(w, "language %s\n", lang)
+	if err := w.Flush(); err != nil {
+		return "", fmt.Errorf("moss: send header: %w", err)
 	}
-}
-
-func extractSubmissionIDs(submissions []*Submission) []uint {
-	ids := make([]uint, len(submissions))
-	for i, sub := range submissions {
-		id, _ := strconv.ParseUint(sub.FileName, 10, 32)
-		ids[i] = uint(id)
+	reply, err := r.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("moss: read language reply: %w", err)
 	}
-	return ids
-}
-
-// GetLanguageCode converts CLAOJ language ID to MOSS language code
-func GetLanguageCode(claojLangID string) string {
-	if lang, ok := DefaultLanguageMapping[claojLangID]; ok {
-		return lang
-	}
-	return "cc" // default to C++
-}
-
-// BuildSubmissions builds MOSS submissions from submission sources
-func BuildSubmissions(submissionID uint, source string, additionalSources map[uint]string) []*Submission {
-	submissions := make([]*Submission, 0, len(additionalSources)+1)
-
-	submissions = append(submissions, &Submission{
-		FileID:   int(submissionID),
-		Content:  source,
-		FileName: fmt.Sprintf("%d.txt", submissionID),
-	})
-
-	for id, src := range additionalSources {
-		submissions = append(submissions, &Submission{
-			FileID:   int(id),
-			Content:  src,
-			FileName: fmt.Sprintf("%d.txt", id),
-		})
+	if strings.TrimSpace(reply) == "no" {
+		fmt.Fprint(w, "end\n")
+		_ = w.Flush()
+		return "", fmt.Errorf("%w: %s", ErrLanguageRejected, lang)
 	}
 
-	return submissions
+	for i, f := range files {
+		name := strings.ReplaceAll(f.Name, " ", "_")
+		fmt.Fprintf(w, "file %d %s %d %s\n", i+1, lang, len(f.Content), name)
+		if _, err := w.Write(f.Content); err != nil {
+			return "", fmt.Errorf("moss: upload %s: %w", name, err)
+		}
+	}
+	fmt.Fprintf(w, "query 0 %s\n", comment)
+	if err := w.Flush(); err != nil {
+		return "", fmt.Errorf("moss: send files: %w", err)
+	}
+
+	url, err := r.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("moss: read result: %w", err)
+	}
+	url = strings.TrimSpace(url)
+	fmt.Fprint(w, "end\n")
+	_ = w.Flush()
+	if !strings.HasPrefix(url, "http") {
+		return "", fmt.Errorf("moss: unexpected reply %q", url)
+	}
+	return url, nil
 }

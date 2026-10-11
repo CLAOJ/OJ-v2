@@ -181,8 +181,6 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/submission/:id/rejudge", v2.AdminSubmissionRejudge)
 			admin.POST("/admin/submission/:id/abort", v2.AdminSubmissionAbort)
 			admin.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
-			admin.POST("/admin/submission/:id/moss", v2.AdminSubmissionMossAnalysis)
-			admin.GET("/admin/submission/:id/moss", v2.AdminSubmissionMossResults)
 			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
 			admin.POST("/admin/problem/:code/rescore-all", v2.AdminProblemRescoreAll)

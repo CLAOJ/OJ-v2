@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	v2 "github.com/CLAOJ/claoj/api/v2"
 	authv2 "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/stretchr/testify/require"
@@ -73,7 +72,6 @@ func TestSchemaParity(t *testing.T) {
 		&models.Notification{}, &models.NotificationPreference{},
 		&models.TotpDevice{}, &models.BackupCode{},
 		&authv2.OAuthUserLink{},
-		&v2.MossResult{},
 		&models.CommentRevision{},
 		&models.ContestClarification{},
 	}
