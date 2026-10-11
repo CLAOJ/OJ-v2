@@ -55,7 +55,7 @@ func newProblem(t *testing.T, code string) models.Problem {
 }
 
 func strp(s string) *string { return &s }
-func i64p(v int64) *int64 { return &v }
+func i64p(v int64) *int64   { return &v }
 
 func TestUpdateContest_AppliesSchedule(t *testing.T) {
 	setupContestDB(t)
@@ -154,8 +154,8 @@ func TestGetContest_ProblemsCarryCodeAndName(t *testing.T) {
 	require.Equal(t, "aplusb", got.Problems[0].Code)
 }
 
-func ip(v int) *int    { return &v }
-func bp(v bool) *bool  { return &v }
+func ip(v int) *int   { return &v }
+func bp(v bool) *bool { return &v }
 
 func contestRows(t *testing.T, contestID uint) []models.ContestProblem {
 	t.Helper()
