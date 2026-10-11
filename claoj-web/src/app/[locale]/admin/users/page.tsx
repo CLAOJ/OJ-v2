@@ -88,7 +88,7 @@ export default function AdminUserPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Users className="text-primary" size={32} />
                         {t('users.title')}
                     </h1>
@@ -117,11 +117,11 @@ export default function AdminUserPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('users.colUser')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('users.colStats')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('users.colStatus')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('users.colRole')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('users.colUser')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('users.colStats')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('users.colStatus')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('users.colRole')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -136,11 +136,11 @@ export default function AdminUserPage() {
                                         <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-medium">
                                                         {user.username[0].toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-sm">{user.username}</div>
+                                                        <div className="font-medium text-sm">{user.username}</div>
                                                         <div className="text-xs text-muted-foreground">{user.email}</div>
                                                     </div>
                                                 </div>
@@ -259,7 +259,7 @@ export default function AdminUserPage() {
                                 >
                                     {t('common.previous')}
                                 </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
+                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
                                     {page}
                                 </div>
                                 <button
@@ -279,7 +279,7 @@ export default function AdminUserPage() {
             {selectedUser && showEditModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-card rounded-md w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4">{t('users.manageUserTitle', { username: selectedUser.username })}</h2>
+                        <h2 className="text-xl font-semibold mb-4">{t('users.manageUserTitle', { username: selectedUser.username })}</h2>
 
                         <div className="space-y-4">
                             <div>

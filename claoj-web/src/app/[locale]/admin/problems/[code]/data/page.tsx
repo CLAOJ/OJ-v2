@@ -184,7 +184,7 @@ export default function ProblemDataPage() {
                     <ArrowLeft size={20} />
                 </Link>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Database className="text-primary" size={32} />
                         {t('problemData.title')}
                     </h1>
@@ -272,7 +272,7 @@ export default function ProblemDataPage() {
                             className="bg-card rounded-md shadow-lg w-full max-w-4xl max-h-[80vh] overflow-hidden"
                         >
                             <div className="flex items-center justify-between p-4 border-b">
-                                <h3 className="font-bold text-lg">
+                                <h3 className="font-semibold text-lg">
                                     {t('problemData.testCaseContentTitle', {
                                         order: selectedTestCase?.order ?? '',
                                         type: viewingContent.type === 'input' ? t('problemData.inputLabel') : t('problemData.outputLabel')
@@ -467,7 +467,7 @@ function TestCasesTab({
                                 exit={{ opacity: 0, y: -10 }}
                                 className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
                             >
-                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-medium">
                                     {testCase.order}
                                 </div>
                                 <div className="flex-1">

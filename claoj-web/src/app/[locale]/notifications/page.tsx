@@ -121,7 +121,7 @@ export default function NotificationsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <h1 className="text-3xl font-semibold tracking-tight">{t('title')}</h1>
                     <p className="text-muted-foreground mt-1">
                         {t('subtitle')}
                     </p>
@@ -129,7 +129,7 @@ export default function NotificationsPage() {
                 <button
                     onClick={() => markAllAsRead.mutate()}
                     disabled={markAllAsRead.isPending || notifications.length === 0}
-                    className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl border font-bold hover:bg-muted transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl border font-medium hover:bg-muted transition-colors disabled:opacity-50"
                 >
                     {markAllAsRead.isPending ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -150,7 +150,7 @@ export default function NotificationsPage() {
                             setPage(1);
                         }}
                         className={cn(
-                            "px-4 py-2 rounded-xl font-bold text-sm transition-all",
+                            "px-4 py-2 rounded-xl font-medium text-sm transition-all",
                             filter === type.value
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-muted hover:bg-muted/80 text-muted-foreground"
@@ -172,7 +172,7 @@ export default function NotificationsPage() {
                         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
                             <Inbox size={40} className="text-muted-foreground" />
                         </div>
-                        <h3 className="text-xl font-bold mb-2">{t('noNotifications')}</h3>
+                        <h3 className="text-xl font-semibold mb-2">{t('noNotifications')}</h3>
                         <p className="text-muted-foreground max-w-md mx-auto">
                             {filter !== 'all'
                                 ? t('emptyStateFiltered', { filter: typeLabels[filter] ?? filter })
@@ -206,7 +206,7 @@ export default function NotificationsPage() {
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
                                             <h3 className={cn(
-                                                "font-bold text-lg",
+                                                "font-semibold text-lg",
                                                 !notification.read && "text-primary"
                                             )}>
                                                 {notification.title}

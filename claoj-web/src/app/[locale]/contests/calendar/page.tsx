@@ -138,7 +138,7 @@ export default function ContestCalendarPage() {
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between mb-1">
                                         <span
-                                            className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday
+                                            className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday
                                                     ? 'bg-primary text-primary-foreground'
                                                     : 'text-foreground'
                                                 }`}
@@ -205,7 +205,7 @@ export default function ContestCalendarPage() {
 
         return (
             <div className="space-y-2">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                     {t('calendarContestsInMonth', { month: MONTH_NAMES[currentMonth - 1], year: String(currentYear) })}
                 </h3>
                 {calendarData.contests.map(contest => {
@@ -241,7 +241,7 @@ export default function ContestCalendarPage() {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Trophy size={16} className="text-primary shrink-0" />
-                                        <h4 className="font-bold text-base group-hover:text-primary transition-colors truncate">
+                                        <h4 className="font-medium text-base group-hover:text-primary transition-colors truncate">
                                             {contest.name}
                                         </h4>
                                     </div>
@@ -303,7 +303,7 @@ export default function ContestCalendarPage() {
                 </button>
 
                 <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-semibold">
                         {MONTH_NAMES[currentMonth - 1]} {currentYear}
                     </h2>
                     <button
@@ -359,7 +359,7 @@ export default function ContestCalendarPage() {
 
             {/* Legend */}
             <div className="bg-card rounded-xl border p-4 shadow-sm">
-                <h3 className="text-sm font-bold mb-3">{t('legend')}</h3>
+                <h3 className="text-sm font-semibold mb-3">{t('legend')}</h3>
                 <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-emerald-500/10 border border-emerald-200" />

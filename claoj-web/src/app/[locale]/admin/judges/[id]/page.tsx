@@ -116,7 +116,7 @@ export default function AdminJudgeDetailPage() {
                     <ArrowLeft size={20} />
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Server className="text-primary" size={32} />
                         {judge.name}
                     </h1>
@@ -199,7 +199,7 @@ export default function AdminJudgeDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Problems */}
                 <div className="bg-card rounded-md p-6 border">
-                    <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2 mb-4">
                         <FileText size={20} className="text-primary" />
                         {t('judgeDetail.assignedProblems', { count: judge.problems.length })}
                     </h3>
@@ -224,7 +224,7 @@ export default function AdminJudgeDetailPage() {
 
                 {/* Runtimes */}
                 <div className="bg-card rounded-md p-6 border">
-                    <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2 mb-4">
                         <Code size={20} className="text-primary" />
                         {t('judgeDetail.supportedLanguages', { count: judge.runtimes.length })}
                     </h3>
@@ -245,7 +245,7 @@ export default function AdminJudgeDetailPage() {
 
             {/* Description */}
             <div className="bg-card rounded-md p-6 border">
-                <label htmlFor="judge-description" className="block font-bold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</label>
+                <label htmlFor="judge-description" className="block font-semibold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</label>
                 <textarea
                     id="judge-description"
                     rows={4}
@@ -267,7 +267,7 @@ export default function AdminJudgeDetailPage() {
 
             {/* Additional Info */}
             <div className="bg-card rounded-md p-6 border">
-                <h3 className="font-bold text-lg mb-4">{t('judgeDetail.additionalInfoTitle')}</h3>
+                <h3 className="font-semibold text-lg mb-4">{t('judgeDetail.additionalInfoTitle')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-muted/50">

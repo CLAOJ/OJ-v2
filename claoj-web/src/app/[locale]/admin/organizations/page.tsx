@@ -59,7 +59,7 @@ export default function AdminOrganizationsPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Database className="text-primary" size={32} />
                         {t('organizations.title')}
                     </h1>
@@ -102,11 +102,11 @@ export default function AdminOrganizationsPage() {
                             <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
                                 <div className="flex items-center justify-between">
                                     <Link href={`/organization/${org.id}`} className="flex items-center gap-4 flex-1">
-                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-semibold text-lg">
                                             {org.name[0].toUpperCase()}
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-lg hover:text-primary transition-colors">{org.name}</h3>
+                                            <h3 className="font-semibold text-lg hover:text-primary transition-colors">{org.name}</h3>
                                             <div className="text-sm text-muted-foreground mt-1 flex items-center gap-3">
                                                 <span className="font-mono text-xs">{org.slug}</span>
                                                 <span className="text-muted-foreground">|</span>
@@ -146,7 +146,7 @@ export default function AdminOrganizationsPage() {
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-card rounded-md w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4">{t('organizations.createModalTitle')}</h2>
+                        <h2 className="text-xl font-semibold mb-4">{t('organizations.createModalTitle')}</h2>
 
                         <div className="space-y-4">
                             <div>

@@ -110,7 +110,7 @@ export default function BlogListPage() {
                                         {post.title}
                                     </h2>
 
-                                    <p className="text-muted-foreground line-clamp-3 text-lg leading-relaxed font-bold opacity-80">
+                                    <p className="text-muted-foreground line-clamp-3 text-lg leading-relaxed font-semibold opacity-80">
                                         {post.summary}
                                     </p>
 
@@ -214,7 +214,7 @@ export default function BlogListPage() {
 
                         <div className="space-y-3 relative z-10">
                             {isUsersLoading ? (
-                                [1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full rounded-md bg-zinc-800" />)
+                                [1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full rounded-md" />)
                             ) : (
                                 topUsers?.map((user, idx) => (
                                     <Link
@@ -227,15 +227,15 @@ export default function BlogListPage() {
                                                 "w-8 h-8 rounded-lg flex items-center justify-center font-medium text-xs shrink-0 select-none",
                                                 idx === 0 ? "bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)]" :
                                                     idx === 1 ? "bg-zinc-400 text-white" :
-                                                        idx === 2 ? "bg-orange-600 text-white" : "bg-zinc-700 text-zinc-400"
+                                                        idx === 2 ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground"
                                             )}>
                                                 {idx + 1}
                                             </div>
-                                            <span className="text-xs font-medium text-zinc-100 truncate group-hover:text-amber-400 transition-colors">
+                                            <span className="text-xs font-medium text-foreground truncate group-hover:text-amber-400 transition-colors">
                                                 {user.username}
                                             </span>
                                         </div>
-                                        <span className="text-xs font-medium font-mono text-zinc-500 shrink-0">
+                                        <span className="text-xs font-medium font-mono text-muted-foreground shrink-0">
                                             {Math.round(user.performance_points)} PP
                                         </span>
                                     </Link>
@@ -245,7 +245,7 @@ export default function BlogListPage() {
 
                         <Link
                             href="/users"
-                            className="flex items-center justify-center gap-2 pt-4 text-xs font-medium text-zinc-500 hover:text-amber-500 transition-colors"
+                            className="flex items-center justify-center gap-2 pt-4 text-xs font-medium text-muted-foreground hover:text-amber-500 transition-colors"
                         >
                             {t('viewGlobalRankings')} <ArrowRight size={12} />
                         </Link>

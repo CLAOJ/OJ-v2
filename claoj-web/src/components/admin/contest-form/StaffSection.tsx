@@ -19,7 +19,7 @@ export function StaffSection({ users, selectedAuthors, selectedCurators, selecte
     const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{t('contestForm.staffTitle')}</h3>
+            <h3 className="text-lg font-semibold">{t('contestForm.staffTitle')}</h3>
 
             <div>
                 <label className="text-sm font-medium text-muted-foreground block mb-2">

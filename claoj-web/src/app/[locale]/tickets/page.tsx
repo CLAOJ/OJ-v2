@@ -71,7 +71,7 @@ export default function TicketListPage() {
 
                 <Link
                     href="/ticket/create"
-                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg "
+                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg "
                 >
                     <Plus size={18} />
                     {t('new')}
@@ -87,7 +87,7 @@ export default function TicketListPage() {
                         <input
                             type="text"
                             placeholder={t('searchPlaceholder')}
-                            className="w-full h-12 bg-muted/30 border border-transparent rounded-md pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
+                            className="w-full h-12 bg-muted/30 border border-transparent rounded-md pl-12 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                         />
@@ -203,7 +203,7 @@ export default function TicketListPage() {
                     <p className="text-muted-foreground mb-6">{t('noTicketsDescription')}</p>
                     <Link
                         href="/ticket/create"
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                     >
                         <Plus size={18} />
                         {t('create')}

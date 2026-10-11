@@ -143,7 +143,7 @@ export default function OrganizationsListPage() {
             {!isLoading && organizations.length === 0 && (
                 <div className="text-center py-20">
                     <Building2 size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                    <p className="text-muted-foreground font-bold">{t('noneFound')}</p>
+                    <p className="text-muted-foreground font-medium">{t('noneFound')}</p>
                 </div>
             )}
 

@@ -67,7 +67,7 @@ export default function ContestParticipationsPage() {
                         <ArrowLeft size={20} />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
+                        <h1 className="text-3xl font-semibold flex items-center gap-3">
                             <Users className="text-primary" size={32} />
                             {t('contests.participationsTitle')}
                         </h1>
@@ -97,12 +97,12 @@ export default function ContestParticipationsPage() {
                     <table className="w-full text-left">
                         <thead className="bg-muted/50 border-b">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colRank')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colUser')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colScore')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colStatus')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colRank')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colUser')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colScore')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colTime')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colStatus')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
@@ -129,7 +129,7 @@ export default function ContestParticipationsPage() {
                                         <Link
                                             href={`/user/${row.username}`}
                                             className={cn(
-                                                "font-bold text-sm hover:text-primary transition-colors",
+                                                "font-medium text-sm hover:text-primary transition-colors",
                                                 row.is_disqualified && "line-through text-muted-foreground"
                                             )}
                                         >

@@ -193,7 +193,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 onClick={() => tab.href ? window.location.href = tab.href : setActiveTab(tab.id as any)}
                                 className={cn(
                                     "relative py-6 text-xs font-medium flex items-center gap-3 transition-all cursor-pointer",
-                                    activeTab === tab.id ? "text-primary scale-105" : "text-muted-foreground hover:text-foreground"
+                                    activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <tab.icon size={16} />
@@ -256,11 +256,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                         <p className="text-sm font-medium">{contest.time_limit ? t('minutesCount', { count: contest.time_limit / 60 }) : t('infiniteWindow')}</p>
                                     </div>
                                     <div className="pt-4 border-t space-y-4">
-                                        <div className="flex items-center justify-between text-xs font-bold">
+                                        <div className="flex items-center justify-between text-xs font-medium">
                                             <span className="text-muted-foreground">{t('scoreboard')}</span>
                                             <span className="text-emerald-500">{tCommon('public')}</span>
                                         </div>
-                                        <div className="flex items-center justify-between text-xs font-bold">
+                                        <div className="flex items-center justify-between text-xs font-medium">
                                             <span className="text-muted-foreground">{t('clars')}</span>
                                             <span className="text-blue-500">{tCommon('enabled')}</span>
                                         </div>
@@ -269,7 +269,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             </section>
 
                             <section className="p-4 rounded-md bg-zinc-900 text-zinc-100 border border-zinc-800 space-y-4">
-                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-3">
+                                <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-3">
                                     <Clock size={16} />
                                     {t('timeline')}
                                 </h3>
@@ -324,7 +324,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                         className="block space-y-1 outline-none"
                                                     >
                                                         <h4 className="text-lg font-semibold group-hover:text-primary transition-colors">{prob.name}</h4>
-                                                        <div className="text-xs font-mono font-bold text-muted-foreground opacity-50">{prob.code}</div>
+                                                        <div className="text-xs font-mono font-medium text-muted-foreground opacity-50">{prob.code}</div>
                                                     </Link>
                                                 </td>
                                                 <td className="px-6 py-6 text-center">

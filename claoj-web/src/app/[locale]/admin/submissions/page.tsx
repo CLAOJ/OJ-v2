@@ -140,7 +140,7 @@ export default function AdminSubmissionPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <BrainCircuit className="text-primary" size={32} />
                         {t('submissions.title')}
                     </h1>
@@ -156,13 +156,13 @@ export default function AdminSubmissionPage() {
                         }}
                         disabled={!problemFilter || rescoreAllMutation.isPending}
                         title={problemFilter ? undefined : t('submissions.rescoreAllHint')}
-                        className="px-4 py-2 rounded-xl border bg-card hover:bg-muted transition-colors text-sm font-bold flex items-center gap-2 disabled:opacity-50"
+                        className="px-4 py-2 rounded-xl border bg-card hover:bg-muted transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
                     >
                         <Calculator size={18} /> {t('submissions.rescoreAllButton')}
                     </button>
                     <button
                         onClick={() => setShowBatchModal(true)}
-                        className="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-bold flex items-center gap-2"
+                        className="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                         <RefreshCw size={18} /> {t('submissions.batchRejudgeButton')}
                     </button>
@@ -186,7 +186,7 @@ export default function AdminSubmissionPage() {
             {showBatchModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 ">
                     <div className="bg-card rounded-md p-6 w-full max-w-md border shadow-lg">
-                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                             <RefreshCw className={cn(isExecutingBatch ? 'animate-spin' : '')} size={24} />
                             {t('submissions.batchRejudgeButton')}
                         </h2>
@@ -201,7 +201,7 @@ export default function AdminSubmissionPage() {
                             )}>
                                 <AlertTriangle size={20} />
                                 <div>
-                                    <div className="font-bold">{t('submissions.countSubmissions', { count: batchPreview.count })}</div>
+                                    <div className="font-medium">{t('submissions.countSubmissions', { count: batchPreview.count })}</div>
                                     <div className="text-sm opacity-75">{batchPreview.message}</div>
                                 </div>
                             </div>
@@ -211,7 +211,7 @@ export default function AdminSubmissionPage() {
                             <button
                                 onClick={handleBatchPreview}
                                 disabled={isExecutingBatch}
-                                className="flex-1 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-50"
+                                className="flex-1 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50"
                             >
                                 {batchPreview ? t('submissions.refreshPreviewButton') : t('submissions.previewButton')}
                             </button>
@@ -219,7 +219,7 @@ export default function AdminSubmissionPage() {
                                 <button
                                     onClick={handleBatchExecute}
                                     disabled={isExecutingBatch}
-                                    className="flex-1 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground font-bold disabled:opacity-50"
+                                    className="flex-1 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground font-medium disabled:opacity-50"
                                 >
                                     {isExecutingBatch ? t('submissions.executingButton') : t('submissions.executeButton')}
                                 </button>
@@ -229,7 +229,7 @@ export default function AdminSubmissionPage() {
                                     setShowBatchModal(false);
                                     setBatchPreview(null);
                                 }}
-                                className="px-4 py-2 rounded-xl bg-muted font-bold"
+                                className="px-4 py-2 rounded-xl bg-muted font-medium"
                             >
                                 {t('common.cancel')}
                             </button>
@@ -241,7 +241,7 @@ export default function AdminSubmissionPage() {
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-md bg-card border">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">{t('submissions.usernameLabel')}</label>
+                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.usernameLabel')}</label>
                     <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
@@ -255,7 +255,7 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">{t('submissions.problemCodeLabel')}</label>
+                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.problemCodeLabel')}</label>
                     <div className="relative">
                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
@@ -269,7 +269,7 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">{t('submissions.verdictLabel')}</label>
+                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.verdictLabel')}</label>
                     <select
                         className="w-full h-10 px-3 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
                         value={resultFilter}
@@ -281,7 +281,7 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">{t('submissions.languageLabel')}</label>
+                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.languageLabel')}</label>
                     <input
                         type="text"
                         placeholder={t('submissions.languageFilterPlaceholder')}
@@ -298,12 +298,12 @@ export default function AdminSubmissionPage() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-muted/30 border-b">
-                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground w-40">{t('submissions.colUser')}</th>
-                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground">{t('submissions.colProblem')}</th>
-                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
-                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-center">{t('submissions.colScore')}</th>
-                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
-                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-right">{t('common.actions')}</th>
+                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground w-40">{t('submissions.colUser')}</th>
+                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('submissions.colProblem')}</th>
+                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
+                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center">{t('submissions.colScore')}</th>
+                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
+                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
@@ -318,25 +318,25 @@ export default function AdminSubmissionPage() {
                                     <tr key={s.id} className="hover:bg-muted/10 transition-colors">
                                         <td className="px-6 py-4">
                                             <Link href={`/user/${s.user}`} className="flex items-center gap-3 group outline-none">
-                                                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs">
+                                                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground font-medium text-xs">
                                                     {s.user[0]?.toUpperCase()}
                                                 </div>
-                                                <span className="font-bold text-sm">{s.user}</span>
+                                                <span className="font-medium text-sm">{s.user}</span>
                                             </Link>
                                         </td>
                                         <td className="px-6 py-4">
                                             <Link href={`/submission/${s.id}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
-                                                <span className="font-bold text-sm tracking-tight">{s.problem}</span>
+                                                <span className="font-medium text-sm tracking-tight">{s.problem}</span>
                                                 <span className="text-xs uppercase text-muted-foreground opacity-40">{t('submissions.problemCodeLabel')}</span>
                                             </Link>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded-full text-xs font-bold uppercase shadow-sm">
+                                            <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded-full text-xs font-medium uppercase shadow-sm">
                                                 {s.result || s.status}
                                             </Badge>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <div className="inline-flex items-center justify-center w-12 h-8 rounded-xl font-bold text-xs border">
+                                            <div className="inline-flex items-center justify-center w-12 h-8 rounded-xl font-medium text-xs border">
                                                 {s.score !== null ? Math.round(s.score) : '-'}
                                             </div>
                                         </td>
@@ -356,7 +356,7 @@ export default function AdminSubmissionPage() {
                                                         }
                                                     }}
                                                     disabled={rejudgeMutation.isPending}
-                                                    className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold flex items-center gap-1"
+                                                    className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium flex items-center gap-1"
                                                 >
                                                     <RefreshCw size={14} className={rejudgeMutation.isPending && rejudgeMutation.variables === s.id ? 'animate-spin' : ''} />
                                                     {t('submissions.rejudgeButton')}
@@ -365,7 +365,7 @@ export default function AdminSubmissionPage() {
                                                     onClick={() => rescoreMutation.mutate(s.id)}
                                                     disabled={rescoreMutation.isPending && rescoreMutation.variables === s.id}
                                                     title={t('submissions.rescoreHint')}
-                                                    className="px-3 py-1.5 rounded-lg border hover:bg-muted transition-colors text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                                                    className="px-3 py-1.5 rounded-lg border hover:bg-muted transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50"
                                                 >
                                                     <Calculator size={14} />
                                                     {t('submissions.rescoreButton')}
@@ -378,7 +378,7 @@ export default function AdminSubmissionPage() {
                                                             }
                                                         }}
                                                         disabled={abortMutation.isPending}
-                                                        className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-bold flex items-center gap-1"
+                                                        className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-medium flex items-center gap-1"
                                                     >
                                                         <StopCircle size={14} className={abortMutation.isPending ? 'animate-spin' : ''} />
                                                         {t('submissions.abortButton')}

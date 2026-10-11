@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
                             <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                                 <Loader2 size={40} className="text-primary animate-spin" />
                             </div>
-                            <h2 className="text-2xl font-bold">{t('verifyingTitle')}</h2>
+                            <h2 className="text-2xl font-semibold">{t('verifyingTitle')}</h2>
                             <p className="text-muted-foreground">{t('verifyingDesc')}</p>
                         </>
                     )}
@@ -66,7 +66,7 @@ export default function VerifyEmailPage() {
                             <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
                                 <CheckCircle size={40} className="text-emerald-500" />
                             </div>
-                            <h2 className="text-2xl font-bold text-emerald-500">{t('emailVerifiedTitle')}</h2>
+                            <h2 className="text-2xl font-semibold text-emerald-500">{t('emailVerifiedTitle')}</h2>
                             <p className="text-muted-foreground">{message}</p>
                             <p className="text-sm text-muted-foreground">{t('redirectingToLogin')}</p>
                         </>
@@ -77,12 +77,12 @@ export default function VerifyEmailPage() {
                             <div className="mx-auto w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
                                 <XCircle size={40} className="text-destructive" />
                             </div>
-                            <h2 className="text-2xl font-bold text-destructive">{t('verificationFailedTitle')}</h2>
+                            <h2 className="text-2xl font-semibold text-destructive">{t('verificationFailedTitle')}</h2>
                             <p className="text-muted-foreground">{message}</p>
                             <div className="pt-4 space-y-3">
                                 <Link
                                     href="/login"
-                                    className="inline-block px-6 py-2 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all"
+                                    className="inline-block px-6 py-2 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-all"
                                 >
                                     {t('goToLogin')}
                                 </Link>

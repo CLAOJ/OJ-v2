@@ -54,7 +54,7 @@ export default function UserMenu({
         <div className="relative flex items-center gap-2">
             <button
                 onClick={onToggle}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all text-sm font-bold"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all text-sm font-medium"
                 aria-expanded={isOpen}
                 aria-haspopup="true"
             >

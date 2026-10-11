@@ -87,7 +87,7 @@ export default function AdminContestTagsPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Tag className="text-primary" size={32} />
                         {t('contestTags.title')}
                     </h1>
@@ -138,7 +138,7 @@ export default function AdminContestTagsPage() {
                                         </div>
                                         <div>
                                             <h3
-                                                className="font-bold text-lg"
+                                                className="font-semibold text-lg"
                                                 style={{ color: tag.color }}
                                             >
                                                 #{tag.name}
@@ -251,7 +251,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-card rounded-md w-full max-w-md p-6">
-                <h2 className="text-xl font-bold mb-4">
+                <h2 className="text-xl font-semibold mb-4">
                     {tag ? t('contestTags.editModalTitle') : t('contestTags.createModalTitle')}
                 </h2>
 
@@ -323,7 +323,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                                 <Hash size={20} style={{ color: color }} />
                             </div>
                             <div>
-                                <div className="font-bold" style={{ color: color }}>
+                                <div className="font-medium" style={{ color: color }}>
                                     #{name || t('contestTags.previewNameFallback')}
                                 </div>
                                 <div className="text-xs text-muted-foreground">

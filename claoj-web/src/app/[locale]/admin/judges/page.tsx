@@ -80,7 +80,7 @@ export default function AdminJudgesPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Server className="text-primary" size={32} />
                         {t('judges.title')}
                     </h1>
@@ -115,7 +115,7 @@ export default function AdminJudgesPage() {
                             <Wifi size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => j.online).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => j.online).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.online')}</div>
                         </div>
                     </div>
@@ -126,7 +126,7 @@ export default function AdminJudgesPage() {
                             <WifiOff size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => !j.online).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => !j.online).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.offline')}</div>
                         </div>
                     </div>
@@ -137,7 +137,7 @@ export default function AdminJudgesPage() {
                             <Shield size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => j.is_blocked).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => j.is_blocked).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.blocked')}</div>
                         </div>
                     </div>
@@ -148,7 +148,7 @@ export default function AdminJudgesPage() {
                             <Power size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => j.is_disabled).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => j.is_disabled).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.disabled')}</div>
                         </div>
                     </div>
@@ -178,7 +178,7 @@ export default function AdminJudgesPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-2 mb-2">
-                                                <h3 className="font-bold text-lg">{judge.name}</h3>
+                                                <h3 className="font-semibold text-lg">{judge.name}</h3>
                                                 <div className="flex gap-1">
                                                     {judge.online ? (
                                                         <Badge variant="success" className="flex items-center gap-1 text-xs">

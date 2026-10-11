@@ -139,7 +139,7 @@ export default function AdminTicketDetailPage() {
                 <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/admin/tickets"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
                     {t('backToTickets')}
@@ -205,7 +205,7 @@ export default function AdminTicketDetailPage() {
             {/* Back Button */}
             <Link
                 href="/admin/tickets"
-                className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
                 {t('backToAdminTickets')}
@@ -248,7 +248,7 @@ export default function AdminTicketDetailPage() {
                         <button
                             onClick={() => toggleOpenMutation.mutate()}
                             className={cn(
-                                "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+                                "px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all",
                                 ticket.is_open
                                     ? "bg-muted text-muted-foreground hover:bg-muted/80"
                                     : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -260,7 +260,7 @@ export default function AdminTicketDetailPage() {
                         <button
                             onClick={() => setContributiveMutation.mutate(!ticket.is_contributive)}
                             className={cn(
-                                "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+                                "px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all",
                                 ticket.is_contributive
                                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -294,7 +294,7 @@ export default function AdminTicketDetailPage() {
                             setSelectedAssignees([]);
                             setShowAssignModal(true);
                         }}
-                        className="ml-auto px-4 py-2 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all flex items-center gap-2"
+                        className="ml-auto px-4 py-2 rounded-xl bg-primary/10 text-primary font-medium text-sm hover:bg-primary/20 transition-all flex items-center gap-2"
                     >
                         <UserPlus size={14} />
                         {t('manageAssigneesButton')}
@@ -314,7 +314,7 @@ export default function AdminTicketDetailPage() {
                     onBlur={handleNotesBlur}
                     placeholder={t('notesPlaceholder')}
                     rows={4}
-                    className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                    className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                 />
                 {updateNotesMutation.isPending && (
                     <p className="text-xs text-muted-foreground mt-2">{t('savingIndicator')}</p>
@@ -334,7 +334,7 @@ export default function AdminTicketDetailPage() {
                 ) : (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-md">
                         <MessageSquare size={48} className="mx-auto mb-4 opacity-10" />
-                        <p className="font-bold">{t('noMessagesYet')}</p>
+                        <p className="font-medium">{t('noMessagesYet')}</p>
                     </div>
                 )}
             </div>
@@ -352,13 +352,13 @@ export default function AdminTicketDetailPage() {
                             onChange={(e) => setReplyContent(e.target.value)}
                             placeholder={t('replyPlaceholder')}
                             rows={6}
-                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={handleReply}
                                 disabled={replyMutation.isPending || !replyContent.trim()}
-                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
+                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
                             >
                                 {replyMutation.isPending ? (
                                     <Loader2 size={18} className="animate-spin" />
@@ -383,7 +383,7 @@ export default function AdminTicketDetailPage() {
                         <input
                             type="text"
                             placeholder={t('searchUsersPlaceholder')}
-                            className="w-full h-12 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none mb-4"
+                            className="w-full h-12 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none mb-4"
                             value={userSearch}
                             onChange={(e) => setUserSearch(e.target.value)}
                         />
@@ -422,14 +422,14 @@ export default function AdminTicketDetailPage() {
                         <div className="flex justify-end gap-4">
                             <button
                                 onClick={() => setShowAssignModal(false)}
-                                className="px-6 py-3 rounded-xl bg-muted text-muted-foreground font-bold hover:bg-muted/80 transition-all"
+                                className="px-6 py-3 rounded-xl bg-muted text-muted-foreground font-medium hover:bg-muted/80 transition-all"
                             >
                                 {tc('common.cancel')}
                             </button>
                             <button
                                 onClick={handleAssign}
                                 disabled={assignMutation.isPending}
-                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
+                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
                             >
                                 {assignMutation.isPending && <Loader2 size={18} className="animate-spin" />}
                                 {t('assignButton')}

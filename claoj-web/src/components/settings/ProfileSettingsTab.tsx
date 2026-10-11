@@ -82,7 +82,7 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
     return (
         <form onSubmit={handleSubmit((data) => updateProfile(data))} className="space-y-8">
             <section className="space-y-6">
-                <div className="flex items-center gap-2 text-primary font-bold">
+                <div className="flex items-center gap-2 text-primary font-medium">
                     <Info size={18} />
                     {t('basicInfo')}
                 </div>
@@ -95,7 +95,7 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
                             className="w-16 h-16 rounded-full object-cover border-2 border-primary/20"
                         />
                         <div>
-                            <p className="text-sm font-bold">{t('avatar')}</p>
+                            <p className="text-sm font-medium">{t('avatar')}</p>
                             <p className="text-xs text-muted-foreground">{t('avatarManagedGravatar')}</p>
                             <a
                                 href="https://gravatar.com"
@@ -153,7 +153,7 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
             <button
                 type="submit"
                 disabled={isPending || !isDirty}
-                className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
                 {t('save')}
             </button>

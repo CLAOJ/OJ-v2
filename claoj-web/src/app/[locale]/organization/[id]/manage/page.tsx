@@ -335,7 +335,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-card rounded-md border p-6 space-y-4">
-                <h3 className="text-lg font-bold">{t('basicInformation')}</h3>
+                <h3 className="text-lg font-semibold">{t('basicInformation')}</h3>
 
                 <div>
                     <label className="block text-sm font-medium mb-2">{t('name')}</label>
@@ -371,7 +371,7 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
             </div>
 
             <div className="bg-card rounded-md border p-6 space-y-4">
-                <h3 className="text-lg font-bold">{t('settings')}</h3>
+                <h3 className="text-lg font-semibold">{t('settings')}</h3>
 
                 <div className="flex flex-wrap gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">

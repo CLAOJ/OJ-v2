@@ -81,7 +81,7 @@ export default function TicketDetailPage() {
                 <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/tickets"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
                     {t('backToTickets')}
@@ -140,7 +140,7 @@ export default function TicketDetailPage() {
             {/* Back Button */}
             <Link
                 href="/tickets"
-                className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
                 {t('backToTickets')}
@@ -195,7 +195,7 @@ export default function TicketDetailPage() {
                 {ticket.linked_item && (
                     <Link
                         href={ticket.linked_item.type === 'problem' ? `/problem/${ticket.linked_item.code}` : `/contest/${ticket.linked_item.key}`}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 text-muted-foreground text-sm font-bold hover:bg-primary/10 hover:text-primary transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                         <AlertCircle size={16} />
                         {ticket.linked_item.name}
@@ -216,7 +216,7 @@ export default function TicketDetailPage() {
                 ) : (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-md">
                         <MessageSquare size={48} className="mx-auto mb-4 opacity-10" />
-                        <p className="font-bold">{t('noMessagesYet')}</p>
+                        <p className="font-medium">{t('noMessagesYet')}</p>
                     </div>
                 )}
             </div>
@@ -234,13 +234,13 @@ export default function TicketDetailPage() {
                             onChange={(e) => setReplyContent(e.target.value)}
                             placeholder={t('replyPlaceholder')}
                             rows={6}
-                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={handleReply}
                                 disabled={replyMutation.isPending || !replyContent.trim()}
-                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
+                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
                             >
                                 {replyMutation.isPending ? (
                                     <Loader2 size={18} className="animate-spin" />
@@ -257,7 +257,7 @@ export default function TicketDetailPage() {
             {!ticket.is_open && (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-md">
                     <CheckCircle2 size={32} className="mx-auto mb-2 opacity-20" />
-                    <p className="font-bold">{t('closedMessage')}</p>
+                    <p className="font-medium">{t('closedMessage')}</p>
                     <p className="text-sm">{t('noMoreReplies')}</p>
                 </div>
             )}

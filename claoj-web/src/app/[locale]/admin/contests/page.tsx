@@ -68,7 +68,7 @@ export default function AdminContestPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Trophy className="text-primary" size={32} />
                         {t('contests.title')}
                     </h1>
@@ -115,10 +115,10 @@ export default function AdminContestPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colContest')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colSettings')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colContest')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colTime')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colSettings')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -132,7 +132,7 @@ export default function AdminContestPage() {
                                     filteredContests.map((contest) => (
                                         <tr key={contest.key} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-sm mb-1">{contest.name}</div>
+                                                <div className="font-medium text-sm mb-1">{contest.name}</div>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <span className="font-mono">{contest.key}</span>
                                                     {contest.is_rated && (
@@ -220,7 +220,7 @@ export default function AdminContestPage() {
                                 >
                                     {t('common.previous')}
                                 </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
+                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
                                     {page}
                                 </div>
                                 <button
@@ -299,7 +299,7 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
                 <div className="bg-card rounded-md border shadow-lg w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
-                            <h2 className="text-xl font-bold">{t('contests.cloneModalTitle')}</h2>
+                            <h2 className="text-xl font-semibold">{t('contests.cloneModalTitle')}</h2>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {t('contests.cloneModalSubtitle', { name: contestName })}
                             </p>

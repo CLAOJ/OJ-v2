@@ -83,7 +83,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                     {commentType === 'editorial' ? <BookOpen size={18} /> : <FileText size={18} />}
                 </div>
                 <div className="flex-1">
-                    <div className="text-sm font-bold text-foreground">
+                    <div className="text-sm font-medium text-foreground">
                         {contextTranslations('commentingOn')}
                     </div>
                     {problemName && (
@@ -144,7 +144,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                 </div>
             ) : (
                 <div className="p-10 text-center rounded-md bg-muted/30 border border-dashed">
-                    <p className="text-sm font-bold text-muted-foreground">{t('signInToComment')}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('signInToComment')}</p>
                 </div>
             )}
 
@@ -152,7 +152,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                 {tree.length === 0 ? (
                     <div className="py-20 text-center text-muted-foreground/50 flex flex-col items-center gap-4">
                         <MessageSquare size={48} className="opacity-10" />
-                        <p className="font-bold">{contextTranslations('noComments')}</p>
+                        <p className="font-medium">{contextTranslations('noComments')}</p>
                     </div>
                 ) : (
                     tree.map(node => (

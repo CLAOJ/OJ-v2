@@ -111,7 +111,7 @@ export default function EditContestPage() {
                     <ArrowLeft size={20} />
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Trophy className="text-primary" size={32} />
                         {t('contests.editContestTitle')}
                     </h1>
@@ -136,7 +136,7 @@ export default function EditContestPage() {
                     ) : (
                         <Unlock className="text-success" size={24} />
                     )}
-                    <h2 className="text-xl font-bold">{t('contests.submissionLockTitle')}</h2>
+                    <h2 className="text-xl font-semibold">{t('contests.submissionLockTitle')}</h2>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
                     {t('contests.submissionLockDesc')}

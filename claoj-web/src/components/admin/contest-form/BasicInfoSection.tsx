@@ -59,7 +59,7 @@ export function BasicInfoSection({
     const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Trophy size={20} className="text-primary" />
                 {t('contestForm.basicInfoTitle')}
             </h3>

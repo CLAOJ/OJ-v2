@@ -33,7 +33,7 @@ export function ClassificationSection({
 
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{tProblems('classification')}</h3>
+            <h3 className="text-lg font-semibold">{tProblems('classification')}</h3>
 
             <div>
                 <label htmlFor="problem-group" className="text-sm font-medium text-muted-foreground block mb-2">

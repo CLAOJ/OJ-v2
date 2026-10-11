@@ -97,7 +97,7 @@ export default function CreateTicketPage() {
             {/* Back Button */}
             <Link
                 href="/tickets"
-                className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
                 {t('backToTickets')}
@@ -115,7 +115,7 @@ export default function CreateTicketPage() {
                 <div className="bg-card border rounded-md p-8 shadow-sm space-y-6">
                     {/* Title */}
                     <div className="space-y-2">
-                        <label className="text-sm font-bold ml-1 flex items-center gap-2">
+                        <label className="text-sm font-medium ml-1 flex items-center gap-2">
                             <MessageSquare size={16} className="text-primary" />
                             {t('titleLabel')}
                         </label>
@@ -124,7 +124,7 @@ export default function CreateTicketPage() {
                             type="text"
                             placeholder={t('subjectPlaceholder')}
                             className={cn(
-                                "w-full h-14 bg-muted/30 border rounded-md px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none",
+                                "w-full h-14 bg-muted/30 border rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none",
                                 errors.title ? "border-destructive" : "border-muted-foreground/10"
                             )}
                         />
@@ -133,7 +133,7 @@ export default function CreateTicketPage() {
 
                     {/* Problem Selection */}
                     <div className="space-y-2">
-                        <label className="text-sm font-bold ml-1 flex items-center gap-2">
+                        <label className="text-sm font-medium ml-1 flex items-center gap-2">
                             <AlertCircle size={16} className="text-primary" />
                             {t('relatedProblemOptional')}
                         </label>
@@ -141,7 +141,7 @@ export default function CreateTicketPage() {
                             <input
                                 type="text"
                                 placeholder={t('searchProblemPlaceholder')}
-                                className="w-full h-14 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
+                                className="w-full h-14 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
                                 value={selectedProblem ? `${selectedProblem.code} - ${selectedProblem.name}` : problemSearch}
                                 onChange={(e) => {
                                     setProblemSearch(e.target.value);
@@ -176,9 +176,9 @@ export default function CreateTicketPage() {
                                     >
                                         <div>
                                             <span className="font-mono font-medium text-primary">{problem.code}</span>
-                                            <span className="ml-2 font-bold">{problem.name}</span>
+                                            <span className="ml-2 font-medium">{problem.name}</span>
                                         </div>
-                                        <span className="text-xs font-bold text-muted-foreground">{t('pointsLabel', { points: problem.points })}</span>
+                                        <span className="text-xs font-medium text-muted-foreground">{t('pointsLabel', { points: problem.points })}</span>
                                     </button>
                                 ))}
                             </div>
@@ -187,7 +187,7 @@ export default function CreateTicketPage() {
 
                     {/* Description */}
                     <div className="space-y-2">
-                        <label className="text-sm font-bold ml-1 flex items-center gap-2">
+                        <label className="text-sm font-medium ml-1 flex items-center gap-2">
                             <FileText size={16} className="text-primary" />
                             {t('descriptionLabel')}
                         </label>
@@ -196,7 +196,7 @@ export default function CreateTicketPage() {
                             placeholder={t('messagePlaceholder')}
                             rows={8}
                             className={cn(
-                                "w-full bg-muted/30 border rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none",
+                                "w-full bg-muted/30 border rounded-md px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none",
                                 errors.body ? "border-destructive" : "border-muted-foreground/10"
                             )}
                         />
@@ -208,14 +208,14 @@ export default function CreateTicketPage() {
                 <div className="flex justify-end gap-4">
                     <Link
                         href="/tickets"
-                        className="px-8 h-14 rounded-md bg-muted text-muted-foreground font-bold hover:bg-muted/80 transition-all"
+                        className="px-8 h-14 rounded-md bg-muted text-muted-foreground font-medium hover:bg-muted/80 transition-all"
                     >
                         {t('cancelButton')}
                     </Link>
                     <button
                         type="submit"
                         disabled={createMutation.isPending}
-                        className="px-8 h-14 rounded-md bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
+                        className="px-8 h-14 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
                     >
                         {createMutation.isPending && <Loader2 size={18} className="animate-spin" />}
                         {t('create')}

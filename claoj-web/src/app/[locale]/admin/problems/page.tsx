@@ -62,7 +62,7 @@ export default function AdminProblemPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Code2 className="text-primary" size={32} />
                         {t('problems.title')}
                     </h1>
@@ -100,10 +100,10 @@ export default function AdminProblemPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colProblem')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colStats')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colGroup')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('problems.colProblem')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('problems.colStats')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('problems.colGroup')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -120,7 +120,7 @@ export default function AdminProblemPage() {
                                                 <div className="flex items-center gap-3 mb-1">
                                                     <Link
                                                         href={`/problem/${problem.code}`}
-                                                        className="font-bold text-sm hover:text-primary transition-colors"
+                                                        className="font-medium text-sm hover:text-primary transition-colors"
                                                     >
                                                         {problem.name}
                                                     </Link>
@@ -139,7 +139,7 @@ export default function AdminProblemPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1 text-sm">
-                                                    <span className="text-muted-foreground font-bold">
+                                                    <span className="text-muted-foreground font-medium">
                                                         {t('problems.pointsLabel', { count: problem.points.toFixed(1) })}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
@@ -215,7 +215,7 @@ export default function AdminProblemPage() {
                                 >
                                     {t('common.previous')}
                                 </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
+                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
                                     {page}
                                 </div>
                                 <button
@@ -282,7 +282,7 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
                 <div className="bg-card rounded-md border shadow-lg w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
-                            <h2 className="text-xl font-bold">{t('problems.cloneModalTitle')}</h2>
+                            <h2 className="text-xl font-semibold">{t('problems.cloneModalTitle')}</h2>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {t('problems.cloneModalSubtitle', { name: problemName })}
                             </p>

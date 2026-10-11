@@ -23,7 +23,7 @@ export default function SettingsPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-8 ">
             <header>
-                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                <h1 className="text-3xl font-semibold tracking-tight">{t('title')}</h1>
                 <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
             </header>
 
@@ -59,7 +59,7 @@ function TabButton({ icon: Icon, label, active, onClick }: { icon: React.Compone
         <button
             onClick={onClick}
             className={cn(
-                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm text-left transition-all",
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm text-left transition-all",
                 active
                     ? "bg-primary/10 text-primary"
                     : "hover:bg-muted text-muted-foreground"

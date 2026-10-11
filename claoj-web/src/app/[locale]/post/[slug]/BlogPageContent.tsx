@@ -85,7 +85,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                     <ArrowBigUp size={20} />
                                 </button>
                                 <span className={cn(
-                                    "font-bold min-w-[3ch] text-center transition-colors",
+                                    "font-medium min-w-[3ch] text-center transition-colors",
                                     post.score > 0 ? "text-emerald-500" :
                                     post.score < 0 ? "text-red-500" : "text-muted-foreground"
                                 )}>
@@ -115,7 +115,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-xs font-medium uppercase text-muted-foreground tracking-tighter">{t('authors')}</span>
-                                <span className="text-sm font-bold">
+                                <span className="text-sm font-medium">
                                     {post.authors.map(a => `@${a.username}`).join(', ')}
                                 </span>
                             </div>

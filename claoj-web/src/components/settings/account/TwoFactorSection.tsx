@@ -136,7 +136,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
 
     return (
         <section className="space-y-6">
-            <div className="flex items-center gap-2 text-primary font-bold">
+            <div className="flex items-center gap-2 text-primary font-medium">
                 <Smartphone size={18} />
                 {t('twoFactor')}
             </div>
@@ -162,7 +162,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                     <button
                         onClick={() => setupTwoFactor(twoFactorPassword)}
                         disabled={isSettingUpTwoFactor || !twoFactorPassword}
-                        className="px-6 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-2"
+                        className="px-6 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-2"
                     >
                         {isSettingUpTwoFactor && <Loader2 size={18} className="animate-spin" />}
                         {t('setup2FA')}
@@ -202,14 +202,14 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                         <button
                             onClick={() => confirmTwoFactor(twoFactorCode)}
                             disabled={isConfirmingTwoFactor || twoFactorCode.length !== 6}
-                            className="flex-1 px-6 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 px-6 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {isConfirmingTwoFactor && <Loader2 size={18} className="animate-spin" />}
                             {tc('confirm')}
                         </button>
                         <button
                             onClick={() => { setTwoFactorStep('disabled'); setTwoFactorPassword(''); }}
-                            className="px-6 h-12 rounded-xl border font-bold hover:bg-muted transition-all"
+                            className="px-6 h-12 rounded-xl border font-medium hover:bg-muted transition-all"
                         >
                             {tc('cancel')}
                         </button>
@@ -220,7 +220,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
             {twoFactorStep === 'confirm' && backupCodes && (
                 <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        <p className="text-sm font-bold text-emerald-600 flex items-center gap-2">
+                        <p className="text-sm font-medium text-emerald-600 flex items-center gap-2">
                             <CheckCircle size={16} />
                             {t('twoFactorEnabledSuccess')}
                         </p>
@@ -288,7 +288,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                         <button
                             onClick={() => disableTwoFactor({ code: disableCode, password: disablePassword })}
                             disabled={isDisablingTwoFactor || !disableCode || !disablePassword}
-                            className="px-6 h-12 rounded-xl border font-bold hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50 flex items-center gap-2"
+                            className="px-6 h-12 rounded-xl border font-medium hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50 flex items-center gap-2"
                         >
                             {isDisablingTwoFactor && <Loader2 size={18} className="animate-spin" />}
                             {t('disable2FA')}

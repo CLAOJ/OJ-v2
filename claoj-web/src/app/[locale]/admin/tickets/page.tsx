@@ -75,7 +75,7 @@ export default function AdminTicketListPage() {
                         <input
                             type="text"
                             placeholder={t('searchPlaceholder')}
-                            className="w-full h-12 bg-muted/30 border border-transparent rounded-md pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
+                            className="w-full h-12 bg-muted/30 border border-transparent rounded-md pl-12 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none"
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                         />

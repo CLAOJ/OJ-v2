@@ -115,7 +115,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
             const data = payload[0].payload;
             return (
                 <div className="bg-card border p-4 rounded-xl shadow-xl space-y-1">
-                    <p className="text-xs font-bold text-muted-foreground ">{dayjs(data.date).format('MMM D, YYYY')}</p>
+                    <p className="text-xs font-medium text-muted-foreground ">{dayjs(data.date).format('MMM D, YYYY')}</p>
                     <p className="text-lg font-semibold">{data.rating}</p>
                     <p className="text-xs font-medium text-primary max-w-[200px] truncate">{data.contest}</p>
                 </div>
@@ -156,7 +156,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             <div key={s.label} className="space-y-1 group">
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                     <s.icon size={14} className={cn(s.color, "transition-transform ")} />
-                                    <span className="text-xs font-bold ">{s.label}</span>
+                                    <span className="text-xs font-medium ">{s.label}</span>
                                 </div>
                                 <div className="text-xl font-semibold tracking-tighter">{s.value}</div>
                             </div>
@@ -211,7 +211,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             className={cn(
                                 "flex items-center gap-2 px-6 py-2 rounded text-sm font-medium transition-all",
                                 activeTab === tab.id
-                                    ? "bg-primary text-primary-foreground scale-105"
+                                    ? "bg-primary text-primary-foreground"
                                     : "text-muted-foreground hover:bg-muted"
                             )}
                         >
@@ -446,7 +446,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             ) : (
                                                 <div className="h-full border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground gap-4">
                                                     <TrendingUp size={48} className="opacity-10" />
-                                                    <p className="font-bold">{t('noRatedContests')}</p>
+                                                    <p className="font-medium">{t('noRatedContests')}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -543,7 +543,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 {user.organizations.length === 0 && (
                                     <div className="col-span-full py-20 text-center text-muted-foreground border-2 border-dashed rounded-md">
                                         <Shield size={48} className="mx-auto mb-4 opacity-10" />
-                                        <p className="font-bold italic">{t('noOrganizations')}</p>
+                                        <p className="font-medium italic">{t('noOrganizations')}</p>
                                     </div>
                                 )}
                             </motion.div>
