@@ -7,7 +7,10 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-var Client *asynq.Client
+var (
+	Client    *asynq.Client
+	Inspector *asynq.Inspector
+)
 
 // InitClient creates the Asynq client for enqueueing tasks.
 // Must be called after config.Load().
@@ -18,6 +21,7 @@ func InitClient() {
 		DB:       config.C.Redis.DB,
 	}
 	Client = asynq.NewClient(redisOpt)
+	Inspector = asynq.NewInspector(redisOpt)
 	log.Println("jobs: Asynq client initialized")
 }
 

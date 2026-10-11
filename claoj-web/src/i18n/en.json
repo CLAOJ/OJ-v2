@@ -2058,7 +2058,8 @@
       "colLanguage": "Language",
       "colSubmissions": "Contestants",
       "colReport": "Report",
-      "viewReport": "Open report"
+      "viewReport": "Open report",
+      "errorLabel": "Last run error:"
     },
     "navGroups": {
       "content": "Content",

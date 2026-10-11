@@ -740,7 +740,7 @@ export interface ContestMossResult {
 
 export const adminMossApi = {
     list: (key: string) =>
-        api.get<{ running: boolean; results: ContestMossResult[] }>(`/admin/contest/${key}/moss`),
+        api.get<{ running: boolean; results: ContestMossResult[]; error: string }>(`/admin/contest/${key}/moss`),
     run: (key: string) =>
         api.post<{ queued: boolean }>(`/admin/contest/${key}/moss`),
     clear: (key: string) =>

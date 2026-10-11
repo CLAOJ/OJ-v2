@@ -56,7 +56,11 @@ func AdminContestMossList(c *gin.Context) {
 	if rows == nil {
 		rows = []row{}
 	}
-	c.JSON(http.StatusOK, gin.H{"running": jobs.IsContestMossRunning(contest.ID), "results": rows})
+	c.JSON(http.StatusOK, gin.H{
+		"running": jobs.IsContestMossRunning(contest.ID),
+		"error":   jobs.MossRunError(contest.ID),
+		"results": rows,
+	})
 }
 
 // AdminContestMossRun - POST /api/v2/admin/contest/:key/moss

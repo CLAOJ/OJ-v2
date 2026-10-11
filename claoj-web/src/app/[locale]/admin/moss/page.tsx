@@ -128,6 +128,12 @@ export default function AdminMossPage() {
                         </div>
                     </header>
 
+                    {data?.error && (
+                        <p className="px-4 py-2 text-sm text-destructive bg-destructive/10 border-b">
+                            {t('moss.errorLabel')} {data.error}
+                        </p>
+                    )}
+
                     {isLoading ? (
                         <div className="p-4 space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-5 w-full" />)}</div>
                     ) : isError ? (

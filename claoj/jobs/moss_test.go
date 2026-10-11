@@ -5,8 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/moss"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -138,4 +141,30 @@ func TestMossUserID(t *testing.T) {
 	id, err := MossUserID(database)
 	require.NoError(t, err)
 	require.Equal(t, "12345", id)
+}
+
+func setupMossCache(t *testing.T) {
+	t.Helper()
+	mr := miniredis.RunT(t)
+	cache.Client = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { cache.Client = nil })
+}
+
+func TestMossRunError_StoresAndClears(t *testing.T) {
+	setupMossCache(t)
+	require.Equal(t, "", MossRunError(7))
+	setMossRunError(7, "connection reset")
+	require.Equal(t, "connection reset", MossRunError(7))
+	clearMossRunError(7)
+	require.Equal(t, "", MossRunError(7))
+}
+
+func TestMossRunError_NilCacheIsSafe(t *testing.T) {
+	cache.Client = nil
+	t.Cleanup(func() { cache.Client = nil })
+	require.Equal(t, "", MossRunError(1))
+	require.NotPanics(t, func() {
+		setMossRunError(1, "boom")
+		clearMossRunError(1)
+	})
 }

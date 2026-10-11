@@ -57,7 +57,8 @@ func TestContestMoss_ListReturnsRows(t *testing.T) {
 	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/moss", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	var body struct {
-		Running bool `json:"running"`
+		Running bool   `json:"running"`
+		Error   string `json:"error"`
 		Results []struct {
 			ProblemCode     string  `json:"problem_code"`
 			Language        string  `json:"language"`
@@ -67,6 +68,7 @@ func TestContestMoss_ListReturnsRows(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	require.False(t, body.Running)
+	require.Empty(t, body.Error)
 	require.Len(t, body.Results, 1)
 	require.Equal(t, "knap", body.Results[0].ProblemCode)
 	require.Equal(t, url, *body.Results[0].URL)

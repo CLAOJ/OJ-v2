@@ -141,6 +141,34 @@ type contestMossPayload struct {
 
 func mossRunningKey(contestID uint) string { return fmt.Sprintf("claoj:moss:running:%d", contestID) }
 
+func mossErrorKey(contestID uint) string { return fmt.Sprintf("claoj:moss:error:%d", contestID) }
+
+// MossRunError returns the last failed run's error message ("" if none).
+func MossRunError(contestID uint) string {
+	if cache.Client == nil {
+		return ""
+	}
+	s, err := cache.Client.Get(cache.Ctx, mossErrorKey(contestID)).Result()
+	if err != nil {
+		return ""
+	}
+	return s
+}
+
+// setMossRunError records a failed run so the admin list endpoint can show it.
+func setMossRunError(contestID uint, msg string) {
+	if cache.Client != nil {
+		cache.Client.Set(cache.Ctx, mossErrorKey(contestID), msg, 24*time.Hour)
+	}
+}
+
+// clearMossRunError forgets a previous failure (called when a new run starts).
+func clearMossRunError(contestID uint) {
+	if cache.Client != nil {
+		cache.Client.Del(cache.Ctx, mossErrorKey(contestID))
+	}
+}
+
 // IsContestMossRunning reports whether a run is queued or in progress.
 func IsContestMossRunning(contestID uint) bool {
 	if cache.Client == nil {
@@ -157,19 +185,35 @@ func EnqueueContestMoss(contestID uint) error {
 	if err != nil {
 		return err
 	}
+	taskID := fmt.Sprintf("contest_moss:%d", contestID)
 	task := asynq.NewTask(TypeContestMoss, payload,
 		asynq.MaxRetry(0),
 		asynq.Timeout(30*time.Minute),
-		asynq.TaskID(fmt.Sprintf("contest_moss:%d", contestID)),
+		asynq.TaskID(taskID),
 	)
-	if _, err := Client.Enqueue(task, asynq.Queue("low")); err != nil {
-		if errors.Is(err, asynq.ErrTaskIDConflict) {
-			return ErrMossAlreadyRunning
+	// A run that failed stays archived/completed under the fixed TaskID, which
+	// would make every later Enqueue collide (409 "already running") even
+	// though IsContestMossRunning is false. Drop the stale entry first.
+	if Inspector != nil {
+		for _, q := range []string{"archived", "completed"} {
+			_ = Inspector.DeleteTask(q, taskID) // ignore not-found
 		}
-		return err
 	}
+	// Set the running key BEFORE enqueueing so a very fast worker cannot
+	// finish (and clear the key) before we set it; clear it again on failure.
 	if cache.Client != nil {
 		cache.Client.Set(cache.Ctx, mossRunningKey(contestID), "1", 30*time.Minute)
+	}
+	if _, err := Client.Enqueue(task, asynq.Queue("low")); err != nil {
+		if errors.Is(err, asynq.ErrTaskIDConflict) {
+			// A real run is already queued or in progress, so the running key
+			// belongs to that run — keep it.
+			return ErrMossAlreadyRunning
+		}
+		if cache.Client != nil {
+			cache.Client.Del(cache.Ctx, mossRunningKey(contestID))
+		}
+		return err
 	}
 	return nil
 }
@@ -185,13 +229,16 @@ func HandleContestMossTask(ctx context.Context, t *asynq.Task) error {
 			cache.Client.Del(cache.Ctx, mossRunningKey(p.ContestID))
 		}
 	}()
+	clearMossRunError(p.ContestID)
 	userID, err := MossUserID(db.DB)
 	if err != nil {
+		setMossRunError(p.ContestID, err.Error())
 		return err
 	}
 	n, err := RunContestMoss(db.DB, p.ContestID, &moss.Client{UserID: userID, Show: 200})
 	if err != nil {
 		log.Printf("jobs: MOSS for contest %d failed: %v", p.ContestID, err)
+		setMossRunError(p.ContestID, err.Error())
 		return err
 	}
 	log.Printf("jobs: MOSS for contest %d wrote %d rows", p.ContestID, n)

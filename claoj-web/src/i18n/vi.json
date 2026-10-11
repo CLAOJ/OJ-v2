@@ -2058,7 +2058,8 @@
       "colLanguage": "Ngôn ngữ",
       "colSubmissions": "Thí sinh",
       "colReport": "Báo cáo",
-      "viewReport": "Mở báo cáo"
+      "viewReport": "Mở báo cáo",
+      "errorLabel": "Lỗi lần chạy gần nhất:"
     },
     "navGroups": {
       "content": "Nội dung",
