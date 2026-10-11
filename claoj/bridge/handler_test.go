@@ -24,7 +24,8 @@ import (
 const judgeName = "Vịt Toàn Năng" // prod name: non-ASCII on purpose
 
 // setupEventDB: sqlite with judge "Vịt Toàn Năng"/"secret", a blocked judge,
-// problem aplusb (100 pts, partial) and submission 7; Redis via miniredis.
+// languages C and PY3, problem aplusb (100 pts, partial) and submission 7;
+// Redis via miniredis.
 func setupEventDB(t *testing.T) *models.Judge {
 	t.Helper()
 	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
@@ -32,6 +33,7 @@ func setupEventDB(t *testing.T) *models.Judge {
 	require.NoError(t, database.AutoMigrate(
 		&models.Judge{}, &models.Problem{}, &models.Profile{},
 		&models.Submission{}, &models.SubmissionTestCase{},
+		&models.Language{}, &models.RuntimeVersion{},
 	))
 	db.DB = database
 
@@ -44,6 +46,8 @@ func setupEventDB(t *testing.T) *models.Judge {
 	require.NoError(t, db.DB.Create(&models.Problem{ID: 1, Code: "aplusb", Name: "A+B", GroupID: 1, TimeLimit: 1, MemoryLimit: 65536, Points: 100, Partial: true}).Error)
 	require.NoError(t, db.DB.Create(&models.Profile{ID: 1, UserID: 1, Timezone: "UTC", LanguageID: 1}).Error)
 	require.NoError(t, db.DB.Create(&models.Submission{ID: 7, UserID: 1, ProblemID: 1, LanguageID: 1, Date: time.Now(), Status: "QU"}).Error)
+	require.NoError(t, db.DB.Create(&models.Language{Key: "C", Name: "C", CommonName: "C", Ace: "c", Pygments: "c", Extension: "c"}).Error)
+	require.NoError(t, db.DB.Create(&models.Language{Key: "PY3", Name: "Python 3", CommonName: "Python", Ace: "python", Pygments: "python", Extension: "py"}).Error)
 	return &judge
 }
 

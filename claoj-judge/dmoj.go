@@ -89,12 +89,31 @@ type Child struct {
 	key    string
 	events chan Packet
 
+	// onRuntimes receives {"name":"judge-runtimes","executors":...} on
+	// every authenticated handshake: tiervnoj only talks to this loopback,
+	// so it is the backend's only way to learn the judge's runtime
+	// versions. It runs under mu before the connection counts as ready,
+	// which is what lets main() report before it pulls work.
+	onRuntimes func(Packet)
+
 	mu   sync.Mutex // guards conn and serialises writes
 	conn net.Conn
 }
 
 func NewChild(key string) *Child {
 	return &Child{key: key, events: make(chan Packet, 1024)}
+}
+
+// runtimesPacket builds the backend event for one tiervnoj handshake, the
+// executor map passed through untouched. A handshake without a usable map
+// reports nothing: better to keep the versions the backend already has than
+// to wipe them.
+func runtimesPacket(hello Packet) (Packet, bool) {
+	execs, ok := hello["executors"].(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+	return Packet{"name": "judge-runtimes", "executors": execs}, true
 }
 
 // Serve accepts tiervnoj connections until ln is closed.
@@ -125,6 +144,9 @@ func (c *Child) handle(conn net.Conn) {
 	c.mu.Lock()
 	err = writePacket(conn, Packet{"name": "handshake-success"})
 	if err == nil {
+		if report, ok := runtimesPacket(hello); ok && c.onRuntimes != nil {
+			c.onRuntimes(report) // blocking: the report must precede Ready()
+		}
 		c.conn = conn
 	}
 	c.mu.Unlock()
