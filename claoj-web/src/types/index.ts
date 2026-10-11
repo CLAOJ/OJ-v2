@@ -498,7 +498,7 @@ export interface AdminJudge {
     online: boolean;
     is_blocked: boolean;
     is_disabled: boolean;
-    auth_key: string;
+    auth_key?: string;
     last_ip: string;
     ping?: number;
     load?: number;

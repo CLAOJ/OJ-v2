@@ -395,7 +395,7 @@ export default function AdminSubmissionPage() {
                                                 )}
                                                 <button
                                                     onClick={() => setDeleteTarget(s.id)}
-                                                    disabled={deleteMutation.isPending}
+                                                    disabled={deleteMutation.isPending || STATUS_CODES.includes(s.status)}
                                                     className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-medium flex items-center gap-1"
                                                 >
                                                     <Trash2 size={14} />

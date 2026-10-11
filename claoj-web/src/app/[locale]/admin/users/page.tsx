@@ -69,6 +69,11 @@ export default function AdminUserPage() {
         }
     });
 
+    const closeCreate = () => {
+        setShowCreate(false);
+        setCreateForm(emptyCreate);
+    };
+
     const createMutation = useMutation({
         mutationFn: () => adminUserApi.create({
             username: createForm.username.trim(),
@@ -79,8 +84,7 @@ export default function AdminUserPage() {
         }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-            setShowCreate(false);
-            setCreateForm(emptyCreate);
+            closeCreate();
         }
     });
 
@@ -398,7 +402,7 @@ export default function AdminUserPage() {
                 </div>
             )}
 
-            <Dialog open={showCreate} onOpenChange={setShowCreate} className="max-w-md">
+            <Dialog open={showCreate} onOpenChange={(open) => { if (!open) closeCreate(); }} className="max-w-md">
                 <DialogHeader>
                     <DialogTitle id="create-user-title">{t('users.createTitle')}</DialogTitle>
                 </DialogHeader>
@@ -437,7 +441,7 @@ export default function AdminUserPage() {
                         )}
                     </DialogContent>
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>{t('common.cancel')}</Button>
+                        <Button type="button" variant="outline" onClick={closeCreate}>{t('common.cancel')}</Button>
                         <Button type="submit" disabled={createMutation.isPending}>{t('users.createSubmit')}</Button>
                     </DialogFooter>
                 </form>
