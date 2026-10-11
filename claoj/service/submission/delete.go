@@ -70,7 +70,9 @@ func (s *SubmissionService) Delete(req DeleteRequest) error {
 		log.Printf("submission: delete %d: recalculate points for profile %d: %v", sub.ID, sub.UserID, err)
 	}
 	var orgIDs []uint
-	db.DB.Table("judge_profile_organizations").Where("profile_id = ?", sub.UserID).Pluck("organization_id", &orgIDs)
+	if err := db.DB.Table("judge_profile_organizations").Where("profile_id = ?", sub.UserID).Pluck("organization_id", &orgIDs).Error; err != nil {
+		log.Printf("submission: delete %d: load organizations of user %d: %v", sub.ID, sub.UserID, err)
+	}
 	for _, orgID := range orgIDs {
 		if err := scoring.CalculateOrganizationPoints(db.DB, orgID); err != nil {
 			log.Printf("submission: delete %d: recalculate points for organization %d: %v", sub.ID, orgID, err)

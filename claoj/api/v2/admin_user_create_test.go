@@ -195,3 +195,35 @@ func TestAdminUserBan_DayIsOptional(t *testing.T) {
 	require.NotNil(t, got.BanReason)
 	require.Equal(t, "spam", *got.BanReason)
 }
+
+// Changing a staff account's email would hand it to whoever can trigger a
+// password reset, so it is superuser-only like setting its password.
+func TestAdminUserUpdate_EmailOfStaffNeedsSuperuser(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	staffCaller, _ := seedAccount(t, "mod", true, false)
+	root, _ := seedAccount(t, "root", true, true)
+	_, staffTarget := seedAccount(t, "staffer", true, false)
+	_, plainTarget := seedAccount(t, "plain", false, false)
+
+	email := func(p models.Profile) string {
+		var u models.AuthUser
+		require.NoError(t, db.DB.First(&u, p.UserID).Error)
+		return u.Email
+	}
+	route := "/admin/user/:id"
+	url := func(p models.Profile) string { return "/admin/user/" + strconv.Itoa(int(p.ID)) }
+	staffRouter := authedRouter(staffCaller.ID, http.MethodPatch, route, AdminUserUpdate)
+
+	w := doRequest(staffRouter, http.MethodPatch, url(staffTarget), `{"email":"evil@example.com"}`)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	require.Equal(t, "staffer@example.com", email(staffTarget))
+
+	w = doRequest(staffRouter, http.MethodPatch, url(plainTarget), `{"email":"new@example.com"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Equal(t, "new@example.com", email(plainTarget))
+
+	rootRouter := authedRouter(root.ID, http.MethodPatch, route, AdminUserUpdate)
+	w = doRequest(rootRouter, http.MethodPatch, url(staffTarget), `{"email":"ok@example.com"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Equal(t, "ok@example.com", email(staffTarget))
+}

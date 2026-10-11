@@ -34,7 +34,8 @@ func ContestClarificationList(c *gin.Context) {
 		Where("contest_id = ?", contest.ID).
 		Order("is_answered ASC, `time` DESC").
 		Find(&clarifications).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		log.Printf("contest: list clarifications for %s: %v", contestKey, err)
+		c.JSON(http.StatusInternalServerError, apiError("failed to load clarifications"))
 		return
 	}
 

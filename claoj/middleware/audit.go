@@ -27,7 +27,9 @@ func Audit() gin.HandlerFunc {
 		if c.Request.Body != nil && c.Request.Body != http.NoBody {
 			bodyBytes, err := io.ReadAll(c.Request.Body)
 			if err == nil {
-				json.Unmarshal(bodyBytes, &requestBody)
+				if json.Unmarshal(bodyBytes, &requestBody) == nil {
+					requestBody, _ = redactSecrets(requestBody).(map[string]interface{})
+				}
 				// Restore body for downstream handlers
 				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 			}
@@ -96,6 +98,33 @@ func Audit() gin.HandlerFunc {
 			}
 		}()
 	}
+}
+
+// redactSecrets returns a copy of a decoded JSON value with the value of every
+// secret field replaced by "[redacted]", at any depth. A key is secret when,
+// case-insensitively, it contains "password", "secret" or "token", or equals
+// "auth_key".
+func redactSecrets(v interface{}) interface{} {
+	switch t := v.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(t))
+		for k, val := range t {
+			lk := strings.ToLower(k)
+			if lk == "auth_key" || strings.Contains(lk, "password") || strings.Contains(lk, "secret") || strings.Contains(lk, "token") {
+				out[k] = "[redacted]"
+			} else {
+				out[k] = redactSecrets(val)
+			}
+		}
+		return out
+	case []interface{}:
+		out := make([]interface{}, len(t))
+		for i, val := range t {
+			out[i] = redactSecrets(val)
+		}
+		return out
+	}
+	return v
 }
 
 // extractResourceInfo extracts resource name and ID from the URL path

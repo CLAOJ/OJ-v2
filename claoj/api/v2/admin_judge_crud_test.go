@@ -208,6 +208,7 @@ func TestAdminJudgeDelete_OnlineIs409(t *testing.T) {
 	router := authedRouter(1, http.MethodDelete, "/admin/judge/:id", AdminJudgeDelete)
 	w := doRequest(router, http.MethodDelete, "/admin/judge/1", "")
 	require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "stop the judge agent and wait for it to go offline first")
 
 	var n int64
 	require.NoError(t, db.DB.Model(&models.Judge{}).Where("id = ?", j.ID).Count(&n).Error)
@@ -219,4 +220,47 @@ func TestAdminJudgeDelete_Errors(t *testing.T) {
 	router := authedRouter(1, http.MethodDelete, "/admin/judge/:id", AdminJudgeDelete)
 	require.Equal(t, http.StatusNotFound, doRequest(router, http.MethodDelete, "/admin/judge/99", "").Code)
 	require.Equal(t, http.StatusBadRequest, doRequest(router, http.MethodDelete, "/admin/judge/abc", "").Code)
+}
+
+func TestAdminJudgeList_HidesAuthKey(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "listed", false)
+	router := authedRouter(1, http.MethodGet, "/admin/judges", AdminJudgeList)
+	w := doRequest(router, http.MethodGet, "/admin/judges", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "listed")
+	require.NotContains(t, w.Body.String(), j.AuthKey)
+	require.NotContains(t, w.Body.String(), "auth_key")
+}
+
+func TestAdminJudgeCreate_CountsCharactersNotBytes(t *testing.T) {
+	setupJudgeCrudDB(t)
+	router := authedRouter(1, http.MethodPost, "/admin/judges", AdminJudgeCreate)
+
+	w := doRequest(router, http.MethodPost, "/admin/judges", `{"name":"`+strings.Repeat("ị", 50)+`"}`)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	w = doRequest(router, http.MethodPost, "/admin/judges", `{"name":"`+strings.Repeat("ị", 51)+`"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+func TestAdminJudgeUpdate_OnlineJudgeCannotBeRenamedOrRekeyed(t *testing.T) {
+	setupJudgeCrudDB(t)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	j := seedJudge(t, "live", true)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+
+	for _, body := range []string{`{"name":"renamed"}`, `{"auth_key":"newkey"}`} {
+		w := doRequest(router, http.MethodPatch, "/admin/judge/1", body)
+		require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+		require.Contains(t, w.Body.String(), "stop the judge agent before renaming or re-keying it")
+	}
+	var got models.Judge
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, "live", got.Name)
+	require.Equal(t, "key-live", got.AuthKey)
+
+	w := doRequest(router, http.MethodPatch, "/admin/judge/1", `{"description":"ok while online"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 }

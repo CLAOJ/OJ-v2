@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -50,11 +51,11 @@ func AdminJudgeCreate(c *gin.Context) {
 	}
 
 	name := strings.TrimSpace(input.Name)
-	if name == "" || len(name) > judgeNameMaxLen {
+	if name == "" || utf8.RuneCountInString(name) > judgeNameMaxLen {
 		c.JSON(http.StatusBadRequest, apiUserError("name is required and must be at most 50 characters"))
 		return
 	}
-	if len(input.AuthKey) > judgeAuthKeyMaxLen {
+	if utf8.RuneCountInString(input.AuthKey) > judgeAuthKeyMaxLen {
 		c.JSON(http.StatusBadRequest, apiUserError("auth_key must be at most 100 characters"))
 		return
 	}
@@ -114,7 +115,7 @@ func AdminJudgeDelete(c *gin.Context) {
 	// Deleting a connected judge would strand whatever it is grading: its
 	// next event fails authentication and the submission never finishes.
 	if judge.Online {
-		c.JSON(http.StatusConflict, apiUserError("judge is online; block it and wait for it to disconnect first"))
+		c.JSON(http.StatusConflict, apiUserError("judge is online; stop the judge agent and wait for it to go offline first"))
 		return
 	}
 

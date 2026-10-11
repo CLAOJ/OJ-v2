@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
@@ -39,7 +40,6 @@ func AdminJudgeList(c *gin.Context) {
 		Name      string `json:"name"`
 		Online    bool   `json:"online"`
 		IsBlocked bool   `json:"is_blocked"`
-		AuthKey   string `json:"auth_key"`
 		LastIP    string `json:"last_ip"`
 	}
 	items := make([]Item, len(judges))
@@ -53,7 +53,6 @@ func AdminJudgeList(c *gin.Context) {
 			Name:      j.Name,
 			Online:    j.Online,
 			IsBlocked: j.IsBlocked,
-			AuthKey:   j.AuthKey,
 			LastIP:    ip,
 		}
 	}
@@ -254,10 +253,17 @@ func AdminJudgeUpdate(c *gin.Context) {
 		return
 	}
 
+	// An online judge keeps its old identity; renaming or re-keying it would
+	// make every later event fail authentication.
+	if (input.Name != nil || input.AuthKey != nil) && judge.Online {
+		c.JSON(http.StatusConflict, apiUserError("judge is online; stop the judge agent before renaming or re-keying it"))
+		return
+	}
+
 	updates := make(map[string]interface{})
 	if input.Name != nil {
 		name := strings.TrimSpace(*input.Name)
-		if name == "" || len(name) > judgeNameMaxLen {
+		if name == "" || utf8.RuneCountInString(name) > judgeNameMaxLen {
 			c.JSON(http.StatusBadRequest, apiUserError("name is required and must be at most 50 characters"))
 			return
 		}
@@ -273,7 +279,7 @@ func AdminJudgeUpdate(c *gin.Context) {
 		updates["name"] = name
 	}
 	if input.AuthKey != nil {
-		if *input.AuthKey == "" || len(*input.AuthKey) > judgeAuthKeyMaxLen {
+		if *input.AuthKey == "" || utf8.RuneCountInString(*input.AuthKey) > judgeAuthKeyMaxLen {
 			c.JSON(http.StatusBadRequest, apiUserError("auth_key must be 1 to 100 characters"))
 			return
 		}

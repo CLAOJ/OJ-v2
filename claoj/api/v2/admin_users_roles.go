@@ -173,6 +173,22 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 	}
 
+	// Changing the email of a staff/superuser account would let a non-superuser
+	// take it over through the password-reset flow, so it is superuser-only.
+	if input.Email != nil && !auth.GetAccess(c).IsSuperuser {
+		var target models.AuthUser
+		err := db.DB.Joins("JOIN judge_profile ON judge_profile.user_id = auth_user.id").
+			Where("judge_profile.id = ?", uint(userID)).First(&target).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		if err == nil && (target.IsStaff || target.IsSuperuser) {
+			c.JSON(http.StatusForbidden, apiUserError("superuser access required to change the email of a staff account"))
+			return
+		}
+	}
+
 	// is_staff / is_superuser changes are superuser-only. This writes
 	// directly to Django's auth_user row (id, is_staff, is_superuser),
 	// which is a different primary key than the judge_profile.id used as

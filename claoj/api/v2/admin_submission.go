@@ -358,6 +358,18 @@ func AdminSubmissionDelete(c *gin.Context) {
 		return
 	}
 
+	// Django parity: without judge.edit_all_problem a user may only delete
+	// submissions of problems they author or curate.
+	var sub models.Submission
+	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if !auth.CanEditProblem(c, &sub.Problem) {
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to delete this submission"))
+		return
+	}
+
 	if err := getSubmissionService().Delete(submission.DeleteRequest{SubmissionID: submissionID}); err != nil {
 		switch {
 		case errors.Is(err, submission.ErrSubmissionNotFound):

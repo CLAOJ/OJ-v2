@@ -22,7 +22,12 @@ func setupSubmissionDeleteDB(t *testing.T) {
 	sqlDB, err := database.DB()
 	require.NoError(t, err)
 	sqlDB.SetMaxOpenConns(1)
-	require.NoError(t, database.AutoMigrate(&models.Submission{}))
+	require.NoError(t, database.AutoMigrate(
+		&models.AuthUser{}, &models.Profile{}, &models.Organization{}, &models.Language{},
+		&models.ProblemGroup{}, &models.ProblemType{}, &models.Problem{}, &models.Judge{}, &models.Submission{},
+		&models.AuthGroup{}, &models.DjangoContentType{}, &models.AuthPermission{},
+		&models.AuthUserGroup{}, &models.AuthGroupPermission{}, &models.AuthUserPermission{},
+	))
 	db.DB = database
 }
 
@@ -31,7 +36,9 @@ func TestAdminSubmissionDelete_MapsServiceErrors(t *testing.T) {
 	queued := models.Submission{UserID: 1, ProblemID: 1, LanguageID: 1, Date: time.Now(), Status: "QU"}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&queued).Error)
 
-	router := authedRouter(1, http.MethodDelete, "/admin/submission/:id", AdminSubmissionDelete)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodDelete, "/admin/submission/:id", AdminSubmissionDelete)
 
 	require.Equal(t, http.StatusNotFound, doRequest(router, http.MethodDelete, "/admin/submission/999", "").Code)
 	require.Equal(t, http.StatusBadRequest, doRequest(router, http.MethodDelete, "/admin/submission/abc", "").Code)
@@ -43,4 +50,23 @@ func TestAdminSubmissionDelete_MapsServiceErrors(t *testing.T) {
 	var n int64
 	require.NoError(t, db.DB.Model(&models.Submission{}).Count(&n).Error)
 	require.Equal(t, int64(1), n)
+}
+
+func TestAdminSubmissionDelete_PlainStaffIsForbidden(t *testing.T) {
+	setupSubmissionDeleteDB(t)
+	p := models.Problem{Code: "p1", Name: "P1"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+	done := models.Submission{UserID: 1, ProblemID: p.ID, LanguageID: 1, Date: time.Now(), Status: "D"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&done).Error)
+	staff := models.AuthUser{Username: "staff", IsActive: true, IsStaff: true}
+	require.NoError(t, db.DB.Create(&staff).Error)
+
+	router := authedRouter(staff.ID, http.MethodDelete, "/admin/submission/:id", AdminSubmissionDelete)
+	w := doRequest(router, http.MethodDelete, "/admin/submission/1", "")
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "you do not have permission to delete this submission")
+
+	var n int64
+	require.NoError(t, db.DB.Model(&models.Submission{}).Where("id = ?", done.ID).Count(&n).Error)
+	require.Equal(t, int64(1), n, "a forbidden delete must leave the row")
 }
