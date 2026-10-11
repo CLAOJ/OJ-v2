@@ -236,8 +236,9 @@ func (s *SubmissionService) Abort(req AbortRequest) error {
 		return err
 	}
 
-	// Only allow aborting submissions that are being processed
-	if sub.Status != "P" && sub.Status != "G" {
+	// Abortable while queued (QU), acknowledged (P) or grading (G); the
+	// judge queue drops a waiting task and cancels a running one.
+	if sub.Status != "QU" && sub.Status != "P" && sub.Status != "G" {
 		return ErrSubmissionNotProcessing
 	}
 

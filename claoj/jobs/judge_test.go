@@ -38,6 +38,7 @@ type stubQueue struct {
 	enqErrs   []error // returned by successive enqueue calls; nil when exhausted
 	state     asynq.TaskState
 	infoErr   error
+	delErr    error // returned by deleteTask
 	deleted   []string
 	cancelled []string
 }
@@ -62,7 +63,7 @@ func useStubQueue(t *testing.T) *stubQueue {
 		}
 		return &asynq.TaskInfo{ID: id, Queue: queue, State: s.state}, nil
 	}
-	deleteTask = func(queue, id string) error { s.deleted = append(s.deleted, queue+"/"+id); return nil }
+	deleteTask = func(queue, id string) error { s.deleted = append(s.deleted, queue+"/"+id); return s.delErr }
 	cancelProcessing = func(id string) error { s.cancelled = append(s.cancelled, id); return nil }
 	return s
 }
@@ -198,5 +199,13 @@ func TestAbortJudgeSubmission(t *testing.T) {
 		require.NoError(t, AbortJudgeSubmission(7))
 		assert.Empty(t, s.deleted)
 		assert.Empty(t, s.cancelled)
+	})
+	t.Run("pending that turned active is cancelled", func(t *testing.T) {
+		s := useStubQueue(t)
+		s.state = asynq.TaskStatePending
+		s.delErr = errors.New("task is in active state") // a judge picked it up after the lookup
+		require.NoError(t, AbortJudgeSubmission(7))
+		assert.Equal(t, []string{"judge/sub-7"}, s.deleted)
+		assert.Equal(t, []string{"sub-7"}, s.cancelled)
 	})
 }

@@ -147,7 +147,12 @@ func AbortJudgeSubmission(subID uint) error {
 	if info.State == asynq.TaskStateActive {
 		return cancelProcessing(id)
 	}
-	return deleteTask(QueueJudge, id)
+	if err := deleteTask(QueueJudge, id); err != nil {
+		// A judge picked the task up between the lookup and the delete (or
+		// it just finished): cancel whatever is running; a no-op otherwise.
+		return cancelProcessing(id)
+	}
+	return nil
 }
 
 // JudgeAborter satisfies submission.BridgeServer / v2.SetBridgeServer.
