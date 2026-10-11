@@ -4,7 +4,6 @@ import { Link } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Ticket } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
-import WebSocketStatusIndicator from '@/components/common/WebSocketStatus';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Logo from '@/components/navbar/Logo';
@@ -66,11 +65,6 @@ export default function Navbar() {
                             {/* Theme Toggle */}
                             <div className="hidden xl:block">
                                 <ThemeToggle />
-                            </div>
-
-                            {/* WebSocket Status (moved into the drawer on mobile) */}
-                            <div className="hidden 2xl:block">
-                                <WebSocketStatusIndicator />
                             </div>
 
                             {/* Notification Bell */}
