@@ -342,20 +342,6 @@ export interface BatchRejudgeResponse {
     message: string;
 }
 
-export interface MossAnalysisResult {
-    id: number;
-    submission_id: number;
-    match_count: number;
-    matches: MossMatch[];
-    created_at: string;
-}
-
-export interface MossMatch {
-    submission_id: number;
-    username: string;
-    similarity_percentage: number;
-    match_lines: number;
-}
 
 export interface BatchRescoreRequest {
     submission_ids?: number[];
@@ -392,11 +378,6 @@ export const adminSubmissionApi = {
     rescoreAll: (problemCode: string) =>
         api.post<BatchRescoreResponse>(`/admin/problem/${problemCode}/rescore-all`),
 
-    mossAnalyze: (id: number, language: string) =>
-        api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/moss`, { language }),
-
-    mossResults: (id: number) =>
-        api.get<MossAnalysisResult>(`/admin/submission/${id}/moss`),
 };
 
 // ============================================================
@@ -743,4 +724,25 @@ export const adminAuditLogApi = {
         Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
         return api.get<{ results: AuditLogEntry[]; total: number }>(`/audit-logs?${params.toString()}`);
     },
+};
+
+// ============================================================
+// ADMIN CONTEST MOSS API (v1 ContestMoss parity)
+// ============================================================
+
+export interface ContestMossResult {
+    problem_code: string;
+    problem_name: string;
+    language: string;
+    submission_count: number;
+    url: string | null;
+}
+
+export const adminMossApi = {
+    list: (key: string) =>
+        api.get<{ running: boolean; results: ContestMossResult[] }>(`/admin/contest/${key}/moss`),
+    run: (key: string) =>
+        api.post<{ queued: boolean }>(`/admin/contest/${key}/moss`),
+    clear: (key: string) =>
+        api.delete<{ deleted: number }>(`/admin/contest/${key}/moss`),
 };
