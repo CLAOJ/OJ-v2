@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/organization"
@@ -243,6 +244,13 @@ func AdminJudgeUpdate(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	// name + auth_key are the judge's login; changing them lets the caller
+	// impersonate the judge, so it needs the Django change permission.
+	if (input.Name != nil || input.AuthKey != nil) && !auth.HasPerm(c, "judge.change_judge") {
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to rename or re-key a judge"))
 		return
 	}
 

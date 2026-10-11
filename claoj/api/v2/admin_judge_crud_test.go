@@ -28,6 +28,8 @@ func setupJudgeCrudDB(t *testing.T) {
 		&models.AuthUser{}, &models.Profile{}, &models.Organization{}, &models.Language{},
 		&models.ProblemGroup{}, &models.ProblemType{}, &models.Problem{},
 		&models.Judge{}, &models.RuntimeVersion{}, &models.Submission{},
+		&models.AuthGroup{}, &models.DjangoContentType{}, &models.AuthPermission{},
+		&models.AuthUserGroup{}, &models.AuthGroupPermission{}, &models.AuthUserPermission{},
 	))
 	db.DB = database
 }
@@ -103,7 +105,9 @@ func TestAdminJudgeUpdate_RenameAndRekey(t *testing.T) {
 	setupJudgeCrudDB(t)
 	a := seedJudge(t, "a", false)
 	seedJudge(t, "b", false)
-	router := authedRouter(1, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
 	target := "/admin/judge/1"
 	require.Equal(t, uint(1), a.ID)
 
@@ -126,6 +130,30 @@ func TestAdminJudgeUpdate_RenameAndRekey(t *testing.T) {
 	require.Equal(t, "a2", got.Name, "omitted fields stay unchanged")
 	require.Equal(t, "newkey", got.AuthKey, "omitted fields stay unchanged")
 	require.Equal(t, "only this", got.Description)
+}
+
+func TestAdminJudgeUpdate_RenameNeedsChangePermission(t *testing.T) {
+	setupJudgeCrudDB(t)
+	staff := models.AuthUser{Username: "staff", IsActive: true, IsStaff: true}
+	require.NoError(t, db.DB.Create(&staff).Error)
+	seedJudge(t, "a", false)
+	router := authedRouter(staff.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+
+	w := doRequest(router, http.MethodPatch, "/admin/judge/1", `{"auth_key":"stolen"}`)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	var got models.Judge
+	require.NoError(t, db.DB.First(&got, 1).Error)
+	require.Equal(t, "key-a", got.AuthKey)
+
+	w = doRequest(router, http.MethodPatch, "/admin/judge/1", `{"name":"renamed"}`)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, 1).Error)
+	require.Equal(t, "a", got.Name)
+
+	w = doRequest(router, http.MethodPatch, "/admin/judge/1", `{"description":"note"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, 1).Error)
+	require.Equal(t, "note", got.Description)
 }
 
 func TestAdminJudgeDelete_CascadesLikeDjango(t *testing.T) {
