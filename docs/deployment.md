@@ -108,9 +108,9 @@ JWT_SECRET_KEY=<openssl rand -base64 48>   # or JWT_SECRET_KEY_FILE=...
 # Public origin of the web app — drives CORS allow-list AND cookie Secure/SameSite:
 SITE_URL=https://beta.claoj.edu.vn
 
-# Judge bridge listen address. MUST differ from the v1 bridge (:9999) if both
-# run on the same host/interface:
-BRIDGE_ADDR=:9997
+# Judges pull from the asynq queue in Redis and POST results to
+# POST /internal/judge/event (Basic auth) — there is no judge listen port
+# to open (see §5).
 
 # Email (optional; set EMAIL_NO_REPLY=false and SMTP_* to actually send)
 EMAIL_NO_REPLY=true
@@ -192,25 +192,36 @@ cookies are first-party and CSRF/CORS "just work".
 
 ## 5. Judges
 
-The judge servers are unchanged from the v1/DMOJ model — they connect over TCP
-to a **bridge**. Point judges at v2's bridge (`BRIDGE_ADDR`, default `:9997`)
-instead of (or in addition to) the v1 bridge:
+The v2 judge path is **pull-based** — there is no TCP bridge, no `BRIDGE_ADDR`
+and no port 9997. The `claoj-judge` agent runs next to a local tiervnoj child,
+pulls `judge_submission` tasks from the asynq queue `judge` in Redis, grades
+them on the loopback child, and POSTs every result packet to the backend's
+`POST /internal/judge/event` with HTTP Basic auth. Nothing dials a judge, so
+the backend needs no judge-specific listener:
 
 - Each judge needs a row in `judge_judge` with a matching `name` + `auth_key`
-  (managed in Django admin).
-- Open the bridge port to the judge hosts only (firewall it off the public net).
+  (managed in Django admin); the agent sends them as Basic auth and the
+  backend rejects unknown/blocked judges with `401`.
+- The judge host needs outbound access to Redis (`REDIS_ADDR`, on the **same
+  `REDIS_DB`** as the backend) and to the backend (`BACKEND_URL`). The
+  `/internal/judge/event` endpoint must never be exposed on the public nginx
+  — the public edge proxies `/api/` only (see §9.6).
 - Build the judge image from `claoj-docker/judge/tiervnoj`. **Note the Python
   3.14 `fork` start-method patch** in `dmoj/judge.py` (see `docs/development.md`
-  §6) — required for grading to work on the current runtimes base.
+  §6) — required for grading to work on the current runtimes base. The agent
+  image is built from `OJ-v2/claoj-judge` (`claoj/claoj-judge-agent`).
 
 ```bash
 docker run -d --name claoj_judge --cap-add SYS_PTRACE \
-  -v /srv/problems:/problems \
-  claoj/judge-tiervnoj \
-  run -p 9997 -A 0.0.0.0 -a 9998 -c /problems/judge.yml <bridge-host>
+  -v /srv/problems:/problems:ro \
+  -e REDIS_ADDR=<redis-host>:6379 -e REDIS_DB=<same as the backend's REDIS_DB> \
+  -e BACKEND_URL=http://<backend-host>:8081 \
+  -e JUDGE_NAME=<judge_judge.name> -e JUDGE_KEY=<judge_judge.auth_key> \
+  claoj/claoj-judge-agent
 ```
 
-Verify: `GET /api/judges` lists the judge `online`; a test submission
+Verify: `GET /api/judges` lists the judge `online` (the backend's status
+ticker writes it within ~30 s); a test submission
 transitions `QU → P → G → D`.
 
 ---
@@ -305,11 +316,11 @@ off the one shared database and Redis instance — nothing about v1 changes.
 
 | Service | Container | Image | Role | Host port |
 |---|---|---|---|---|
-| `v2_backend` | `claoj_v2_backend` | `claoj/claoj-go` | Go API (`:8081`) + judge bridge (`:9997`), internal only | none |
+| `v2_backend` | `claoj_v2_backend` | `claoj/claoj-go` | Go API (`:8081`), internal only | none |
 | `v2_web` | `claoj_v2_web` | `claoj/claoj-web` | Next.js (`:3000`), internal only | none |
 | `v2_nginx` | `claoj_v2_nginx` | `nginx:alpine` | same-origin front: `/` → web, `/api` (+ `/api/events`) → backend | `127.0.0.1:${V2_HTTP_PORT:-8090}:80` — published in **both** local and prod |
 | `v1_judge` | `claoj_v1_judge` | `claoj/judge-tiervnoj` | grades v1 submissions, dials `bridged:9999`, identity `Vịt Con` | none |
-| `v2_judge` | `claoj_v2_judge` | `claoj/judge-tiervnoj` | grades v2 submissions, dials `v2_backend:9997`, identity `Vịt Toàn Năng` | none |
+| `v2_judge` | `claoj_v2_judge` | `claoj/claoj-judge-agent` | grades v2 submissions — pulls asynq queue `judge` from Redis, POSTs results to `v2_backend:8081`, identity `Vịt Toàn Năng` | none |
 
 `v2_nginx`'s port mapping in `docker-compose.v2.yml` isn't gated on which base
 file you layer onto — it publishes `127.0.0.1:${V2_HTTP_PORT:-8090}:80`
@@ -319,17 +330,21 @@ internal `nginx` network, §9.3); it's still bound on the VPS's own loopback,
 which is useful for debugging directly on the box (e.g. over an SSH tunnel)
 without going through the tunnel.
 
-Both judges are the **same image** (`claoj/judge-tiervnoj`) — only the target
-host and the `judge_judge` identity differ. Conflict isolation is by
-construction:
+Both judges run the same tiervnoj engine, but only `v1_judge` is the raw
+`claoj/judge-tiervnoj` image dialing v1's `bridged`; `v2_judge` is the
+`claoj/claoj-judge-agent` image, which wraps a private tiervnoj child and
+pulls v2 work from Redis. Conflict isolation is by construction:
 
 - **Database:** additive only — the DDL guard + `scripts/v2_runtime_tables.sql`
   from §2. Both apps write the same tables.
 - **Redis:** v2 is pinned to **DB index 2** for everything it uses (permission
   cache, refresh/one-time tokens, audit-log stream, Asynq queue); v1's Django
   cache (DB 0) and Celery (DB 1) are untouched.
-- **Judge bridges:** v2's bridge listens on `:9997`, distinct from v1's
-  `bridged` on `:9999`/`:9998`.
+- **Judge dispatch:** v1's Django enqueues judge work to its TCP `bridged`
+  (`:9999`/`:9998`), which dials judges; v2 has no bridge at all — `v2_judge`
+  pulls the asynq `judge` queue from Redis (DB 2) and POSTs packets to
+  `v2_backend:8081/internal/judge/event`, so the two stacks never share a
+  judge socket or port.
 - **Judge identities:** `v1_judge` and `v2_judge` authenticate as different
   `judge_judge` rows, so dispatch never crosses: a Django-created submission is
   always graded by `Vịt Con`, a Go-created one by `Vịt Toàn Năng`.
@@ -358,7 +373,7 @@ file you deploy against:
 | `REDIS_ADDR` | `redis:6379` | `redis:6379` |
 | `REDIS_DB` | `2` | `2` |
 | `SERVER_PORT` | `8081` | `8081` |
-| `BRIDGE_ADDR` | `:9997` | `:9997` |
+| `JUDGE_NAME` | `Vịt Toàn Năng` (the `judge_judge` row every v2 judge replica uses for online/load sync) | same, must match `V2_JUDGE_NAME` in `.env` |
 | `SECRET_KEY` / `JWT_SECRET_KEY` | fresh (`openssl rand -base64 48`) | fresh, distinct from local's |
 | `SITE_URL` | `http://localhost:8090` | `https://beta.claoj.edu.vn` |
 
@@ -419,6 +434,80 @@ v1 is unaffected — it never depended on any v2 service, the v2-only tables,
 or the Redis DB-2 keys. The additive tables can stay (Django ignores them) or
 be removed with `cleanup_v2_tables.sql` per §7.
 
+### 9.6 Production cutover gate (TCP bridge → pull queue)
+
+Run this before/while switching to the pull-queue backend. The **pre-cutover**
+backend is the last build that still writes judge tasks to the asynq queue
+`critical` (`git show 05946a7:claoj/jobs/judge.go | sed -n '56p'`); the new backend worker
+serves only `default`/`low` (`jobs/server.go`) and the agent pulls queue
+`judge`, so **nothing consumes `critical` after the switch** — any task left
+there is orphaned and its submission stays `QU` forever.
+
+**Step 1 — drain asynq state across the switch.** Inspect every queue in the
+v2 Redis DB (DB 2) before switching and record the output:
+
+```bash
+for q in critical default low judge; do
+  echo "pending $q: $(docker exec claoj_redis redis-cli -n 2 LLEN "asynq:{$q}:pending")"
+  for s in scheduled retry archived; do
+    echo "$s $q: $(docker exec claoj_redis redis-cli -n 2 ZCARD "asynq:{$q}:$s")"
+  done
+done
+```
+
+- `critical` non-zero: let the **old** backend drain it naturally (it is still
+  running and consuming that queue), or rejudge those submissions after the
+  switch — `POST /api/admin/submission/<id>/rejudge` (they would otherwise be
+  stranded `QU`).
+- After the switch, re-check for any submission still stuck at `QU` and
+  rejudge it (`curl -b cookies.txt -X POST https://beta.claoj.edu.vn/api/admin/submission/<id>/rejudge`,
+  CSRF header per `docs/development.md` §7.2).
+- **Rollback is symmetric:** the pre-cutover backend never serves the `judge`
+  queue, so tasks sitting in `judge` at rollback time are stranded the same
+  way — run the same inspection on the restored image and rejudge anything
+  left.
+
+**Step 2 — expect a hard kill on backend stop.** `claoj/main.go` has no
+shutdown handler (`r.Run` runs until the process dies), so `docker stop` /
+a Watchtower recreate hangs to SIGKILL after the grace period. This is
+pre-existing (documented for the operator, not fixed on this branch): budget
+`stop_grace_period` accordingly and expect an in-flight grade to be retried
+by the agent, not drained.
+
+**Step 3 — verify `/internal/judge/event` is NOT publicly reachable.** The
+public nginx proxies `/api/` only. From **outside the VPS** (any other host),
+record this as cutover evidence:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' --max-time 10 \
+  https://beta.claoj.edu.vn/internal/judge/event
+# pass: 404 (nginx falls through to the web app) or a timeout — FAIL: 2xx/401
+# means the internal endpoint is exposed; fix the ingress before cutting over.
+```
+
+**Step 4 — pre-cutover verification gate (run these before switching).**
+The local e2e run (Task 10) never exercised these three; run them on the live
+stack and record the evidence in the cutover record:
+
+- **Abort of a *queued* submission:** submit, and while it is still `QU`
+  (before any judge picks it up) `POST /api/admin/submission/<id>/abort` →
+  ends `AB`, and the asynq `judge` queue holds no `sub-<id>` task
+  (`docker exec claoj_redis redis-cli -n 2 --scan --pattern 'asynq:{judge}:*'`
+  shows nothing for that id).
+- **AC/WA/CE/TLE attribution across both backends:** submit all four verdicts
+  (a correct solution→AC (on `aplusb` the input is N then N pairs, so a one-line `print(sum(...))` is WA), `print(0)`→WA, `def (`→CE, `while True: pass`→TLE)
+  to v1 (Django at `/`) and to v2 (`/api/.../submit`) and confirm each lands
+  on its own stack's judge — v1 rows graded by the `Vịt Con` judge, v2 rows by
+  `Vịt Toàn Năng`.
+- **Explicit final `judge_submission` row assertions** for each fresh v2
+  submission:
+
+  ```sql
+  SELECT id, status, result, judged_on_id FROM judge_submission WHERE id = <sid>;
+  -- expect exactly one row: status D, the expected result, judged_on_id =
+  -- the id of the "Vịt Toàn Năng" row in judge_judge.
+  ```
+
 ---
 
 ## 10. CI/CD (automated build + beta deploy)
@@ -455,3 +544,22 @@ serving through a backend/web recreate (no 502, no manual restart).
 **Rollback.** `claoj-docker/claoj/scripts/rollback.sh backend sha-<short>` pins a
 service to an immutable build (freezing Watchtower); `... backend latest` resumes
 auto-updates.
+
+## Judges and horizontal scaling (k3s / Docker Swarm)
+
+Submissions are queued in Redis (asynq queue `judge`); `claoj-judge`
+replicas pull from it and POST results to the backend's
+`/internal/judge/event`. Nothing dials into a judge, so backend and judge
+are both plain replicated services with the same shape on k3s and Swarm:
+
+- `backend`: N replicas, env `JUDGE_NAME`. Route only `/api/` to it from the
+  public ingress/nginx; `/internal/` must stay cluster-internal.
+- `judge`: M replicas of `claoj/claoj-judge-agent`, `SYS_PTRACE`, stop grace
+  ≥ 30 s, env `REDIS_ADDR`, `REDIS_DB` (= backend's), `BACKEND_URL` (the
+  backend Service), `JUDGE_NAME`, `JUDGE_KEY`. No Service or ports.
+- `problems`: the single v1 problems folder, mounted read-only on judges.
+  Multi-node: NFS-export it from the host that owns it.
+- backend `/app/data` (v2 PDFs): one shared RWX volume across backend replicas.
+- The backend refuses to start without Redis.
+- Scale judges with replicas; there is no per-judge admin step (all share one
+  `judge_judge` row).

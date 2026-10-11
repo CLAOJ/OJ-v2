@@ -1,85 +1,49 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/CLAOJ/claoj/api"
+	v2 "github.com/CLAOJ/claoj/api/v2"
+	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/CLAOJ/claoj/auth/tokenstore"
-	"github.com/CLAOJ/claoj/bridge"
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/events"
 	"github.com/CLAOJ/claoj/jobs"
-	v2 "github.com/CLAOJ/claoj/api/v2"
-	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// 1. Load configuration
 	config.Load()
-
-	// 2. Set Gin mode
 	gin.SetMode(config.C.Server.Mode)
 
-	// 3. Connect to dependencies
 	db.Connect()
-	cache.Connect()
+	cache.Connect() // exits if Redis is unreachable
 
-	// 3b. Wire up refresh-token session storage. Redis-backed when
-	// available so rotation-reuse detection survives restarts and works
-	// across multiple API instances; falls back to an in-memory store
-	// (single-process, resets on restart) if Redis isn't up.
-	if cache.Client != nil {
-		authHandlers.RefreshStore = tokenstore.NewRedisStore(cache.Client)
-	} else {
-		authHandlers.RefreshStore = tokenstore.NewMemoryStore()
-		log.Printf("warning: refresh sessions in-memory; logins reset on restart")
-	}
+	// Session, one-time-token and audit-log state live in Redis so every
+	// replica shares them and the MySQL schema stays Django-owned.
+	authHandlers.RefreshStore = tokenstore.NewRedisStore(cache.Client)
+	authHandlers.OneTimeTokens = tokenstore.NewRedisOneTime(cache.Client)
+	auditlog.Default = auditlog.NewRedisStore(cache.Client)
 
-	// 3c. Wire up one-time token storage (password reset / email
-	// verification) for the same reason: keep v2-only state out of the
-	// shared MySQL schema.
-	if cache.Client != nil {
-		authHandlers.OneTimeTokens = tokenstore.NewRedisOneTime(cache.Client)
-	} else {
-		authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
-		log.Printf("warning: one-time tokens in-memory; password-reset/email-verify links reset on restart")
-	}
-
-	// 3d. Wire up the admin audit log. Redis-backed (a capped stream) when
-	// available so the shared MySQL schema stays 100% Django-owned; falls
-	// back to an in-memory store (single-process, resets on restart) if
-	// Redis isn't up.
-	if cache.Client != nil {
-		auditlog.Default = auditlog.NewRedisStore(cache.Client)
-	} else {
-		auditlog.Default = auditlog.NewMemoryStore()
-		log.Printf("warning: audit log in-memory; entries reset on restart")
-	}
-
-	// 4. Start the Judge Bridge TCP server
-	judgeBridge := bridge.NewServer()
-	go func() {
-		if err := judgeBridge.Start(); err != nil {
-			log.Fatalf("bridge: %v", err)
-		}
-	}()
-
-	// 5. Initialize Asynq Background Tasks
+	// Background jobs. Submissions go to asynq queue "judge", consumed only
+	// by claoj-judge agents, which POST results to /internal/judge/event.
 	jobs.InitClient()
-	jobs.SetBridge(judgeBridge)
 	go jobs.StartWorker()
+	if config.C.Judge.Name != "" {
+		go jobs.RunJudgeStatusLoop(context.Background(), config.C.Judge.Name, 30*time.Second)
+	} else {
+		log.Printf("warning: JUDGE_NAME unset; judge online status is not synced")
+	}
 
-	// 6. Initialize Websocket Event Hub
 	events.InitHub()
+	v2.SetBridgeServer(jobs.JudgeAborter{})
 
-	// 7. Set bridge server reference for API handlers
-	v2.SetBridgeServer(judgeBridge)
-
-	// 8. Build router and run
 	r := api.NewRouter()
 	addr := ":" + config.C.Server.Port
 	log.Printf("claoj-go HTTP API starting on %s", addr)

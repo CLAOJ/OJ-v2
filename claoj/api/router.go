@@ -7,6 +7,7 @@ import (
 	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	contestHandlers "github.com/CLAOJ/claoj/api/v2/contest"
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/bridge"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/csrf"
 	"github.com/CLAOJ/claoj/events"
@@ -47,6 +48,10 @@ func NewRouter() *gin.Engine {
 	r.GET("/metrics", func(c *gin.Context) {
 		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
 	})
+
+	// Judge agents POST grading packets here. Deliberately outside /api/:
+	// the public nginx/ingress only forwards /api/ to the backend.
+	r.POST("/internal/judge/event", bridge.EventHandler)
 
 	apiv2 := r.Group("/api")
 	{

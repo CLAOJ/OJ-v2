@@ -26,7 +26,7 @@ func readSecretFromFile(filePath string) string {
 // Config holds all application configuration.
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
-	Bridge   BridgeConfig   `mapstructure:"bridge"`
+	Judge    JudgeConfig    `mapstructure:"judge"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	App      AppConfig      `mapstructure:"app"`
@@ -39,8 +39,10 @@ type ServerConfig struct {
 	Mode string `mapstructure:"mode"` // gin mode: debug | release
 }
 
-type BridgeConfig struct {
-	Addr string `mapstructure:"addr"` // judge bridge TCP listen address, e.g. ":9999"
+type JudgeConfig struct {
+	// Name of the judge_judge row all v2 judge agents share; its online/load
+	// columns are kept in sync from asynq heartbeats. Empty = don't sync.
+	Name string `mapstructure:"name"`
 }
 
 type DatabaseConfig struct {
@@ -119,8 +121,8 @@ func Load() {
 	// defaults
 	v.SetDefault("server.port", "8081")
 	v.SetDefault("server.mode", "debug")
-	v.SetDefault("bridge.addr", ":9999")
 	v.SetDefault("database.dsn", "")
+	v.SetDefault("judge.name", "")
 	v.SetDefault("redis.addr", "127.0.0.1:6379")
 	v.SetDefault("redis.password", "")
 	v.SetDefault("redis.db", 0)
@@ -159,13 +161,13 @@ func Load() {
 	v.BindEnv("redis.db", "REDIS_DB", "CLAOJ_REDIS_DB")
 	v.BindEnv("server.port", "SERVER_PORT", "CLAOJ_SERVER_PORT")
 	v.BindEnv("server.mode", "SERVER_MODE", "CLAOJ_SERVER_MODE")
-	v.BindEnv("bridge.addr", "BRIDGE_ADDR", "CLAOJ_BRIDGE_ADDR")
 	v.BindEnv("app.secret_key", "SECRET_KEY", "CLAOJ_APP_SECRET_KEY")
 	v.BindEnv("app.jwt_secret_key", "JWT_SECRET_KEY", "CLAOJ_JWT_SECRET_KEY")
 	v.BindEnv("app.require_totp_for_admins", "REQUIRE_TOTP_FOR_ADMINS", "CLAOJ_REQUIRE_TOTP_FOR_ADMINS")
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
 	v.BindEnv("app.v1_media_root", "V1_MEDIA_ROOT", "CLAOJ_APP_V1_MEDIA_ROOT")
+	v.BindEnv("judge.name", "JUDGE_NAME", "CLAOJ_JUDGE_NAME")
 
 	// Email
 	v.BindEnv("email.smtp_host", "SMTP_HOST", "CLAOJ_SMTP_HOST")

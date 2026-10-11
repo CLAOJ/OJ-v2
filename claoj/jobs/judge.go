@@ -1,78 +1,161 @@
 package jobs
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/CLAOJ/claoj/config"
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/hibiken/asynq"
 )
 
-// Task names
 const (
 	TypeJudgeSubmission = "judge_submission"
+	// QueueJudge is consumed only by judge agents (claoj-judge), never by
+	// the backend's own asynq worker.
+	QueueJudge    = "judge"
+	judgeMaxRetry = 2
 )
 
-// enqueueFunc is the function used to enqueue jobs - can be overridden for testing
+// enqueueFunc and the inspector funcs below are seams overridden in tests.
 var enqueueFunc = defaultEnqueue
 
-// BridgeRouter is an interface we inject so `jobs` doesn't strictly depend on `bridge.Server`
-// but can still call `Submit(subID)`.
-type BridgeRouter interface {
-	Submit(subID uint) error
+var (
+	getTaskInfo      = func(queue, id string) (*asynq.TaskInfo, error) { return Inspector.GetTaskInfo(queue, id) }
+	deleteTask       = func(queue, id string) error { return Inspector.DeleteTask(queue, id) }
+	cancelProcessing = func(id string) error { return Inspector.CancelProcessing(id) }
+)
+
+func defaultEnqueue(task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
+	return Client.Enqueue(task, opts...)
 }
 
-var globalBridge BridgeRouter
-
-// SetBridge lets main.go inject the bridge router for the worker to use.
-func SetBridge(b BridgeRouter) {
-	globalBridge = b
-}
-
-// defaultEnqueue is the default implementation for enqueueing jobs
-func defaultEnqueue(task *asynq.Task, queueOpt asynq.Option) (*asynq.TaskInfo, error) {
-	return Client.Enqueue(task, queueOpt)
-}
-
-// SetMockEnqueue sets a mock enqueue function for testing
-func SetMockEnqueue(fn func(*asynq.Task, asynq.Option) (*asynq.TaskInfo, error)) {
+// SetMockEnqueue sets a mock enqueue function for testing.
+func SetMockEnqueue(fn func(*asynq.Task, ...asynq.Option) (*asynq.TaskInfo, error)) {
 	enqueueFunc = fn
 }
 
-// JudgeSubmissionPayload contains the info for a submission-request job.
-type JudgeSubmissionPayload struct {
-	SubmissionID uint `json:"submission_id"`
+func judgeTaskID(subID uint) string { return fmt.Sprintf("sub-%d", subID) }
+
+// BuildSubmissionRequest builds the DMOJ "submission-request" packet a judge
+// grades from. Ported from the old bridge.Server.Submit.
+func BuildSubmissionRequest(subID uint) (map[string]interface{}, error) {
+	var sub models.Submission
+	if err := db.DB.Preload("Problem").Preload("Language").First(&sub, subID).Error; err != nil {
+		return nil, fmt.Errorf("submission %d not found: %w", subID, err)
+	}
+
+	var source models.SubmissionSource
+	if err := db.DB.Where("submission_id = ?", subID).First(&source).Error; err != nil && !sub.Language.FileOnly {
+		return nil, fmt.Errorf("submission %d source missing: %w", subID, err)
+	}
+
+	timeLimit, memLimit := sub.Problem.TimeLimit, sub.Problem.MemoryLimit
+	var override models.LanguageLimit
+	if err := db.DB.Where("problem_id = ? AND language_id = ?", sub.ProblemID, sub.LanguageID).First(&override).Error; err == nil {
+		timeLimit, memLimit = override.TimeLimit, uint(override.MemoryLimit)
+	}
+
+	src := source.Source
+	if sub.Language.FileOnly {
+		// e.g. /media/submissions/file.zip -> https://site/media/...
+		src = config.C.App.SiteFullURL + src
+	}
+
+	return map[string]interface{}{
+		"name":          "submission-request",
+		"submission-id": subID,
+		"problem-id":    sub.Problem.Code,
+		"language":      sub.Language.Key,
+		"source":        src,
+		"time-limit":    timeLimit,
+		"memory-limit":  memLimit,
+		"short-circuit": sub.Problem.ShortCircuit,
+		"meta": map[string]interface{}{
+			"pretests-only":   sub.IsPretested,
+			"in-contest":      0, // stub, as before
+			"attempt-no":      1, // stub, as before
+			"user":            sub.UserID,
+			"file-only":       sub.Language.FileOnly,
+			"file-size-limit": sub.Language.FileSizeLimit,
+		},
+	}, nil
 }
 
-// EnqueueJudgeSubmission puts a submission into the queue for grading.
+// EnqueueJudgeSubmission queues a submission for any judge agent to grade.
+// The task ID makes it idempotent: re-enqueueing a submission that is
+// still queued or being graded is a no-op.
 func EnqueueJudgeSubmission(subID uint) error {
-	payload, err := json.Marshal(JudgeSubmissionPayload{SubmissionID: subID})
+	pkt, err := BuildSubmissionRequest(subID)
+	if err != nil {
+		return err
+	}
+	payload, err := json.Marshal(pkt)
 	if err != nil {
 		return err
 	}
 
-	task := asynq.NewTask(TypeJudgeSubmission, payload, asynq.MaxRetry(3), asynq.Timeout(5*time.Minute))
-	info, err := enqueueFunc(task, asynq.Queue("critical"))
+	task := asynq.NewTask(TypeJudgeSubmission, payload)
+	id := judgeTaskID(subID)
+	opts := []asynq.Option{
+		asynq.Queue(QueueJudge),
+		asynq.TaskID(id),
+		asynq.MaxRetry(judgeMaxRetry),
+		asynq.Timeout(30 * time.Minute),
+	}
+
+	_, err = enqueueFunc(task, opts...)
+	if errors.Is(err, asynq.ErrTaskIDConflict) {
+		info, ierr := getTaskInfo(QueueJudge, id)
+		switch {
+		case errors.Is(ierr, asynq.ErrTaskNotFound):
+			// finished between the two calls: just enqueue again
+		case ierr != nil:
+			return ierr
+		case info.State != asynq.TaskStateArchived && info.State != asynq.TaskStateCompleted:
+			return nil // already queued or being graded
+		default:
+			if err := deleteTask(QueueJudge, id); err != nil {
+				return err
+			}
+		}
+		_, err = enqueueFunc(task, opts...)
+	}
 	if err != nil {
 		return err
 	}
 
-	log.Printf("jobs: enqueued judge task %s for sub %d", info.ID, subID)
+	log.Printf("jobs: queued judge task %s", id)
 	return nil
 }
 
-// HandleJudgeSubmissionTask is the worker function that actually runs the task.
-func HandleJudgeSubmissionTask(ctx context.Context, t *asynq.Task) error {
-	var payload JudgeSubmissionPayload
-	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-		return err
-	}
-
-	if globalBridge == nil {
-		log.Printf("jobs: globalBridge not set, ignoring judge task for sub %d", payload.SubmissionID)
+// AbortJudgeSubmission drops a queued judge task, or cancels the one a
+// judge is grading (the agent then sends terminate-submission to tiervnoj).
+func AbortJudgeSubmission(subID uint) error {
+	id := judgeTaskID(subID)
+	info, err := getTaskInfo(QueueJudge, id)
+	if errors.Is(err, asynq.ErrTaskNotFound) || errors.Is(err, asynq.ErrQueueNotFound) {
 		return nil
 	}
-
-	return globalBridge.Submit(payload.SubmissionID)
+	if err != nil {
+		return err
+	}
+	if info.State == asynq.TaskStateActive {
+		return cancelProcessing(id)
+	}
+	if err := deleteTask(QueueJudge, id); err != nil {
+		// A judge picked the task up between the lookup and the delete (or
+		// it just finished): cancel whatever is running; a no-op otherwise.
+		return cancelProcessing(id)
+	}
+	return nil
 }
+
+// JudgeAborter satisfies submission.BridgeServer / v2.SetBridgeServer.
+type JudgeAborter struct{}
+
+func (JudgeAborter) Abort(subID uint) error { return AbortJudgeSubmission(subID) }

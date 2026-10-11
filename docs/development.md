@@ -18,7 +18,8 @@ how the two systems interoperate.
                      │                                              │
   Browser ──▶ Next.js web (:3000) ──HTTP/WS──▶ v2 Go API (:8081)   │
                                                     │  │            │
-                                                    │  └─ judge bridge (:9997) ──▶ DMOJ judge
+                                                    │  └─ POST /internal/judge/event ◀── DMOJ judge (agent)
+                                                    │     pulls asynq queue `judge` from Redis
                                                     ▼                │
   Browser ──▶ v1 nginx (:8080) ──▶ Django site ──▶ MariaDB (:3306) ◀┘
                                         │              ▲
@@ -40,17 +41,18 @@ Django; a permission granted in Django's admin is enforced by v2.
 | 6379 | Redis | shared |
 | 9999 / 9998 | v1 judge bridge | v1 |
 | 8081 | Go HTTP API | v2 |
-| 9997 | Go judge bridge (`BRIDGE_ADDR`) | v2 |
 | 3000 | Next.js web | v2 |
 
-v2's judge bridge listens on **:9997** specifically so it does not collide with
-the v1 bridge on :9999. This is configurable — see `BRIDGE_ADDR` below.
+v2 has **no judge port**: judges are pull-based — the `claoj-judge` agent
+pulls from the asynq queue `judge` in Redis and POSTs packets to the API's
+`/internal/judge/event` (`:8081`), which is internal to the Compose network
+(§6). v1's TCP bridge keeps :9999/:9998 for its own judges.
 
 Under the **combined-compose** path (§4, the primary way to run v2 locally),
-8081/3000/9997 are internal to the Compose network — nothing outside
-`v2_nginx`'s **8090** is published to the host. Those three ports only bind
-directly to `localhost` when you run the Go backend / Next.js dev server /
-a standalone judge on the host instead, for fast iteration (§4.1/§5/§6).
+8081/3000 are internal to the Compose network — nothing outside
+`v2_nginx`'s **8090** is published to the host. Those ports only bind
+directly to `localhost` when you run the Go backend / Next.js dev server on
+the host instead, for fast iteration (§4.1/§5).
 
 ---
 
@@ -182,11 +184,11 @@ lives in its own named volumes, untouched by v2 coming and going.
 
 For a tight edit/rebuild/test loop on Go code, a host binary beats a
 container rebuild. Point it at the same `db`/`redis` v1 already publishes on
-`127.0.0.1:3306`/`127.0.0.1:6379` (§3.3). Use `REDIS_DB=0` (not `2`) and keep
-`BRIDGE_ADDR=:9997` so a locally-run backend doesn't collide with the
-compose-managed `v2_backend` if both happen to be up — though normally you'd
-stop `v2_backend` (and `v2_judge`, see §6) in compose before running this to
-avoid two processes fighting over the same judge bridge port.
+`127.0.0.1:3306`/`127.0.0.1:6379` (§3.3). Use `REDIS_DB=0` (not `2`) and stop
+`v2_backend` (and `v2_judge`, see §6) in compose before running this — with
+the pull-queue model nothing collides on a port, but you don't want a second
+backend racing the compose one on the same Redis queues, or a second judge
+agent presenting the same `Vịt Toàn Năng` identity.
 
 **Configure** `claoj/.env` (gitignored — never commit it):
 
@@ -199,8 +201,6 @@ SERVER_MODE=release
 SECRET_KEY=<generate: openssl rand -base64 48>
 SITE_URL=http://localhost:3000
 EMAIL_NO_REPLY=true
-# v1 bridged owns :9999 on this host; v2's judge bridge listens here instead:
-BRIDGE_ADDR=:9997
 ```
 
 **Build and run:**
@@ -212,7 +212,9 @@ go build -o claoj-server.exe .
 ```
 
 Expected log lines: `db: connected successfully`, `cache: connected to Redis`,
-`claoj-go HTTP API starting on :8081`, `bridge: TCP server listening on :9997`.
+`claoj-go HTTP API starting on :8081`. There is no judge listener line — the
+backend serves no bridge; when an agent connects (§6), its own log ends with
+`judge "Vịt Toàn Năng" ready`.
 
 **Verify against the live schema.** The env-gated parity test confirms every
 GORM model maps cleanly onto the real Django schema:
@@ -263,14 +265,14 @@ starts both judges — nothing extra to run:
 
 - `claoj_v1_judge`, identity `Vịt Con`, dials `bridged:9999` and grades v1
   (Django) submissions.
-- `claoj_v2_judge`, identity `Vịt Toàn Năng`, dials `v2_backend:9997` and
-  grades v2 (Go) submissions.
+- `claoj_v2_judge`, identity `Vịt Toàn Năng`, pulls asynq `judge` tasks from
+  Redis and POSTs results to `v2_backend:8081`, grading v2 (Go) submissions.
 
 Confirm they're online:
 
 ```bash
-docker logs claoj_v2_backend | grep -i authenticated
-# bridge [...]: authenticated as Vịt Toàn Năng
+docker compose -f docker-compose.local.yml -f docker-compose.v2.yml logs v2_judge | grep ready
+# judge "Vịt Toàn Năng" ready
 curl -s http://localhost:8090/api/judges   # both judges report "online": true
 ```
 
@@ -287,23 +289,23 @@ docker build -t claoj/judge-tiervnoj ./tiervnoj
 When running the Go backend directly on the host instead of in compose, point
 a standalone judge container at the host instead of at `v2_backend`
 (`host.docker.internal` resolves to the host from inside the container).
-Stop the compose-managed `v2_judge` first — otherwise two processes present
-the same `Vịt Toàn Năng` identity to two different bridges and flap.
+Stop the compose-managed `v2_judge` first — otherwise two judge agents
+present the same `Vịt Toàn Năng` identity and race for the same asynq
+`judge` queue.
 
-**6.2 Run**, passing the identity explicitly (overrides the id/key baked into
-`judge.yml`, which defaults to v1's `Vịt Con` — the same override pattern
-`v1_judge`/`v2_judge` use in `docker-compose.v2.yml`):
+**6.2 Run a judge** against the host-run backend (`:8081`) and host Redis:
 
 ```bash
 docker run -d --name claoj_judge_local --cap-add SYS_PTRACE \
-  -v "F:\Coding\CLAOJ\CLAOJ\claoj-data\problems:/problems" \
-  claoj/judge-tiervnoj \
-  run -p 9997 -A 0.0.0.0 -a 9998 -c /problems/judge.yml host.docker.internal \
-  "Vịt Toàn Năng" <V2_JUDGE_KEY, from .env>
+  -v "F:\Coding\CLAOJ\CLAOJ\claoj-data\problems:/problems:ro" \
+  -e REDIS_ADDR=host.docker.internal:6379 -e REDIS_DB=2 \
+  -e BACKEND_URL=http://host.docker.internal:8081 \
+  -e JUDGE_NAME="Vịt Toàn Năng" -e JUDGE_KEY=<V2_JUDGE_KEY, from .env> \
+  claoj/claoj-judge-agent
 ```
 
-On connect you'll see `bridge [...]: authenticated as Vịt Toàn Năng` in the
-host-run backend's log, and `GET /api/judges` reports it `online`.
+The backend needs `JUDGE_NAME="Vịt Toàn Năng"`; within 30 s `GET /api/judges`
+reports it `online`. Nothing connects to the judge: it pulls from Redis.
 
 **6.3 Submit and watch it grade** (against the host-run backend on `:8081`):
 
@@ -411,9 +413,9 @@ cd OJ-v2/claoj-web && node scripts/check-i18n.mjs                   # 1509 keys,
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `bridge: listen tcp :9999: bind: ...` | v1 bridged already owns :9999 | set `BRIDGE_ADDR=:9997` |
+| Backend exits at boot: `cache: Redis at … unreachable` | Redis is down/unreachable — v2 has no safe fallback without it | start Redis / fix `REDIS_ADDR` (and `REDIS_DB`, which must match the judge agent's) |
 | Web login "succeeds" but stays logged out | auth cookie `SameSite=None` over HTTP rejected | already fixed (Lax over HTTP); ensure `SITE_URL` scheme matches |
 | Every POST from the web UI 403s | missing/mismatched CSRF header | client must echo `csrf_token` cookie as `X-CSRF-Token` |
-| Submission stuck at `QU` | no judge connected, or judge's problem list empty | check `GET /api/judges` online; check judge log for handshake |
+| Submission stuck at `QU` | no judge agent connected, empty problem list, or a task stranded in asynq across a backend cutover | check `GET /api/judges` online (~30 s status ticker); check the agent log for `judge "<name>" ready`; if it predates a cutover, see `docs/deployment.md` §9.6 |
 | `ERROR 1064` in a query | MySQL reserved word unquoted (`key`, `order`, `read`, `load`) | backtick-quote it in the raw SQL / GORM clause |
 | Data attributed to wrong user | `auth_user.id` used where `judge_profile.id` expected | resolve via `auth.CurrentProfileID(c)` |

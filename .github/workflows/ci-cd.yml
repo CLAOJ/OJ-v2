@@ -25,6 +25,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
+      judge: ${{ steps.filter.outputs.judge }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -36,6 +37,9 @@ jobs:
               - '.github/workflows/ci-cd.yml'
             web:
               - 'claoj-web/**'
+              - '.github/workflows/ci-cd.yml'
+            judge:
+              - 'claoj-judge/**'
               - '.github/workflows/ci-cd.yml'
 
   test-backend:
@@ -55,6 +59,22 @@ jobs:
         run: go vet ./...
       - name: go test (exclude DB-backed integration)
         run: go list ./... | grep -v '/integration' | xargs go test
+
+  test-judge:
+    needs: changes
+    if: needs.changes.outputs.judge == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: claoj-judge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: claoj-judge/go.sum
+      - run: go vet ./...
+      - run: go test ./...
 
   test-web:
     needs: changes

@@ -21,10 +21,11 @@ func Connect() {
 	})
 
 	if _, err := Client.Ping(Ctx).Result(); err != nil {
-		log.Printf("cache: WARNING — could not ping Redis at %s: %v", cfg.Addr, err)
-	} else {
-		log.Printf("cache: connected to Redis at %s", cfg.Addr)
+		// The judge queue, live events, sessions and the audit log all live
+		// in Redis; with several replicas there is no safe fallback.
+		log.Fatalf("cache: Redis at %s unreachable: %v", cfg.Addr, err)
 	}
+	log.Printf("cache: connected to Redis at %s", cfg.Addr)
 }
 
 // Publish posts a message to a Redis pub/sub channel (matching Django's event_poster format).

@@ -9,6 +9,9 @@ import (
 
 var Client *asynq.Client
 
+// Inspector queries and manages queued tasks (judge abort / rejudge).
+var Inspector *asynq.Inspector
+
 // InitClient creates the Asynq client for enqueueing tasks.
 // Must be called after config.Load().
 func InitClient() {
@@ -18,6 +21,7 @@ func InitClient() {
 		DB:       config.C.Redis.DB,
 	}
 	Client = asynq.NewClient(redisOpt)
+	Inspector = asynq.NewInspector(redisOpt)
 	log.Println("jobs: Asynq client initialized")
 }
 
@@ -35,17 +39,16 @@ func StartWorker() {
 			// Concurrency settings could be pulled from config.
 			Concurrency: 10,
 			Queues: map[string]int{
-				"critical": 6,
-				"default":  3,
-				"low":      1,
+				"default": 3,
+				"low":     1,
 			},
 		},
 	)
 
 	mux := asynq.NewServeMux()
 
-	// Register all task handlers
-	mux.HandleFunc(TypeJudgeSubmission, HandleJudgeSubmissionTask)
+	// Register all task handlers. Judge work (queue "judge") is consumed
+	// by claoj-judge agents, not here.
 	mux.HandleFunc(TypeRescoreProblem, HandleRescoreTask)
 	mux.HandleFunc(TypeRateContest, HandleRateContestTask)
 	mux.HandleFunc(TypeUserExport, HandleUserExportTask)

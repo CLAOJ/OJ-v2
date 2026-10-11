@@ -107,7 +107,7 @@ func SetupIntegrationDB(t *testing.T) *TestDB {
 // setupMockAsynq sets up a mock enqueue function for the jobs package
 func setupMockAsynq() {
 	// Import jobs package and set mock enqueue
-	jobs.SetMockEnqueue(func(task *asynq.Task, queueOpt asynq.Option) (*asynq.TaskInfo, error) {
+	jobs.SetMockEnqueue(func(task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
 		// Mock successful enqueue
 		return &asynq.TaskInfo{ID: "mock-task-id"}, nil
 	})
