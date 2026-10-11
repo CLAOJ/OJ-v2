@@ -75,7 +75,7 @@ export default function APITokenSettingsTab() {
 
     if (tokenInfo?.has_token && !generatedToken) {
         return (
-            <div className="p-6 rounded-2xl border bg-card space-y-4">
+            <div className="p-6 rounded-md border bg-card space-y-4">
                 <div className="flex items-center gap-2 text-amber-600">
                     <Info size={20} />
                     <span className="font-bold text-sm">{t('apiTokenExistingTitle')}</span>
@@ -96,7 +96,7 @@ export default function APITokenSettingsTab() {
 
     if (generatedToken) {
         return (
-            <div className="p-6 rounded-2xl border bg-card space-y-4">
+            <div className="p-6 rounded-md border bg-card space-y-4">
                 <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle size={20} />
                     <span className="font-bold text-sm">{t('apiTokenGeneratedTitle')}</span>
@@ -135,7 +135,7 @@ export default function APITokenSettingsTab() {
                 </p>
             </div>
 
-            <div className="p-6 rounded-2xl border bg-card">
+            <div className="p-6 rounded-md border bg-card">
                 <button
                     onClick={handleGenerate}
                     disabled={isGenerating}

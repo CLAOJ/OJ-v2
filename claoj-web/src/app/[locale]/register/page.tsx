@@ -73,7 +73,7 @@ export default function RegisterPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5"
+                className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 {isRegistered ? (
                     <div className="text-center space-y-6">
@@ -213,7 +213,7 @@ export default function RegisterPage() {
                                 <div className="w-full border-t border-muted-foreground/20"></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">{t('orContinueWith')}</span>
+                                <span className="bg-card px-4 text-muted-foreground font-bold ">{t('orContinueWith')}</span>
                             </div>
                         </div>
 

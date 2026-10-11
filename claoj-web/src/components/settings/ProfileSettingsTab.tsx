@@ -153,7 +153,7 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
             <button
                 type="submit"
                 disabled={isPending || !isDirty}
-                className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
                 {t('save')}
             </button>

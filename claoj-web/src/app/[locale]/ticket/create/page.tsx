@@ -93,7 +93,7 @@ export default function CreateTicketPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 mt-4 pb-20">
+        <div className="max-w-3xl mx-auto space-y-8 mt-4 pb-20">
             {/* Back Button */}
             <Link
                 href="/tickets"
@@ -106,13 +106,13 @@ export default function CreateTicketPage() {
             {/* Header */}
             <div className="text-center space-y-2">
                 <TicketIcon className="mx-auto text-primary" size={48} />
-                <h1 className="text-4xl font-black tracking-tighter">{t('createTitle')}</h1>
-                <p className="text-muted-foreground font-black opacity-80">{t('createDescription')}</p>
+                <h1 className="text-4xl font-semibold tracking-tighter">{t('createTitle')}</h1>
+                <p className="text-muted-foreground font-medium opacity-80">{t('createDescription')}</p>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="bg-card border rounded-[2.5rem] p-8 shadow-sm space-y-6">
+                <div className="bg-card border rounded-md p-8 shadow-sm space-y-6">
                     {/* Title */}
                     <div className="space-y-2">
                         <label className="text-sm font-bold ml-1 flex items-center gap-2">
@@ -124,7 +124,7 @@ export default function CreateTicketPage() {
                             type="text"
                             placeholder={t('subjectPlaceholder')}
                             className={cn(
-                                "w-full h-14 bg-muted/30 border rounded-2xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none",
+                                "w-full h-14 bg-muted/30 border rounded-md px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none",
                                 errors.title ? "border-destructive" : "border-muted-foreground/10"
                             )}
                         />
@@ -141,7 +141,7 @@ export default function CreateTicketPage() {
                             <input
                                 type="text"
                                 placeholder={t('searchProblemPlaceholder')}
-                                className="w-full h-14 bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
+                                className="w-full h-14 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
                                 value={selectedProblem ? `${selectedProblem.code} - ${selectedProblem.name}` : problemSearch}
                                 onChange={(e) => {
                                     setProblemSearch(e.target.value);
@@ -166,7 +166,7 @@ export default function CreateTicketPage() {
 
                         {/* Problem Search Results */}
                         {problemSearch && problems && problems.length > 0 && (
-                            <div className="mt-2 bg-card border rounded-2xl overflow-hidden shadow-lg">
+                            <div className="mt-2 bg-card border rounded-md overflow-hidden shadow-lg">
                                 {problems.map((problem) => (
                                     <button
                                         key={problem.code}
@@ -175,7 +175,7 @@ export default function CreateTicketPage() {
                                         className="w-full p-4 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b last:border-b-0"
                                     >
                                         <div>
-                                            <span className="font-mono font-black text-primary">{problem.code}</span>
+                                            <span className="font-mono font-medium text-primary">{problem.code}</span>
                                             <span className="ml-2 font-bold">{problem.name}</span>
                                         </div>
                                         <span className="text-xs font-bold text-muted-foreground">{t('pointsLabel', { points: problem.points })}</span>
@@ -196,7 +196,7 @@ export default function CreateTicketPage() {
                             placeholder={t('messagePlaceholder')}
                             rows={8}
                             className={cn(
-                                "w-full bg-muted/30 border rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none",
+                                "w-full bg-muted/30 border rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none",
                                 errors.body ? "border-destructive" : "border-muted-foreground/10"
                             )}
                         />
@@ -208,14 +208,14 @@ export default function CreateTicketPage() {
                 <div className="flex justify-end gap-4">
                     <Link
                         href="/tickets"
-                        className="px-8 h-14 rounded-2xl bg-muted text-muted-foreground font-bold hover:bg-muted/80 transition-all"
+                        className="px-8 h-14 rounded-md bg-muted text-muted-foreground font-bold hover:bg-muted/80 transition-all"
                     >
                         {t('cancelButton')}
                     </Link>
                     <button
                         type="submit"
                         disabled={createMutation.isPending}
-                        className="px-8 h-14 rounded-2xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/20"
+                        className="px-8 h-14 rounded-md bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
                     >
                         {createMutation.isPending && <Loader2 size={18} className="animate-spin" />}
                         {t('create')}

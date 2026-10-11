@@ -130,7 +130,7 @@ export default function LoginPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5"
+                className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-extrabold tracking-tight italic text-primary">CLAOJ</h1>
@@ -296,7 +296,7 @@ export default function LoginPage() {
                                 <div className="w-full border-t border-muted-foreground/20"></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">{t('orContinueWith')}</span>
+                                <span className="bg-card px-4 text-muted-foreground font-bold ">{t('orContinueWith')}</span>
                             </div>
                         </div>
 
@@ -400,7 +400,7 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="000000"
-                        className="flex h-14 w-full rounded-xl border border-input bg-background px-4 py-2 text-center text-2xl tracking-widest font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                        className="flex h-14 w-full rounded-xl border border-input bg-background px-4 py-2 text-center text-2xl font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
                         autoFocus
                     />
                 </div>

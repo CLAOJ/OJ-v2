@@ -21,7 +21,7 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto space-y-8 ">
             <header>
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
@@ -40,7 +40,7 @@ export default function SettingsPage() {
                 </aside>
 
                 {/* Content Area */}
-                <div className="flex-grow p-8 rounded-3xl border bg-card shadow-sm">
+                <div className="flex-grow p-8 rounded-md border bg-card shadow-sm">
                     {activeTab === 'profile' && <ProfileSettingsTab />}
                     {activeTab === 'account' && <AccountSettingsTab />}
                     {activeTab === 'oauth' && <OAuthSettingsTab />}

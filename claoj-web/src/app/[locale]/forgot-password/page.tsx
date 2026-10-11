@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5 text-center"
+                    className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card text-center"
                 >
                     <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle size={40} className="text-emerald-500" />
@@ -86,7 +86,7 @@ export default function ForgotPasswordPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5"
+                className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 <div className="text-center space-y-2">
                     <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">

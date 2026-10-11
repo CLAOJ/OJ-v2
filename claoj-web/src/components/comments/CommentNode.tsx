@@ -85,15 +85,15 @@ export default function CommentNode({
 
     return (
         <div className={cn("space-y-6", level > 0 && "ml-4 md:ml-12 border-l-2 border-primary/5 pl-4 md:ml-12 pl-4")}>
-            <div className="group space-y-4 bg-card/50 p-6 rounded-[2rem] border border-transparent hover:border-muted hover:shadow-xl hover:shadow-primary/5 transition-all">
+            <div className="group space-y-4 bg-card/50 p-6 rounded-md border border-transparent hover:border-muted hover:shadow-xl transition-all">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                        <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center text-primary shadow-inner">
                             <User size={24} />
                         </div>
                         <div>
-                            <div className="text-base font-black tracking-tight">@{node.author}</div>
-                            <div className="text-[10px] font-black text-muted-foreground uppercase flex items-center gap-1.5 tracking-widest opacity-60">
+                            <div className="text-base font-medium tracking-tight">@{node.author}</div>
+                            <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 opacity-60">
                                 <Clock size={12} />
                                 {dayjs(node.time).fromNow()}
                             </div>
@@ -128,7 +128,7 @@ export default function CommentNode({
                         <button
                             onClick={handleVote}
                             className={cn(
-                                "flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full transition-colors",
+                                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors",
                                 voteDirection === 1
                                     ? "bg-green-500/10 text-green-500"
                                     : "text-muted-foreground hover:text-primary hover:bg-primary/5"
@@ -140,7 +140,7 @@ export default function CommentNode({
                     </div>
                     <button
                         onClick={() => onReply(replyTo === node.id ? null : node.id)}
-                        className="flex items-center gap-2 text-xs font-black text-muted-foreground hover:text-primary transition-colors"
+                        className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
                     >
                         <Reply size={16} />
                         {t('reply')}
@@ -148,7 +148,7 @@ export default function CommentNode({
                     {node.children.length > 0 && (
                         <button
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="flex items-center gap-1.5 text-xs font-black text-primary bg-primary/5 px-4 py-2 rounded-full"
+                            className="flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/5 px-4 py-2 rounded-full"
                         >
                             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             {node.children.length} {t('reply')}

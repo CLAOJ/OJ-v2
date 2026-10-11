@@ -48,7 +48,7 @@ export default function VerifyEmailPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5"
+                className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 <div className="text-center space-y-4">
                     {status === 'loading' && (

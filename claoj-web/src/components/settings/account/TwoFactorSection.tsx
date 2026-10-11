@@ -194,7 +194,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                             value={twoFactorCode}
                             onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                             placeholder={t('enterCodeFromApp')}
-                            className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium text-center tracking-widest"
+                            className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium text-center "
                             maxLength={6}
                         />
                     </div>

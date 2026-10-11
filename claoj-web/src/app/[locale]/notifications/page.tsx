@@ -117,7 +117,7 @@ export default function NotificationsPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto space-y-6 ">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -168,7 +168,7 @@ export default function NotificationsPage() {
                         <Loader2 size={32} className="animate-spin text-muted-foreground" />
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="text-center py-20 px-4 border rounded-3xl bg-card">
+                    <div className="text-center py-20 px-4 border rounded-md bg-card">
                         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
                             <Inbox size={40} className="text-muted-foreground" />
                         </div>
@@ -186,7 +186,7 @@ export default function NotificationsPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={cn(
-                                "group flex items-start gap-4 p-5 rounded-2xl border bg-card hover:shadow-md transition-all",
+                                "group flex items-start gap-4 p-5 rounded-md border bg-card hover:shadow-md transition-all",
                                 !notification.read && "border-primary/20 bg-primary/5"
                             )}
                         >

@@ -69,7 +69,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
 
         return (
             <div className={cn(
-                "p-4 rounded-2xl border flex items-start gap-3",
+                "p-4 rounded-md border flex items-start gap-3",
                 commentType === 'editorial'
                     ? "bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
                     : "bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
@@ -99,9 +99,9 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
     if (isLoading) return (
         <div className="space-y-6">
             <Skeleton className="h-10 w-48 rounded-full" />
-            <Skeleton className="h-40 w-full rounded-3xl" />
+            <Skeleton className="h-40 w-full rounded-md" />
             <div className="space-y-4 pt-8">
-                {[1, 2].map(i => <Skeleton key={i} className="h-24 w-full rounded-3xl" />)}
+                {[1, 2].map(i => <Skeleton key={i} className="h-24 w-full rounded-md" />)}
             </div>
         </div>
     );
@@ -111,11 +111,11 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
     return (
         <div className="space-y-10">
             <div className="flex items-center justify-between border-b pb-6">
-                <h3 className="text-2xl font-black tracking-tighter flex items-center gap-3">
+                <h3 className="text-2xl font-semibold tracking-tighter flex items-center gap-3">
                     <MessageSquare className="text-primary" size={28} />
                     {t('title')}
                 </h3>
-                <span className="text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/50 border px-4 py-1.5 rounded-full">
+                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border px-4 py-1.5 rounded-full">
                     {t('count', { count: comments?.length || 0 })}
                 </span>
             </div>
@@ -123,18 +123,18 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
             {user ? (
                 <div className="space-y-4">
                     <ContextHeader />
-                    <div className="p-8 rounded-[2rem] bg-card border border-dashed hover:border-primary/50 transition-colors space-y-4">
+                    <div className="p-8 rounded-md bg-card border border-dashed hover:border-primary/50 transition-colors space-y-4">
                         <textarea
                             value={commentBody}
                             onChange={(e) => setCommentBody(e.target.value)}
                             placeholder={contextTranslations('placeholder')}
-                            className="w-full h-32 p-6 rounded-2xl bg-muted/30 border outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none text-base font-medium"
+                            className="w-full h-32 p-6 rounded-md bg-muted/30 border outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none text-base font-medium"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={() => handlePost(commentBody)}
                                 disabled={postComment.isPending || !commentBody.trim()}
-                                className="flex items-center gap-2 h-12 px-8 rounded-xl bg-primary text-primary-foreground text-sm font-black shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                                className="flex items-center gap-2 h-12 px-8 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-xl hover:opacity-90 transition-all disabled:opacity-50"
                             >
                                 {postComment.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                                 {t('post')}
@@ -143,7 +143,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                     </div>
                 </div>
             ) : (
-                <div className="p-10 text-center rounded-[2rem] bg-muted/30 border border-dashed">
+                <div className="p-10 text-center rounded-md bg-muted/30 border border-dashed">
                     <p className="text-sm font-bold text-muted-foreground">{t('signInToComment')}</p>
                 </div>
             )}

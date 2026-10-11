@@ -46,7 +46,7 @@ export default function DataExportSettingsTab() {
                 </p>
             </div>
 
-            <div className="p-6 rounded-2xl border bg-muted/50 space-y-4">
+            <div className="p-6 rounded-md border bg-muted/50 space-y-4">
                 <div className="flex items-start gap-3">
                     <Info className="w-5 h-5 text-primary mt-0.5" />
                     <div className="space-y-2 text-sm">
@@ -63,7 +63,7 @@ export default function DataExportSettingsTab() {
                 </div>
             </div>
 
-            <div className="p-6 rounded-2xl border bg-card">
+            <div className="p-6 rounded-md border bg-card">
                 <h3 className="text-lg font-bold mb-4">{t('exportStatus')}</h3>
 
                 {exportStatus ? (

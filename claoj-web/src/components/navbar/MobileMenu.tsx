@@ -61,7 +61,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                     <>
                         {/* Backdrop */}
                         <motion.div
-                            className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm xl:hidden"
+                            className="fixed inset-0 z-[55] bg-black/50 xl:hidden"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -80,12 +80,12 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={drawerTransition}
-                            className="fixed right-0 top-0 z-[60] flex h-[100dvh] w-[85%] max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-2xl xl:hidden"
+                            className="fixed right-0 top-0 z-[60] flex h-[100dvh] w-[85%] max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-lg xl:hidden"
                         >
                             {/* Drawer header with its own close control (the navbar toggle
                                 sits under the backdrop while the drawer is open). */}
                             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
-                                <span className="text-lg font-black tracking-tight">{t('menu')}</span>
+                                <span className="text-lg font-semibold tracking-tight">{t('menu')}</span>
                                 <button
                                     onClick={onToggle}
                                     aria-label={t('closeMenu')}
