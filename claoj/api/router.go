@@ -151,6 +151,7 @@ func NewRouter() *gin.Engine {
 			// Problem Clarifications
 			admin.POST("/admin/problem/:code/clarification", auth.RequireProblemEdit(), v2.ProblemClarificationCreate)
 			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
+			admin.PATCH("/admin/problem/clarification/:id", v2.ProblemClarificationUpdate)
 			// Problem Data
 			admin.GET("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemData)
 			admin.POST("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataUpload)
@@ -254,6 +255,7 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/ticket/:id/toggle", v2.AdminTicketToggleOpen)
 			admin.POST("/admin/ticket/:id/set-contributive", v2.AdminTicketSetContributive)
 			admin.PATCH("/admin/ticket/:id/notes", v2.AdminTicketUpdateNotes)
+			admin.DELETE("/admin/ticket/:id", auth.RequirePerm("judge.delete_ticket"), v2.AdminTicketDelete)
 
 		// Navigation Bars
 		admin.GET("/admin/navigation-bars", v2.AdminNavigationBarList)
@@ -412,6 +414,7 @@ func NewRouter() *gin.Engine {
 			// Contest clarifications (protected write)
 			protected.POST("/contest/:key/clarifications", contestHandlers.ContestClarificationCreate)
 			protected.POST("/contest/:key/clarification/:id/answer", contestHandlers.ContestClarificationAnswer)
+			protected.DELETE("/contest/:key/clarification/:id", contestHandlers.ContestClarificationDelete)
 
 			// Blogs
 			protected.POST("/blog/:id/vote", v2.BlogVoteHandler)
