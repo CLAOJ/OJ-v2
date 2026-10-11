@@ -49,3 +49,21 @@ Carried from the batch reviews and the whole-branch review (plan
   `docs/deployment.md` §9.6), `claoj/api/v2/submission.go:126-129` 404s
   `GET /api/submission/<id>` for non-public problems even for superusers, and
   `claoj/jobs/judge_status.go` never writes `judge_judge.ping`.
+
+## 2026-10-11 — `feat/judge-pull-queue` review fix (abort a queued submission)
+
+Parked by the task reviews and the final review of
+`docs/superpowers/plans/2026-10-11-judge-queued-abort-fix.md`; none blocks the merge:
+
+- `claoj/jobs/judge.go` (`AbortJudgeSubmission`) — the fallback to `cancelProcessing` fires on
+  any `deleteTask` error; a non-"active" delete failure followed by a nil cancel returns nil,
+  so the row is marked `AB` while the task stays queued and may still be graded. Tighten by
+  re-running `getTaskInfo` after a delete failure: nil if gone, cancel only if active,
+  otherwise return the delete error.
+- `claoj/jobs/judge_test.go` — no test for delete-fails + cancel-fails (the error must
+  propagate) or for `deleteTask` returning `ErrTaskNotFound`.
+- `claoj/service/submission/submission_service.go` — the doc comment on `Abort` still says
+  "being processed"; `ErrSubmissionNotProcessing` and the admin handler's 400 text are
+  slightly stale now that `QU` is accepted.
+- `docs/deployment.md` §9.6 — `redis-cli -n 2` is hardcoded in Step 1 and Step 4 (the Redis DB
+  index is deployment-specific); the AC/WA/CE/TLE bullet has a hard-to-scan nested parenthetical.

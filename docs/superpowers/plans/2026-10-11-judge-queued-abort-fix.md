@@ -57,7 +57,7 @@ Everything else in the review was green: backend `go vet` clean + 471 tests, age
 - Consumes: `submission.NewSubmissionService(bridge BridgeServer) *SubmissionService`; `type BridgeServer interface { Abort(subID uint) error }`; `submission.AbortRequest{SubmissionID uint}`; `submission.ErrSubmissionNotProcessing`; jobs seams `getTaskInfo`, `deleteTask`, `cancelProcessing`.
 - Produces: no signature changes. Behaviour: `SubmissionService.Abort` accepts status `QU`, `P`, `G`.
 
-- [ ] **Step 1: Write the failing service tests**
+- [x] **Step 1: Write the failing service tests**
 
 Create `claoj/service/submission/abort_test.go`:
 
@@ -154,12 +154,12 @@ func TestAbort_QueueErrorLeavesRowUntouched(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run to verify the right ones fail**
+- [x] **Step 2: Run to verify the right ones fail**
 
 Run: `cd F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue/claoj && go test ./service/submission/ -run 'TestAbort_' -v`
 Expected: `TestAbort_Queued` FAILS (`submission is not being processed`). The other three pass already: they pin behaviour that must not change (`TestAbort_QueueErrorLeavesRowUntouched` starts guarding once Step 3 lets `QU` through).
 
-- [ ] **Step 3: Allow `QU` in `claoj/service/submission/submission_service.go`**
+- [x] **Step 3: Allow `QU` in `claoj/service/submission/submission_service.go`**
 
 Replace lines 239-242:
 
@@ -180,12 +180,12 @@ with:
 	}
 ```
 
-- [ ] **Step 4: Run the service tests**
+- [x] **Step 4: Run the service tests**
 
 Run: `cd F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue/claoj && go test ./service/submission/ -v`
 Expected: PASS (all, including any pre-existing tests in the package).
 
-- [ ] **Step 5: Write the failing race test in `claoj/jobs/judge_test.go`**
+- [x] **Step 5: Write the failing race test in `claoj/jobs/judge_test.go`**
 
 Add a field to `stubQueue` (after `infoErr error`):
 
@@ -217,7 +217,7 @@ Add `"errors"` to that file's imports if it is not already there.
 Run: `cd F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue/claoj && go test ./jobs/ -run TestAbortJudgeSubmission -v`
 Expected: the new subtest FAILS (`task is in active state` returned).
 
-- [ ] **Step 6: Close the race in `claoj/jobs/judge.go`**
+- [x] **Step 6: Close the race in `claoj/jobs/judge.go`**
 
 In `AbortJudgeSubmission`, replace the final statement
 
@@ -236,12 +236,12 @@ with:
 	return nil
 ```
 
-- [ ] **Step 7: Run the suites**
+- [x] **Step 7: Run the suites**
 
 Run: `cd F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue/claoj && go vet ./... && go test ./...`
 Expected: vet clean; every package passes with 0 FAIL; the total is above the 471 the branch had (new: 4 tests + 6 subtests in `service/submission`, 1 subtest in `jobs`).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue
@@ -266,7 +266,7 @@ git log -1 --format=%s
 - Modify: `docs/deployment.md` (lines ~217, ~441, ~488-500)
 - Modify: `docs/superpowers/follow-ups.md` (remove the two entries this fixes)
 
-- [ ] **Step 1: §5 judge example — stop hardcoding the Redis DB**
+- [x] **Step 1: §5 judge example — stop hardcoding the Redis DB**
 
 In `docs/deployment.md` (~line 217) replace
 
@@ -280,11 +280,11 @@ with
   -e REDIS_ADDR=<redis-host>:6379 -e REDIS_DB=<same as the backend's REDIS_DB> \
 ```
 
-- [ ] **Step 2: §9.6 intro — make the provenance command runnable**
+- [x] **Step 2: §9.6 intro — make the provenance command runnable**
 
 Replace `` `git show 05946a7:claoj/jobs/judge.go:56` `` with `` `git show 05946a7:claoj/jobs/judge.go | sed -n '56p'` ``.
 
-- [ ] **Step 3: §9.6 Step 4 — drop the `archive:` gate, fix the AC sample**
+- [x] **Step 3: §9.6 Step 4 — drop the `archive:` gate, fix the AC sample**
 
 The local e2e run did exercise `archive:` problems: `aplusb` (`archive: aplusb.zip`) graded AC/WA/CE/TLE and `01_01` (`archive: cake.zip`) graded WA — confirm with `head -1 F:/Coding/CLAOJ/CLAOJ/claoj-data/problems/aplusb/init.yml` and `…/01_01/init.yml`. So:
 
@@ -294,14 +294,14 @@ The local e2e run did exercise `archive:` problems: `aplusb` (`archive: aplusb.z
 
 Leave the "Abort of a *queued* submission" bullet as it is: Task 1 makes it true.
 
-- [ ] **Step 4: Remove the fixed follow-ups**
+- [x] **Step 4: Remove the fixed follow-ups**
 
 In `docs/superpowers/follow-ups.md` delete these two bullets (each 3 lines), which Steps 1–2 fix:
 
 - the one starting ``- `docs/deployment.md` (§9.6 step 1 example) — the §5 `docker run` sample hardcodes``
 - the one starting ``- `docs/deployment.md` (§9.6 provenance note) — `git show 05946a7:claoj/jobs/judge.go:56` is``
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `cd F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue && grep -nF -e 'REDIS_ADDR=<redis-host>:6379 -e REDIS_DB=0' -e 'judge.go:56`' -e 'these four' -e 'archive:` problem:' docs/deployment.md`
 Expected: no output.
@@ -324,7 +324,7 @@ git log -1 --format=%s
 
 Uses the same overrides as the parent task's end-to-end run: build from the worktree, compose from the claoj-docker **main** checkout with the worktree overlay, a throwaway superuser, teardown without `-v`. If `docker kill` / `docker stop` / `docker compose down` are blocked by the command-approval policy, use the equivalents the parent run used (`docker rm -f` on the project's containers + `docker network rm`) and say so.
 
-- [ ] **Step 1: Build and start the stack with no judge**
+- [x] **Step 1: Build and start the stack with no judge**
 
 ```sh
 docker build -t ghcr.io/claoj/claoj-go:judge-pull-queue F:/Coding/CLAOJ/OJ-v2-wt/feat/judge-pull-queue/claoj
@@ -337,7 +337,7 @@ V2_BACKEND_TAG=judge-pull-queue docker compose -f docker-compose.local.yml \
 
 Expected: stack up, **no** `v2_judge` container. If ports 8080 / 8090 / 3306 / 6379 are taken by another project, do not stop that container: block the task with the reason.
 
-- [ ] **Step 2: Abort a queued submission**
+- [x] **Step 2: Abort a queued submission**
 
 Create the throwaway superuser `e2e-judge` (as in the parent run: `docker exec claoj_site python3 manage.py shell -c …`, `create_superuser` + its `judge.Profile` row), log in through `localhost:8090` (`docs/development.md` §7.2), then:
 
@@ -347,7 +347,7 @@ Create the throwaway superuser `e2e-judge` (as in the parent run: `docker exec c
 4. Final row: `status = AB`, `result = AB` (admin submissions endpoint, or SQL on `judge_submission`).
 5. The same redis scan → **no output** (the task is gone).
 
-- [ ] **Step 3: The queue still grades afterwards**
+- [x] **Step 3: The queue still grades afterwards**
 
 ```sh
 V2_BACKEND_TAG=judge-pull-queue docker compose -f docker-compose.local.yml \
@@ -357,6 +357,6 @@ V2_BACKEND_TAG=judge-pull-queue docker compose -f docker-compose.local.yml \
 
 Wait for `judge "Vịt Toàn Năng" ready` in the judge log. The aborted submission must stay `AB` (not get graded). Submit `print(0)` to `aplusb` again → ends `D` / `WA`. Rejudge the aborted submission from admin → ends `D` / `WA` (an aborted submission can still be re-queued).
 
-- [ ] **Step 4: Tear down**
+- [x] **Step 4: Tear down**
 
 Delete the throwaway user, its profile and its submissions (with source/testcase rows), and verify the counts are 0. Then the same compose prefix with `down` (**never `-v`**). Confirm no `claoj` containers remain and the ports are free.
