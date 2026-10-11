@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// jest.Mock from @jest/globals defaults to UnknownFunction, which types resolved values as never.
+type AnyMock = jest.Mock<(...args: any[]) => any>;
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { renderWithProviders } from '../test-utils';
@@ -30,7 +33,7 @@ type GetRoutes = Record<string, unknown>;
 // by URL. Unlisted URLs resolve to an empty object so unrelated sections
 // don't crash while their state isn't under test.
 function mockGetRoutes(routes: GetRoutes) {
-    (api.get as jest.Mock).mockImplementation((url: string) => {
+    (api.get as AnyMock).mockImplementation((url: string) => {
         if (url in routes) {
             return Promise.resolve({ data: routes[url] });
         }
@@ -42,7 +45,7 @@ describe('AccountSettingsTab', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         // Safe baseline so every mounted section's GET resolves to something.
-        (api.get as jest.Mock).mockResolvedValue({ data: {} });
+        (api.get as AnyMock).mockResolvedValue({ data: {} });
     });
 
     describe('Password Change Section', () => {
@@ -90,7 +93,7 @@ describe('AccountSettingsTab', () => {
         });
 
         it('submits the password change to the API on a valid form', async () => {
-            (api.post as jest.Mock).mockResolvedValue({ data: {} });
+            (api.post as AnyMock).mockResolvedValue({ data: {} });
 
             const { container } = renderWithProviders(<AccountSettingsTab />);
 
@@ -111,7 +114,7 @@ describe('AccountSettingsTab', () => {
         });
 
         it('shows a success message after the password change succeeds', async () => {
-            (api.post as jest.Mock).mockResolvedValue({ data: {} });
+            (api.post as AnyMock).mockResolvedValue({ data: {} });
 
             const { container } = renderWithProviders(<AccountSettingsTab />);
 
@@ -169,7 +172,7 @@ describe('AccountSettingsTab', () => {
 
         it('calls the resend verification API when the resend button is clicked', async () => {
             mockGetRoutes({ '/user/me': { is_active: false } });
-            (api.post as jest.Mock).mockResolvedValue({
+            (api.post as AnyMock).mockResolvedValue({
                 data: { message: 'Verification email sent. Please check your inbox.' },
             });
             const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
@@ -189,7 +192,7 @@ describe('AccountSettingsTab', () => {
 
         it('shows the server error message when resending verification fails', async () => {
             mockGetRoutes({ '/user/me': { is_active: false } });
-            (api.post as jest.Mock).mockRejectedValue({
+            (api.post as AnyMock).mockRejectedValue({
                 response: { data: { error: 'Rate limit exceeded' } },
             });
             const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});

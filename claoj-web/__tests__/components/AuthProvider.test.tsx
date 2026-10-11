@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// jest.Mock from @jest/globals defaults to UnknownFunction, which types resolved values as never.
+type AnyMock = jest.Mock<(...args: any[]) => any>;
 import { renderHook, act, waitFor } from '@testing-library/react';
 import React from 'react';
 import { AuthProvider, useAuth } from '@/components/providers/AuthProvider';
@@ -58,7 +61,7 @@ describe('AuthProvider', () => {
                 user: mockUser,
             };
 
-            (api.post as jest.Mock).mockResolvedValue({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValue({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -84,7 +87,7 @@ describe('AuthProvider', () => {
                 user: mockUser,
             };
 
-            (api.post as jest.Mock).mockResolvedValue({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValue({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -112,7 +115,7 @@ describe('AuthProvider', () => {
                 user: mockUser,
             };
 
-            (api.post as jest.Mock).mockResolvedValue({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValue({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -134,7 +137,7 @@ describe('AuthProvider', () => {
                 message: 'Please enter your TOTP code',
             };
 
-            (api.post as jest.Mock).mockResolvedValue({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValue({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -151,7 +154,7 @@ describe('AuthProvider', () => {
         });
 
         it('should throw error on failed login', async () => {
-            (api.post as jest.Mock).mockRejectedValue(new Error('Invalid credentials'));
+            (api.post as AnyMock).mockRejectedValue(new Error('Invalid credentials'));
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -173,7 +176,7 @@ describe('AuthProvider', () => {
                 user: mockUser,
             };
 
-            (api.post as jest.Mock).mockResolvedValue({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValue({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -202,7 +205,7 @@ describe('AuthProvider', () => {
                 user: mockUser,
             };
 
-            (api.post as jest.Mock).mockResolvedValue({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValue({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -216,7 +219,7 @@ describe('AuthProvider', () => {
             });
 
             // Mock logout API call
-            (api.post as jest.Mock).mockResolvedValue({ data: {} });
+            (api.post as AnyMock).mockResolvedValue({ data: {} });
 
             // Then logout
             await act(async () => {
@@ -241,7 +244,7 @@ describe('AuthProvider', () => {
                 user: mockUser,
             };
 
-            (api.post as jest.Mock).mockResolvedValueOnce({ data: mockResponse });
+            (api.post as AnyMock).mockResolvedValueOnce({ data: mockResponse });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -255,7 +258,7 @@ describe('AuthProvider', () => {
             });
 
             // Mock logout API failure
-            (api.post as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (api.post as AnyMock).mockRejectedValue(new Error('Network error'));
 
             // Then logout - should still clear user
             await act(async () => {
@@ -278,7 +281,7 @@ describe('AuthProvider', () => {
             };
 
             // /user/me returns user directly in res.data, not res.data.user
-            (api.get as jest.Mock).mockResolvedValue({
+            (api.get as AnyMock).mockResolvedValue({
                 status: 200,
                 data: mockUser,
             });
@@ -293,7 +296,7 @@ describe('AuthProvider', () => {
         });
 
         it('should handle 401 response gracefully', async () => {
-            (api.get as jest.Mock).mockRejectedValue({
+            (api.get as AnyMock).mockRejectedValue({
                 response: { status: 401 },
                 isAxiosError: true,
             });
@@ -308,7 +311,7 @@ describe('AuthProvider', () => {
         });
 
         it('should handle network error gracefully', async () => {
-            (api.get as jest.Mock).mockRejectedValue({
+            (api.get as AnyMock).mockRejectedValue({
                 code: 'ERR_NETWORK',
                 isAxiosError: true,
             });
@@ -339,12 +342,12 @@ describe('AuthProvider', () => {
                 is_staff: false,
             };
 
-            (api.get as jest.Mock).mockResolvedValue({
+            (api.get as AnyMock).mockResolvedValue({
                 status: 200,
                 data: mockUser,
             });
 
-            (api.post as jest.Mock).mockResolvedValue({ data: {} });
+            (api.post as AnyMock).mockResolvedValue({ data: {} });
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -365,12 +368,12 @@ describe('AuthProvider', () => {
         });
 
         it('should not call /auth/refresh when user is not logged in', async () => {
-            (api.get as jest.Mock).mockRejectedValue({
+            (api.get as AnyMock).mockRejectedValue({
                 response: { status: 401 },
                 isAxiosError: true,
             });
 
-            (api.post as jest.Mock).mockResolvedValue({ data: {} });
+            (api.post as AnyMock).mockResolvedValue({ data: {} });
 
             renderHook(() => useAuth(), { wrapper });
 
@@ -395,12 +398,12 @@ describe('AuthProvider', () => {
                 is_staff: false,
             };
 
-            (api.get as jest.Mock).mockResolvedValue({
+            (api.get as AnyMock).mockResolvedValue({
                 status: 200,
                 data: mockUser,
             });
 
-            (api.post as jest.Mock).mockRejectedValue(new Error('Refresh failed'));
+            (api.post as AnyMock).mockRejectedValue(new Error('Refresh failed'));
 
             const { result } = renderHook(() => useAuth(), { wrapper });
 

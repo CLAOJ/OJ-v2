@@ -64,4 +64,4 @@ global.WebSocket = jest.fn().mockImplementation(() => ({
     send: jest.fn(),
     close: jest.fn(),
     readyState: WebSocket.CLOSED,
-}));
+})) as unknown as typeof WebSocket;

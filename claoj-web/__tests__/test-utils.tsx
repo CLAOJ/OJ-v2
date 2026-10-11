@@ -91,7 +91,7 @@ export function createMockFetchResponse(data: any, status: number = 200) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: jest.fn().mockResolvedValue(data),
-    text: jest.fn().mockResolvedValue(JSON.stringify(data)),
+    json: jest.fn<() => Promise<any>>().mockResolvedValue(data),
+    text: jest.fn<() => Promise<string>>().mockResolvedValue(JSON.stringify(data)),
   };
 }
