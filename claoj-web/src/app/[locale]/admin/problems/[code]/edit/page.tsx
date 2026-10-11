@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminProblemApi } from '@/lib/adminApi';
+import { problemToFormData } from '@/lib/adminForms';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
 import { Code2, ArrowLeft, Database, MessageSquare } from 'lucide-react';
@@ -43,22 +44,7 @@ export default function EditProblemPage() {
         );
     }
 
-    const initialData = problemData ? {
-        code: problemData.code,
-        name: problemData.name,
-        description: problemData.description,
-        points: problemData.points,
-        partial: problemData.partial,
-        is_public: problemData.is_public,
-        time_limit: problemData.time_limit,
-        memory_limit: problemData.memory_limit,
-        group_id: problemData.group_id,
-        type_ids: problemData.types?.map((t: any) => t.id),
-        author_ids: problemData.authors?.map((a: any) => a.id),
-        allowed_lang_ids: problemData.allowed_langs?.map((l: any) => l.id),
-        is_manually_managed: problemData.is_manually_managed,
-        pdf_url: problemData.pdf_url,
-    } : undefined;
+    const initialData = problemData ? problemToFormData(problemData) : undefined;
 
     return (
         <div className="space-y-6">
