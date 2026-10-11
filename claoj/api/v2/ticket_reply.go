@@ -20,7 +20,10 @@ type TicketMessageRequest struct {
 // TicketReply - POST /api/v2/ticket/:id/message
 // Adds a message to an existing ticket
 func TicketReply(c *gin.Context) {
-	ticketID := c.Param("id")
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return

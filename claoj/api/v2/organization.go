@@ -66,7 +66,10 @@ func OrganizationList(c *gin.Context) {
 
 // OrganizationDetail – GET /api/v2/organization/:id
 func OrganizationDetail(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	var org models.Organization
 	if err := db.DB.
 		Preload("Members.User").
@@ -140,7 +143,10 @@ func OrganizationDetail(c *gin.Context) {
 // Lets an organization's own administrators edit its settings (distinct from
 // the site-admin endpoint at /admin/organization/:id).
 func UpdateOrganization(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -207,7 +213,10 @@ func UpdateOrganization(c *gin.Context) {
 
 // JoinOrganization – POST /api/v2/organization/:id/join
 func JoinOrganization(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -251,7 +260,10 @@ func JoinOrganization(c *gin.Context) {
 
 // LeaveOrganization – POST /api/v2/organization/:id/leave
 func LeaveOrganization(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -291,7 +303,10 @@ func LeaveOrganization(c *gin.Context) {
 
 // RequestJoinOrganization – POST /api/v2/organization/:id/request
 func RequestJoinOrganization(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -385,7 +400,10 @@ func OrganizationRequestList(c *gin.Context) {
 
 // HandleOrganizationRequest – POST /api/v2/organization/request/:rid/handle
 func HandleOrganizationRequest(c *gin.Context) {
-	rid := c.Param("rid")
+	rid, ok := numericParam(c, "rid")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -448,7 +466,10 @@ func HandleOrganizationRequest(c *gin.Context) {
 
 // KickUser – POST /api/v2/organization/:id/kick
 func KickUser(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return

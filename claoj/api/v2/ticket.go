@@ -157,7 +157,10 @@ func TicketCreate(c *gin.Context) {
 // TicketDetail - GET /api/v2/ticket/:id
 // Gets the contents of a ticket and its messages
 func TicketDetail(c *gin.Context) {
-	ticketID := c.Param("id")
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -332,7 +335,10 @@ func AdminTicketList(c *gin.Context) {
 // AdminTicketDetail - GET /admin/ticket/:id
 // Gets full ticket details including notes and assignees (admin only)
 func AdminTicketDetail(c *gin.Context) {
-	ticketID := c.Param("id")
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var ticket models.Ticket
 	if err := db.DB.Preload("User.User").Preload("Assignees.User").Preload("Messages.User.User").First(&ticket, ticketID).Error; err != nil {

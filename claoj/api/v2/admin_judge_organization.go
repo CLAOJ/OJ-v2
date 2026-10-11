@@ -66,7 +66,10 @@ func AdminJudgeList(c *gin.Context) {
 
 // AdminJudgeBlock - POST /api/v2/admin/judge/:id/block
 func AdminJudgeBlock(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -84,7 +87,10 @@ func AdminJudgeBlock(c *gin.Context) {
 
 // AdminJudgeUnblock - POST /api/v2/admin/judge/:id/unblock
 func AdminJudgeUnblock(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -172,7 +178,10 @@ func AdminJudgeDetail(c *gin.Context) {
 
 // AdminJudgeEnable - POST /api/v2/admin/judge/:id/enable
 func AdminJudgeEnable(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
@@ -190,7 +199,10 @@ func AdminJudgeEnable(c *gin.Context) {
 
 // AdminJudgeDisable - POST /api/v2/admin/judge/:id/disable
 func AdminJudgeDisable(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {

@@ -107,7 +107,10 @@ func ProblemClarificationCreate(c *gin.Context) {
 // ProblemClarificationDelete – DELETE /api/v2/admin/problem/clarification/:id
 // Admin endpoint to delete a problem clarification
 func ProblemClarificationDelete(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
 
 	var clarification models.ProblemClarification
 	if err := db.DB.First(&clarification, id).Error; err != nil {
