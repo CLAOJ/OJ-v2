@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { adminJudgeApi, adminUserApi } from '@/lib/adminApi';
+import { adminJudgeApi, adminUserApi, adminSubmissionApi, adminTicketApi } from '@/lib/adminApi';
 
 jest.mock('@/lib/api', () => ({
     __esModule: true,
@@ -36,5 +36,15 @@ describe('admin judge/user api client', () => {
     it('adminUserApi.ban sends only the reason', () => {
         adminUserApi.ban(3, 'spam');
         expect(mocked.post).toHaveBeenCalledWith('/admin/user/3/ban', { reason: 'spam' });
+    });
+
+    it('adminSubmissionApi.delete deletes /admin/submission/:id', () => {
+        adminSubmissionApi.delete(5);
+        expect(mocked.delete).toHaveBeenCalledWith('/admin/submission/5');
+    });
+
+    it('adminTicketApi.delete deletes /admin/ticket/:id', () => {
+        adminTicketApi.delete(9);
+        expect(mocked.delete).toHaveBeenCalledWith('/admin/ticket/9');
     });
 });

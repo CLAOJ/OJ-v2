@@ -380,6 +380,9 @@ export const adminSubmissionApi = {
     abort: (id: number) =>
         api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/abort`),
 
+    delete: (id: number) =>
+        api.delete<{ success: boolean; message: string }>(`/admin/submission/${id}`),
+
     batchRejudge: (data: BatchRejudgeRequest) =>
         api.post<BatchRejudgeResponse>('/admin/submissions/batch-rejudge', data),
 
@@ -495,6 +498,9 @@ export const adminTicketApi = {
 
     updateNotes: (id: number, notes: string) =>
         api.patch<{ message: string }>(`/admin/ticket/${id}/notes`, { notes }),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/ticket/${id}`),
 };
 
 // ============================================================

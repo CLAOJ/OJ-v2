@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { adminTicketApi, adminUserApi } from '@/lib/adminApi';
+import { adminTicketApi, adminUserApi, adminErrorMessage } from '@/lib/adminApi';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AdminTicketDetail, AdminUser, TicketMessage } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
@@ -26,6 +27,7 @@ import {
     UserPlus,
     FileText,
     ToggleLeft,
+    Trash2,
     Users
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -44,6 +46,7 @@ export default function AdminTicketDetailPage() {
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedAssignees, setSelectedAssignees] = useState<number[]>([]);
     const [userSearch, setUserSearch] = useState('');
+    const [showDelete, setShowDelete] = useState(false);
 
     const { data: ticket, isLoading } = useQuery({
         queryKey: ['admin-ticket', id],
@@ -119,6 +122,15 @@ export default function AdminTicketDetailPage() {
             setShowAssignModal(false);
             setSelectedAssignees([]);
         }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: () => adminTicketApi.delete(parseInt(id)),
+        onSuccess: () => {
+            queryClient.removeQueries({ queryKey: ['admin-ticket', id] });
+            queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+            router.push('/admin/tickets');
+        },
     });
 
     if (isLoading) {
@@ -302,6 +314,18 @@ export default function AdminTicketDetailPage() {
                 </div>
             </div>
 
+            {/* Danger zone */}
+            <div className="flex items-center justify-between gap-4 border border-destructive/30 rounded-md p-4">
+                <p className="text-sm text-muted-foreground">{t('deleteTicketHint')}</p>
+                <button
+                    onClick={() => { deleteMutation.reset(); setShowDelete(true); }}
+                    className="px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium text-sm flex items-center gap-2 transition-all"
+                >
+                    <Trash2 size={16} />
+                    {t('deleteTicketButton')}
+                </button>
+            </div>
+
             {/* Internal Notes */}
             <div className="bg-card border rounded-md p-8 shadow-sm">
                 <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -371,6 +395,23 @@ export default function AdminTicketDetailPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={showDelete}
+                onClose={() => setShowDelete(false)}
+                onConfirm={() => deleteMutation.mutate()}
+                title={t('deleteTicketTitle')}
+                description={t('deleteTicketConfirm')}
+                confirmText={tc('common.delete')}
+                cancelText={tc('common.cancel')}
+                isLoading={deleteMutation.isPending}
+            >
+                {deleteMutation.isError && (
+                    <p role="alert" className="text-sm text-destructive">
+                        {adminErrorMessage(deleteMutation.error, t('deleteTicketError'))}
+                    </p>
+                )}
+            </ConfirmDialog>
 
             {/* Assign Modal */}
             {showAssignModal && (
