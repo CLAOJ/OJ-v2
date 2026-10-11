@@ -75,10 +75,10 @@ export default function APITokenSettingsTab() {
 
     if (tokenInfo?.has_token && !generatedToken) {
         return (
-            <div className="p-6 rounded-2xl border bg-card space-y-4">
+            <div className="p-6 rounded-md border bg-card space-y-4">
                 <div className="flex items-center gap-2 text-amber-600">
                     <Info size={20} />
-                    <span className="font-bold text-sm">{t('apiTokenExistingTitle')}</span>
+                    <span className="font-medium text-sm">{t('apiTokenExistingTitle')}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                     {t('apiTokenExistingDesc')}
@@ -86,7 +86,7 @@ export default function APITokenSettingsTab() {
                 <button
                     onClick={() => revokeToken()}
                     disabled={isRevoking}
-                    className="px-6 py-3 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                    className="px-6 py-3 rounded-xl bg-destructive text-destructive-foreground font-medium text-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
                 >
                     {isRevoking ? t('apiTokenRevoking') : t('apiTokenRevoke')}
                 </button>
@@ -96,10 +96,10 @@ export default function APITokenSettingsTab() {
 
     if (generatedToken) {
         return (
-            <div className="p-6 rounded-2xl border bg-card space-y-4">
+            <div className="p-6 rounded-md border bg-card space-y-4">
                 <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle size={20} />
-                    <span className="font-bold text-sm">{t('apiTokenGeneratedTitle')}</span>
+                    <span className="font-medium text-sm">{t('apiTokenGeneratedTitle')}</span>
                 </div>
                 <div className="p-4 bg-muted rounded-xl">
                     <code className="text-xs break-all">{generatedToken}</code>
@@ -118,7 +118,7 @@ export default function APITokenSettingsTab() {
                         setShowToken(false);
                         setGeneratedToken(null);
                     }}
-                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
+                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
                 >
                     {t('apiTokenDone')}
                 </button>
@@ -129,17 +129,17 @@ export default function APITokenSettingsTab() {
     return (
         <div className="space-y-6">
             <div className="space-y-2">
-                <h2 className="text-2xl font-bold">{t('apiToken')}</h2>
+                <h2 className="text-2xl font-semibold">{t('apiToken')}</h2>
                 <p className="text-muted-foreground text-sm">
                     {t('apiTokenDesc')}
                 </p>
             </div>
 
-            <div className="p-6 rounded-2xl border bg-card">
+            <div className="p-6 rounded-md border bg-card">
                 <button
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {isGenerating && <Loader2 size={16} className="animate-spin" />}
                     {t('apiTokenGenerate')}

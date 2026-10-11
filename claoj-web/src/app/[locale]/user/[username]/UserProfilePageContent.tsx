@@ -90,13 +90,13 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
     if (userLoading) return (
         <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto p-8 animate-pulse">
             <div className="w-full lg:w-72 space-y-6">
-                <Skeleton className="h-48 w-48 rounded-3xl mx-auto" />
+                <Skeleton className="h-48 w-48 rounded-md mx-auto" />
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-32 w-full" />
             </div>
             <div className="flex-1 space-y-6">
                 <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-[50vh] w-full rounded-3xl" />
+                <Skeleton className="h-[50vh] w-full rounded-md" />
             </div>
         </div>
     );
@@ -104,10 +104,10 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
     if (!user) return <div className="p-20 text-center text-muted-foreground">{t('userNotFound')}</div>;
 
     const stats = [
-        { label: t('rank'), value: user.rank ? `#${user.rank}` : '-', icon: Hash, color: 'text-blue-500' },
-        { label: t('points'), value: Math.round(user.points), icon: Award, color: 'text-amber-500' },
-        { label: t('pp'), value: Math.round(user.performance_points), icon: Zap, color: 'text-purple-500' },
-        { label: t('contributionShort'), value: user.contribution_points, icon: Activity, color: 'text-emerald-500' },
+        { label: t('rank'), value: user.rank ? `#${user.rank}` : '-', icon: Hash, color: 'text-muted-foreground' },
+        { label: t('points'), value: Math.round(user.points), icon: Award, color: 'text-muted-foreground' },
+        { label: t('pp'), value: Math.round(user.performance_points), icon: Zap, color: 'text-muted-foreground' },
+        { label: t('contributionShort'), value: user.contribution_points, icon: Activity, color: 'text-muted-foreground' },
     ];
 
     const RatingTooltip = ({ active, payload, label }: any) => {
@@ -115,8 +115,8 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
             const data = payload[0].payload;
             return (
                 <div className="bg-card border p-4 rounded-xl shadow-xl space-y-1">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{dayjs(data.date).format('MMM D, YYYY')}</p>
-                    <p className="text-lg font-black">{data.rating}</p>
+                    <p className="text-xs font-medium text-muted-foreground ">{dayjs(data.date).format('MMM D, YYYY')}</p>
+                    <p className="text-lg font-semibold">{data.rating}</p>
                     <p className="text-xs font-medium text-primary max-w-[200px] truncate">{data.contest}</p>
                 </div>
             );
@@ -127,39 +127,38 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
     const Star = ({ size, className, fill }: any) => <Activity size={size} className={className} />;
 
     return (
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 pb-20 animate-in fade-in duration-700 mt-4">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-4 pb-20 mt-4">
             {/* Left Sidebar */}
             <aside className="w-full lg:w-72 flex flex-col gap-6">
                 {/* Avatar Card */}
-                <div className="bg-card border rounded-3xl overflow-hidden shadow-sm flex flex-col items-center p-8 space-y-4">
+                <div className="bg-card border rounded-md overflow-hidden shadow-sm flex flex-col items-center p-4 space-y-4">
                     <div className="relative group">
                         <img
                             src={`https://www.gravatar.com/avatar/${user.email_hash}?s=200&d=identicon`}
                             alt={user.username}
-                            className="w-40 h-40 rounded-3xl border shadow-inner group-hover:scale-105 transition-transform duration-500"
+                            className="w-40 h-40 rounded-md border"
                         />
-                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
 
                     <div className="text-center space-y-1">
-                        <h1 className="text-2xl font-black tracking-tight">{user.display_name || user.username}</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight">{user.display_name || user.username}</h1>
                         <p className="text-sm font-mono text-muted-foreground">@{user.username}</p>
-                        <Badge variant="outline" className={cn("mt-2 text-[10px] font-black uppercase tracking-widest px-3 py-1", getRankColor(user.rating))}>
+                        <Badge variant="outline" className={cn("mt-2 text-xs font-medium px-3 py-1", getRankColor(user.rating))}>
                             {user.display_rank}
                         </Badge>
                     </div>
                 </div>
 
                 {/* Points Card */}
-                <div className="bg-card border rounded-3xl p-6 shadow-sm space-y-6">
+                <div className="bg-card border rounded-md p-6 shadow-sm space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         {stats.map((s) => (
                             <div key={s.label} className="space-y-1 group">
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                                    <s.icon size={14} className={cn(s.color, "transition-transform group-hover:scale-110")} />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider">{s.label}</span>
+                                    <s.icon size={14} className={cn(s.color, "transition-transform ")} />
+                                    <span className="text-xs font-medium ">{s.label}</span>
                                 </div>
-                                <div className="text-xl font-black tracking-tighter">{s.value}</div>
+                                <div className="text-xl font-semibold tracking-tighter">{s.value}</div>
                             </div>
                         ))}
                     </div>
@@ -167,17 +166,17 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                     <div className="pt-4 border-t space-y-3">
                         <div className="flex justify-between items-center">
                             <span className="text-xs font-medium text-muted-foreground">{t('solvedCount')}</span>
-                            <span className="text-sm font-black">{user.problem_count}</span>
+                            <span className="text-sm font-medium">{user.problem_count}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-xs font-medium text-muted-foreground">{t('ratingRank')}</span>
-                            <span className="text-sm font-black">{user.rating_rank ? `#${user.rating_rank}` : '-'}</span>
+                            <span className="text-sm font-medium">{user.rating_rank ? `#${user.rating_rank}` : '-'}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Additional Info */}
-                <div className="bg-muted/30 border border-dashed rounded-3xl p-6 space-y-4 text-sm">
+                <div className="bg-muted/30 border border-dashed rounded-md p-6 space-y-4 text-sm">
                     <div className="flex items-center gap-3 text-muted-foreground">
                         <Calendar size={16} />
                         <span>{t('joinedOn', { date: dayjs(user.date_joined).format('MMM YYYY') })}</span>
@@ -198,7 +197,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
             {/* Right Content Area */}
             <main className="flex-1 space-y-6">
                 {/* Tabs Navigation */}
-                <div className="flex bg-card border p-1 rounded-2xl shadow-sm sticky top-4 z-10 backdrop-blur-xl bg-card/80 overflow-x-auto no-scrollbar whitespace-nowrap">
+                <div className="flex bg-card border p-1 rounded-md shadow-sm sticky top-4 z-10 overflow-x-auto no-scrollbar whitespace-nowrap">
                     {[
                         { id: 'solved', label: t('solvedProblems'), icon: CheckCircle2 },
                         { id: 'rating', label: t('ratingHistory'), icon: TrendingUp },
@@ -210,9 +209,9 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             //@ts-ignore
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                "flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all",
+                                "flex items-center gap-2 px-6 py-2 rounded text-sm font-medium transition-all",
                                 activeTab === tab.id
-                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
+                                    ? "bg-primary text-primary-foreground"
                                     : "text-muted-foreground hover:bg-muted"
                             )}
                         >
@@ -223,7 +222,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                 </div>
 
                 {/* PP Breakdown Section */}
-                <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                <div className="bg-card border rounded-md p-6 shadow-sm">
                     <button
                         onClick={() => setPpBreakdownOpen(!ppBreakdownOpen)}
                         className="w-full flex items-center justify-between"
@@ -233,12 +232,12 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 <BarChart3 size={20} className="text-primary" />
                             </div>
                             <div className="text-left">
-                                <h3 className="text-lg font-black tracking-tight">{t('ppBreakdownTitle')}</h3>
+                                <h3 className="text-lg font-semibold tracking-tight">{t('ppBreakdownTitle')}</h3>
                                 <p className="text-xs text-muted-foreground">{t('ppBreakdownSubtitle')}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-2xl font-black text-primary">{Math.round(user.performance_points)}</span>
+                            <span className="text-2xl font-semibold text-primary">{Math.round(user.performance_points)}</span>
                             {ppBreakdownOpen ? <ChevronUp size={20} className="text-muted-foreground" /> : <ChevronDown size={20} className="text-muted-foreground" />}
                         </div>
                     </button>
@@ -255,25 +254,25 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 <div className="pt-6 space-y-6">
                                     {ppBreakdownLoading ? (
                                         <div className="space-y-4">
-                                            <Skeleton className="h-24 w-full rounded-2xl" />
-                                            <Skeleton className="h-64 w-full rounded-2xl" />
+                                            <Skeleton className="h-24 w-full rounded-md" />
+                                            <Skeleton className="h-64 w-full rounded-md" />
                                         </div>
                                     ) : ppBreakdown ? (
                                         <>
                                             {/* Summary Cards */}
                                             <div className="grid grid-cols-3 gap-4">
-                                                <div className="bg-muted/30 rounded-2xl p-4 border text-center">
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('weightedSum')}</p>
-                                                    <p className="text-2xl font-black text-primary">{ppBreakdown.weighted_sum.toFixed(2)}</p>
+                                                <div className="bg-muted/30 rounded-md p-4 border text-center">
+                                                    <p className="text-xs font-medium text-muted-foreground">{t('weightedSum')}</p>
+                                                    <p className="text-2xl font-semibold text-primary">{ppBreakdown.weighted_sum.toFixed(2)}</p>
                                                 </div>
-                                                <div className="bg-muted/30 rounded-2xl p-4 border text-center">
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('bonusPoints')}</p>
-                                                    <p className="text-2xl font-black text-emerald-500">{ppBreakdown.bonus.bonus_points.toFixed(2)}</p>
+                                                <div className="bg-muted/30 rounded-md p-4 border text-center">
+                                                    <p className="text-xs font-medium text-muted-foreground">{t('bonusPoints')}</p>
+                                                    <p className="text-2xl font-semibold text-emerald-500">{ppBreakdown.bonus.bonus_points.toFixed(2)}</p>
                                                     <p className="text-xs text-muted-foreground mt-1">{t('problemsSolvedCount', { count: ppBreakdown.bonus.solved_count })}</p>
                                                 </div>
-                                                <div className="bg-primary/10 rounded-2xl p-4 border border-primary/20 text-center">
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('totalPP')}</p>
-                                                    <p className="text-2xl font-black text-primary">{ppBreakdown.total.toFixed(2)}</p>
+                                                <div className="bg-primary/10 rounded-md p-4 border border-primary/20 text-center">
+                                                    <p className="text-xs font-medium text-muted-foreground">{t('totalPP')}</p>
+                                                    <p className="text-2xl font-semibold text-primary">{ppBreakdown.total.toFixed(2)}</p>
                                                 </div>
                                             </div>
 
@@ -282,32 +281,32 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                 <table className="w-full text-left border-collapse">
                                                     <thead>
                                                         <tr className="bg-muted/30 border-b">
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">#</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('problem')}</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('points')}</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('weight')}</th>
-                                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('contribution')}</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-muted-foreground">#</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-muted-foreground">{t('problem')}</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">{t('points')}</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">{t('weight')}</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">{t('contribution')}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-muted/50">
                                                         {ppBreakdown.problems.slice(0, 100).map((p, idx) => (
                                                             <tr key={p.code} className="hover:bg-muted/5 transition-colors">
-                                                                <td className="px-4 py-3 text-sm font-bold text-muted-foreground">{idx + 1}</td>
+                                                                <td className="px-4 py-3 text-sm font-medium text-muted-foreground">{idx + 1}</td>
                                                                 <td className="px-4 py-3">
                                                                     <Link
                                                                         href={`/problem/${p.code}`}
-                                                                        className="text-sm font-black hover:text-primary transition-colors"
+                                                                        className="text-sm font-medium hover:text-primary transition-colors"
                                                                     >
                                                                         {p.code}
                                                                     </Link>
                                                                     <p className="text-xs text-muted-foreground truncate max-w-[200px]">{p.name}</p>
                                                                 </td>
-                                                                <td className="px-4 py-3 text-right text-sm font-black">{p.points.toFixed(2)}</td>
+                                                                <td className="px-4 py-3 text-right text-sm font-medium">{p.points.toFixed(2)}</td>
                                                                 <td className="px-4 py-3 text-right">
-                                                                    <span className="text-xs font-bold text-muted-foreground">{p.weight.toFixed(4)}</span>
+                                                                    <span className="text-xs font-medium text-muted-foreground">{p.weight.toFixed(4)}</span>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-right">
-                                                                    <span className="text-sm font-black text-primary">{p.contribution.toFixed(2)}</span>
+                                                                    <span className="text-sm font-medium text-primary">{p.contribution.toFixed(2)}</span>
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -317,7 +316,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
 
                                             {/* Formula Info */}
                                             <div className="bg-muted/20 rounded-xl p-4 border border-dashed">
-                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('ppFormula')}</p>
+                                                <p className="text-xs font-medium text-muted-foreground mb-2">{t('ppFormula')}</p>
                                                 <code className="text-xs font-mono text-muted-foreground block">
                                                     {t('ppFormulaExpression')}
                                                 </code>
@@ -343,10 +342,10 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 exit={{ opacity: 0, y: -10 }}
                                 className="space-y-6"
                             >
-                                <div className="bg-card border rounded-3xl p-8 shadow-sm">
-                                    <h3 className="text-xl font-black tracking-tight mb-6 flex items-center gap-2">
+                                <div className="bg-card border rounded-md p-4 shadow-sm">
+                                    <h3 className="text-xl font-semibold tracking-tight mb-6 flex items-center gap-2">
                                         {t('solvedProblems')}
-                                        <Badge variant="secondary" className="font-bold">{user.problem_count}</Badge>
+                                        <Badge variant="secondary" className="font-medium">{user.problem_count}</Badge>
                                     </h3>
                                     {solvedLoading ? (
                                         <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
@@ -358,14 +357,14 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                 <Link
                                                     key={p.code}
                                                     href={`/problem/${p.code}`}
-                                                    className="px-3 py-1.5 rounded-lg border bg-muted/30 hover:bg-primary/10 hover:border-primary/50 hover:text-primary text-sm font-bold transition-all"
+                                                    className="px-3 py-1.5 rounded-lg border bg-muted/30 hover:bg-primary/10 hover:border-primary/50 hover:text-primary text-sm font-medium transition-all"
                                                 >
                                                     {p.code}
                                                 </Link>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-center text-muted-foreground italic py-12 border border-dashed rounded-2xl bg-muted/20">{t('noProblemsSolved')}</p>
+                                        <p className="text-center text-muted-foreground italic py-12 border border-dashed rounded-md bg-muted/20">{t('noProblemsSolved')}</p>
                                     )}
                                 </div>
                             </motion.div>
@@ -379,14 +378,14 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 exit={{ opacity: 0, y: -10 }}
                                 className="space-y-6"
                             >
-                                <div className="bg-card border rounded-3xl p-8 shadow-sm">
+                                <div className="bg-card border rounded-md p-4 shadow-sm">
                                     <div className="flex items-center justify-between mb-8">
-                                        <h3 className="text-xl font-black tracking-tight">{t('performanceAndRating')}</h3>
+                                        <h3 className="text-xl font-semibold tracking-tight">{t('performanceAndRating')}</h3>
                                         <div className="flex bg-muted/30 p-1 rounded-xl">
                                             <button
                                                 onClick={() => setRatingView('chart')}
                                                 className={cn(
-                                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+                                                    "px-4 py-2 rounded-lg text-xs font-medium transition-all",
                                                     ratingView === 'chart' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
                                                 )}
                                             >
@@ -395,7 +394,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             <button
                                                 onClick={() => setRatingView('table')}
                                                 className={cn(
-                                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+                                                    "px-4 py-2 rounded-lg text-xs font-medium transition-all",
                                                     ratingView === 'table' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
                                                 )}
                                             >
@@ -407,7 +406,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                     {ratingView === 'chart' ? (
                                         <div className="h-[400px] w-full">
                                             {ratingLoading ? (
-                                                <Skeleton className="h-full w-full rounded-2xl" />
+                                                <Skeleton className="h-full w-full rounded-md" />
                                             ) : ratingData && ratingData.length > 0 ? (
                                                 <ResponsiveContainer width="100%" height="100%">
                                                     <AreaChart data={ratingData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -445,9 +444,9 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     </AreaChart>
                                                 </ResponsiveContainer>
                                             ) : (
-                                                <div className="h-full border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-muted-foreground gap-4">
+                                                <div className="h-full border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground gap-4">
                                                     <TrendingUp size={48} className="opacity-10" />
-                                                    <p className="font-bold">{t('noRatedContests')}</p>
+                                                    <p className="font-medium">{t('noRatedContests')}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -456,11 +455,11 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-muted/30 border-b">
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('date')}</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('contest')}</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('rank')}</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('rating')}</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">{t('rankTitle')}</th>
+                                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('date')}</th>
+                                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('contest')}</th>
+                                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center">{t('rank')}</th>
+                                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center">{t('rating')}</th>
+                                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center">{t('rankTitle')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-muted/50">
@@ -477,20 +476,20 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     ) : ratingData && ratingData.length > 0 ? (
                                                         ratingData.slice().reverse().map((entry, idx) => (
                                                             <tr key={idx} className="hover:bg-muted/5 transition-colors">
-                                                                <td className="px-6 py-4 text-sm font-bold">
+                                                                <td className="px-6 py-4 text-sm font-medium">
                                                                     {dayjs(entry.date).format('MMM D, YYYY')}
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <Link href={`/contest/${entry.contest_key}`} className="text-sm font-black hover:text-primary transition-colors">
+                                                                    <Link href={`/contest/${entry.contest_key}`} className="text-sm font-medium hover:text-primary transition-colors">
                                                                         {entry.contest}
                                                                     </Link>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
-                                                                    <span className="text-sm font-black">{entry.rating >= ratingData[idx]?.rating ? '#' : ''}{idx + 1}</span>
+                                                                    <span className="text-sm font-medium">{entry.rating >= ratingData[idx]?.rating ? '#' : ''}{idx + 1}</span>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className={cn(
-                                                                        "text-xs font-black px-2 py-1 rounded-md",
+                                                                        "text-xs font-medium px-2 py-1 rounded-md",
                                                                         getRankBadgeColor(entry.rating),
                                                                         "text-white"
                                                                     )}>
@@ -498,7 +497,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
-                                                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                                                    <span className="text-xs font-medium text-muted-foreground">
                                                                         {getRankTitle(entry.rating)}
                                                                     </span>
                                                                 </td>
@@ -528,23 +527,23 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 className="grid grid-cols-1 md:grid-cols-2 gap-4"
                             >
                                 {user.organizations.map((org) => (
-                                    <div key={org.id} className="bg-card border rounded-3xl p-6 flex justify-between items-center group hover:border-primary/50 transition-colors shadow-sm">
+                                    <div key={org.id} className="bg-card border rounded-md p-6 flex justify-between items-center group hover:border-primary/50 transition-colors shadow-sm">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center font-black text-lg">
+                                            <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center font-semibold text-lg">
                                                 {org.name[0]}
                                             </div>
                                             <div className="space-y-1">
-                                                <h4 className="font-black tracking-tight group-hover:text-primary transition-colors">{org.name}</h4>
-                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('activeMember')}</p>
+                                                <h4 className="font-medium tracking-tight group-hover:text-primary transition-colors">{org.name}</h4>
+                                                <p className="text-xs font-medium text-muted-foreground ">{t('activeMember')}</p>
                                             </div>
                                         </div>
                                         <ArrowUpRight size={20} className="text-muted-foreground group-hover:text-primary transition-colors" />
                                     </div>
                                 ))}
                                 {user.organizations.length === 0 && (
-                                    <div className="col-span-full py-20 text-center text-muted-foreground border-2 border-dashed rounded-3xl">
+                                    <div className="col-span-full py-20 text-center text-muted-foreground border-2 border-dashed rounded-md">
                                         <Shield size={48} className="mx-auto mb-4 opacity-10" />
-                                        <p className="font-bold italic">{t('noOrganizations')}</p>
+                                        <p className="font-medium italic">{t('noOrganizations')}</p>
                                     </div>
                                 )}
                             </motion.div>
@@ -556,9 +555,9 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="bg-card border rounded-3xl p-8 shadow-sm prose prose-sm dark:prose-invert max-w-none min-h-[40vh]"
+                                className="bg-card border rounded-md p-4 shadow-sm prose prose-sm dark:prose-invert max-w-none min-h-[40vh]"
                             >
-                                <h3 className="text-xl font-black tracking-tight mb-6">{t('aboutUser', { username: user.username })}</h3>
+                                <h3 className="text-xl font-semibold tracking-tight mb-6">{t('aboutUser', { username: user.username })}</h3>
                                 {user.about ? (
                                     <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{user.about}</p>
                                 ) : (

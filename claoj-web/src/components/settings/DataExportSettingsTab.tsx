@@ -40,13 +40,13 @@ export default function DataExportSettingsTab() {
     return (
         <div className="space-y-6">
             <div className="space-y-2">
-                <h2 className="text-2xl font-bold">{t('downloadYourData')}</h2>
+                <h2 className="text-2xl font-semibold">{t('downloadYourData')}</h2>
                 <p className="text-muted-foreground text-sm">
                     {t('dataExportDesc')}
                 </p>
             </div>
 
-            <div className="p-6 rounded-2xl border bg-muted/50 space-y-4">
+            <div className="p-6 rounded-md border bg-muted/50 space-y-4">
                 <div className="flex items-start gap-3">
                     <Info className="w-5 h-5 text-primary mt-0.5" />
                     <div className="space-y-2 text-sm">
@@ -63,8 +63,8 @@ export default function DataExportSettingsTab() {
                 </div>
             </div>
 
-            <div className="p-6 rounded-2xl border bg-card">
-                <h3 className="text-lg font-bold mb-4">{t('exportStatus')}</h3>
+            <div className="p-6 rounded-md border bg-card">
+                <h3 className="text-lg font-semibold mb-4">{t('exportStatus')}</h3>
 
                 {exportStatus ? (
                     <div className="space-y-4">
@@ -99,7 +99,7 @@ export default function DataExportSettingsTab() {
                         {exportStatus.download_url && (
                             <a
                                 href={exportStatus.download_url}
-                                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
                             >
                                 <Download size={16} />
                                 {t('downloadExport')}
@@ -114,7 +114,7 @@ export default function DataExportSettingsTab() {
             <button
                 onClick={() => requestExport()}
                 disabled={isRequesting || !exportStatus?.can_request}
-                className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
                 {isRequesting && <Loader2 size={16} className="animate-spin" />}
                 {t('requestDataExport')}

@@ -115,7 +115,7 @@ export default function ContestCalendarPage() {
                 {WEEKDAY_NAMES.map(day => (
                     <div
                         key={day}
-                        className="bg-muted/50 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                        className="bg-muted/50 py-3 text-center text-xs font-medium text-muted-foreground"
                     >
                         {day}
                     </div>
@@ -138,7 +138,7 @@ export default function ContestCalendarPage() {
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between mb-1">
                                         <span
-                                            className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday
+                                            className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday
                                                     ? 'bg-primary text-primary-foreground'
                                                     : 'text-foreground'
                                                 }`}
@@ -160,7 +160,7 @@ export default function ContestCalendarPage() {
                                                 <Link
                                                     key={contest.key}
                                                     href={`/contest/${contest.key}`}
-                                                    className={`block p-1.5 rounded-md border text-[10px] font-medium transition-all hover:shadow-md ${statusColors[status]}`}
+                                                    className={`block p-1.5 rounded-md border text-xs font-medium transition-all ${statusColors[status]}`}
                                                 >
                                                     <div className="flex items-center gap-1">
                                                         {contest.is_rated && (
@@ -168,7 +168,7 @@ export default function ContestCalendarPage() {
                                                         )}
                                                         <span className="truncate">{contest.name}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1 mt-0.5 text-[9px] opacity-70">
+                                                    <div className="flex items-center gap-1 mt-0.5 text-xs opacity-70">
                                                         <Clock size={7} className="shrink-0" />
                                                         <span className="truncate">
                                                             {dayjs(contest.start_time).format('HH:mm')}
@@ -179,7 +179,7 @@ export default function ContestCalendarPage() {
                                         })}
 
                                         {dayContests.length > 3 && (
-                                            <div className="text-[9px] text-muted-foreground text-center">
+                                            <div className="text-xs text-muted-foreground text-center">
                                                 {t('calendarMoreContests', { count: dayContests.length - 3 })}
                                             </div>
                                         )}
@@ -205,7 +205,7 @@ export default function ContestCalendarPage() {
 
         return (
             <div className="space-y-2">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3">
                     {t('calendarContestsInMonth', { month: MONTH_NAMES[currentMonth - 1], year: String(currentYear) })}
                 </h3>
                 {calendarData.contests.map(contest => {
@@ -235,13 +235,13 @@ export default function ContestCalendarPage() {
                         <Link
                             key={contest.key}
                             href={`/contest/${contest.key}`}
-                            className="block p-4 bg-card rounded-xl border hover:shadow-md transition-all group"
+                            className="block p-4 bg-card rounded-xl border transition-all group"
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Trophy size={16} className="text-primary shrink-0" />
-                                        <h4 className="font-bold text-base group-hover:text-primary transition-colors truncate">
+                                        <h4 className="font-medium text-base group-hover:text-primary transition-colors truncate">
                                             {contest.name}
                                         </h4>
                                     </div>
@@ -276,12 +276,12 @@ export default function ContestCalendarPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500">
+        <div className="max-w-7xl mx-auto space-y-4 pb-12 ">
             {/* Header */}
             <header className="space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
+                        <h1 className="text-4xl font-semibold tracking-tight flex items-center gap-3">
                             <Calendar className="text-primary" size={36} />
                             {t('calendarTitle')}
                         </h1>
@@ -303,12 +303,12 @@ export default function ContestCalendarPage() {
                 </button>
 
                 <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-semibold">
                         {MONTH_NAMES[currentMonth - 1]} {currentYear}
                     </h2>
                     <button
                         onClick={goToToday}
-                        className="px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                     >
                         {t('today')}
                     </button>
@@ -329,7 +329,7 @@ export default function ContestCalendarPage() {
                     <button
                         key={name}
                         onClick={() => goToMonth(currentYear, index + 1)}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${currentMonth === index + 1
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${currentMonth === index + 1
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                             }`}
@@ -359,7 +359,7 @@ export default function ContestCalendarPage() {
 
             {/* Legend */}
             <div className="bg-card rounded-xl border p-4 shadow-sm">
-                <h3 className="text-sm font-bold mb-3">{t('legend')}</h3>
+                <h3 className="text-sm font-semibold mb-3">{t('legend')}</h3>
                 <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-emerald-500/10 border border-emerald-200" />

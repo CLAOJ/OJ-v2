@@ -65,9 +65,9 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
                             aria-labelledby={titleId}
                             aria-describedby={descriptionId}
                             tabIndex={-1}
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
                             transition={{ duration: reduceMotion ? 0 : 0.2 }}
                             className={cn(
                                 "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-popover p-6 shadow-lg outline-none",
@@ -108,7 +108,7 @@ export function DialogTitle({ children, className, id }: DialogTitleProps) {
         }
     }, [id, context]);
 
-    return <h2 id={id} className={cn("text-xl font-bold", className)}>{children}</h2>;
+    return <h2 id={id} className={cn("text-xl font-semibold", className)}>{children}</h2>;
 }
 
 interface DialogDescriptionProps {

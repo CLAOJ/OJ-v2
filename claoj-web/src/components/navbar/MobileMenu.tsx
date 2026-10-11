@@ -61,7 +61,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                     <>
                         {/* Backdrop */}
                         <motion.div
-                            className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm xl:hidden"
+                            className="fixed inset-0 z-[55] bg-black/50 xl:hidden"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -80,12 +80,12 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={drawerTransition}
-                            className="fixed right-0 top-0 z-[60] flex h-[100dvh] w-[85%] max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-2xl xl:hidden"
+                            className="fixed right-0 top-0 z-[60] flex h-[100dvh] w-[85%] max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-lg xl:hidden"
                         >
                             {/* Drawer header with its own close control (the navbar toggle
                                 sits under the backdrop while the drawer is open). */}
                             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
-                                <span className="text-lg font-black tracking-tight">{t('menu')}</span>
+                                <span className="text-lg font-semibold tracking-tight">{t('menu')}</span>
                                 <button
                                     onClick={onToggle}
                                     aria-label={t('closeMenu')}
@@ -103,7 +103,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                         href={link.href}
                                         onClick={onToggle}
                                         className={cn(
-                                            "text-xl font-bold tracking-tight",
+                                            "text-xl font-semibold tracking-tight",
                                             pathname.startsWith(link.href) ? "text-primary" : "text-muted-foreground"
                                         )}
                                     >
@@ -114,7 +114,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                     href="/problems/random"
                                     onClick={onToggle}
                                     className={cn(
-                                        "text-xl font-bold tracking-tight flex items-center gap-2",
+                                        "text-xl font-semibold tracking-tight flex items-center gap-2",
                                         pathname === '/problems/random' ? "text-primary" : "text-muted-foreground"
                                     )}
                                 >
@@ -127,7 +127,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                     <Link
                                         href="/ticket/create"
                                         onClick={onToggle}
-                                        className="flex items-center gap-2 text-yellow-500 font-bold"
+                                        className="flex items-center gap-2 text-yellow-500 font-medium"
                                     >
                                         <Ticket size={18} />
                                         <span>{t('report')}</span>
@@ -145,7 +145,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                         <div className="grid grid-cols-2 gap-4 mt-2">
                                             <Link
                                                 href="/login"
-                                                className="flex items-center justify-center h-12 rounded border border-border font-bold text-muted-foreground hover:bg-muted transition-colors"
+                                                className="flex items-center justify-center h-12 rounded border border-border font-medium text-muted-foreground hover:bg-muted transition-colors"
                                                 onClick={() => {
                                                     rememberLoginRedirect(window.location.pathname);
                                                     onToggle();
@@ -155,7 +155,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                             </Link>
                                             <Link
                                                 href="/register"
-                                                className="flex items-center justify-center h-12 rounded bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all"
+                                                className="flex items-center justify-center h-12 rounded bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all"
                                                 onClick={onToggle}
                                             >
                                                 {t('signup')}
@@ -165,7 +165,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                         <div className="flex flex-col gap-4 mt-2">
                                             <Link
                                                 href={`/user/${user.username}`}
-                                                className="flex items-center gap-3 p-4 rounded bg-primary/10 text-primary font-bold"
+                                                className="flex items-center gap-3 p-4 rounded bg-primary/10 text-primary font-medium"
                                                 onClick={onToggle}
                                             >
                                                 <User size={20} />
@@ -177,7 +177,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                                 <div className="space-y-2">
                                                     <Link
                                                         href="/admin"
-                                                        className="flex items-center gap-3 p-4 rounded bg-warning/15 text-warning font-bold border border-warning/30"
+                                                        className="flex items-center gap-3 p-4 rounded bg-warning/15 text-warning font-medium border border-warning/30"
                                                         onClick={onToggle}
                                                     >
                                                         <Crown size={20} />
@@ -187,28 +187,28 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                                         <Link
                                                             href="/admin/problems"
                                                             onClick={onToggle}
-                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
+                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('problems')}
                                                         </Link>
                                                         <Link
                                                             href="/admin/contests"
                                                             onClick={onToggle}
-                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
+                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('contests')}
                                                         </Link>
                                                         <Link
                                                             href="/admin/users"
                                                             onClick={onToggle}
-                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
+                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('users')}
                                                         </Link>
                                                         <Link
                                                             href="/admin/tickets"
                                                             onClick={onToggle}
-                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-bold text-muted-foreground hover:text-foreground"
+                                                            className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('tickets')}
                                                         </Link>
@@ -218,7 +218,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
 
                                             <Link
                                                 href="/settings"
-                                                className="flex items-center gap-3 p-4 rounded bg-muted font-bold"
+                                                className="flex items-center gap-3 p-4 rounded bg-muted font-medium"
                                                 onClick={onToggle}
                                             >
                                                 <SettingsIcon size={20} />
@@ -226,7 +226,7 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                             </Link>
                                             <button
                                                 onClick={() => { logout(); onToggle(); }}
-                                                className="flex items-center gap-3 p-4 rounded bg-red-500/10 text-red-400 font-bold text-left"
+                                                className="flex items-center gap-3 p-4 rounded bg-red-500/10 text-red-400 font-medium text-left"
                                             >
                                                 <LogOut size={20} />
                                                 <span>{t('logout')}</span>

@@ -97,7 +97,7 @@ export default function OrganizationManagePage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <Building2 size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">{t('notFound')}</h2>
+                <h2 className="text-2xl font-semibold mb-2">{t('notFound')}</h2>
                 <Link href="/organizations" className="text-primary hover:underline">
                     {t('backToOrganizations')}
                 </Link>
@@ -111,7 +111,7 @@ export default function OrganizationManagePage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <Shield size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">{t('accessDenied')}</h2>
+                <h2 className="text-2xl font-semibold mb-2">{t('accessDenied')}</h2>
                 <p className="text-muted-foreground">{t('noManagePermission')}</p>
                 <Link href={`/organization/${org.id}-${org.slug}`} className="text-primary hover:underline mt-4 block">
                     {t('backToOrganization')}
@@ -131,7 +131,7 @@ export default function OrganizationManagePage() {
                     <ArrowLeft size={20} />
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Settings className="text-primary" size={32} />
                         {t('manage')}
                     </h1>
@@ -199,7 +199,7 @@ export default function OrganizationManagePage() {
                             <div className="divide-y">
                                 {requests.data.map((request) => (
                                     <div key={request.id} className="flex items-center gap-4 p-4">
-                                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-semibold">
                                             {request.user.username[0]?.toUpperCase()}
                                         </div>
                                         <div className="flex-1">
@@ -248,14 +248,14 @@ export default function OrganizationManagePage() {
                     <div className="divide-y">
                         {org.members?.map((member) => (
                             <div key={member.id} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
-                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-semibold">
                                     {member.username[0]?.toUpperCase()}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium">{member.username}</span>
                                         {member.role === 'admin' && (
-                                            <Badge className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">
+                                            <Badge className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">
                                                 <Crown size={12} className="inline mr-1" /> {t('admin')}
                                             </Badge>
                                         )}
@@ -334,8 +334,8 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">{t('basicInformation')}</h3>
+            <div className="bg-card rounded-md border p-6 space-y-4">
+                <h3 className="text-lg font-semibold">{t('basicInformation')}</h3>
 
                 <div>
                     <label className="block text-sm font-medium mb-2">{t('name')}</label>
@@ -370,8 +370,8 @@ function EditOrganizationForm({ organization, onSuccess }: { organization: Organ
                 </div>
             </div>
 
-            <div className="bg-card rounded-2xl border p-6 space-y-4">
-                <h3 className="text-lg font-bold">{t('settings')}</h3>
+            <div className="bg-card rounded-md border p-6 space-y-4">
+                <h3 className="text-lg font-semibold">{t('settings')}</h3>
 
                 <div className="flex flex-wrap gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">

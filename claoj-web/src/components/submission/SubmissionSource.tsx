@@ -90,7 +90,7 @@ export default function SubmissionSource({ source, language, className }: Submis
     const syntaxLanguage = resolvePrismLanguage(language);
 
     return (
-        <div className={cn("relative rounded-2xl overflow-hidden border bg-[#1e1e1e]", className)}>
+        <div className={cn("relative rounded-md overflow-hidden border bg-[#1e1e1e]", className)}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-[#333]">
                 <div className="flex items-center gap-2 text-sm text-gray-400">

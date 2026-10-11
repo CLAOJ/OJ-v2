@@ -130,23 +130,23 @@ export default function LoginPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5"
+                className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-extrabold tracking-tight italic text-primary">CLAOJ</h1>
+                    <h1 className="text-3xl font-semibold tracking-tight italic text-primary">CLAOJ</h1>
                     {requiresTotp ? (
                         <>
-                            <h2 className="text-2xl font-bold">{t('totpTitle')}</h2>
+                            <h2 className="text-2xl font-semibold">{t('totpTitle')}</h2>
                             <p className="text-muted-foreground">{t('totpDesc')}</p>
                         </>
                     ) : showWebAuthnForm ? (
                         <>
-                            <h2 className="text-2xl font-bold">{t('passkeyTitle')}</h2>
+                            <h2 className="text-2xl font-semibold">{t('passkeyTitle')}</h2>
                             <p className="text-muted-foreground">{t('passkeyDesc')}</p>
                         </>
                     ) : (
                         <>
-                            <h2 className="text-2xl font-bold">{t('loginTitle')}</h2>
+                            <h2 className="text-2xl font-semibold">{t('loginTitle')}</h2>
                             <p className="text-muted-foreground">{t('loginDesc')}</p>
                         </>
                     )}
@@ -270,7 +270,7 @@ export default function LoginPage() {
                                     </label>
                                     <Link
                                         href="/forgot-password"
-                                        className="text-xs font-bold text-primary hover:underline underline-offset-4 transition-all"
+                                        className="text-xs font-medium text-primary hover:underline underline-offset-4 transition-all"
                                     >
                                         {t('forgotPassword')}
                                     </Link>
@@ -281,7 +281,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                         >
                             {isLoading && <Loader2 size={18} className="animate-spin" />}
                             {t('signIn')}
@@ -295,15 +295,15 @@ export default function LoginPage() {
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-muted-foreground/20"></div>
                             </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-4 text-muted-foreground font-bold tracking-widest">{t('orContinueWith')}</span>
+                            <div className="relative flex justify-center text-xs">
+                                <span className="bg-card px-4 text-muted-foreground font-medium ">{t('orContinueWith')}</span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => handleOAuthLogin('google')}
-                                className="flex items-center justify-center gap-2 h-12 rounded-xl border bg-card hover:bg-muted/50 transition-colors font-bold text-sm"
+                                className="flex items-center justify-center gap-2 h-12 rounded-xl border bg-card hover:bg-muted/50 transition-colors font-medium text-sm"
                             >
                                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -315,7 +315,7 @@ export default function LoginPage() {
                             </button>
                             <button
                                 onClick={() => handleOAuthLogin('github')}
-                                className="flex items-center justify-center gap-2 h-12 rounded-xl border bg-card hover:bg-muted/50 transition-colors font-bold text-sm"
+                                className="flex items-center justify-center gap-2 h-12 rounded-xl border bg-card hover:bg-muted/50 transition-colors font-medium text-sm"
                             >
                                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                                     <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd"/>
@@ -342,7 +342,7 @@ export default function LoginPage() {
 
                         <div className="text-center text-sm text-muted-foreground">
                             {t('noAccount')}{' '}
-                            <Link href="/register" className="font-bold text-primary hover:underline underline-offset-4">
+                            <Link href="/register" className="font-medium text-primary hover:underline underline-offset-4">
                                 {t('signUp')}
                             </Link>
                         </div>
@@ -400,7 +400,7 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="000000"
-                        className="flex h-14 w-full rounded-xl border border-input bg-background px-4 py-2 text-center text-2xl tracking-widest font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                        className="flex h-14 w-full rounded-xl border border-input bg-background px-4 py-2 text-center text-2xl font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
                         autoFocus
                     />
                 </div>
@@ -414,14 +414,14 @@ function TotpForm({ username, onSubmit, onCancel, error, isLoading }: TotpFormPr
                     type="button"
                     onClick={onCancel}
                     disabled={isLoading}
-                    className="flex-1 h-12 rounded-xl border border-input bg-background hover:bg-muted/50 font-bold transition-all"
+                    className="flex-1 h-12 rounded-xl border border-input bg-background hover:bg-muted/50 font-medium transition-all"
                 >
                     {t('back')}
                 </button>
                 <button
                     type="submit"
                     disabled={isLoading || code.length !== 6}
-                    className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                     {isLoading && <Loader2 size={18} className="animate-spin" />}
                     {t('verify')}

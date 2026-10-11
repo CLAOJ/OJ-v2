@@ -80,7 +80,7 @@ export default function AdminJudgesPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Server className="text-primary" size={32} />
                         {t('judges.title')}
                     </h1>
@@ -109,46 +109,46 @@ export default function AdminJudgesPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-success/10 text-success">
                             <Wifi size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => j.online).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => j.online).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.online')}</div>
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
                             <WifiOff size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => !j.online).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => !j.online).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.offline')}</div>
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-warning/10 text-warning">
                             <Shield size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => j.is_blocked).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => j.is_blocked).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.blocked')}</div>
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Power size={20} />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold">{judges.filter(j => j.is_disabled).length}</div>
+                            <div className="text-2xl font-semibold">{judges.filter(j => j.is_disabled).length}</div>
                             <div className="text-sm text-muted-foreground">{t('judges.disabled')}</div>
                         </div>
                     </div>
@@ -157,18 +157,18 @@ export default function AdminJudgesPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-md" />)}
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {filteredJudges.length === 0 ? (
-                        <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
+                        <div className="text-center py-12 rounded-md border border-dashed bg-muted/30">
                             <Server size={48} className="mx-auto text-muted-foreground opacity-20" />
                             <p className="text-muted-foreground mt-4">{t('judges.noJudgesFound')}</p>
                         </div>
                     ) : (
                         filteredJudges.map((judge) => (
-                            <div key={judge.id} className="bg-card rounded-2xl p-6 border hover:shadow-lg transition-shadow">
+                            <div key={judge.id} className="bg-card rounded-md p-6 border">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex items-start gap-4 flex-1">
                                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
@@ -178,7 +178,7 @@ export default function AdminJudgesPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-2 mb-2">
-                                                <h3 className="font-bold text-lg">{judge.name}</h3>
+                                                <h3 className="font-semibold text-lg">{judge.name}</h3>
                                                 <div className="flex gap-1">
                                                     {judge.online ? (
                                                         <Badge variant="success" className="flex items-center gap-1 text-xs">

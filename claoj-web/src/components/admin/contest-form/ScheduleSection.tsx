@@ -48,8 +48,8 @@ interface ScheduleSectionProps {
 export function ScheduleSection({ formData, errors, register }: ScheduleSectionProps) {
     const t = useTranslations('Admin');
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
+        <div className="bg-card rounded-md border p-6 space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Clock size={20} className="text-primary" />
                 {t('contestForm.scheduleTitle')}
             </h3>

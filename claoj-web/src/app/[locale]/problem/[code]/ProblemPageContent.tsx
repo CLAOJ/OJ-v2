@@ -52,7 +52,7 @@ function formatMemoryLimit(kb?: number | null): string {
 const PdfStatementViewer = dynamic(() => import('@/components/ui/PdfStatementViewer'), {
     ssr: false,
     loading: () => (
-        <div className="flex items-center justify-center p-10 bg-card border rounded-3xl shadow-sm">
+        <div className="flex items-center justify-center p-4 bg-card border rounded-md shadow-sm">
             <Loader2 className="animate-spin text-primary" size={28} />
         </div>
     ),
@@ -136,7 +136,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
     if (isLoading) {
         return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh-12rem)] animate-in fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-12rem)] ">
                 <div className="space-y-6 overflow-y-auto pr-4">
                     <Skeleton className="h-10 w-3/4" />
                     <div className="flex gap-4">
@@ -145,29 +145,29 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                     </div>
                     <Skeleton className="h-[60vh] w-full" />
                 </div>
-                <Skeleton className="h-full w-full rounded-2xl" />
+                <Skeleton className="h-full w-full rounded-md" />
             </div>
         );
     }
 
-    if (!problem) return <div className="p-8">{t('notFound')}</div>;
+    if (!problem) return <div className="p-4">{t('notFound')}</div>;
 
     return (
-        <div className="flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-12rem)] animate-in fade-in duration-500 mt-4">
+        <div className="flex flex-col lg:flex-row gap-4 min-h-[calc(100vh-12rem)] mt-4">
             {/* Left Sidebar: Problem Metadata & Status */}
             <aside className="w-full lg:w-72 flex flex-col gap-6 shrink-0 h-fit lg:sticky lg:top-4">
                 {/* Status Card */}
                 <div className={cn(
-                    "relative overflow-hidden rounded-3xl border p-6 flex flex-col items-center gap-4 transition-all duration-700 shadow-sm",
+                    "relative overflow-hidden rounded-md border p-6 flex flex-col items-center gap-4 transition-all shadow-sm",
                     problem.is_solved ? "bg-emerald-50/50 border-emerald-200" :
                         problem.is_attempted ? "bg-amber-50/50 border-amber-200" : "bg-card shadow-sm"
                 )}>
                     {problem.is_solved ? (
-                        <div className="p-4 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 animate-in zoom-in duration-500">
+                        <div className="p-4 rounded-full bg-emerald-500 text-white">
                             <CheckCircle2 size={40} />
                         </div>
                     ) : problem.is_attempted ? (
-                        <div className="p-4 rounded-full bg-amber-500 text-white shadow-lg shadow-amber-500/30">
+                        <div className="p-4 rounded-full bg-amber-500 text-white">
                             <XCircle size={40} />
                         </div>
                     ) : (
@@ -177,37 +177,37 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                     )}
 
                     <div className="text-center space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <p className="text-xs font-medium text-muted-foreground">
                             {problem.is_solved ? t('solved') : problem.is_attempted ? t('attempted') : t('unsolved')}
                         </p>
-                        <h2 className="text-xl font-black tracking-tight">{problem.code}</h2>
+                        <h2 className="text-xl font-semibold tracking-tight">{problem.code}</h2>
                     </div>
 
-                    <div className="absolute top-2 right-2 text-[8px] font-mono text-muted-foreground opacity-30">
+                    <div className="absolute top-2 right-2 text-xs font-mono text-muted-foreground opacity-30">
                         {t('idLabel', { id: String(problem.id) })}
                     </div>
                 </div>
 
                 {/* Submissions Links */}
-                <div className="bg-card border rounded-3xl p-6 shadow-sm space-y-3">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">{t('activity')}</h3>
+                <div className="bg-card border rounded-md p-6 shadow-sm space-y-3">
+                    <h3 className="text-xs font-semibold text-muted-foreground mb-4">{t('activity')}</h3>
                     <Link
                         href={`/submissions?problem=${problem.code}`}
-                        className="flex items-center justify-between group p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none"
+                        className="flex items-center justify-between group p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
                     >
                         <div className="flex items-center gap-3">
-                            <Activity size={18} className="text-primary group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold">{t('allSubmissions')}</span>
+                            <Activity size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">{t('allSubmissions')}</span>
                         </div>
                         <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                     </Link>
                     <Link
                         href={`/submissions?problem=${problem.code}&best=1`}
-                        className="flex items-center justify-between group p-3 rounded-2xl hover:bg-amber-500/5 transition-all outline-none"
+                        className="flex items-center justify-between group p-3 rounded-md hover:bg-amber-500/5 transition-all outline-none"
                     >
                         <div className="flex items-center gap-3">
-                            <Trophy size={18} className="text-amber-500 group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold">{t('bestSolutions')}</span>
+                            <Trophy size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">{t('bestSolutions')}</span>
                         </div>
                         <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                     </Link>
@@ -215,13 +215,13 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                 {/* Editorial Link */}
                 {editorialData?.exists && (
-                    <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                    <div className="bg-card border rounded-md p-6 shadow-sm">
                         <Link
                             href={`/problem/${code}/editorial`}
-                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none"
+                            className="flex items-center gap-3 p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
                         >
-                            <BookOpen size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold">{t('editorial')}</span>
+                            <BookOpen size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">{t('editorial')}</span>
                             <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
                         </Link>
                     </div>
@@ -229,13 +229,13 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                 {/* PDF Statement Link */}
                 {problem.pdf_url && (
-                    <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                    <div className="bg-card border rounded-md p-6 shadow-sm">
                         <button
                             onClick={() => setShowPdfViewer(true)}
-                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none w-full"
+                            className="flex items-center gap-3 p-3 rounded-md hover:bg-primary/5 transition-all outline-none w-full"
                         >
-                            <FileText size={18} className="text-red-500 group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold">{t('pdfViewer.sidebarLabel')}</span>
+                            <FileText size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">{t('pdfViewer.sidebarLabel')}</span>
                             <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
                         </button>
                     </div>
@@ -243,52 +243,52 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                 {/* Problem Clarifications Link */}
                 {clarificationsData && clarificationsData.length > 0 && (
-                    <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                    <div className="bg-card border rounded-md p-6 shadow-sm">
                         <Link
                             href={`#clarifications`}
-                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-primary/5 transition-all outline-none"
+                            className="flex items-center gap-3 p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
                         >
-                            <MessageSquare size={18} className="text-amber-500 group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold">{t('clarificationsCount', { count: clarificationsData.length })}</span>
+                            <MessageSquare size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">{t('clarificationsCount', { count: clarificationsData.length })}</span>
                             <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
                         </Link>
                     </div>
                 )}
 
                 {/* Technical Details */}
-                <div className="bg-card border rounded-3xl p-6 shadow-sm space-y-6">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('details')}</h3>
+                <div className="bg-card border rounded-md p-6 shadow-sm space-y-6">
+                    <h3 className="text-xs font-semibold text-muted-foreground">{t('details')}</h3>
 
                     <div className="space-y-4">
                         <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2 text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                                <Monitor size={14} className="text-blue-500" />
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium ">
+                                <Monitor size={14} className="text-muted-foreground" />
                                 <span>{t('ioMethod')}</span>
                             </div>
-                            <span className="text-sm font-black">{t('standardConsole')}</span>
+                            <span className="text-sm font-medium">{t('standardConsole')}</span>
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2 text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                                <Clock size={14} className="text-purple-500" />
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium ">
+                                <Clock size={14} className="text-muted-foreground" />
                                 <span>{t('timeLimit')}</span>
                             </div>
-                            <span className="text-sm font-black">{problem.time_limit}s</span>
+                            <span className="text-sm font-medium">{problem.time_limit}s</span>
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2 text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                                <HardDrive size={14} className="text-emerald-500" />
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium ">
+                                <HardDrive size={14} className="text-muted-foreground" />
                                 <span>{t('memoryLimit')}</span>
                             </div>
-                            <span className="text-sm font-black">{formatMemoryLimit(problem.memory_limit)}</span>
+                            <span className="text-sm font-medium">{formatMemoryLimit(problem.memory_limit)}</span>
                         </div>
                     </div>
 
                     <div className="pt-4 border-t space-y-2">
                         <div className="flex justify-between items-center text-xs">
                             <span className="text-muted-foreground font-medium">{t('acRate')}</span>
-                            <span className="font-black text-primary">{Math.round(problem.ac_rate)}%</span>
+                            <span className="font-medium text-primary">{Math.round(problem.ac_rate)}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden" role="presentation">
                             <div
@@ -306,28 +306,28 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
             </aside>
 
             {/* Main Content: Statement & Editor */}
-            <div className="flex-1 flex flex-col gap-8 min-w-0">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+            <div className="flex-1 flex flex-col gap-4 min-w-0">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
                     {/* Problem Statement */}
-                    <div className="space-y-8 min-w-0">
+                    <div className="space-y-4 min-w-0">
                         <header className="space-y-2">
-                            <h1 className="text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+                            <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">
                                 {problem.name}
                             </h1>
                             <div className="flex flex-wrap gap-2 pt-2">
                                 {problem.types.map(type => (
-                                    <Badge key={type.name} variant="secondary" className="px-3 py-1 bg-muted/50 font-bold hover:bg-primary hover:text-primary-foreground transition-all cursor-default">
+                                    <Badge key={type.name} variant="secondary" className="px-3 py-1 bg-muted/50 font-medium hover:bg-primary hover:text-primary-foreground transition-all cursor-default">
                                         {type.name}
                                     </Badge>
                                 ))}
-                                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary font-black px-3 py-1">
+                                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary font-medium px-3 py-1">
                                     {problem.points} {t('points')}
                                 </Badge>
                             </div>
                         </header>
 
                         {(problem.description?.trim() || !problem.pdf_url) && (
-                            <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-3xl p-8 lg:p-10 shadow-sm leading-relaxed">
+                            <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-md p-4 shadow-sm leading-relaxed">
                                 <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
                             </div>
                         )}
@@ -335,11 +335,11 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                         {/* Authors & Group */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-muted/30 border border-dashed rounded-3xl p-6 flex flex-col gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <div className="bg-muted/30 border border-dashed rounded-md p-6 flex flex-col gap-2">
+                                <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                                     <UserIcon size={12} /> {t('authors')}
                                 </span>
-                                <div className="flex flex-wrap gap-2 text-sm font-bold">
+                                <div className="flex flex-wrap gap-2 text-sm font-medium">
                                     {problem.authors.map(a => (
                                         <Link key={a.username} href={`/user/${a.username}`} className="hover:text-primary transition-colors">
                                             @{a.username}
@@ -347,24 +347,24 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                                     ))}
                                 </div>
                             </div>
-                            <div className="bg-muted/30 border border-dashed rounded-3xl p-6 flex flex-col gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <div className="bg-muted/30 border border-dashed rounded-md p-6 flex flex-col gap-2">
+                                <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                                     <Tag size={12} /> {t('group')}
                                 </span>
-                                <span className="text-sm font-bold truncate">{problem.group}</span>
+                                <span className="text-sm font-medium truncate">{problem.group}</span>
                             </div>
                         </div>
 
                         {/* Problem Clarifications */}
                         {clarificationsData && clarificationsData.length > 0 && (
                             <section id="clarifications" className="space-y-4">
-                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                <h2 className="text-2xl font-semibold flex items-center gap-2">
                                     <MessageSquare className="w-6 h-6" />
                                     {t('problemClarifications')}
                                 </h2>
                                 <div className="space-y-3">
                                     {clarificationsData.map((clar) => (
-                                        <div key={clar.id} className="bg-card border rounded-2xl p-6">
+                                        <div key={clar.id} className="bg-card border rounded-md p-6">
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                                                 <Clock className="w-4 h-4" />
                                                 {new Date(clar.date).toLocaleString()}
@@ -383,11 +383,11 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                     {/* Editor Section */}
                     <div className="flex flex-col gap-4 lg:sticky lg:top-4 h-[75vh] xl:h-[85vh]">
-                        <div className="flex justify-between items-center bg-card border p-2 rounded-2xl shadow-sm">
+                        <div className="flex justify-between items-center bg-card border p-2 rounded-md shadow-sm">
                             <div className="flex items-center gap-2 pl-2">
-                                <Code2 size={16} className="text-primary" />
+                                <Code2 size={16} className="text-muted-foreground" />
                                 <select
-                                    className="bg-transparent font-black outline-none text-xs cursor-pointer hover:text-primary transition-colors"
+                                    className="bg-transparent font-medium outline-none text-xs cursor-pointer hover:text-primary transition-colors"
                                     value={language}
                                     onChange={(e) => setLanguage(e.target.value)}
                                 >
@@ -400,14 +400,14 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                             <button
                                 onClick={() => requireAuth(() => submitCode(), tAuth('loginToSubmit'))}
                                 disabled={isSubmitting}
-                                className="flex items-center gap-2 px-8 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-black shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all disabled:opacity-50"
                             >
                                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                                 {t('submit')}
                             </button>
                         </div>
 
-                        <div className="flex-1 rounded-3xl border overflow-hidden shadow-inner bg-[#1e1e1e]">
+                        <div className="flex-1 rounded-md border overflow-hidden shadow-inner bg-[#1e1e1e]">
                             <CodeEditor
                                 value={codeValue}
                                 onChange={(val) => setCodeValue(val || '')}
@@ -420,7 +420,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
             {/* PDF Viewer Modal */}
             {showPdfViewer && problem.pdf_url && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="relative w-full h-full max-w-7xl mx-auto p-4">
                         {/* Modal header */}
                         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
@@ -428,7 +428,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                                 href={problemPdfApi.getPdfUrl(code)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:scale-105 transition-all font-bold shadow-lg"
+                                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-all font-medium"
                             >
                                 <ArrowUpRight size={16} />
                                 {t('pdfViewer.openNewTab')}
@@ -443,7 +443,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         </div>
 
                         {/* PDF viewer */}
-                        <div className="w-full h-full overflow-hidden rounded-lg shadow-2xl">
+                        <div className="w-full h-full overflow-hidden rounded-lg shadow-2xl">{/* ui-check-allow: floating modal surface */}
                             <PdfStatementViewer code={code} variant="modal" />
                         </div>
                     </div>

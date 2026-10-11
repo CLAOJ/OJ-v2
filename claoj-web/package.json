@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:integration": "jest --testPathPattern=integration --coverage",
     "i18n:check": "node scripts/check-i18n.mjs",
-    "i18n:usage": "node scripts/check-i18n-usage.mjs"
+    "i18n:usage": "node scripts/check-i18n-usage.mjs",
+    "ui:check": "node scripts/check-ui-slop.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

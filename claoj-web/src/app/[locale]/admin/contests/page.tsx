@@ -68,7 +68,7 @@ export default function AdminContestPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Trophy className="text-primary" size={32} />
                         {t('contests.title')}
                     </h1>
@@ -107,18 +107,18 @@ export default function AdminContestPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-md" />)}
                 </div>
             ) : (
-                <div className="bg-card rounded-2xl border overflow-hidden">
+                <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colContest')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colSettings')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colContest')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colTime')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colSettings')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -132,14 +132,14 @@ export default function AdminContestPage() {
                                     filteredContests.map((contest) => (
                                         <tr key={contest.key} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-sm mb-1">{contest.name}</div>
+                                                <div className="font-medium text-sm mb-1">{contest.name}</div>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <span className="font-mono">{contest.key}</span>
                                                     {contest.is_rated && (
-                                                        <Badge variant="warning" className="text-[10px]">{t('contests.rated')}</Badge>
+                                                        <Badge variant="warning" className="text-xs">{t('contests.rated')}</Badge>
                                                     )}
                                                     {contest.is_organization_private && (
-                                                        <Badge variant="secondary" className="text-[10px]">{t('contests.private')}</Badge>
+                                                        <Badge variant="secondary" className="text-xs">{t('contests.private')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
@@ -220,7 +220,7 @@ export default function AdminContestPage() {
                                 >
                                     {t('common.previous')}
                                 </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
+                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
                                     {page}
                                 </div>
                                 <button
@@ -294,12 +294,12 @@ function CloneContestModal({ open, onOpenChange, contestKey, contestName, onSucc
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" />
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                <div className="bg-card rounded-2xl border shadow-2xl w-full max-w-md pointer-events-auto">
+                <div className="bg-card rounded-md border shadow-lg w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
-                            <h2 className="text-xl font-bold">{t('contests.cloneModalTitle')}</h2>
+                            <h2 className="text-xl font-semibold">{t('contests.cloneModalTitle')}</h2>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {t('contests.cloneModalSubtitle', { name: contestName })}
                             </p>

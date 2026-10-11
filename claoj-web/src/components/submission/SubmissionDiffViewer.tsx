@@ -74,9 +74,9 @@ export default function SubmissionDiffViewer({
 
     if (error) {
         return (
-            <div className="p-8 text-center space-y-4">
+            <div className="p-4 text-center space-y-4">
                 <AlertCircle size={48} className="mx-auto text-red-500" />
-                <h3 className="text-lg font-bold">{t('diffLoadFailed')}</h3>
+                <h3 className="text-lg font-semibold">{t('diffLoadFailed')}</h3>
                 <p className="text-muted-foreground">
                     {(error as Error).message || t('diffCompareFailed')}
                 </p>
@@ -91,10 +91,10 @@ export default function SubmissionDiffViewer({
     return (
         <div className="space-y-6">
             {/* Header with submission info */}
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card border rounded-2xl p-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card border rounded-md p-6">
                 <div className="flex items-center gap-4">
-                    <GitCompare size={24} className="text-primary" />
-                    <h2 className="text-xl font-bold">{t('submissionComparison')}</h2>
+                    <GitCompare size={24} className="text-muted-foreground" />
+                    <h2 className="text-xl font-semibold">{t('submissionComparison')}</h2>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -103,7 +103,7 @@ export default function SubmissionDiffViewer({
                         <button
                             onClick={() => setViewMode('side-by-side')}
                             className={cn(
-                                "px-4 py-2 rounded-lg text-sm font-bold transition-colors",
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                                 viewMode === 'side-by-side'
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted text-muted-foreground hover:bg-primary/10"
@@ -114,7 +114,7 @@ export default function SubmissionDiffViewer({
                         <button
                             onClick={() => setViewMode('unified')}
                             className={cn(
-                                "px-4 py-2 rounded-lg text-sm font-bold transition-colors",
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                                 viewMode === 'unified'
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted text-muted-foreground hover:bg-primary/10"
@@ -150,12 +150,12 @@ export default function SubmissionDiffViewer({
             {/* Diff stats */}
             <div className="flex gap-4 items-center">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
-                    <span className="text-sm font-bold text-red-500">
+                    <span className="text-sm font-medium text-red-500">
                         {t('deletionsCount', { count: data.stats.deletions })}
                     </span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <span className="text-sm font-bold text-emerald-500">
+                    <span className="text-sm font-medium text-emerald-500">
                         {t('additionsCount', { count: data.stats.additions })}
                     </span>
                 </div>

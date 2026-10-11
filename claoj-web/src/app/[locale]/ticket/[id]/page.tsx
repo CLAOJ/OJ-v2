@@ -67,8 +67,8 @@ export default function TicketDetailPage() {
         return (
             <div className="max-w-4xl mx-auto space-y-8 mt-4 pb-20">
                 <Skeleton className="h-12 w-48 rounded-xl" />
-                <Skeleton className="h-64 rounded-[2.5rem]" />
-                <Skeleton className="h-96 rounded-[2.5rem]" />
+                <Skeleton className="h-64 rounded-md" />
+                <Skeleton className="h-96 rounded-md" />
             </div>
         );
     }
@@ -77,11 +77,11 @@ export default function TicketDetailPage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">{t('notFound')}</h2>
+                <h2 className="text-2xl font-semibold mb-2">{t('notFound')}</h2>
                 <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/tickets"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                 >
                     <ArrowLeft size={18} />
                     {t('backToTickets')}
@@ -108,23 +108,23 @@ export default function TicketDetailPage() {
             )}
         >
             <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-black text-lg",
+                "w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 font-semibold text-lg",
                 isOP ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
             )}>
                 {message.username[0]?.toUpperCase()}
             </div>
             <div className={cn(
-                "flex-1 bg-card border rounded-[2rem] p-6",
+                "flex-1 bg-card border rounded-md p-6",
                 isOP ? "" : "bg-muted/30"
             )}>
                 <div className="flex items-center gap-3 mb-3">
-                    <span className="font-black">{message.username}</span>
+                    <span className="font-medium">{message.username}</span>
                     {isOP && (
-                        <Badge className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/20">
+                        <Badge className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
                             <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
                         </Badge>
                     )}
-                    <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+                    <span className="text-xs text-muted-foreground font-mono ml-auto">
                         {dayjs(message.time).format('MMM D, YYYY [at] HH:mm')}
                     </span>
                 </div>
@@ -136,18 +136,18 @@ export default function TicketDetailPage() {
     );
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-700 mt-4 pb-20">
+        <div className="max-w-4xl mx-auto space-y-8 mt-4 pb-20">
             {/* Back Button */}
             <Link
                 href="/tickets"
-                className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />
                 {t('backToTickets')}
             </Link>
 
             {/* Header */}
-            <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
+            <div className="bg-card border rounded-md p-8 shadow-sm">
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4 flex-1">
                         {!ticket.is_open ? (
@@ -156,23 +156,23 @@ export default function TicketDetailPage() {
                             <AlertCircle size={32} className="text-amber-500 flex-shrink-0" />
                         )}
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight mb-2">{ticket.title}</h1>
+                            <h1 className="text-3xl font-semibold tracking-tight mb-2">{ticket.title}</h1>
                             <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <User size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-xs font-medium ">
                                         {ticket.creator}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <Clock size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-xs font-medium ">
                                         {t('createdLabel', { time: dayjs(ticket.created).fromNow() })}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <MessageSquare size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-xs font-medium ">
                                         {t('messagesCount', { count: ticket.messages.length })}
                                     </span>
                                 </div>
@@ -181,11 +181,11 @@ export default function TicketDetailPage() {
                     </div>
                     <div className="flex-shrink-0">
                         {!ticket.is_open ? (
-                            <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest px-4 py-2">
+                            <Badge variant="secondary" className="text-xs font-medium px-4 py-2">
                                 {t('closed')}
                             </Badge>
                         ) : (
-                            <Badge className="text-[10px] font-black uppercase tracking-widest px-4 py-2 bg-amber-500/10 text-amber-500 border-amber-500/20">
+                            <Badge className="text-xs font-medium px-4 py-2 bg-amber-500/10 text-amber-500 border-amber-500/20">
                                 {t('open')}
                             </Badge>
                         )}
@@ -195,7 +195,7 @@ export default function TicketDetailPage() {
                 {ticket.linked_item && (
                     <Link
                         href={ticket.linked_item.type === 'problem' ? `/problem/${ticket.linked_item.code}` : `/contest/${ticket.linked_item.key}`}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 text-muted-foreground text-sm font-bold hover:bg-primary/10 hover:text-primary transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                         <AlertCircle size={16} />
                         {ticket.linked_item.name}
@@ -214,17 +214,17 @@ export default function TicketDetailPage() {
                         />
                     ))
                 ) : (
-                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-[3rem]">
+                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-md">
                         <MessageSquare size={48} className="mx-auto mb-4 opacity-10" />
-                        <p className="font-bold">{t('noMessagesYet')}</p>
+                        <p className="font-medium">{t('noMessagesYet')}</p>
                     </div>
                 )}
             </div>
 
             {/* Reply Form */}
             {ticket.is_open && (
-                <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
-                    <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                <div className="bg-card border rounded-md p-8 shadow-sm">
+                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                         <MessageSquare size={20} className="text-primary" />
                         {t('replyToTicket')}
                     </h3>
@@ -234,13 +234,13 @@ export default function TicketDetailPage() {
                             onChange={(e) => setReplyContent(e.target.value)}
                             placeholder={t('replyPlaceholder')}
                             rows={6}
-                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={handleReply}
                                 disabled={replyMutation.isPending || !replyContent.trim()}
-                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/20"
+                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 "
                             >
                                 {replyMutation.isPending ? (
                                     <Loader2 size={18} className="animate-spin" />
@@ -255,9 +255,9 @@ export default function TicketDetailPage() {
             )}
 
             {!ticket.is_open && (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-[3rem]">
+                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-md">
                     <CheckCircle2 size={32} className="mx-auto mb-2 opacity-20" />
-                    <p className="font-bold">{t('closedMessage')}</p>
+                    <p className="font-medium">{t('closedMessage')}</p>
                     <p className="text-sm">{t('noMoreReplies')}</p>
                 </div>
             )}

@@ -44,13 +44,13 @@ export function SideBySideDiff({ diffLines }: SideBySideDiffProps) {
     const maxLines = Math.max(leftLines.length, rightLines.length);
 
     return (
-        <div className="bg-card border rounded-2xl overflow-hidden">
+        <div className="bg-card border rounded-md overflow-hidden">
             <div className="grid grid-cols-2 border-b">
-                <div className="p-3 bg-red-500/10 text-center text-sm font-bold text-red-500">
+                <div className="p-3 bg-red-500/10 text-center text-sm font-medium text-red-500">
                     <Minus size={16} className="inline mr-1" />
                     {t('diffRemoved')}
                 </div>
-                <div className="p-3 bg-emerald-500/10 text-center text-sm font-bold text-emerald-500">
+                <div className="p-3 bg-emerald-500/10 text-center text-sm font-medium text-emerald-500">
                     <Plus size={16} className="inline mr-1" />
                     {t('diffAdded')}
                 </div>

@@ -18,8 +18,8 @@ interface ProblemsSectionProps {
 export function ProblemsSection({ problems, selectedProblems, onProblemToggle }: ProblemsSectionProps) {
     const t = useTranslations('Admin');
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{t('contestForm.problemsTitle')}</h3>
+        <div className="bg-card rounded-md border p-6 space-y-4">
+            <h3 className="text-lg font-semibold">{t('contestForm.problemsTitle')}</h3>
             <p className="text-sm text-muted-foreground">
                 {t('contestForm.problemsDesc')}
             </p>

@@ -33,8 +33,8 @@ export function AuthorsSection({
     const t = useTranslations('Problems');
 
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{t('authorsAndLanguages')}</h3>
+        <div className="bg-card rounded-md border p-6 space-y-4">
+            <h3 className="text-lg font-semibold">{t('authorsAndLanguages')}</h3>
 
             <div>
                 <label htmlFor="problem-authors" className="text-sm font-medium text-muted-foreground block mb-2">

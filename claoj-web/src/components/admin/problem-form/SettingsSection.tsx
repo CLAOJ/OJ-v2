@@ -36,8 +36,8 @@ export function SettingsSection({ settings, register }: SettingsSectionProps) {
     const t = useTranslations('Admin');
 
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{t('problemForm.settingsTitle')}</h3>
+        <div className="bg-card rounded-md border p-6 space-y-4">
+            <h3 className="text-lg font-semibold">{t('problemForm.settingsTitle')}</h3>
 
             <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">

@@ -164,7 +164,7 @@ export default function AdminGroupsPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <Shield className="text-primary" size={32} />
                         {t('title')}
                     </h1>
@@ -189,7 +189,7 @@ export default function AdminGroupsPage() {
             {groupsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <Skeleton key={i} className="h-32 rounded-2xl" />
+                        <Skeleton key={i} className="h-32 rounded-md" />
                     ))}
                 </div>
             ) : groupsError ? null : groups.length === 0 ? (
@@ -200,17 +200,17 @@ export default function AdminGroupsPage() {
                         <div
                             key={group.id}
                             className={cn(
-                                'bg-card rounded-2xl border p-6 cursor-pointer transition-all hover:shadow-lg hover:border-primary/30',
+                                'bg-card rounded-md border p-6 cursor-pointer transition-all hover:border-primary/30',
                                 selectedGroupId === group.id && 'ring-2 ring-primary border-primary'
                             )}
                             onClick={() => setSelectedGroupId(group.id)}
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg bg-primary/10 text-primary">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-semibold text-lg bg-primary/10 text-primary">
                                         {group.name[0]?.toUpperCase()}
                                     </div>
-                                    <h3 className="font-bold text-lg">{group.name}</h3>
+                                    <h3 className="font-semibold text-lg">{group.name}</h3>
                                 </div>
                                 <div className="flex gap-1">
                                     <button
@@ -254,13 +254,13 @@ export default function AdminGroupsPage() {
 
             {/* Group Detail Panel */}
             {selectedGroupId !== null && (
-                <div className="bg-card rounded-2xl border p-6">
+                <div className="bg-card rounded-md border p-6">
                     {detailLoading || !selectedGroup ? (
                         <Skeleton className="h-64 rounded-xl" />
                     ) : (
                         <>
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold">{selectedGroup.name}</h2>
+                                <h2 className="text-xl font-semibold">{selectedGroup.name}</h2>
                                 <button
                                     onClick={() => setSelectedGroupId(null)}
                                     className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -273,7 +273,7 @@ export default function AdminGroupsPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Members */}
                                 <div>
-                                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                                    <h3 className="font-semibold mb-4 flex items-center gap-2">
                                         <Users size={18} />
                                         {t('members')} ({selectedGroup.users.length})
                                     </h3>
@@ -346,7 +346,7 @@ export default function AdminGroupsPage() {
 
                                 {/* Permissions */}
                                 <div>
-                                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                                    <h3 className="font-semibold mb-4 flex items-center gap-2">
                                         <Key size={18} />
                                         {t('permissions')} ({selectedGroup.permission_ids.length})
                                     </h3>
@@ -427,7 +427,7 @@ function PermissionPicker({ permissionsByAppModel, selectedIds, onToggle, emptyL
                 const models = Object.keys(permissionsByAppModel[appLabel]).sort();
                 return (
                     <div key={appLabel}>
-                        <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2">{appLabel}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">{appLabel}</h4>
                         {models.map((model) => (
                             <div key={model} className="mb-3">
                                 <p className="text-xs text-muted-foreground mb-1">{model}</p>

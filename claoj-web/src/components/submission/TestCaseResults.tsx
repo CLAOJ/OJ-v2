@@ -56,7 +56,7 @@ function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded
                 {/* Status */}
                 <div className="col-span-3 flex items-center gap-2">
                     {STATUS_ICONS[tc.status] || <AlertCircle size={16} className="text-zinc-500" />}
-                    <span className={cn("font-bold", getStatusColor(tc.status))} title={tc.status}>
+                    <span className={cn("font-medium", getStatusColor(tc.status))} title={tc.status}>
                         {t(`status.${statusKey(tc.status)}`)}
                     </span>
                 </div>
@@ -74,7 +74,7 @@ function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded
                 {/* Score */}
                 <div className="col-span-3 text-right">
                     {tc.points !== null && tc.total !== null ? (
-                        <span className="font-mono font-bold">
+                        <span className="font-mono font-medium">
                             <span className={tc.points > 0 ? "text-emerald-500" : "text-destructive"}>
                                 {tc.points}
                             </span>
@@ -99,19 +99,19 @@ function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded
                     <div className="space-y-3">
                         {tc.feedback && (
                             <div>
-                                <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('feedback')}</h5>
+                                <h5 className="text-xs font-medium text-muted-foreground mb-1">{t('feedback')}</h5>
                                 <p className="text-sm whitespace-pre-wrap">{tc.feedback}</p>
                             </div>
                         )}
                         {tc.extended_feedback && (
                             <div>
-                                <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('extendedFeedback')}</h5>
+                                <h5 className="text-xs font-medium text-muted-foreground mb-1">{t('extendedFeedback')}</h5>
                                 <pre className="text-sm bg-background p-3 rounded-lg overflow-x-auto">{tc.extended_feedback}</pre>
                             </div>
                         )}
                         {tc.output && (
                             <div>
-                                <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('output')}</h5>
+                                <h5 className="text-xs font-medium text-muted-foreground mb-1">{t('output')}</h5>
                                 <pre className="text-sm bg-background p-3 rounded-lg overflow-x-auto font-mono">{tc.output}</pre>
                             </div>
                         )}
@@ -138,7 +138,7 @@ export default function TestCaseResults({ testCases, className }: TestCaseResult
 
     if (testCases.length === 0) {
         return (
-            <div className={cn("border rounded-2xl bg-card p-8 text-center", className)}>
+            <div className={cn("border rounded-md bg-card p-4 text-center", className)}>
                 <p className="text-muted-foreground">{t('noTestCases')}</p>
             </div>
         );
@@ -151,11 +151,11 @@ export default function TestCaseResults({ testCases, className }: TestCaseResult
     const maxMemory = Math.max(...testCases.map(tc => tc.memory || 0));
 
     return (
-        <div className={cn("border rounded-2xl bg-card overflow-hidden", className)}>
+        <div className={cn("border rounded-md bg-card overflow-hidden", className)}>
             {/* Summary Header */}
             <div className="px-4 py-3 bg-muted/50 border-b">
                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                    <span className="font-bold">
+                    <span className="font-medium">
                         {t('testCases')}:{' '}
                         <span className={passedCount === totalCount ? "text-emerald-500" : "text-amber-500"}>
                             {passedCount}/{totalCount} {t('passed')}
@@ -173,7 +173,7 @@ export default function TestCaseResults({ testCases, className }: TestCaseResult
             </div>
 
             {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/30 border-b text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/30 border-b text-xs font-medium text-muted-foreground">
                 <div className="col-span-1 text-center">#</div>
                 <div className="col-span-3">{t('resultHeader')}</div>
                 <div className="col-span-2 text-right">{t('timeHeader')}</div>

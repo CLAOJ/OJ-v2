@@ -12,9 +12,9 @@ export function UnifiedDiff({ diff }: UnifiedDiffProps) {
     const lines = diff.split('\n');
 
     return (
-        <div className="bg-card border rounded-2xl overflow-hidden">
+        <div className="bg-card border rounded-md overflow-hidden">
             <div className="p-3 bg-muted/50 border-b">
-                <span className="text-sm font-bold text-muted-foreground">{t('unifiedDiff')}</span>
+                <span className="text-sm font-medium text-muted-foreground">{t('unifiedDiff')}</span>
             </div>
             <div className="max-h-[60vh] overflow-auto font-mono text-sm">
                 {lines.map((line, idx) => {

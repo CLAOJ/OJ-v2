@@ -187,9 +187,9 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
 
     if (isLoading) {
         return (
-            <div className="max-w-7xl mx-auto space-y-8 p-4">
+            <div className="max-w-7xl mx-auto space-y-4 p-4">
                 <Skeleton className="h-32 w-full" />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <Skeleton className="h-[60vh] lg:col-span-2" />
                     <Skeleton className="h-[60vh]" />
                 </div>
@@ -201,11 +201,11 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center space-y-4">
                 <AlertCircle size={48} className="mx-auto text-muted-foreground" />
-                <h2 className="text-2xl font-bold">{t('notFound')}</h2>
+                <h2 className="text-2xl font-semibold">{t('notFound')}</h2>
                 <p className="text-muted-foreground">{t('notFoundDesc')}</p>
                 <Link
                     href="/submissions"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
                 >
                     <ArrowLeft size={18} />
                     {t('backToSubmissions')}
@@ -215,7 +215,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     );
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 p-4">
+        <div className="max-w-7xl mx-auto space-y-4 pb-20 p-4">
             {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Link href="/submissions" className="hover:text-foreground transition-colors">
@@ -229,19 +229,19 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
             <motion.header
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-card border rounded-3xl p-6 md:p-8 shadow-sm"
+                className="bg-card border rounded-md p-6 shadow-sm"
             >
                 <div className="flex flex-col lg:flex-row justify-between gap-6">
                     {/* Left: Title & Info */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 flex-wrap">
-                            <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+                            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
                                 {t('submissionNumber')}{id}
                             </h1>
                             {sub.result && (
                                 <Badge
                                     variant={getStatusVariant(sub.result)}
-                                    className="text-sm px-4 py-1.5 font-black tracking-wider uppercase"
+                                    className="text-sm px-4 py-1.5 font-medium"
                                 >
                                     <span className="flex items-center gap-1.5">
                                         {resultInfo?.icon}
@@ -251,7 +251,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             )}
                             {/* Live indicator for grading submissions */}
                             {['QU', 'P', 'G'].includes(sub.status || '') && (
-                                <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold animate-pulse">
+                                <span className="flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-500 text-xs font-medium animate-pulse">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                     {t('liveUpdates')}
                                 </span>
@@ -302,24 +302,24 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
 
                     {/* Right: Stats */}
                     <div className="flex gap-3 flex-wrap">
-                        <div className="px-6 py-4 rounded-2xl bg-primary/5 border border-primary/10 text-center min-w-[100px]">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">{t('score')}</span>
-                            <span className="text-2xl font-black text-primary">
+                        <div className="px-6 py-4 rounded-md bg-primary/5 border border-primary/10 text-center min-w-[100px]">
+                            <span className="text-xs text-muted-foreground block mb-1">{t('score')}</span>
+                            <span className="text-2xl font-semibold text-primary">
                                 {sub.points !== null ? sub.points.toFixed(0) : '-'}
                                 {sub.case_total > 0 && (
                                     <span className="text-sm text-muted-foreground font-medium">/{sub.case_total}</span>
                                 )}
                             </span>
                         </div>
-                        <div className="px-6 py-4 rounded-2xl bg-card border text-center min-w-[100px]">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">{t('time')}</span>
-                            <span className="text-2xl font-black">
+                        <div className="px-6 py-4 rounded-md bg-card border text-center min-w-[100px]">
+                            <span className="text-xs text-muted-foreground block mb-1">{t('time')}</span>
+                            <span className="text-2xl font-semibold">
                                 {sub.time !== null ? `${sub.time.toFixed(2)}s` : '-'}
                             </span>
                         </div>
-                        <div className="px-6 py-4 rounded-2xl bg-card border text-center min-w-[100px]">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">{t('memory')}</span>
-                            <span className="text-2xl font-black">
+                        <div className="px-6 py-4 rounded-md bg-card border text-center min-w-[100px]">
+                            <span className="text-xs text-muted-foreground block mb-1">{t('memory')}</span>
+                            <span className="text-2xl font-semibold">
                                 {sub.memory !== null ? `${sub.memory.toFixed(1)}MB` : '-'}
                             </span>
                         </div>
@@ -333,7 +333,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                         <button
                             onClick={handleRejudge}
                             disabled={isRejudging}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 font-bold text-sm transition-colors disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 font-medium text-sm transition-colors disabled:opacity-50"
                         >
                             {isRejudging ? (
                                 <Loader2 size={16} className="animate-spin" />
@@ -359,7 +359,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                         <Link
                             href={compareId ? `/submission/${id}/diff?compare=${compareId}` : '#'}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-colors",
+                                "flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-colors",
                                 compareId
                                     ? "bg-primary/10 text-primary hover:bg-primary/20"
                                     : "bg-muted text-muted-foreground cursor-not-allowed"
@@ -373,7 +373,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
             </motion.header>
 
             {/* Main Content */}
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
                 {/* Source Code */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -382,8 +382,8 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     className="xl:col-span-3 space-y-4"
                 >
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <FileCode size={20} className="text-primary" />
+                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                            <FileCode size={20} className="text-muted-foreground" />
                             {t('sourceCode')}
                         </h2>
                     </div>
@@ -401,8 +401,8 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     className="xl:col-span-2 space-y-4"
                 >
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <Cpu size={20} className="text-primary" />
+                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                            <Cpu size={20} className="text-muted-foreground" />
                             {t('testCaseResults')}
                         </h2>
                         {sub.test_cases.length > 0 && (
@@ -415,7 +415,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     {sub.test_cases.length > 0 ? (
                         <TestCaseResults testCases={sub.test_cases} />
                     ) : (
-                        <div className="p-8 rounded-2xl border bg-card text-center">
+                        <div className="p-4 rounded-md border bg-card text-center">
                             <Cpu size={40} className="mx-auto text-muted-foreground mb-4" />
                             <p className="text-muted-foreground font-medium">{t('noTestCaseResults')}</p>
                             <p className="text-sm text-muted-foreground/70 mt-1">

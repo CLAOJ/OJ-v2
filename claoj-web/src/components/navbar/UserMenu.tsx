@@ -54,7 +54,7 @@ export default function UserMenu({
         <div className="relative flex items-center gap-2">
             <button
                 onClick={onToggle}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all text-sm font-bold"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all text-sm font-medium"
                 aria-expanded={isOpen}
                 aria-haspopup="true"
             >
@@ -96,19 +96,19 @@ export default function UserMenu({
                                     <span className="font-semibold text-warning">{t('adminDashboard')}</span>
                                 </Link>
                                 <div className="px-4 py-1.5 border-t border-border/50">
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">{t('quickAccess')}</p>
+                                    <p className="text-xs text-muted-foreground font-semibold mb-1.5">{t('quickAccess')}</p>
                                     <div className="flex gap-1.5">
                                         <Link
                                             href="/admin/problems/create"
                                             onClick={onClose}
-                                            className="flex-1 px-2 py-1 text-[10px] bg-muted hover:bg-muted/80 rounded text-center transition-colors"
+                                            className="flex-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded text-center transition-colors"
                                         >
                                             {t('quickAddProblem')}
                                         </Link>
                                         <Link
                                             href="/admin/contests/create"
                                             onClick={onClose}
-                                            className="flex-1 px-2 py-1 text-[10px] bg-muted hover:bg-muted/80 rounded text-center transition-colors"
+                                            className="flex-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded text-center transition-colors"
                                         >
                                             {t('quickAddContest')}
                                         </Link>

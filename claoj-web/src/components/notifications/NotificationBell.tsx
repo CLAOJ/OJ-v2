@@ -119,7 +119,7 @@ export default function NotificationBell() {
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center animate-pulse">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
@@ -132,16 +132,16 @@ export default function NotificationBell() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-80 sm:w-96 bg-card border rounded-xl shadow-2xl z-50 overflow-hidden"
+                        className="absolute right-0 mt-2 w-80 sm:w-96 bg-card border rounded-xl shadow-lg z-50 overflow-hidden"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b bg-muted/30">
-                            <h3 className="font-bold text-lg">{t('title')}</h3>
+                            <h3 className="font-semibold text-lg">{t('title')}</h3>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={() => markAllAsRead.mutate()}
                                     disabled={markAllAsRead.isPending}
-                                    className="text-xs font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                                    className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                                 >
                                     {markAllAsRead.isPending ? (
                                         <Loader2 size={12} className="animate-spin" />
@@ -243,7 +243,7 @@ export default function NotificationBell() {
                                 <Link
                                     href="/notifications"
                                     onClick={() => setIsOpen(false)}
-                                    className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+                                    className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                                 >
                                     {t('viewAll')}
                                 </Link>

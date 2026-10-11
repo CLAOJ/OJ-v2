@@ -90,8 +90,8 @@ export default function ContestsPageContent() {
         <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
                 <Icon size={20} className="text-primary" />
-                <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-                <span className="ml-auto text-xs font-bold px-2 py-0.5 bg-muted rounded-full">
+                <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+                <span className="ml-auto text-xs font-medium px-2 py-0.5 bg-muted rounded">
                     {contests.length}
                 </span>
             </div>
@@ -104,7 +104,7 @@ export default function ContestsPageContent() {
                 <div className="border rounded-xl bg-card overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse text-sm">
-                            <thead className="bg-muted/50 border-b text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            <thead className="bg-muted/50 border-b text-xs font-medium text-muted-foreground">
                                 <tr>
                                     <th className="px-6 py-3">{t('title')}</th>
                                     <th className="px-6 py-3">{t('duration')}</th>
@@ -121,23 +121,23 @@ export default function ContestsPageContent() {
                                         <tr key={c.key} className="hover:bg-muted/30 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1">
-                                                    <Link href={`/contest/${c.key}`} className="font-bold text-base hover:text-primary transition-colors">
+                                                    <Link href={`/contest/${c.key}`} className="font-medium text-base hover:text-primary transition-colors">
                                                         {c.name}
                                                     </Link>
                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                        {c.is_rated && <Badge variant="warning" className="text-[10px] h-4 uppercase">{t('rated')}</Badge>}
-                                                        {c.format && <Badge variant="outline" className="text-[10px] h-4 uppercase">{c.format}</Badge>}
+                                                        {c.is_rated && <Badge variant="warning" className="text-xs h-4 ">{t('rated')}</Badge>}
+                                                        {c.format && <Badge variant="outline" className="text-xs h-4 ">{c.format}</Badge>}
                                                         {c.tags && c.tags.map(tag => (
                                                             <Badge
                                                                 key={tag.id}
                                                                 variant="secondary"
-                                                                className="text-[10px] h-4 uppercase"
+                                                                className="text-xs h-4 "
                                                                 style={{ backgroundColor: tag.color + '20', color: tag.color, border: `1px solid ${tag.color}40` }}
                                                             >
                                                                 #{tag.name}
                                                             </Badge>
                                                         ))}
-                                                        <span className="text-[10px] text-muted-foreground font-mono">{c.key}</span>
+                                                        <span className="text-xs text-muted-foreground font-mono">{c.key}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -146,7 +146,7 @@ export default function ContestsPageContent() {
                                                     <span className="font-medium whitespace-nowrap">
                                                         {formatDuration(c.start_time, c.end_time)}
                                                     </span>
-                                                    <span className="text-[10px] text-muted-foreground">
+                                                    <span className="text-xs text-muted-foreground">
                                                         {dayjs(c.start_time).format('MMM D, HH:mm')}
                                                     </span>
                                                 </div>
@@ -164,7 +164,7 @@ export default function ContestsPageContent() {
                                                     {!c.is_joined && isRunning && (
                                                         <button
                                                             onClick={() => requireAuth(() => joinMutation.mutate(c.key), tAuth('loginToJoinContest'))}
-                                                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm shadow-emerald-200"
+                                                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 shadow-sm"
                                                         >
                                                             <Play size={14} fill="currentColor" /> {t('join')}
                                                         </button>
@@ -172,7 +172,7 @@ export default function ContestsPageContent() {
                                                     {c.is_joined && isRunning && (
                                                         <Link
                                                             href={`/contest/${c.key}`}
-                                                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm shadow-primary/20"
+                                                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 shadow-sm "
                                                         >
                                                             <Trophy size={14} /> {t('enter')}
                                                         </Link>
@@ -180,14 +180,14 @@ export default function ContestsPageContent() {
                                                     {!isRunning && !now.isAfter(dayjs(c.end_time)) && (
                                                         <Link
                                                             href={`/contest/${c.key}`}
-                                                            className="border border-muted-foreground/20 hover:bg-muted px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                                            className="border border-muted-foreground/20 hover:bg-muted px-4 py-1.5 rounded-lg text-xs font-medium transition-all"
                                                         >
                                                             {t('details')}
                                                         </Link>
                                                     )}
                                                     {now.isAfter(dayjs(c.end_time)) && (
                                                         <>
-                                                            <button className="text-primary hover:text-primary/80 px-2 py-1 text-xs font-bold transition-colors border rounded-md">
+                                                            <button className="text-primary hover:text-primary/80 px-2 py-1 text-xs font-medium transition-colors border rounded-md">
                                                                 {t('virtualJoin')}
                                                             </button>
                                                             <Link href={`/contest/${c.key}`} className="p-1.5 hover:bg-muted rounded-md transition-colors">
@@ -209,11 +209,11 @@ export default function ContestsPageContent() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
+        <div className="max-w-6xl mx-auto space-y-12 pb-20 ">
             <header className="space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
+                        <h1 className="text-4xl font-semibold tracking-tight flex items-center gap-3">
                             <Trophy className="text-primary" size={36} />
                             {t('title')}
                         </h1>
@@ -223,7 +223,7 @@ export default function ContestsPageContent() {
                     <div className="flex items-center gap-3">
                         <Link
                             href="/contests/calendar"
-                            className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-bold transition-all border border-primary/20"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-medium transition-all border border-primary/20"
                         >
                             <Calendar size={18} />
                             <span>{t('viewCalendar')}</span>
@@ -233,7 +233,7 @@ export default function ContestsPageContent() {
                             <input
                                 type="text"
                                 placeholder={t('searchPlaceholder')}
-                                className="w-full h-12 bg-card border rounded-[1.5rem] pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                className="w-full h-12 bg-card border rounded-md pl-12 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -247,7 +247,7 @@ export default function ContestsPageContent() {
                     {[1, 2, 3].map(i => (
                         <div key={i} className="space-y-4">
                             <Skeleton className="h-8 w-48" />
-                            <Skeleton className="h-48 w-full rounded-2xl" />
+                            <Skeleton className="h-48 w-full rounded-md" />
                         </div>
                     ))}
                 </div>
@@ -285,7 +285,7 @@ export default function ContestsPageContent() {
 
                     {past.length > 10 && (
                         <div className="flex justify-center pt-4">
-                            <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
+                            <button className="text-sm font-medium text-primary flex items-center gap-1 hover:underline">
                                 {t('viewAllPast')} <ChevronRight size={16} />
                             </button>
                         </div>

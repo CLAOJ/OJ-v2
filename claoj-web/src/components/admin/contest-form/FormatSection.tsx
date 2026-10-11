@@ -54,8 +54,8 @@ const CONTEST_FORMATS = [
 export function FormatSection({ formData, selectedFormat, register, setValue }: FormatSectionProps) {
     const t = useTranslations('Admin');
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{t('contestForm.formatSettingsTitle')}</h3>
+        <div className="bg-card rounded-md border p-6 space-y-4">
+            <h3 className="text-lg font-semibold">{t('contestForm.formatSettingsTitle')}</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

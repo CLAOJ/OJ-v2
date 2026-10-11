@@ -21,9 +21,9 @@ interface SubmissionInfoCardProps {
 
 export function SubmissionInfoCard({ title, submission }: SubmissionInfoCardProps) {
     return (
-        <div className="bg-card border rounded-2xl p-6 space-y-3">
+        <div className="bg-card border rounded-md p-6 space-y-3">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground">
+                <h3 className="text-sm font-semibold text-muted-foreground">
                     {title}
                 </h3>
                 <Badge variant={getStatusVariant(submission.result || '')}>
@@ -36,7 +36,7 @@ export function SubmissionInfoCard({ title, submission }: SubmissionInfoCardProp
                     className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                 >
                     <FileCode size={16} />
-                    <span className="font-bold">{submission.problem}</span>
+                    <span className="font-medium">{submission.problem}</span>
                 </Link>
                 <Link
                     href={`/user/${submission.user}`}

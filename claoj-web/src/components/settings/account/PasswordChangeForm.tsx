@@ -59,7 +59,7 @@ export function PasswordChangeForm() {
     return (
         <form onSubmit={handleSubmit((data) => changePassword(data))} className="space-y-8">
             <section className="space-y-6">
-                <div className="flex items-center gap-2 text-primary font-bold">
+                <div className="flex items-center gap-2 text-primary font-medium">
                     <Lock size={18} />
                     {t('changePassword')}
                 </div>
@@ -126,7 +126,7 @@ export function PasswordChangeForm() {
             <button
                 type="submit"
                 disabled={isChangingPassword}
-                className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="px-8 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
                 {isChangingPassword && <Loader2 size={18} className="animate-spin" />}
                 {t('changePassword')}

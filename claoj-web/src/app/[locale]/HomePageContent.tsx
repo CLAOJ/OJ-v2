@@ -217,7 +217,7 @@ export default function HomePageContent() {
                         <button
                             onClick={() => setActiveTab('blog')}
                             className={cn(
-                                "flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2",
+                                "flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
                                 activeTab === 'blog'
                                     ? "bg-primary text-white"
                                     : "text-gray-400 hover:bg-white/5"
@@ -229,7 +229,7 @@ export default function HomePageContent() {
                         <button
                             onClick={() => setActiveTab('events')}
                             className={cn(
-                                "flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2",
+                                "flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
                                 activeTab === 'events'
                                     ? "bg-primary text-white"
                                     : "text-gray-400 hover:bg-white/5"
@@ -244,11 +244,11 @@ export default function HomePageContent() {
                 {/* Blog Posts */}
                 <div className={cn("space-y-4", activeTab !== 'blog' && "hidden md:block")}>
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
-                            <BookOpen className="text-primary" size={24} />
+                        <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                            <BookOpen className="text-muted-foreground" size={24} />
                             {t('latestPosts')}
                         </h2>
-                        <Link href="/post" className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
+                        <Link href="/post" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                             {t('viewAll')} <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -267,7 +267,7 @@ export default function HomePageContent() {
                                 <article
                                     key={post.id}
                                     className={cn(
-                                        "bg-card border rounded-lg overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5",
+                                        "bg-card border rounded-lg overflow-hidden transition-all",
                                         post.sticky && "border-primary border-2",
                                         // Show full content for first post, truncated for others
                                         index === 0 ? "" : ""
@@ -280,7 +280,7 @@ export default function HomePageContent() {
                                                 <button className="text-gray-400 hover:text-primary transition-colors">
                                                     <ThumbsUp size={18} />
                                                 </button>
-                                                <span className="text-sm font-bold text-gray-400">{post.score || 0}</span>
+                                                <span className="text-sm font-medium text-gray-400">{post.score || 0}</span>
                                                 <button className="text-gray-400 hover:text-red-400 transition-colors">
                                                     <ThumbsDown size={18} />
                                                 </button>
@@ -289,7 +289,7 @@ export default function HomePageContent() {
                                             {/* Content Section */}
                                             <div className="flex-grow min-w-0">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <h3 className="text-xl font-bold hover:text-primary transition-colors">
+                                                    <h3 className="text-xl font-semibold hover:text-primary transition-colors">
                                                         <Link href={`/post/${post.id}-${post.slug}`} className="hover:underline">
                                                             {post.visible === false && <Lock size={14} className="inline text-red-500 mr-1" />}
                                                             {post.title}
@@ -331,7 +331,7 @@ export default function HomePageContent() {
                                                     <div className="mt-3">
                                                         <Link
                                                             href={`/post/${post.id}-${post.slug}`}
-                                                            className="text-sm font-bold text-primary hover:underline"
+                                                            className="text-sm font-medium text-primary hover:underline"
                                                         >
                                                             {t('continueReading')}
                                                         </Link>
@@ -350,7 +350,7 @@ export default function HomePageContent() {
                                         <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
                                         <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
-                                        <span className="text-sm font-bold">{t('loadingMorePosts')}</span>
+                                        <span className="text-sm font-medium">{t('loadingMorePosts')}</span>
                                     </div>
                                 )}
                                 {!hasNextPage && posts.length > 0 && (
@@ -361,7 +361,7 @@ export default function HomePageContent() {
                             </div>
                         </>
                     ) : (
-                        <div className="bg-card border border-dashed rounded-lg p-8 text-center text-gray-400">
+                        <div className="bg-card border border-dashed rounded-lg p-4 text-center text-gray-400">
                             {t('noPosts')}
                         </div>
                     )}
@@ -373,8 +373,8 @@ export default function HomePageContent() {
                     {upcomingContests && upcomingContests.length > 0 && (
                         <div className="bg-card border rounded-xl overflow-hidden">
                             <div className="bg-muted px-4 py-3 border-b border-primary-50">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                                    <Calendar className="text-primary" size={18} />
+                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                    <Calendar className="text-muted-foreground" size={18} />
                                     {t('upcomingContests')}
                                 </h3>
                             </div>
@@ -386,7 +386,7 @@ export default function HomePageContent() {
                                     >
                                         <Link
                                             href={`/contest/${contest.key}`}
-                                            className="text-lg font-bold hover:text-primary transition-colors block mb-2"
+                                            className="text-lg font-semibold hover:text-primary transition-colors block mb-2"
                                         >
                                             {contest.name}
                                         </Link>
@@ -411,9 +411,9 @@ export default function HomePageContent() {
             <aside className="w-full lg:w-80 space-y-4 shrink-0">
                 {/* Ongoing Contests (Desktop - Right Sidebar Only) */}
                 {ongoingContests && ongoingContests.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                            <Trophy className="text-yellow-500" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Trophy className="text-muted-foreground" size={16} />
                             {t('ongoingContests')}
                         </h3>
                         <div className="p-4 space-y-3">
@@ -421,7 +421,7 @@ export default function HomePageContent() {
                                 <div key={contest.key}>
                                     <Link
                                         href={`/contest/${contest.key}`}
-                                        className="text-sm font-bold hover:text-primary transition-colors block"
+                                        className="text-sm font-medium hover:text-primary transition-colors block"
                                     >
                                         {contest.name}
                                     </Link>
@@ -439,9 +439,9 @@ export default function HomePageContent() {
 
                 {/* Upcoming Contests */}
                 {upcomingContests && upcomingContests.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                            <Calendar className="text-primary" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Calendar className="text-muted-foreground" size={16} />
                             {t('upcomingContests')}
                         </h3>
                         <div className="p-4 space-y-3">
@@ -449,7 +449,7 @@ export default function HomePageContent() {
                                 <div key={contest.key}>
                                     <Link
                                         href={`/contest/${contest.key}`}
-                                        className="text-sm font-bold hover:text-primary transition-colors block"
+                                        className="text-sm font-medium hover:text-primary transition-colors block"
                                     >
                                         {contest.name}
                                     </Link>
@@ -464,9 +464,9 @@ export default function HomePageContent() {
 
                 {/* Top Rating Users (limit 10) */}
                 {topRatingUsers && topRatingUsers.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                            <Trophy className="text-primary" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Trophy className="text-muted-foreground" size={16} />
                             {t('topRatingUsers')}
                         </h3>
                         <div className="p-2">
@@ -483,7 +483,7 @@ export default function HomePageContent() {
                                         <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
                                             <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Link href={`/user/${user.username}`} className={cn("font-bold hover:text-primary", getRatingClass(user.rating))}>
+                                                <Link href={`/user/${user.username}`} className={cn("font-medium hover:text-primary", getRatingClass(user.rating))}>
                                                     {user.username}
                                                 </Link>
                                             </td>
@@ -502,9 +502,9 @@ export default function HomePageContent() {
 
                 {/* Top Scorers (limit 10) */}
                 {topScorers && topScorers.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                            <Star className="text-yellow-500" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Star className="text-muted-foreground" size={16} />
                             {t('topScorers')}
                         </h3>
                         <div className="p-2">
@@ -521,7 +521,7 @@ export default function HomePageContent() {
                                         <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
                                             <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Link href={`/user/${user.username}`} className="font-bold text-[#72ff72] hover:text-primary">
+                                                <Link href={`/user/${user.username}`} className="font-medium text-[#72ff72] hover:text-primary">
                                                     {user.username}
                                                 </Link>
                                             </td>
@@ -542,9 +542,9 @@ export default function HomePageContent() {
 
                 {/* New Problems (limit 10) */}
                 {newProblems && newProblems.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                            <TrendingUp className="text-primary" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <TrendingUp className="text-muted-foreground" size={16} />
                             {t('newProblems')}
                         </h3>
                         <div className="p-4 space-y-2">
@@ -552,11 +552,11 @@ export default function HomePageContent() {
                                 <div key={problem.code} className="flex items-center justify-between">
                                     <Link
                                         href={`/problem/${problem.code}`}
-                                        className="text-sm font-bold hover:text-primary transition-colors truncate flex-grow"
+                                        className="text-sm font-medium hover:text-primary transition-colors truncate flex-grow"
                                     >
                                         {problem.name}
                                     </Link>
-                                    <span className="px-2 py-0.5 bg-muted rounded text-xs font-bold text-muted-foreground ml-2">
+                                    <span className="px-2 py-0.5 bg-muted rounded text-xs font-medium text-muted-foreground ml-2">
                                         {problem.points}
                                     </span>
                                 </div>
@@ -567,9 +567,9 @@ export default function HomePageContent() {
 
                 {/* Comment Stream */}
                 {recentComments && recentComments.length > 0 && (
-                    <div className="bg-primary-10 rounded-lg overflow-hidden shadow-lg">
-                        <h3 className="bg-muted px-4 py-3 text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                            <MessageSquare className="text-primary" size={16} />
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <MessageSquare className="text-muted-foreground" size={16} />
                             <span className="mr-2">{t('commentStream')}</span>
                             <a href="https://discord.gg/xdMrcJHxZv" target="_blank" rel="noreferrer">
                                 <img
@@ -583,7 +583,7 @@ export default function HomePageContent() {
                             <ul className="space-y-2 text-sm">
                                 {recentComments.map((comment: any) => (
                                     <li key={comment.id} className="text-xs">
-                                        <Link href={`/user/${comment.author}`} className="text-primary hover:underline font-bold">
+                                        <Link href={`/user/${comment.author}`} className="text-primary hover:underline font-medium">
                                             {comment.author_name}
                                         </Link>
                                         {' → '}
@@ -595,7 +595,7 @@ export default function HomePageContent() {
                             </ul>
                             <div className="mt-3 pt-3 border-t border-muted text-xs flex gap-2">
                                 <a href="/api/comments/feed/rss" className="text-gray-400 hover:text-primary flex items-center gap-1">
-                                    <span className="text-[#ff8f00]"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20S4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18zM4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44zm0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/></svg></span>
+                                    <span className="text-muted-foreground"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20S4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18zM4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44zm0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/></svg></span>
                                     RSS
                                 </a>
                                 <span className="text-gray-600">/</span>

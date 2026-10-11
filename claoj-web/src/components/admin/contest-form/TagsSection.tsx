@@ -18,8 +18,8 @@ interface TagsSectionProps {
 export function TagsSection({ tags, selectedTags, onTagToggle }: TagsSectionProps) {
     const t = useTranslations('Admin');
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
-            <h3 className="text-lg font-bold">{t('contestForm.tagsTitle')}</h3>
+        <div className="bg-card rounded-md border p-6 space-y-4">
+            <h3 className="text-lg font-semibold">{t('contestForm.tagsTitle')}</h3>
             <p className="text-sm text-muted-foreground">
                 {t('contestForm.tagsDesc')}
             </p>

@@ -37,7 +37,7 @@ export default function Footer() {
                 <div className="container mx-auto px-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                         <div className="col-span-1 md:col-span-2">
-                            <h3 className="text-xl font-bold mb-4">CLAOJ</h3>
+                            <h3 className="text-xl font-semibold mb-4">CLAOJ</h3>
                             <p className="text-muted-foreground max-w-sm mb-4">
                                 {t('description')}
                             </p>
@@ -96,7 +96,7 @@ export default function Footer() {
                     onClick={() => setExpanded(true)}
                     aria-label={t('supportTitle')}
                     title={t('supportTitle')}
-                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform "
                 >
                     <Heart size={20} className="fill-white" />
                 </button>

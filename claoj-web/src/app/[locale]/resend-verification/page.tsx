@@ -50,18 +50,18 @@ export default function ResendVerificationPage() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5 text-center"
+                    className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card text-center"
                 >
                     <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle size={40} className="text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-bold">{t('resendEmailSentTitle')}</h2>
+                    <h2 className="text-2xl font-semibold">{t('resendEmailSentTitle')}</h2>
                     <p className="text-muted-foreground">
                         {t('resendEmailSentDesc')}
                     </p>
                     <Link
                         href="/login"
-                        className="inline-block px-8 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all"
+                        className="inline-block px-8 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-all"
                     >
                         {t('goToLogin')}
                     </Link>
@@ -75,13 +75,13 @@ export default function ResendVerificationPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md space-y-8 p-8 rounded-3xl border bg-card shadow-2xl shadow-primary/5"
+                className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 <div className="text-center space-y-2">
                     <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         <Mail size={32} className="text-primary" />
                     </div>
-                    <h2 className="text-2xl font-bold">{t('resendVerificationTitle')}</h2>
+                    <h2 className="text-2xl font-semibold">{t('resendVerificationTitle')}</h2>
                     <p className="text-muted-foreground">
                         {t('resendVerificationDesc')}
                     </p>
@@ -118,7 +118,7 @@ export default function ResendVerificationPage() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                     >
                         {isLoading && <Loader2 size={18} className="animate-spin" />}
                         {t('sendVerificationEmail')}

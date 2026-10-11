@@ -82,7 +82,7 @@ export default function AdminMossPage() {
     };
 
     const getSimilarityColor = (percentage: number) => {
-        if (percentage >= 80) return 'text-destructive font-bold';
+        if (percentage >= 80) return 'text-destructive font-medium';
         if (percentage >= 50) return 'text-warning font-medium';
         return 'text-success';
     };
@@ -92,7 +92,7 @@ export default function AdminMossPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold flex items-center gap-3">
                         <BarChart3 className="text-primary" size={32} />
                         {t('title')}
                     </h1>
@@ -114,7 +114,7 @@ export default function AdminMossPage() {
             </div>
 
             {/* Info Card */}
-            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
                 <div className="flex items-start gap-3">
                     <FileText className="text-primary mt-0.5" size={20} />
                     <div className="text-sm">
@@ -128,20 +128,20 @@ export default function AdminMossPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-md" />)}
                 </div>
             ) : (
-                <div className="bg-card rounded-2xl border overflow-hidden">
+                <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colSubmission')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colUser')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colMatches')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colMaxSimilarity')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('colStatus')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{tCommon('actions')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colSubmission')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colUser')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colMatches')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colMaxSimilarity')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colStatus')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{tCommon('actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -249,7 +249,7 @@ export default function AdminMossPage() {
                                 >
                                     {tCommon('previous')}
                                 </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">
+                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
                                     {page}
                                 </div>
                                 <button

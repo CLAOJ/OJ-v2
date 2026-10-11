@@ -67,7 +67,7 @@ export default function ContestParticipationsPage() {
                         <ArrowLeft size={20} />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
+                        <h1 className="text-3xl font-semibold flex items-center gap-3">
                             <Users className="text-primary" size={32} />
                             {t('contests.participationsTitle')}
                         </h1>
@@ -85,7 +85,7 @@ export default function ContestParticipationsPage() {
                     ))}
                 </div>
             ) : !ranking?.rankings || ranking.rankings.length === 0 ? (
-                <div className="bg-card border rounded-2xl p-12 text-center">
+                <div className="bg-card border rounded-md p-12 text-center">
                     <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                     <p className="text-lg font-medium">{t('contests.noParticipations')}</p>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -93,16 +93,16 @@ export default function ContestParticipationsPage() {
                     </p>
                 </div>
             ) : (
-                <div className="bg-card border rounded-2xl overflow-hidden">
+                <div className="bg-card border rounded-md overflow-hidden">
                     <table className="w-full text-left">
                         <thead className="bg-muted/50 border-b">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colRank')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colUser')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colScore')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colStatus')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colRank')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colUser')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colScore')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colTime')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('contests.colStatus')}</th>
+                                <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
@@ -116,7 +116,7 @@ export default function ContestParticipationsPage() {
                                 >
                                     <td className="px-6 py-4 text-center">
                                         <span className={cn(
-                                            "inline-flex items-center justify-center w-8 h-8 rounded-lg font-black text-xs",
+                                            "inline-flex items-center justify-center w-8 h-8 rounded-lg font-medium text-xs",
                                             row.rank === 1 ? "bg-warning text-black" :
                                             row.rank === 2 ? "bg-zinc-400 text-white" :
                                             row.rank === 3 ? "bg-warning/50 text-foreground" :
@@ -129,7 +129,7 @@ export default function ContestParticipationsPage() {
                                         <Link
                                             href={`/user/${row.username}`}
                                             className={cn(
-                                                "font-bold text-sm hover:text-primary transition-colors",
+                                                "font-medium text-sm hover:text-primary transition-colors",
                                                 row.is_disqualified && "line-through text-muted-foreground"
                                             )}
                                         >
@@ -138,7 +138,7 @@ export default function ContestParticipationsPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={cn(
-                                            "font-black text-primary",
+                                            "font-medium text-primary",
                                             row.is_disqualified && "text-muted-foreground line-through"
                                         )}>
                                             {Math.round(row.score)}

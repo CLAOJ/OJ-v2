@@ -54,22 +54,22 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
         voteMutation.mutate(delta);
     };
 
-    if (isLoading) return <div className="p-8"><Skeleton className="h-[70vh] w-full rounded-[2.5rem]" /></div>;
+    if (isLoading) return <div className="p-8"><Skeleton className="h-[70vh] w-full rounded-md" /></div>;
     if (!post) return <div className="p-8 text-center">{t('postNotFound')}</div>;
 
     return (
         <div className="max-w-4xl mx-auto space-y-12 pb-20">
             <Link
                 href="/post"
-                className="inline-flex items-center gap-2 text-sm font-black text-muted-foreground hover:text-primary transition-colors group"
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group"
             >
-                <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                <ArrowLeft size={18} className=" transition-transform" />
                 {t('backToBlog')}
             </Link>
 
             <article className="space-y-10">
                 <header className="space-y-6">
-                    <div className="flex flex-wrap items-center gap-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
                         <span className="flex items-center gap-2">
                             <Calendar size={14} className="text-primary" />
                             {dayjs(post.publish_on).format('DD MMMM YYYY')}
@@ -85,7 +85,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                     <ArrowBigUp size={20} />
                                 </button>
                                 <span className={cn(
-                                    "font-bold min-w-[3ch] text-center transition-colors",
+                                    "font-medium min-w-[3ch] text-center transition-colors",
                                     post.score > 0 ? "text-emerald-500" :
                                     post.score < 0 ? "text-red-500" : "text-muted-foreground"
                                 )}>
@@ -100,28 +100,28 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                     <ArrowBigDown size={20} />
                                 </button>
                             </div>
-                            <span className="text-[10px] uppercase tracking-widest">{t('points')}</span>
+                            <span className="text-xs ">{t('points')}</span>
                         </span>
                     </div>
 
-                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+                    <h1 className="text-4xl md:text-6xl font-semibold tracking-tighter leading-none">
                         {post.title}
                     </h1>
 
                     <div className="flex items-center justify-between py-6 border-y">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+                            <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
                                 <User size={20} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-xs font-black uppercase text-muted-foreground tracking-tighter">{t('authors')}</span>
-                                <span className="text-sm font-bold">
+                                <span className="text-xs font-medium text-muted-foreground">{t('authors')}</span>
+                                <span className="text-sm font-medium">
                                     {post.authors.map(a => `@${a.username}`).join(', ')}
                                 </span>
                             </div>
                         </div>
 
-                        <button className="p-3 rounded-2xl bg-muted/50 border hover:bg-muted transition-colors">
+                        <button className="p-3 rounded-md bg-muted/50 border hover:bg-muted transition-colors">
                             <Share2 size={20} />
                         </button>
                     </div>
