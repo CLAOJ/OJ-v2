@@ -2,6 +2,8 @@
 package submission
 
 import (
+	"time"
+
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/jobs"
 	"github.com/CLAOJ/claoj/models"
@@ -484,6 +486,10 @@ func (s *SubmissionService) RescoreAll(req RescoreAllRequest) (*BatchRescoreResp
 
 // Helper functions
 
+// submissionToProfile maps one joined row for the admin submission APIs.
+// Date is formatted as RFC3339 rather than time.String(): AdminSubmissionList
+// re-parses it with time.Parse(time.RFC3339, ...) and a failed parse silently
+// yields the zero time, which the dashboard renders as "2026 years ago".
 func submissionToProfile(s models.Submission, username, problemCode, languageName string) SubmissionProfile {
 	return SubmissionProfile{
 		ID:           s.ID,
@@ -493,7 +499,7 @@ func submissionToProfile(s models.Submission, username, problemCode, languageNam
 		ProblemCode:  problemCode,
 		LanguageID:   s.LanguageID,
 		LanguageName: languageName,
-		Date:         s.Date.String(),
+		Date:         s.Date.Format(time.RFC3339Nano),
 		Time:         s.Time,
 		Memory:       s.Memory,
 		Points:       s.Points,

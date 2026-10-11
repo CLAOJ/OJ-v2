@@ -72,7 +72,7 @@ func AdminUserList(c *gin.Context) {
 			BanReason:      u.BanReason,
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, resp.Total))
 }
 
 // AdminUserDetail - GET /api/v2/admin/user/:id
