@@ -2,6 +2,7 @@
 package contest
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -254,12 +255,29 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 		}
 		updates["format_name"] = *req.FormatName
 	}
+	// The config belongs to the format that will be in effect after this
+	// update, which may itself be changing.
+	effectiveFormat := contest.FormatName
+	if req.FormatName != nil {
+		effectiveFormat = *req.FormatName
+	}
 	if req.FormatConfig != nil {
 		if strings.TrimSpace(*req.FormatConfig) == "" {
 			updates["format_config"] = gorm.Expr("NULL")
 		} else {
 			var cfg models.JSONField
 			if err := cfg.Scan(*req.FormatConfig); err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			raw, err := json.Marshal(cfg)
+			if err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			var decoded map[string]interface{}
+			if err := json.Unmarshal(raw, &decoded); err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			if err := contest_format.ValidateConfig(effectiveFormat, decoded); err != nil {
 				return nil, ErrInvalidFormatConfig
 			}
 			updates["format_config"] = cfg

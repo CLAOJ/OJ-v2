@@ -270,3 +270,18 @@ func TestListContests_SearchAndStatus(t *testing.T) {
 	_, err = svc.ListContests(ListContestsRequest{Page: 1, PageSize: 10, Status: "soon"})
 	require.ErrorIs(t, err, ErrInvalidStatus)
 }
+
+func TestUpdateContest_ICPCFormatConfigTypes(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "icpcfmt")
+	svc := NewContestService()
+
+	_, err := svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, FormatConfig: strp(`{"penalty": "x"}`)})
+	require.ErrorIs(t, err, ErrInvalidFormatConfig)
+
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, FormatConfig: strp(`{"penalty": 20}`)})
+	require.NoError(t, err)
+	got, err := svc.GetContest(GetContestRequest{ContestKey: c.Key})
+	require.NoError(t, err)
+	require.Equal(t, float64(20), got.FormatConfig["penalty"])
+}
