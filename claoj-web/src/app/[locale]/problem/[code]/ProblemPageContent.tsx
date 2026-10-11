@@ -74,6 +74,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
     // submitting without touching the dropdown always failed with
     // {"error":"invalid language"}.
     const [language, setLanguage] = useState('');
+    const [langOpen, setLangOpen] = useState(false);
     const [showPdfViewer, setShowPdfViewer] = useState(false);
 
     const { data: problem, isLoading } = useQuery({
@@ -386,15 +387,43 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         <div className="flex justify-between items-center bg-card border p-2 rounded-md shadow-sm">
                             <div className="flex items-center gap-2 pl-2">
                                 <Code2 size={16} className="text-muted-foreground" />
-                                <select
-                                    className="bg-transparent font-medium outline-none text-xs cursor-pointer hover:text-primary transition-colors"
-                                    value={language}
-                                    onChange={(e) => setLanguage(e.target.value)}
+                                <div
+                                    className="relative"
+                                    onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setLangOpen(false); }}
                                 >
-                                    {problem.languages.map(l => (
-                                        <option key={l.key} value={l.key}>{l.name}</option>
-                                    ))}
-                                </select>
+                                    <button
+                                        type="button"
+                                        aria-haspopup="listbox"
+                                        aria-expanded={langOpen}
+                                        onClick={() => setLangOpen(o => !o)}
+                                        className="bg-transparent font-medium outline-none text-xs cursor-pointer hover:text-primary transition-colors"
+                                    >
+                                        {problem.languages.find(l => l.key === language)?.name ?? ''}
+                                    </button>
+                                    {langOpen && (
+                                        <ul role="listbox" className="absolute left-0 z-20 mt-1 max-h-72 min-w-[10rem] overflow-y-auto rounded-md border bg-card py-1 shadow-md">
+                                            {problem.languages.map(l => (
+                                                <li
+                                                    key={l.key}
+                                                    role="option"
+                                                    aria-selected={l.key === language}
+                                                    tabIndex={0}
+                                                    onClick={() => { setLanguage(l.key); setLangOpen(false); }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            setLanguage(l.key);
+                                                            setLangOpen(false);
+                                                        }
+                                                    }}
+                                                    className="cursor-pointer px-3 py-1 text-xs font-medium text-primary hover:bg-muted hover:text-muted-foreground outline-none"
+                                                >
+                                                    {l.name}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
 
                             <button
