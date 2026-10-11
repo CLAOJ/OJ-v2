@@ -78,14 +78,25 @@ func languageIDs(execs map[string]interface{}) (map[string]uint, error) {
 	if len(keys) == 0 {
 		return ids, nil
 	}
-	var langs []models.Language
-	if err := db.DB.Where("key IN ?", keys).Find(&langs).Error; err != nil {
-		return nil, err
+	res, langs := findLanguageIDs(db.DB, keys)
+	if res.Error != nil {
+		return nil, res.Error
 	}
 	for _, l := range langs {
 		ids[l.Key] = l.ID
 	}
 	return ids, nil
+}
+
+// findLanguageIDs loads judge_language rows for the given keys. The query is
+// kept in one place so its quoting can be checked against a real MySQL
+// session (see TestFindLanguageIDs_QuotesTheReservedKeyColumn): the tests
+// run on sqlite, which accepts identifiers MySQL rejects.
+func findLanguageIDs(tx *gorm.DB, keys []string) (*gorm.DB, []models.Language) {
+	var langs []models.Language
+	// `key` is reserved in MySQL/MariaDB (not in sqlite): quote it like
+	// `case` in onTestCase, or production rejects the query with error 1064.
+	return tx.Where("`key` IN ?", keys).Find(&langs), langs
 }
 
 // executorEntry reads one element of the handshake's executor list: either
