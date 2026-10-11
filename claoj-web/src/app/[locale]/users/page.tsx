@@ -116,7 +116,7 @@ export default function UsersListPage() {
                                 className={cn(
                                     "flex-1 h-9 rounded-md text-xs font-medium border transition-all flex items-center justify-center gap-2",
                                     rankBy === key
-                                        ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                        ? "bg-primary text-primary-foreground border-primary "
                                         : "bg-muted/30 hover:bg-muted border-transparent"
                                 )}
                             >
@@ -156,7 +156,7 @@ export default function UsersListPage() {
                                         </td>
                                         <td className="px-6 py-8">
                                             <Link href={`/user/${user.username}`} className="flex items-center gap-3 group/user outline-none">
-                                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-primary font-semibold text-lg group-hover/user:scale-110 transition-all">
+                                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-primary font-semibold text-lg transition-all">
                                                     {user.display_name?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()}
                                                 </div>
                                                 <div className="flex flex-col gap-1">
@@ -176,7 +176,7 @@ export default function UsersListPage() {
                                             )}
                                             {rankBy === 'rating' && (
                                                 user.rating ? (
-                                                    <Badge className={cn("px-4 py-2 rounded-xl text-xs font-medium ", getRankColor(user.rating))}>
+                                                    <Badge className={cn("px-4 py-2 text-xs font-medium ", getRankColor(user.rating))}>
                                                         {Math.round(user.rating)}
                                                     </Badge>
                                                 ) : (

@@ -186,7 +186,7 @@ export default function NotificationsPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={cn(
-                                "group flex items-start gap-4 p-5 rounded-md border bg-card hover:shadow-md transition-all",
+                                "group flex items-start gap-4 p-5 rounded-md border bg-card transition-all",
                                 !notification.read && "border-primary/20 bg-primary/5"
                             )}
                         >

@@ -90,7 +90,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 statusFilter === 'all'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -101,7 +101,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 statusFilter === 'open'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -112,7 +112,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 statusFilter === 'closed'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -129,7 +129,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 assignedFilter === 'all'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -140,7 +140,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 assignedFilter === 'assigned'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -151,7 +151,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 assignedFilter === 'unassigned'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -168,7 +168,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 contributiveFilter === 'all'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -179,7 +179,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 contributiveFilter === 'contributive'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -190,7 +190,7 @@ export default function AdminTicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 contributiveFilter === 'non-contributive'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -226,7 +226,7 @@ export default function AdminTicketListPage() {
                         <Link
                             key={ticket.id}
                             href={`/admin/tickets/${ticket.id}`}
-                            className="group block bg-card border rounded-md p-6 hover:border-primary/30 hover:shadow-lg transition-all"
+                            className="group block bg-card border rounded-md p-6 hover:border-primary/30 transition-all"
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">

@@ -71,7 +71,7 @@ export default function TicketListPage() {
 
                 <Link
                     href="/ticket/create"
-                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg "
+                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 "
                 >
                     <Plus size={18} />
                     {t('new')}
@@ -102,7 +102,7 @@ export default function TicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 statusFilter === 'all'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -113,7 +113,7 @@ export default function TicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 statusFilter === 'open'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -124,7 +124,7 @@ export default function TicketListPage() {
                             className={cn(
                                 "flex-1 h-12 rounded-md text-xs font-medium border transition-all",
                                 statusFilter === 'closed'
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg "
+                                    ? "bg-primary text-primary-foreground border-primary "
                                     : "bg-muted/30 hover:bg-muted border-transparent"
                             )}
                         >
@@ -158,7 +158,7 @@ export default function TicketListPage() {
                         <Link
                             key={ticket.id}
                             href={`/ticket/${ticket.id}`}
-                            className="group block bg-card border rounded-md p-6 hover:border-primary/30 hover:shadow-lg transition-all"
+                            className="group block bg-card border rounded-md p-6 hover:border-primary/30 transition-all"
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">

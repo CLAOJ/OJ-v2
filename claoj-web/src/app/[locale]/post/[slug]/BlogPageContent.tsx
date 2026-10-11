@@ -114,7 +114,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                                 <User size={20} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-xs font-medium uppercase text-muted-foreground tracking-tighter">{t('authors')}</span>
+                                <span className="text-xs font-medium text-muted-foreground">{t('authors')}</span>
                                 <span className="text-sm font-medium">
                                     {post.authors.map(a => `@${a.username}`).join(', ')}
                                 </span>

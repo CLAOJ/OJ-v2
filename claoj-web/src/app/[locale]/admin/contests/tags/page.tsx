@@ -127,7 +127,7 @@ export default function AdminContestTagsPage() {
                         </div>
                     ) : (
                         filteredTags.map((tag) => (
-                            <div key={tag.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
+                            <div key={tag.id} className="bg-card rounded-md p-6 border hover:border-primary/30 transition-all">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4 flex-1">
                                         <div

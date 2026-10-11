@@ -200,7 +200,7 @@ export default function AdminGroupsPage() {
                         <div
                             key={group.id}
                             className={cn(
-                                'bg-card rounded-md border p-6 cursor-pointer transition-all hover:shadow-lg hover:border-primary/30',
+                                'bg-card rounded-md border p-6 cursor-pointer transition-all hover:border-primary/30',
                                 selectedGroupId === group.id && 'ring-2 ring-primary border-primary'
                             )}
                             onClick={() => setSelectedGroupId(group.id)}
@@ -427,7 +427,7 @@ function PermissionPicker({ permissionsByAppModel, selectedIds, onToggle, emptyL
                 const models = Object.keys(permissionsByAppModel[appLabel]).sort();
                 return (
                     <div key={appLabel}>
-                        <h4 className="text-xs font-medium uppercase text-muted-foreground mb-2">{appLabel}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">{appLabel}</h4>
                         {models.map((model) => (
                             <div key={model} className="mb-3">
                                 <p className="text-xs text-muted-foreground mb-1">{model}</p>

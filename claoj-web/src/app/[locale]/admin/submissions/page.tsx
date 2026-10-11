@@ -241,7 +241,7 @@ export default function AdminSubmissionPage() {
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-md bg-card border">
                 <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.usernameLabel')}</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.usernameLabel')}</label>
                     <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
@@ -255,7 +255,7 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.problemCodeLabel')}</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.problemCodeLabel')}</label>
                     <div className="relative">
                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
@@ -269,7 +269,7 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.verdictLabel')}</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.verdictLabel')}</label>
                     <select
                         className="w-full h-10 px-3 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
                         value={resultFilter}
@@ -281,7 +281,7 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase text-muted-foreground ml-1">{t('submissions.languageLabel')}</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.languageLabel')}</label>
                     <input
                         type="text"
                         placeholder={t('submissions.languageFilterPlaceholder')}
@@ -327,11 +327,11 @@ export default function AdminSubmissionPage() {
                                         <td className="px-6 py-4">
                                             <Link href={`/submission/${s.id}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
                                                 <span className="font-medium text-sm tracking-tight">{s.problem}</span>
-                                                <span className="text-xs uppercase text-muted-foreground opacity-40">{t('submissions.problemCodeLabel')}</span>
+                                                <span className="text-xs text-muted-foreground opacity-40">{t('submissions.problemCodeLabel')}</span>
                                             </Link>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded-full text-xs font-medium uppercase shadow-sm">
+                                            <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded text-xs font-medium uppercase shadow-sm">
                                                 {s.result || s.status}
                                             </Badge>
                                         </td>

@@ -104,7 +104,7 @@ export default function ContestsPageContent() {
                 <div className="border rounded-xl bg-card overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse text-sm">
-                            <thead className="bg-muted/50 border-b text-xs font-medium tracking-wider text-muted-foreground">
+                            <thead className="bg-muted/50 border-b text-xs font-medium text-muted-foreground">
                                 <tr>
                                     <th className="px-6 py-3">{t('title')}</th>
                                     <th className="px-6 py-3">{t('duration')}</th>
@@ -164,7 +164,7 @@ export default function ContestsPageContent() {
                                                     {!c.is_joined && isRunning && (
                                                         <button
                                                             onClick={() => requireAuth(() => joinMutation.mutate(c.key), tAuth('loginToJoinContest'))}
-                                                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 shadow-sm shadow-emerald-200"
+                                                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 shadow-sm"
                                                         >
                                                             <Play size={14} fill="currentColor" /> {t('join')}
                                                         </button>

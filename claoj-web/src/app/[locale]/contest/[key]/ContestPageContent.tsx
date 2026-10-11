@@ -146,7 +146,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <Badge variant="outline" className="px-4 py-1.5 rounded border-primary/20 bg-primary/5 text-primary text-xs font-medium shadow-sm">
                                 {t('formatBadge', { format: contest.format ?? '' })}
                             </Badge>
-                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/30 px-4 py-1.5 rounded border border-dashed tracking-wide">
+                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/30 px-4 py-1.5 rounded border border-dashed">
                                 <Clock size={14} className="text-primary" />
                                 {timeLeft}
                             </div>
@@ -199,7 +199,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 <tab.icon size={16} />
                                 {tab.label}
                                 {activeTab === tab.id && !tab.href && (
-                                    <motion.div layoutId="tab-underline-contest" className="absolute bottom-0 left-0 right-0 h-1.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.3)]" />
+                                    <motion.div layoutId="tab-underline-contest" className="absolute bottom-0 left-0 right-0 h-1.5 bg-primary rounded-t-full" />
                                 )}
                             </button>
                         ))}
@@ -275,7 +275,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 </h3>
                                 <div className="space-y-6 relative pl-4 border-l border-zinc-700">
                                     <div className="relative">
-                                        <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                        <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-500" />
                                         <p className="text-xs font-medium text-zinc-500 ">{t('startTime')}</p>
                                         <p className="text-sm font-medium">{dayjs(contest.start_time).format('HH:mm, DD MMM YYYY')}</p>
                                     </div>
@@ -417,7 +417,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                             <td className="px-10 py-8 text-center">
                                                 <span className={cn(
                                                     "inline-flex items-center justify-center w-9 h-9 rounded-xl font-medium text-sm",
-                                                    row.rank === 1 ? "bg-amber-500 text-white shadow-[0_5px_15px_rgba(245,158,11,0.4)]" :
+                                                    row.rank === 1 ? "bg-amber-500 text-white" :
                                                         row.rank === 2 ? "bg-zinc-400 text-white" :
                                                             row.rank === 3 ? "bg-orange-600 text-white" :
                                                                 "bg-muted text-muted-foreground"

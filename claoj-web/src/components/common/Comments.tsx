@@ -115,7 +115,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                     <MessageSquare className="text-primary" size={28} />
                     {t('title')}
                 </h3>
-                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border px-4 py-1.5 rounded-full">
+                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border px-4 py-1.5 rounded">
                     {t('count', { count: comments?.length || 0 })}
                 </span>
             </div>
@@ -134,7 +134,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                             <button
                                 onClick={() => handlePost(commentBody)}
                                 disabled={postComment.isPending || !commentBody.trim()}
-                                className="flex items-center gap-2 h-12 px-8 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-xl hover:opacity-90 transition-all disabled:opacity-50"
+                                className="flex items-center gap-2 h-12 px-8 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50"
                             >
                                 {postComment.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                                 {t('post')}

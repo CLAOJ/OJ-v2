@@ -8,7 +8,7 @@ const RULES = [
     ['tiny-text', /\btext-\[(8|9|10)px\]/],
     ['wide-tracking', /\btracking-(widest|\[0\.\d+em\])/],
     ['big-radius', /\brounded-(2xl|3xl|\[[\d.]+rem\])/],
-    ['hover-motion', /\b(hover|active):-?(scale|translate)-/],
+    ['hover-motion', /\b(hover|active)(\/[\w-]+)?:-?(scale|translate)-/],
     ['gradient', /\bbg-(gradient|linear|radial|conic)-/],
     ['blur', /\bbackdrop-blur/],
     ['heavy-shadow', /\bshadow-(2xl|[a-z]+(-\d+)?\/\d+)/],

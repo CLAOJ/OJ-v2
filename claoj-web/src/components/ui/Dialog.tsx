@@ -108,7 +108,7 @@ export function DialogTitle({ children, className, id }: DialogTitleProps) {
         }
     }, [id, context]);
 
-    return <h2 id={id} className={cn("text-xl font-bold", className)}>{children}</h2>;
+    return <h2 id={id} className={cn("text-xl font-semibold", className)}>{children}</h2>;
 }
 
 interface DialogDescriptionProps {

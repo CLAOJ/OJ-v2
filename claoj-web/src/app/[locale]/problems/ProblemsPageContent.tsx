@@ -283,7 +283,7 @@ export default function ProblemsPageContent() {
                                                     <span className="text-xs font-medium text-muted-foreground">{Math.round(p.ac_rate)}%</span>
                                                     <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden shadow-inner">
                                                         <div
-                                                            className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                                                            className="h-full bg-emerald-500"
                                                             style={{ width: `${p.ac_rate}%` }}
                                                         />
                                                     </div>

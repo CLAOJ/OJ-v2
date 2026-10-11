@@ -168,7 +168,7 @@ export default function AdminJudgesPage() {
                         </div>
                     ) : (
                         filteredJudges.map((judge) => (
-                            <div key={judge.id} className="bg-card rounded-md p-6 border hover:shadow-lg transition-shadow">
+                            <div key={judge.id} className="bg-card rounded-md p-6 border">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex items-start gap-4 flex-1">
                                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${

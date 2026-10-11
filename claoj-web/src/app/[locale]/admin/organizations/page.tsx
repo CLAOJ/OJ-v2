@@ -99,7 +99,7 @@ export default function AdminOrganizationsPage() {
                         </div>
                     ) : (
                         filteredOrgs.map((org) => (
-                            <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
+                            <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 transition-all">
                                 <div className="flex items-center justify-between">
                                     <Link href={`/organization/${org.id}`} className="flex items-center gap-4 flex-1">
                                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-semibold text-lg">

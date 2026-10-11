@@ -262,16 +262,16 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             {/* Summary Cards */}
                                             <div className="grid grid-cols-3 gap-4">
                                                 <div className="bg-muted/30 rounded-md p-4 border text-center">
-                                                    <p className="text-xs font-medium text-muted-foreground tracking-wider">{t('weightedSum')}</p>
+                                                    <p className="text-xs font-medium text-muted-foreground">{t('weightedSum')}</p>
                                                     <p className="text-2xl font-semibold text-primary">{ppBreakdown.weighted_sum.toFixed(2)}</p>
                                                 </div>
                                                 <div className="bg-muted/30 rounded-md p-4 border text-center">
-                                                    <p className="text-xs font-medium text-muted-foreground tracking-wider">{t('bonusPoints')}</p>
+                                                    <p className="text-xs font-medium text-muted-foreground">{t('bonusPoints')}</p>
                                                     <p className="text-2xl font-semibold text-emerald-500">{ppBreakdown.bonus.bonus_points.toFixed(2)}</p>
                                                     <p className="text-xs text-muted-foreground mt-1">{t('problemsSolvedCount', { count: ppBreakdown.bonus.solved_count })}</p>
                                                 </div>
                                                 <div className="bg-primary/10 rounded-md p-4 border border-primary/20 text-center">
-                                                    <p className="text-xs font-medium text-muted-foreground tracking-wider">{t('totalPP')}</p>
+                                                    <p className="text-xs font-medium text-muted-foreground">{t('totalPP')}</p>
                                                     <p className="text-2xl font-semibold text-primary">{ppBreakdown.total.toFixed(2)}</p>
                                                 </div>
                                             </div>
@@ -316,7 +316,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
 
                                             {/* Formula Info */}
                                             <div className="bg-muted/20 rounded-xl p-4 border border-dashed">
-                                                <p className="text-xs font-medium text-muted-foreground tracking-wider mb-2">{t('ppFormula')}</p>
+                                                <p className="text-xs font-medium text-muted-foreground mb-2">{t('ppFormula')}</p>
                                                 <code className="text-xs font-mono text-muted-foreground block">
                                                     {t('ppFormulaExpression')}
                                                 </code>
@@ -385,7 +385,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             <button
                                                 onClick={() => setRatingView('chart')}
                                                 className={cn(
-                                                    "px-4 py-2 rounded-lg text-xs font-medium tracking-wider transition-all",
+                                                    "px-4 py-2 rounded-lg text-xs font-medium transition-all",
                                                     ratingView === 'chart' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
                                                 )}
                                             >
@@ -394,7 +394,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                             <button
                                                 onClick={() => setRatingView('table')}
                                                 className={cn(
-                                                    "px-4 py-2 rounded-lg text-xs font-medium tracking-wider transition-all",
+                                                    "px-4 py-2 rounded-lg text-xs font-medium transition-all",
                                                     ratingView === 'table' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
                                                 )}
                                             >

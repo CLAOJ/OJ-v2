@@ -115,7 +115,7 @@ export default function ContestCalendarPage() {
                 {WEEKDAY_NAMES.map(day => (
                     <div
                         key={day}
-                        className="bg-muted/50 py-3 text-center text-xs font-medium tracking-wider text-muted-foreground"
+                        className="bg-muted/50 py-3 text-center text-xs font-medium text-muted-foreground"
                     >
                         {day}
                     </div>
@@ -205,7 +205,7 @@ export default function ContestCalendarPage() {
 
         return (
             <div className="space-y-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3">
                     {t('calendarContestsInMonth', { month: MONTH_NAMES[currentMonth - 1], year: String(currentYear) })}
                 </h3>
                 {calendarData.contests.map(contest => {

@@ -215,7 +215,7 @@ export default function CreateTicketPage() {
                     <button
                         type="submit"
                         disabled={createMutation.isPending}
-                        className="px-8 h-14 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
+                        className="px-8 h-14 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 "
                     >
                         {createMutation.isPending && <Loader2 size={18} className="animate-spin" />}
                         {t('create')}

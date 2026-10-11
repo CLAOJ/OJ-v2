@@ -87,8 +87,8 @@ export default function BlogListPage() {
                                 className="group relative flex flex-col gap-4 p-4 rounded-md bg-card border hover:border-primary/40 transition-all duration-500"
                             >
                                 {post.sticky && (
-                                    <div className="absolute -top-3 -right-3 rotate-12 shadow-xl">
-                                        <Badge className="bg-primary text-primary-foreground rounded-full px-5 py-2 font-medium text-xs shadow-lg ">
+                                    <div className="absolute -top-3 -right-3 rotate-12">
+                                        <Badge className="bg-primary text-primary-foreground rounded px-5 py-2 font-medium text-xs ">
                                             {t('sticky')}
                                         </Badge>
                                     </div>
@@ -96,11 +96,11 @@ export default function BlogListPage() {
 
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-6 text-xs font-medium text-muted-foreground ">
-                                        <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full border">
+                                        <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded border">
                                             <Calendar size={14} className="text-primary" />
                                             {dayjs(post.publish_on).format('DD MMM YYYY')}
                                         </span>
-                                        <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full border">
+                                        <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded border">
                                             <TrendingUp size={14} className="text-emerald-500" />
                                             {t('scoreValue', { score: post.score })}
                                         </span>
@@ -110,7 +110,7 @@ export default function BlogListPage() {
                                         {post.title}
                                     </h2>
 
-                                    <p className="text-muted-foreground line-clamp-3 text-lg leading-relaxed font-semibold opacity-80">
+                                    <p className="text-muted-foreground line-clamp-3 text-lg leading-relaxed font-medium opacity-80">
                                         {post.summary}
                                     </p>
 
@@ -129,10 +129,10 @@ export default function BlogListPage() {
 
                                         <Link
                                             href={`/post/${post.id}-${post.slug}`}
-                                            className="h-9 flex items-center gap-3 px-4 rounded-md bg-primary text-primary-foreground font-medium group/btn transition-all shadow-lg "
+                                            className="h-9 flex items-center gap-3 px-4 rounded-md bg-primary text-primary-foreground font-medium group/btn transition-all "
                                         >
                                             {t('readMore')}
-                                            <ArrowRight size={20} className="group-hover/btn:translate-x-1.5 transition-transform" />
+                                            <ArrowRight size={20} />
                                         </Link>
                                     </div>
                                 </div>
@@ -225,7 +225,7 @@ export default function BlogListPage() {
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className={cn(
                                                 "w-8 h-8 rounded-lg flex items-center justify-center font-medium text-xs shrink-0 select-none",
-                                                idx === 0 ? "bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)]" :
+                                                idx === 0 ? "bg-amber-500 text-white" :
                                                     idx === 1 ? "bg-zinc-400 text-white" :
                                                         idx === 2 ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground"
                                             )}>

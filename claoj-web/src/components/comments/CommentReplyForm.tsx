@@ -47,7 +47,7 @@ export function CommentReplyForm({
                 <button
                     onClick={onReply}
                     disabled={isPosting || !replyBody.trim()}
-                    className="px-8 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-medium shadow-xl hover:opacity-90 transition-all disabled:opacity-50"
+                    className="px-8 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all disabled:opacity-50"
                 >
                     {isPosting ? <Loader2 className="animate-spin mr-2" size={16} /> : <Send className="mr-2" size={16} />}
                     {t('post')}
