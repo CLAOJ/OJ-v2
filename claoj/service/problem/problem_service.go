@@ -7,41 +7,48 @@ import (
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
+	"github.com/CLAOJ/claoj/service/relations"
 	"gorm.io/gorm"
 )
 
-// ProblemProfile represents a problem with related data.
+// ProblemProfile is the admin view of a problem. JSON is flat snake_case;
+// the admin edit form and PdfTab read it directly.
 type ProblemProfile struct {
-	ID                             uint
-	Code                           string
-	Name                           string
-	Source                         string
-	Description                    string
-	PdfURL                         string
-	GroupID                        uint
-	GroupName                      string
-	TimeLimit                      float64
-	MemoryLimit                    uint
-	ShortCircuit                   bool
-	Points                         float64
-	Partial                        bool
-	IsPublic                       bool
-	IsManuallyManaged              bool
-	Date                           *time.Time
-	LicenseID                      *uint
-	OgImage                        string
-	Summary                        string
-	UserCount                      int
-	AcRate                         float64
-	IsFullMarkup                   bool
-	SubmissionSourceVisibilityMode string
-	TestcaseVisibilityMode         string
-	IsOrganizationPrivate          bool
-	SuggesterID                    *uint
-	AuthorIDs                      []uint
-	TypeIDs                        []uint
-	AllowedLangIDs                 []uint
-	OrganizationIDs                []uint
+	ID                             uint                `json:"id"`
+	Code                           string              `json:"code"`
+	Name                           string              `json:"name"`
+	Source                         string              `json:"source"`
+	Description                    string              `json:"description"`
+	PdfURL                         string              `json:"pdf_url"`
+	GroupID                        uint                `json:"group_id"`
+	GroupName                      string              `json:"group_name"`
+	TimeLimit                      float64             `json:"time_limit"`
+	MemoryLimit                    uint                `json:"memory_limit"`
+	ShortCircuit                   bool                `json:"short_circuit"`
+	Points                         float64             `json:"points"`
+	Partial                        bool                `json:"partial"`
+	IsPublic                       bool                `json:"is_public"`
+	IsManuallyManaged              bool                `json:"is_manually_managed"`
+	Date                           *time.Time          `json:"date"`
+	LicenseID                      *uint               `json:"license_id"`
+	OgImage                        string              `json:"og_image"`
+	Summary                        string              `json:"summary"`
+	UserCount                      int                 `json:"user_count"`
+	AcRate                         float64             `json:"ac_rate"`
+	IsFullMarkup                   bool                `json:"is_full_markup"`
+	SubmissionSourceVisibilityMode string              `json:"submission_source_visibility_mode"`
+	TestcaseVisibilityMode         string              `json:"testcase_visibility_mode"`
+	IsOrganizationPrivate          bool                `json:"is_organization_private"`
+	SuggesterID                    *uint               `json:"suggester_id"`
+	AuthorIDs                      []uint              `json:"author_ids"`
+	CuratorIDs                     []uint              `json:"curator_ids"`
+	TesterIDs                      []uint              `json:"tester_ids"`
+	TypeIDs                        []uint              `json:"type_ids"`
+	AllowedLangIDs                 []uint              `json:"allowed_lang_ids"`
+	OrganizationIDs                []uint              `json:"organization_ids"`
+	Authors                        []relations.UserRef `json:"authors"`
+	Curators                       []relations.UserRef `json:"curators"`
+	Testers                        []relations.UserRef `json:"testers"`
 }
 
 // CreateProblemRequest holds the parameters for creating a problem.
@@ -63,6 +70,8 @@ type CreateProblemRequest struct {
 }
 
 // UpdateProblemRequest holds the parameters for updating a problem.
+// Pointer-to-slice fields are full replacement lists (nil = unchanged);
+// the Add*/Remove* slices are the legacy incremental form.
 type UpdateProblemRequest struct {
 	ProblemCode       string
 	Name              *string
@@ -74,6 +83,12 @@ type UpdateProblemRequest struct {
 	MemoryLimit       *uint
 	IsManuallyManaged *bool
 	PdfURL            *string
+	GroupID           *uint
+	AuthorIDs         *[]uint
+	CuratorIDs        *[]uint
+	TesterIDs         *[]uint
+	TypeIDs           *[]uint
+	AllowedLangIDs    *[]uint
 	AddTypeIDs        []uint
 	RemoveTypeIDs     []uint
 	AddAuthorIDs      []uint
@@ -103,6 +118,9 @@ type GetProblemRequest struct {
 type ListProblemsRequest struct {
 	Page     int
 	PageSize int
+	Search   string // code or name contains (literal)
+	IsPublic *bool
+	GroupID  uint
 }
 
 // ListProblemsResponse holds the response for listing problems.
@@ -155,19 +173,29 @@ func (s *ProblemService) ListProblems(req ListProblemsRequest) (*ListProblemsRes
 		GroupName string `gorm:"column:group_name"`
 	}
 
-	query := db.DB.Table("judge_problem").
-		Joins("LEFT JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
-		Select("judge_problem.*, judge_problemgroup.name as group_name").
-		Order("judge_problem.date DESC")
+	filter := func(q *gorm.DB) *gorm.DB {
+		if req.Search != "" {
+			p := db.ContainsPattern(req.Search)
+			q = q.Where("(judge_problem.code LIKE ? ESCAPE '!' OR judge_problem.name LIKE ? ESCAPE '!')", p, p)
+		}
+		if req.IsPublic != nil {
+			q = q.Where("judge_problem.is_public = ?", *req.IsPublic)
+		}
+		if req.GroupID != 0 {
+			q = q.Where("judge_problem.group_id = ?", req.GroupID)
+		}
+		return q
+	}
 
-	// Get total count
 	var total int64
-	if err := db.DB.Model(&models.Problem{}).Count(&total).Error; err != nil {
+	if err := filter(db.DB.Table("judge_problem")).Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Get paginated results
-	if err := query.
+	if err := filter(db.DB.Table("judge_problem").
+		Joins("LEFT JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
+		Select("judge_problem.*, judge_problemgroup.name as group_name")).
+		Order("judge_problem.date DESC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Scan(&problems).Error; err != nil {
@@ -192,7 +220,11 @@ func (s *ProblemService) GetProblem(req GetProblemRequest) (*ProblemProfile, err
 	var problem models.Problem
 	if err := db.DB.Preload("Group").
 		Preload("Types").
-		Preload("Authors").
+		Preload("Authors.User").
+		Preload("Curators.User").
+		Preload("Testers.User").
+		Preload("AllowedLangs").
+		Preload("Organizations").
 		Where("code = ?", req.ProblemCode).First(&problem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrProblemNotFound
@@ -200,8 +232,7 @@ func (s *ProblemService) GetProblem(req GetProblemRequest) (*ProblemProfile, err
 		return nil, err
 	}
 
-	groupName := problem.Group.Name
-	profile := problemToProfile(problem, groupName)
+	profile := problemToProfile(problem, problem.Group.Name)
 	return &profile, nil
 }
 
@@ -255,7 +286,7 @@ func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfil
 	return &profile, nil
 }
 
-// UpdateProblem updates an existing problem.
+// UpdateProblem updates an existing problem in one transaction.
 func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfile, error) {
 	var problem models.Problem
 	if err := db.DB.Where("code = ?", req.ProblemCode).First(&problem).Error; err != nil {
@@ -293,55 +324,43 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 	if req.PdfURL != nil {
 		updates["pdf_url"] = *req.PdfURL
 	}
-
-	if len(updates) > 0 {
-		if err := db.DB.Model(&problem).Updates(updates).Error; err != nil {
+	if req.GroupID != nil {
+		var count int64
+		if err := db.DB.Model(&models.ProblemGroup{}).Where("id = ?", *req.GroupID).Count(&count).Error; err != nil {
 			return nil, err
 		}
+		if count == 0 {
+			return nil, ErrInvalidGroup
+		}
+		updates["group_id"] = *req.GroupID
 	}
 
-	// Handle type relations
-	if len(req.AddTypeIDs) > 0 {
-		var types []models.ProblemType
-		db.DB.Where("id IN ?", req.AddTypeIDs).Find(&types)
-		db.DB.Model(&problem).Association("Types").Append(&types)
-	}
-	if len(req.RemoveTypeIDs) > 0 {
-		var types []models.ProblemType
-		db.DB.Where("id IN ?", req.RemoveTypeIDs).Find(&types)
-		db.DB.Model(&problem).Association("Types").Delete(&types)
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if len(updates) > 0 {
+			if err := tx.Model(&problem).Updates(updates).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := relations.Sync[models.ProblemType](tx, &problem, "Types", req.TypeIDs, req.AddTypeIDs, req.RemoveTypeIDs); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "Authors", req.AuthorIDs, req.AddAuthorIDs, req.RemoveAuthorIDs); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "Curators", req.CuratorIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "Testers", req.TesterIDs, nil, nil); err != nil {
+			return err
+		}
+		return relations.Sync[models.Language](tx, &problem, "AllowedLangs", req.AllowedLangIDs, req.AddLangIDs, req.RemoveLangIDs)
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// Handle author relations
-	if len(req.AddAuthorIDs) > 0 {
-		var authors []models.Profile
-		db.DB.Where("id IN ?", req.AddAuthorIDs).Find(&authors)
-		db.DB.Model(&problem).Association("Authors").Append(&authors)
-	}
-	if len(req.RemoveAuthorIDs) > 0 {
-		var authors []models.Profile
-		db.DB.Where("id IN ?", req.RemoveAuthorIDs).Find(&authors)
-		db.DB.Model(&problem).Association("Authors").Delete(&authors)
-	}
-
-	// Handle language relations
-	if len(req.AddLangIDs) > 0 {
-		var langs []models.Language
-		db.DB.Where("id IN ?", req.AddLangIDs).Find(&langs)
-		db.DB.Model(&problem).Association("AllowedLangs").Append(&langs)
-	}
-	if len(req.RemoveLangIDs) > 0 {
-		var langs []models.Language
-		db.DB.Where("id IN ?", req.RemoveLangIDs).Find(&langs)
-		db.DB.Model(&problem).Association("AllowedLangs").Delete(&langs)
-	}
-
-	// Reload problem with relations
-	db.DB.Preload("Group").Preload("Types").Preload("Authors").First(&problem, problem.ID)
-
-	groupName := problem.Group.Name
-	profile := problemToProfile(problem, groupName)
-	return &profile, nil
+	return s.GetProblem(GetProblemRequest{ProblemCode: problem.Code})
 }
 
 // DeleteProblem performs a soft delete by hiding the problem.
@@ -473,6 +492,8 @@ func (s *ProblemService) ClearPdfURL(problemCode string) error {
 
 func problemToProfile(p models.Problem, groupName string) ProblemProfile {
 	authorIDs := getProfileIDs(p.Authors)
+	curatorIDs := getProfileIDs(p.Curators)
+	testerIDs := getProfileIDs(p.Testers)
 	typeIDs := getTypeIDs(p.Types)
 	langIDs := getLangIDs(p.AllowedLangs)
 	orgIDs := getOrgIDs(p.Organizations)
@@ -505,6 +526,11 @@ func problemToProfile(p models.Problem, groupName string) ProblemProfile {
 		IsOrganizationPrivate:          p.IsOrganizationPrivate,
 		SuggesterID:                    p.SuggesterID,
 		AuthorIDs:                      authorIDs,
+		CuratorIDs:                     curatorIDs,
+		TesterIDs:                      testerIDs,
+		Authors:                        relations.UserRefs(p.Authors),
+		Curators:                       relations.UserRefs(p.Curators),
+		Testers:                        relations.UserRefs(p.Testers),
 		TypeIDs:                        typeIDs,
 		AllowedLangIDs:                 langIDs,
 		OrganizationIDs:                orgIDs,

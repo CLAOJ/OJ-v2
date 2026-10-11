@@ -350,6 +350,128 @@ export interface AdminContest {
     locked_after?: string | null;
 }
 
+// ============================================================
+// ADMIN DETAIL CONTRACTS (flat snake_case, see api/v2/admin_problem.go,
+// api/v2/admin_contest.go)
+// ============================================================
+
+export interface UserRef {
+    id: number;
+    username: string;
+}
+
+export interface AdminProblemDetail {
+    id: number;
+    code: string;
+    name: string;
+    description: string;
+    points: number;
+    partial: boolean;
+    is_public: boolean;
+    time_limit: number;
+    memory_limit: number;
+    group_id: number;
+    is_manually_managed: boolean;
+    pdf_url: string;
+    author_ids: number[];
+    curator_ids: number[];
+    tester_ids: number[];
+    type_ids: number[];
+    allowed_lang_ids: number[];
+    authors: UserRef[];
+    curators: UserRef[];
+    testers: UserRef[];
+}
+
+export interface AdminProblemUpdateRequest {
+    name?: string;
+    description?: string;
+    points?: number;
+    partial?: boolean;
+    is_public?: boolean;
+    time_limit?: number;
+    memory_limit?: number;
+    is_manually_managed?: boolean;
+    pdf_url?: string;
+    group_id?: number;
+    author_ids?: number[];
+    curator_ids?: number[];
+    tester_ids?: number[];
+    type_ids?: number[];
+    allowed_lang_ids?: number[];
+}
+
+export interface AdminContestProblemRow {
+    id: number;
+    problem_id: number;
+    code: string;
+    name: string;
+    points: number;
+    partial: boolean;
+    is_pretested: boolean;
+    order: number;
+}
+
+export interface AdminContestDetail {
+    id: number;
+    key: string;
+    name: string;
+    description: string;
+    summary: string;
+    start_time: string;
+    end_time: string;
+    /** Per-participant window in seconds; null = whole contest. */
+    time_limit: number | null;
+    is_visible: boolean;
+    is_rated: boolean;
+    format_name: string;
+    format_config: Record<string, unknown> | null;
+    access_code: string;
+    hide_problem_tags: boolean;
+    run_pretests_only: boolean;
+    is_organization_private: boolean;
+    locked_after: string | null;
+    author_ids: number[];
+    curator_ids: number[];
+    tester_ids: number[];
+    tag_ids: number[];
+    authors: UserRef[];
+    curators: UserRef[];
+    testers: UserRef[];
+    problems: AdminContestProblemRow[];
+}
+
+/** One row of the ordered full problem list sent on contest update. */
+export interface ContestProblemInput {
+    problem_id: number;
+    points?: number;
+    partial?: boolean;
+    is_pretested?: boolean;
+}
+
+export interface AdminContestUpdateRequest {
+    name?: string;
+    description?: string;
+    summary?: string;
+    start_time?: string;
+    end_time?: string;
+    /** Seconds; 0 clears. */
+    time_limit?: number;
+    is_visible?: boolean;
+    is_rated?: boolean;
+    format_name?: string;
+    format_config?: string;
+    access_code?: string;
+    hide_problem_tags?: boolean;
+    run_pretests_only?: boolean;
+    is_organization_private?: boolean;
+    author_ids?: number[];
+    curator_ids?: number[];
+    tester_ids?: number[];
+    tag_ids?: number[];
+    problems?: ContestProblemInput[];
+}
+
 export interface AdminProblem {
     id: number;
     code: string;
@@ -452,6 +574,7 @@ export interface AdminContestCreateRequest {
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
+    tag_ids?: number[];
     problem_ids?: number[];
 }
 

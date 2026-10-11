@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
-import { AdminOrganization } from '@/types';
 import { adminOrganizationApi } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
+import { useListParams } from '@/hooks/useListParams';
+import { useDebounce } from '@/hooks/useDebounce';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 import OrganizationEditModal from '@/components/admin/OrganizationEditModal';
 import {
     Search,
@@ -18,25 +19,22 @@ import {
     Edit
 } from 'lucide-react';
 
+const FILTER_KEYS = ['search'] as const;
+const PAGE_SIZE = 50;
+
 export default function AdminOrganizationsPage() {
     const t = useTranslations('Admin');
-    const [search, setSearch] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingOrg, setEditingOrg] = useState<any>(null);
 
     const queryClient = useQueryClient();
 
-    const { data, isLoading, refetch } = useQuery({
-        queryKey: ['admin-organizations', search],
-        queryFn: async () => {
-            const res = await api.get<{
-                data: AdminOrganization[];
-                total: number;
-                page: number;
-                page_size: number;
-            }>(`/admin/organizations?search=${search}`);
-            return res.data;
-        }
+    const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
+    const search = useDebounce(filters.search ?? '', 300);
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['admin-organizations', page, search],
+        queryFn: async () => (await adminOrganizationApi.list(page, PAGE_SIZE, search)).data,
     });
 
     const createMutation = useMutation({
@@ -50,16 +48,11 @@ export default function AdminOrganizationsPage() {
 
     const organizations = data?.data || [];
 
-    const filteredOrgs = organizations.filter(o =>
-        o.name.toLowerCase().includes(search.toLowerCase()) ||
-        o.short_name.toLowerCase().includes(search.toLowerCase())
-    );
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-semibold flex items-center gap-3">
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Database className="text-primary" size={32} />
                         {t('organizations.title')}
                     </h1>
@@ -73,8 +66,8 @@ export default function AdminOrganizationsPage() {
                             type="text"
                             placeholder={t('organizations.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            value={filters.search ?? ''}
+                            onChange={(e) => setFilters({ search: e.target.value })}
                         />
                     </div>
                     <button
@@ -92,21 +85,21 @@ export default function AdminOrganizationsPage() {
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {filteredOrgs.length === 0 ? (
+                    {organizations.length === 0 ? (
                         <div className="text-center py-12 rounded-md border border-dashed bg-muted/30">
                             <Database size={48} className="mx-auto text-muted-foreground opacity-20" />
                             <p className="text-muted-foreground mt-4">{t('organizations.noOrgsFound')}</p>
                         </div>
                     ) : (
-                        filteredOrgs.map((org) => (
-                            <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 transition-all">
+                        organizations.map((org) => (
+                            <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
                                 <div className="flex items-center justify-between">
                                     <Link href={`/organization/${org.id}`} className="flex items-center gap-4 flex-1">
-                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-semibold text-lg">
+                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
                                             {org.name[0].toUpperCase()}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-lg hover:text-primary transition-colors">{org.name}</h3>
+                                            <h3 className="font-bold text-lg hover:text-primary transition-colors">{org.name}</h3>
                                             <div className="text-sm text-muted-foreground mt-1 flex items-center gap-3">
                                                 <span className="font-mono text-xs">{org.slug}</span>
                                                 <span className="text-muted-foreground">|</span>
@@ -142,11 +135,13 @@ export default function AdminOrganizationsPage() {
                 </div>
             )}
 
+            <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={PAGE_SIZE} />
+
             {/* Create Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-card rounded-md w-full max-w-md p-6">
-                        <h2 className="text-xl font-semibold mb-4">{t('organizations.createModalTitle')}</h2>
+                        <h2 className="text-xl font-bold mb-4">{t('organizations.createModalTitle')}</h2>
 
                         <div className="space-y-4">
                             <div>

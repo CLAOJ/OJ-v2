@@ -1,268 +1,174 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { adminSubmissionApi } from '@/lib/adminApi';
-import { Badge } from '@/components/ui/Badge';
+import { toast } from 'sonner';
+import { ScanSearch, Play, Trash2, ExternalLink } from 'lucide-react';
+import { adminMossApi, type ContestMossResult } from '@/lib/adminApi';
+import { searchContests } from '@/lib/adminSearch';
+import { useListParams } from '@/hooks/useListParams';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
-import {
-    Search,
-    FileText,
-    CheckCircle,
-    Clock,
-    XCircle,
-    BarChart3,
-    ExternalLink
-} from 'lucide-react';
 
-interface MossResult {
-    id: number;
-    submission_id: number;
-    problem_code: string;
-    problem_name: string;
-    username: string;
-    language: string;
-    match_count: number;
-    max_similarity: number;
-    status: string;
-    created_at: string;
-    moss_url?: string;
-}
+const KEYS = ['contest'] as const;
+
+type ApiError = { response?: { data?: { error?: string } } };
+const errorText = (e: unknown) => (e as ApiError)?.response?.data?.error ?? String(e);
 
 export default function AdminMossPage() {
-    const t = useTranslations('Admin.moss');
-    const tCommon = useTranslations('Admin.common');
-    const [page, setPage] = useState(1);
-    const [search, setSearch] = useState('');
-
+    const t = useTranslations('Admin');
     const queryClient = useQueryClient();
+    const { filters, setFilters } = useListParams(KEYS);
+    const contestKey = filters.contest ?? '';
+    const [term, setTerm] = useState('');
+    const debounced = useDebounce(term.trim(), 250);
 
-    const { data, isLoading } = useQuery({
-        queryKey: ['admin-moss-results', page, search],
-        queryFn: async () => {
-            const res = await api.get<{
-                data: MossResult[];
-                total: number;
-                page: number;
-                page_size: number;
-            }>(`/admin/moss/results?page=${page}&page_size=50&search=${search}`);
-            return res.data;
-        }
+    const { data: matches = [] } = useQuery({
+        queryKey: ['moss-contest-search', debounced],
+        queryFn: () => searchContests(debounced),
+        enabled: debounced.length > 0,
     });
 
-    const analyzeMutation = useMutation({
-        mutationFn: ({ submissionId, language }: { submissionId: number; language: string }) =>
-            adminSubmissionApi.mossAnalyze(submissionId, language),
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['admin-contest-moss', contestKey],
+        queryFn: async () => (await adminMossApi.list(contestKey)).data,
+        enabled: contestKey !== '',
+        refetchInterval: q => (q.state.data?.running ? 5000 : false),
+    });
+
+    const run = useMutation({
+        mutationFn: () => adminMossApi.run(contestKey),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-moss-results'] });
-        }
+            toast.success(t('moss.queued'));
+            queryClient.invalidateQueries({ queryKey: ['admin-contest-moss', contestKey] });
+        },
+        onError: e => toast.error(errorText(e)),
     });
 
-    const mossResults = data?.data || [];
+    const clear = useMutation({
+        mutationFn: () => adminMossApi.clear(contestKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-contest-moss', contestKey] }),
+        onError: e => toast.error(errorText(e)),
+    });
 
-    const filteredResults = mossResults.filter(r =>
-        r.username.toLowerCase().includes(search.toLowerCase()) ||
-        r.problem_code.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return <CheckCircle size={18} className="text-success" />;
-            case 'processing':
-                return <Clock size={18} className="text-warning animate-spin" />;
-            case 'failed':
-                return <XCircle size={18} className="text-destructive" />;
-            default:
-                return <Clock size={18} className="text-muted-foreground" />;
+    // Group rows by problem so each problem reads as one block.
+    const grouped = useMemo(() => {
+        const map = new Map<string, { name: string; rows: ContestMossResult[] }>();
+        for (const r of data?.results ?? []) {
+            if (!map.has(r.problem_code)) map.set(r.problem_code, { name: r.problem_name, rows: [] });
+            map.get(r.problem_code)!.rows.push(r);
         }
-    };
-
-    const getSimilarityColor = (percentage: number) => {
-        if (percentage >= 80) return 'text-destructive font-medium';
-        if (percentage >= 50) return 'text-warning font-medium';
-        return 'text-success';
-    };
+        return [...map.entries()];
+    }, [data]);
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-semibold flex items-center gap-3">
-                        <BarChart3 className="text-primary" size={32} />
-                        {t('title')}
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        {t('subtitle')}
-                    </p>
-                </div>
-
-                <div className="relative w-full md:w-80">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                    <input
-                        type="text"
-                        placeholder={t('searchPlaceholder')}
-                        className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2.5">
+                    <ScanSearch className="text-primary" size={26} />
+                    {t('moss.title')}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">{t('moss.subtitle')}</p>
             </div>
 
-            {/* Info Card */}
-            <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
-                <div className="flex items-start gap-3">
-                    <FileText className="text-primary mt-0.5" size={20} />
-                    <div className="text-sm">
-                        <p className="font-medium text-primary mb-1">{t('aboutTitle')}</p>
-                        <p className="text-muted-foreground">
-                            {t('aboutDescription')}
-                        </p>
-                    </div>
-                </div>
+            <div className="relative max-w-md">
+                <label htmlFor="moss-contest" className="text-xs text-muted-foreground block mb-1">{t('moss.contestLabel')}</label>
+                <input
+                    id="moss-contest"
+                    value={term}
+                    onChange={e => setTerm(e.target.value)}
+                    placeholder={contestKey || t('moss.contestPlaceholder')}
+                    autoComplete="off"
+                    className="w-full h-9 px-3 rounded-md border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                {debounced && matches.length > 0 && (
+                    <ul className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-60 overflow-y-auto">
+                        {matches.map(m => (
+                            <li key={m.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => { setFilters({ contest: m.label }); setTerm(''); }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex gap-2 items-baseline"
+                                >
+                                    <span className="font-medium">{m.label}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{m.detail}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
 
-            {isLoading ? (
-                <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-md" />)}
-                </div>
+            {!contestKey ? (
+                <p className="text-sm text-muted-foreground">{t('moss.pickContest')}</p>
             ) : (
-                <div className="bg-card rounded-md border overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-muted/50 border-b">
+                <section className="rounded-md border bg-card">
+                    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b bg-secondary/60">
+                        <h2 className="text-sm font-semibold">
+                            <Link href={`/contest/${contestKey}`} className="hover:underline">{contestKey}</Link>
+                            {data?.running && <span className="ml-2 text-xs font-normal text-warning">{t('moss.running')}</span>}
+                        </h2>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => run.mutate()}
+                                disabled={run.isPending || data?.running}
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                            >
+                                <Play size={14} /> {t('moss.run')}
+                            </button>
+                            <button
+                                onClick={() => { if (confirm(t('moss.clearConfirm'))) clear.mutate(); }}
+                                disabled={clear.isPending || !data?.results.length}
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border text-sm hover:bg-muted disabled:opacity-50"
+                            >
+                                <Trash2 size={14} /> {t('moss.clear')}
+                            </button>
+                        </div>
+                    </header>
+
+                    {data?.error && (
+                        <p className="px-4 py-2 text-sm text-destructive bg-destructive/10 border-b">
+                            {t('moss.errorLabel')} {data.error}
+                        </p>
+                    )}
+
+                    {isLoading ? (
+                        <div className="p-4 space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-5 w-full" />)}</div>
+                    ) : isError ? (
+                        <p className="px-4 py-8 text-center text-sm text-destructive">{errorText(error)}</p>
+                    ) : grouped.length === 0 ? (
+                        <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t('moss.noResults')}</p>
+                    ) : (
+                        <table className="w-full text-sm">
+                            <thead className="text-left text-xs text-muted-foreground">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colSubmission')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colUser')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colMatches')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colMaxSimilarity')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('colStatus')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{tCommon('actions')}</th>
+                                    <th className="px-4 py-2 font-semibold">{t('moss.colProblem')}</th>
+                                    <th className="px-4 py-2 font-semibold">{t('moss.colLanguage')}</th>
+                                    <th className="px-4 py-2 font-semibold text-right">{t('moss.colSubmissions')}</th>
+                                    <th className="px-4 py-2 font-semibold">{t('moss.colReport')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {filteredResults.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <FileText size={48} className="opacity-20" />
-                                                <p>{t('noResultsFound')}</p>
-                                            </div>
+                                {grouped.flatMap(([code, g]) => g.rows.map((r, i) => (
+                                    <tr key={`${code}-${r.language}`}>
+                                        <td className="px-4 py-2">{i === 0 && <><span className="font-medium">{code}</span> <span className="text-muted-foreground">{g.name}</span></>}</td>
+                                        <td className="px-4 py-2">{r.language}</td>
+                                        <td className="px-4 py-2 text-right tabular-nums">{r.submission_count}</td>
+                                        <td className="px-4 py-2">
+                                            {r.url ? (
+                                                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline inline-flex items-center gap-1">
+                                                    {t('moss.viewReport')} <ExternalLink size={12} />
+                                                </a>
+                                            ) : <span className="text-muted-foreground">—</span>}
                                         </td>
                                     </tr>
-                                ) : (
-                                    filteredResults.map((result) => (
-                                        <tr key={result.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <Link
-                                                        href={`/submission/${result.submission_id}`}
-                                                        className="font-medium text-sm hover:text-primary transition-colors"
-                                                    >
-                                                        {result.problem_code}
-                                                    </Link>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {result.language}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <Link
-                                                    href={`/user/${result.username}`}
-                                                    className="text-sm hover:text-primary transition-colors"
-                                                >
-                                                    {result.username}
-                                                </Link>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <FileText size={16} className="text-muted-foreground" />
-                                                    <span className="text-sm">{t('matchesCount', { count: result.match_count })}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={getSimilarityColor(result.max_similarity)}>
-                                                    {result.max_similarity.toFixed(1)}%
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    {getStatusIcon(result.status)}
-                                                    <span className="text-sm capitalize">{result.status}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    {result.moss_url && (
-                                                        <a
-                                                            href={result.moss_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-2 text-sm font-medium transition-colors"
-                                                        >
-                                                            <ExternalLink size={14} />
-                                                            {t('viewReport')}
-                                                        </a>
-                                                    )}
-                                                    {!result.moss_url && result.status === 'completed' && (
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {t('noReportUrl')}
-                                                        </span>
-                                                    )}
-                                                    {result.status === 'pending' && (
-                                                        <button
-                                                            onClick={() => analyzeMutation.mutate({
-                                                                submissionId: result.submission_id,
-                                                                language: result.language
-                                                            })}
-                                                            disabled={analyzeMutation.isPending}
-                                                            className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50"
-                                                        >
-                                                            <BarChart3 size={14} />
-                                                            {t('analyze')}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
+                                )))}
                             </tbody>
                         </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {filteredResults.length > 0 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
-                            <div className="text-sm text-muted-foreground">
-                                {t('showingCount', { shown: filteredResults.length, total: data?.total || 0 })}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
-                                >
-                                    {tCommon('previous')}
-                                </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
-                                    {page}
-                                </div>
-                                <button
-                                    onClick={() => setPage(p => p + 1)}
-                                    disabled={filteredResults.length < 50}
-                                    className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
-                                >
-                                    {tCommon('next')}
-                                </button>
-                            </div>
-                        </div>
                     )}
-                </div>
+                </section>
             )}
         </div>
     );

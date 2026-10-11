@@ -64,6 +64,7 @@ type GetOrganizationRequest struct {
 type ListOrganizationsRequest struct {
 	Page     int
 	PageSize int
+	Search   string // name, short name or slug contains (literal)
 }
 
 // ListOrganizationsResponse holds the response for listing organizations.
@@ -112,17 +113,21 @@ func (s *OrganizationService) ListOrganizations(req ListOrganizationsRequest) (*
 		req.PageSize = 100
 	}
 
-	var organizations []models.Organization
-	query := db.DB.Order("name ASC")
+	filter := func(q *gorm.DB) *gorm.DB {
+		if req.Search != "" {
+			p := db.ContainsPattern(req.Search)
+			q = q.Where("(name LIKE ? ESCAPE '!' OR short_name LIKE ? ESCAPE '!' OR slug LIKE ? ESCAPE '!')", p, p, p)
+		}
+		return q
+	}
 
-	// Get total count
 	var total int64
-	if err := db.DB.Model(&models.Organization{}).Count(&total).Error; err != nil {
+	if err := filter(db.DB.Model(&models.Organization{})).Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Get paginated results
-	if err := query.
+	var organizations []models.Organization
+	if err := filter(db.DB.Model(&models.Organization{})).Order("name ASC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&organizations).Error; err != nil {

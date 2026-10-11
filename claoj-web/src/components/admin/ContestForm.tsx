@@ -11,6 +11,7 @@ import { FormatSection } from './contest-form/FormatSection';
 import { ProblemsSection } from './contest-form/ProblemsSection';
 import { TagsSection } from './contest-form/TagsSection';
 import { StaffSection } from './contest-form/StaffSection';
+import type { EntityOption } from './EntityPicker';
 
 export interface ContestFormData {
     key: string;
@@ -37,20 +38,9 @@ export interface ContestFormData {
 
 export interface ContestFormProps {
     initialData?: ContestFormData;
+    initialOptions?: { problems?: EntityOption[]; author_ids?: EntityOption[]; curator_ids?: EntityOption[]; tester_ids?: EntityOption[] };
     onSubmit: (data: ContestFormData) => Promise<void>;
     isLoading?: boolean;
-}
-
-interface Problem {
-    id: number;
-    code: string;
-    name: string;
-    points: number;
-}
-
-interface UserProfile {
-    id: number;
-    username: string;
 }
 
 interface ContestTag {
@@ -60,7 +50,7 @@ interface ContestTag {
     description: string;
 }
 
-export default function ContestForm({ initialData, onSubmit, isLoading }: ContestFormProps) {
+export default function ContestForm({ initialData, initialOptions, onSubmit, isLoading }: ContestFormProps) {
     const t = useTranslations('Admin');
     const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ContestFormData>({
         defaultValues: {
@@ -73,32 +63,21 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
             time_limit: initialData?.time_limit,
             is_visible: initialData?.is_visible ?? false,
             is_rated: initialData?.is_rated ?? false,
-            format_name: initialData?.format_name || 'icpc',
+            format_name: initialData?.format_name || 'default',
             format_config: initialData?.format_config || '',
             access_code: initialData?.access_code || '',
             hide_problem_tags: initialData?.hide_problem_tags ?? false,
             run_pretests_only: initialData?.run_pretests_only ?? false,
             is_organization_private: initialData?.is_organization_private ?? false,
+            author_ids: initialData?.author_ids ?? [],
+            curator_ids: initialData?.curator_ids ?? [],
+            tester_ids: initialData?.tester_ids ?? [],
+            problem_ids: initialData?.problem_ids ?? [],
+            tag_ids: initialData?.tag_ids ?? [],
         }
     });
 
     const [description, setDescription] = useState(initialData?.description || '');
-
-    const { data: problems } = useQuery<{ data: Problem[] }>({
-        queryKey: ['admin-problems-list'],
-        queryFn: async () => {
-            const res = await api.get('/admin/problems?page=1&page_size=1000');
-            return res.data;
-        }
-    });
-
-    const { data: users } = useQuery<{ data: UserProfile[] }>({
-        queryKey: ['admin-users-list'],
-        queryFn: async () => {
-            const res = await api.get('/admin/users?page=1&page_size=1000');
-            return res.data;
-        }
-    });
 
     const { data: tags } = useQuery<{ data: ContestTag[] }>({
         queryKey: ['admin-contest-tags-list'],
@@ -114,28 +93,6 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
     const selectedCurators = watch('curator_ids') || [];
     const selectedTesters = watch('tester_ids') || [];
     const selectedTags = watch('tag_ids') || [];
-
-    const handleMultiSelect = (
-        field: 'problem_ids' | 'author_ids' | 'curator_ids' | 'tester_ids',
-        id: number,
-        checked: boolean
-    ) => {
-        const current = (watch(field) as number[] | undefined) || [];
-        if (checked) {
-            setValue(field, [...current, id]);
-        } else {
-            setValue(field, current.filter(i => i !== id));
-        }
-    };
-
-    const handleProblemSelect = (problemId: number, checked: boolean) => {
-        const current = (watch('problem_ids') as number[] | undefined) || [];
-        if (checked) {
-            setValue('problem_ids', [...current, problemId]);
-        } else {
-            setValue('problem_ids', current.filter(i => i !== problemId));
-        }
-    };
 
     const handleTagSelect = (tagId: number, checked: boolean) => {
         const current = (watch('tag_ids') as number[] | undefined) || [];
@@ -184,15 +141,15 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
                     run_pretests_only: watch('run_pretests_only'),
                     is_organization_private: watch('is_organization_private')
                 }}
-                selectedFormat={selectedFormat || 'icpc'}
+                selectedFormat={selectedFormat || 'default'}
                 register={register}
                 setValue={setValue}
             />
 
             <ProblemsSection
-                problems={problems}
                 selectedProblems={selectedProblems}
-                onProblemToggle={handleProblemSelect}
+                initialOptions={initialOptions?.problems}
+                onChange={(ids) => setValue('problem_ids', ids)}
             />
 
             <TagsSection
@@ -202,11 +159,9 @@ export default function ContestForm({ initialData, onSubmit, isLoading }: Contes
             />
 
             <StaffSection
-                users={users}
-                selectedAuthors={selectedAuthors}
-                selectedCurators={selectedCurators}
-                selectedTesters={selectedTesters}
-                onUserToggle={handleMultiSelect}
+                selected={{ author_ids: selectedAuthors, curator_ids: selectedCurators, tester_ids: selectedTesters }}
+                initialOptions={initialOptions}
+                onChange={(field, ids) => setValue(field, ids)}
             />
 
             <div className="flex justify-end gap-3">

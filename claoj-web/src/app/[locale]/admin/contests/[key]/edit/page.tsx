@@ -1,8 +1,10 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { adminContestApi } from '@/lib/adminApi';
+import { contestToFormData, contestFormToUpdate } from '@/lib/adminForms';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
 import { Trophy, ArrowLeft, Lock, Unlock, Users } from 'lucide-react';
@@ -14,7 +16,6 @@ import { useTranslations } from 'next-intl';
 export default function EditContestPage() {
     const t = useTranslations('Admin');
     const params = useParams();
-    const router = useRouter();
     const key = params.key as string;
     const queryClient = useQueryClient();
     const [lockTime, setLockTime] = useState('');
@@ -28,11 +29,16 @@ export default function EditContestPage() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ key, data }: { key: string; data: ContestFormData }) =>
-            adminContestApi.update(key, data),
+        mutationFn: (data: ContestFormData) =>
+            adminContestApi.update(key, contestFormToUpdate(data, contestData?.problems ?? [])),
         onSuccess: () => {
-            router.push(`/admin/contests`);
-        }
+            toast.success(t('contests.saved'));
+            queryClient.invalidateQueries({ queryKey: ['admin-contest-detail', key] });
+        },
+        onError: (err: unknown) => {
+            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? String(err);
+            toast.error(t('contests.saveFailed', { error: msg }));
+        },
     });
 
     const lockMutation = useMutation({
@@ -46,7 +52,7 @@ export default function EditContestPage() {
     });
 
     const handleSubmit = async (data: ContestFormData) => {
-        await updateMutation.mutateAsync({ key, data });
+        await updateMutation.mutateAsync(data);
     };
 
     const handleLock = async () => {
@@ -63,7 +69,7 @@ export default function EditContestPage() {
     const isLocked = contestData?.locked_after != null;
     const lockedAfter = contestData?.locked_after ? new Date(contestData.locked_after) : null;
 
-    if (isLoadingContest) {
+    if (isLoadingContest || !contestData) {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-muted-foreground">{t('contests.loadingContest')}</div>
@@ -71,34 +77,13 @@ export default function EditContestPage() {
         );
     }
 
-    // contestData is already the contest object with problems array
-    const contest = contestData;
-    const problems = contestData?.problems || [];
-
-    const initialData = contest ? {
-        key: contest.key,
-        name: contest.name,
-        description: contest.description,
-        summary: contest.summary,
-        start_time: formatDateTimeLocal(contest.start_time),
-        end_time: formatDateTimeLocal(contest.end_time),
-        time_limit: contest.time_limit || undefined,
-        is_visible: contest.is_visible,
-        is_rated: contest.is_rated,
-        format_name: contest.format_name || 'icpc',
-        format_config: typeof contest.format_config === 'object'
-            ? JSON.stringify(contest.format_config)
-            : contest.format_config,
-        access_code: contest.access_code || '',
-        hide_problem_tags: contest.hide_problem_tags,
-        run_pretests_only: contest.run_pretests_only,
-        is_organization_private: contest.is_organization_private,
-        author_ids: contest.author_ids || [],
-        curator_ids: contest.curator_ids || [],
-        tester_ids: contest.tester_ids || [],
-        tag_ids: contest.tag_ids || [],
-        problem_ids: problems.map((p: any) => p.id),
-    } : undefined;
+    const initialData = contestToFormData(contestData);
+    const initialOptions = {
+        problems: contestData.problems.map(p => ({ id: p.problem_id, label: p.code, detail: p.name })),
+        author_ids: contestData.authors.map(u => ({ id: u.id, label: u.username })),
+        curator_ids: contestData.curators.map(u => ({ id: u.id, label: u.username })),
+        tester_ids: contestData.testers.map(u => ({ id: u.id, label: u.username })),
+    };
 
     return (
         <div className="space-y-6">
@@ -116,7 +101,7 @@ export default function EditContestPage() {
                         {t('contests.editContestTitle')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        {contest?.name} ({key})
+                        {contestData.name} ({key})
                     </p>
                 </div>
                 <Link
@@ -183,20 +168,10 @@ export default function EditContestPage() {
             {/* Form */}
             <ContestForm
                 initialData={initialData}
+                initialOptions={initialOptions}
                 onSubmit={handleSubmit}
                 isLoading={updateMutation.isPending}
             />
         </div>
     );
-}
-
-function formatDateTimeLocal(dateString: string): string {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }

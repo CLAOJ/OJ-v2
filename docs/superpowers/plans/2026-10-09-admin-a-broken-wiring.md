@@ -2958,8 +2958,8 @@ git log -1 --format=%s
 
 **Files:**
 - Create: `claoj-web/src/components/admin/EntityPicker.tsx`, `claoj-web/src/lib/adminSearch.ts`
-- Modify: `claoj-web/src/components/admin/ProblemForm.tsx`, `problem-form/AuthorsSection.tsx`
-- Modify: `claoj-web/src/components/admin/ContestForm.tsx`, `contest-form/StaffSection.tsx`, `contest-form/ProblemsSection.tsx`, `contest-form/ScheduleSection.tsx`
+- Modify: `claoj-web/src/components/admin/ProblemForm.tsx`, `claoj-web/src/components/admin/problem-form/AuthorsSection.tsx`
+- Modify: `claoj-web/src/components/admin/ContestForm.tsx`, `claoj-web/src/components/admin/contest-form/StaffSection.tsx`, `claoj-web/src/components/admin/contest-form/ProblemsSection.tsx`, `claoj-web/src/components/admin/contest-form/ScheduleSection.tsx`
 - Modify: `claoj-web/src/app/[locale]/admin/problems/[code]/edit/page.tsx`, `claoj-web/src/app/[locale]/admin/contests/[key]/edit/page.tsx`, `claoj-web/src/app/[locale]/admin/contests/create/page.tsx`
 - Modify: `claoj-web/src/i18n/en.json`, `claoj-web/src/i18n/vi.json`
 - Test: `claoj-web/__tests__/components/EntityPicker.test.tsx`
@@ -3552,7 +3552,7 @@ git log -1 --format=%s
 **Files:**
 - Create: `claoj-web/src/hooks/useListParams.ts`
 - Modify: `claoj-web/src/app/[locale]/admin/layout.tsx` (Suspense)
-- Modify: `claoj-web/src/app/[locale]/admin/{problems,contests,organizations,submissions}/page.tsx`
+- Modify: `claoj-web/src/app/[locale]/admin/problems/page.tsx`, `claoj-web/src/app/[locale]/admin/contests/page.tsx`, `claoj-web/src/app/[locale]/admin/organizations/page.tsx`, `claoj-web/src/app/[locale]/admin/submissions/page.tsx`
 - Modify: `claoj-web/src/i18n/en.json`, `claoj-web/src/i18n/vi.json`
 - Test: `claoj-web/__tests__/hooks/listParams.test.ts`
 

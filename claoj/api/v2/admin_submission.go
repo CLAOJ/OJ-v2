@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -23,8 +24,13 @@ func AdminSubmissionList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 
 	resp, err := getSubmissionService().ListSubmissions(submission.ListSubmissionsRequest{
-		Page:     page,
-		PageSize: pageSize,
+		Page:        page,
+		PageSize:    pageSize,
+		Username:    strings.TrimSpace(c.Query("user")),
+		ProblemCode: strings.TrimSpace(c.Query("problem")),
+		Result:      c.Query("result"),
+		Status:      c.Query("status"),
+		Language:    strings.TrimSpace(c.Query("language")),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

@@ -98,11 +98,12 @@ export function ScheduleSection({ formData, errors, register }: ScheduleSectionP
                 </label>
                 <input
                     type="number"
-                    min="0.5"
-                    step="0.5"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
                     className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
                     placeholder={t('contestForm.timeLimitPlaceholder')}
-                    {...register('time_limit')}
+                    {...register('time_limit', { setValueAs: (v: string) => (v === '' || v == null ? undefined : Number(v)) })}
                 />
             </div>
         </div>

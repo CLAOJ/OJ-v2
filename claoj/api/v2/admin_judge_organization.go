@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/db"
@@ -270,6 +271,7 @@ func AdminOrganizationList(c *gin.Context) {
 	resp, err := getOrgService().ListOrganizations(organization.ListOrganizationsRequest{
 		Page:     page,
 		PageSize: pageSize,
+		Search:   strings.TrimSpace(c.Query("search")),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

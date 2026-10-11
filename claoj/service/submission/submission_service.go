@@ -92,9 +92,15 @@ type RescoreAllRequest struct {
 }
 
 // ListSubmissionsRequest holds the parameters for listing submissions.
+// All filters are exact matches; empty means no filter.
 type ListSubmissionsRequest struct {
-	Page     int
-	PageSize int
+	Page        int
+	PageSize    int
+	Username    string
+	ProblemCode string
+	Result      string
+	Status      string
+	Language    string // judge_language.key or judge_language.name
 }
 
 // ListSubmissionsResponse holds the response for listing submissions.
@@ -148,22 +154,46 @@ func (s *SubmissionService) ListSubmissions(req ListSubmissionsRequest) (*ListSu
 
 	// judge_submission.user_id references judge_profile.id, so the username
 	// join must go through judge_profile.
-	query := db.DB.Table("judge_submission").
-		Joins("JOIN judge_profile ON judge_profile.id = judge_submission.user_id").
-		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
-		Joins("JOIN judge_problem ON judge_problem.id = judge_submission.problem_id").
-		Joins("JOIN judge_language ON judge_language.id = judge_submission.language_id").
-		Select("judge_submission.*, auth_user.username, judge_problem.code as problem_code, judge_language.name as language_name").
-		Order("judge_submission.date DESC")
+	joined := func() *gorm.DB {
+		return db.DB.Table("judge_submission").
+			Joins("JOIN judge_profile ON judge_profile.id = judge_submission.user_id").
+			Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+			Joins("JOIN judge_problem ON judge_problem.id = judge_submission.problem_id").
+			Joins("JOIN judge_language ON judge_language.id = judge_submission.language_id")
+	}
+	filter := func(q *gorm.DB) *gorm.DB {
+		if req.Username != "" {
+			q = q.Where("auth_user.username = ?", req.Username)
+		}
+		if req.ProblemCode != "" {
+			q = q.Where("judge_problem.code = ?", req.ProblemCode)
+		}
+		if req.Result != "" {
+			q = q.Where("judge_submission.result = ?", req.Result)
+		}
+		if req.Status != "" {
+			q = q.Where("judge_submission.status = ?", req.Status)
+		}
+		if req.Language != "" {
+			q = q.Where("(judge_language.key = ? OR judge_language.name = ?)", req.Language, req.Language)
+		}
+		return q
+	}
+	filtered := req.Username != "" || req.ProblemCode != "" || req.Result != "" || req.Status != "" || req.Language != ""
 
-	// Get total count
+	// Unfiltered counts skip the joins: judge_submission is the largest table.
 	var total int64
-	if err := db.DB.Model(&models.Submission{}).Count(&total).Error; err != nil {
+	countQ := db.DB.Model(&models.Submission{})
+	if filtered {
+		countQ = filter(joined())
+	}
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Get paginated results
-	if err := query.
+	if err := filter(joined()).
+		Select("judge_submission.*, auth_user.username, judge_problem.code as problem_code, judge_language.name as language_name").
+		Order("judge_submission.date DESC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Scan(&submissions).Error; err != nil {

@@ -248,3 +248,9 @@ a judge out of service.
 
 A → B → C, each its own implementation plan. A first because it loses data
 today. Within C: C3 (builds on B) and C2 before C1 and C4.
+
+## Implementation delta (sub-project A)
+
+- The per-submission MOSS stub (`/admin/submission/:id/moss`) and the v2-only `MossResult` model were removed; MOSS is now per contest (`/admin/contest/:key/moss`) writing v1's `judge_contestmoss`.
+- Validation messages use `apiUserError`; `apiError` still masks internal errors.
+- Manual browser checks (problem/contest forms, list filters, MOSS page) were not run: they need a backend and an admin login.

@@ -2,11 +2,15 @@
 package contest
 
 import (
+	"encoding/json"
+	"strings"
 	"time"
 
+	"github.com/CLAOJ/claoj/contest_format"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
+	"github.com/CLAOJ/claoj/service/relations"
 	"gorm.io/gorm"
 )
 
@@ -39,17 +43,41 @@ func (s *ContestService) ListContests(req ListContestsRequest) (*ListContestsRes
 		req.PageSize = 100
 	}
 
-	var contests []models.Contest
-	query := db.DB.Order("start_time DESC")
+	now := req.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
+	filter := func(q *gorm.DB) (*gorm.DB, error) {
+		if req.Search != "" {
+			p := db.ContainsPattern(req.Search)
+			q = q.Where("(`key` LIKE ? ESCAPE '!' OR name LIKE ? ESCAPE '!')", p, p)
+		}
+		switch req.Status {
+		case "":
+		case "upcoming":
+			q = q.Where("start_time > ?", now)
+		case "ongoing":
+			q = q.Where("start_time <= ? AND end_time > ?", now, now)
+		case "past":
+			q = q.Where("end_time <= ?", now)
+		default:
+			return nil, ErrInvalidStatus
+		}
+		return q, nil
+	}
 
-	// Get total count
+	countQ, err := filter(db.DB.Model(&models.Contest{}))
+	if err != nil {
+		return nil, err
+	}
 	var total int64
-	if err := db.DB.Model(&models.Contest{}).Count(&total).Error; err != nil {
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Get paginated results
-	if err := query.
+	listQ, _ := filter(db.DB.Model(&models.Contest{}))
+	var contests []models.Contest
+	if err := listQ.Order("start_time DESC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&contests).Error; err != nil {
@@ -72,10 +100,11 @@ func (s *ContestService) ListContests(req ListContestsRequest) (*ListContestsRes
 // GetContest retrieves a contest by key with full details.
 func (s *ContestService) GetContest(req GetContestRequest) (*ContestDetailResponse, error) {
 	var contest models.Contest
-	if err := db.DB.Preload("Authors").
-		Preload("Curators").
-		Preload("Testers").
+	if err := db.DB.Preload("Authors.User").
+		Preload("Curators.User").
+		Preload("Testers.User").
 		Preload("Tags").
+		Preload("Organizations").
 		Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrContestNotFound
@@ -83,18 +112,12 @@ func (s *ContestService) GetContest(req GetContestRequest) (*ContestDetailRespon
 		return nil, err
 	}
 
-	// Get contest problems using problem service
 	problems, err := s.problems.GetContestProblems(contest.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	profile := contestToProfile(contest)
-
-	return &ContestDetailResponse{
-		Contest:  profile,
-		Problems: problems,
-	}, nil
+	return &ContestDetailResponse{ContestProfile: contestToProfile(contest), Problems: problems}, nil
 }
 
 // CreateContest creates a new contest.
@@ -159,7 +182,7 @@ func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfil
 	return &profile, nil
 }
 
-// UpdateContest updates an existing contest.
+// UpdateContest updates an existing contest in one transaction.
 func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfile, error) {
 	var contest models.Contest
 	if err := db.DB.Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
@@ -198,48 +221,114 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 		updates["is_organization_private"] = *req.IsOrganizationPrivate
 	}
 	if req.TimeLimit != nil {
-		updates["time_limit"] = *req.TimeLimit
-	}
-
-	if len(updates) > 0 {
-		if err := db.DB.Model(&contest).Updates(updates).Error; err != nil {
-			return nil, err
+		if *req.TimeLimit <= 0 {
+			updates["time_limit"] = gorm.Expr("NULL")
+		} else {
+			updates["time_limit"] = *req.TimeLimit
 		}
 	}
 
-	// Add problems using problem service
-	if len(req.AddProblemIDs) > 0 {
-		if err := s.problems.AddProblemsToContest(contest.ID, req.AddProblemIDs); err != nil {
-			return nil, err
+	start, end := contest.StartTime, contest.EndTime
+	if req.StartTime != nil {
+		t, err := time.Parse(time.RFC3339, *req.StartTime)
+		if err != nil {
+			return nil, ErrInvalidTime
+		}
+		start = t
+		updates["start_time"] = t
+	}
+	if req.EndTime != nil {
+		t, err := time.Parse(time.RFC3339, *req.EndTime)
+		if err != nil {
+			return nil, ErrInvalidTime
+		}
+		end = t
+		updates["end_time"] = t
+	}
+	if !end.After(start) {
+		return nil, ErrInvalidSchedule
+	}
+
+	if req.FormatName != nil {
+		if !contest_format.IsRegistered(*req.FormatName) {
+			return nil, ErrUnknownFormat
+		}
+		updates["format_name"] = *req.FormatName
+	}
+	// The config belongs to the format that will be in effect after this
+	// update, which may itself be changing.
+	effectiveFormat := contest.FormatName
+	if req.FormatName != nil {
+		effectiveFormat = *req.FormatName
+	}
+	if req.FormatConfig != nil {
+		if strings.TrimSpace(*req.FormatConfig) == "" {
+			updates["format_config"] = gorm.Expr("NULL")
+		} else {
+			var cfg models.JSONField
+			if err := cfg.Scan(*req.FormatConfig); err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			raw, err := json.Marshal(cfg)
+			if err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			var decoded map[string]interface{}
+			if err := json.Unmarshal(raw, &decoded); err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			if err := contest_format.ValidateConfig(effectiveFormat, decoded); err != nil {
+				return nil, ErrInvalidFormatConfig
+			}
+			updates["format_config"] = cfg
 		}
 	}
 
-	// Remove problems using problem service
-	if len(req.RemoveProblemIDs) > 0 {
-		if err := s.problems.RemoveProblemsFromContest(contest.ID, req.RemoveProblemIDs); err != nil {
-			return nil, err
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if len(updates) > 0 {
+			if err := tx.Model(&contest).Updates(updates).Error; err != nil {
+				return err
+			}
 		}
+		if err := relations.Sync[models.Profile](tx, &contest, "Authors", req.AuthorIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "Curators", req.CuratorIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "Testers", req.TesterIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.ContestTag](tx, &contest, "Tags", req.TagIDs, req.AddTagIDs, req.RemoveTagIDs); err != nil {
+			return err
+		}
+		return s.applyProblems(tx, contest.ID, req)
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// Add tags
-	if len(req.AddTagIDs) > 0 {
-		var tags []models.ContestTag
-		db.DB.Where("id IN ?", req.AddTagIDs).Find(&tags)
-		db.DB.Model(&contest).Association("Tags").Append(&tags)
+	detail, err := s.GetContest(GetContestRequest{ContestKey: contest.Key})
+	if err != nil {
+		return nil, err
 	}
+	return &detail.ContestProfile, nil
+}
 
-	// Remove tags
-	if len(req.RemoveTagIDs) > 0 {
-		var tags []models.ContestTag
-		db.DB.Where("id IN ?", req.RemoveTagIDs).Find(&tags)
-		db.DB.Model(&contest).Association("Tags").Delete(&tags)
+// applyProblems writes the contest problem list: the full list when given,
+// otherwise the legacy add/remove lists folded into one.
+func (s *ContestService) applyProblems(tx *gorm.DB, contestID uint, req UpdateContestRequest) error {
+	if req.Problems != nil {
+		return s.problems.ReplaceContestProblems(tx, contestID, *req.Problems)
 	}
-
-	// Reload contest with relations
-	db.DB.Preload("Authors").Preload("Curators").Preload("Testers").Preload("Tags").First(&contest, contest.ID)
-
-	profile := contestToProfile(contest)
-	return &profile, nil
+	if len(req.AddProblemIDs) == 0 && len(req.RemoveProblemIDs) == 0 {
+		return nil
+	}
+	items, err := s.problems.mergeLegacyProblemEdits(tx, contestID, req.AddProblemIDs, req.RemoveProblemIDs)
+	if err != nil {
+		return err
+	}
+	return s.problems.ReplaceContestProblems(tx, contestID, items)
 }
 
 // DeleteContest performs a soft delete by hiding the contest.
@@ -479,6 +568,7 @@ func contestToProfile(c models.Contest) ContestProfile {
 		StartTime:              c.StartTime,
 		EndTime:                c.EndTime,
 		TimeLimit:              c.TimeLimit,
+		TimeLimitSeconds:       microsToSeconds(c.TimeLimit),
 		IsVisible:              c.IsVisible,
 		IsRated:                c.IsRated,
 		ScoreboardVisibility:   c.ScoreboardVisibility,
@@ -509,6 +599,9 @@ func contestToProfile(c models.Contest) ContestProfile {
 		TesterIDs:              testerIDs,
 		TagIDs:                 tagIDs,
 		OrganizationIDs:        orgIDs,
+		Authors:                relations.UserRefs(c.Authors),
+		Curators:               relations.UserRefs(c.Curators),
+		Testers:                relations.UserRefs(c.Testers),
 	}
 }
 
@@ -557,4 +650,13 @@ func copyAssociations(tx *gorm.DB, sourceID, targetID uint) {
 	if len(orgs) > 0 {
 		tx.Model(&models.Contest{}).Where("id = ?", targetID).Association("Organizations").Append(&orgs)
 	}
+}
+
+// microsToSeconds converts Django DurationField microseconds to seconds.
+func microsToSeconds(us *int64) *int64 {
+	if us == nil {
+		return nil
+	}
+	s := *us / 1_000_000
+	return &s
 }

@@ -128,7 +128,7 @@ export function BasicInfoSection({
                         type="number"
                         step="0.01"
                         className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        {...register('points', { required: true, min: 0 })}
+                        {...register('points', { required: true, min: 0, valueAsNumber: true })}
                     />
                 </div>
 
@@ -142,7 +142,7 @@ export function BasicInfoSection({
                         step="0.1"
                         min="0.1"
                         className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        {...register('time_limit', { required: true, min: 0.1 })}
+                        {...register('time_limit', { required: true, min: 0.1, valueAsNumber: true })}
                     />
                 </div>
             </div>
@@ -156,7 +156,7 @@ export function BasicInfoSection({
                     type="number"
                     min="1"
                     className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                    {...register('memory_limit', { required: true, min: 1 })}
+                    {...register('memory_limit', { required: true, min: 1, valueAsNumber: true })}
                 />
             </div>
         </div>

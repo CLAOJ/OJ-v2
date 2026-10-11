@@ -183,3 +183,16 @@ type Rating struct {
 }
 
 func (Rating) TableName() string { return "judge_rating" }
+
+// ContestMoss mirrors judge_contestmoss (v1 ContestMoss): one MOSS report
+// per contest problem × language.
+type ContestMoss struct {
+	ID              uint    `gorm:"primaryKey;column:id"`
+	ContestID       uint    `gorm:"column:contest_id;not null;index"`
+	ProblemID       uint    `gorm:"column:problem_id;not null;index"`
+	Language        string  `gorm:"column:language;size:10;not null"`
+	SubmissionCount uint    `gorm:"column:submission_count;not null;default:0"`
+	URL             *string `gorm:"column:url;size:200"`
+}
+
+func (ContestMoss) TableName() string { return "judge_contestmoss" }

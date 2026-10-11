@@ -75,28 +75,19 @@ import type {
     AdminLanguageLimitCreateRequest,
     AdminLanguageLimitUpdateRequest,
     AdminLanguageLimitListResponse,
+    AdminProblemDetail,
+    AdminProblemUpdateRequest,
+    AdminContestDetail,
+    AdminContestUpdateRequest,
 } from '@/types';
 
-// ============================================================
-// SHARED TYPES
-// ============================================================
-
-interface ContestProblem {
-    id: number;
-    code: string;
-    name: string;
-    points: number;
-    order: number;
-}
-
-interface ProblemAuthor {
-    id: number;
-    username: string;
-}
-
-interface ProblemTypeRef {
-    id: number;
-    full_name: string;
+/** Builds a query string from non-empty params. */
+function qs(params: Record<string, string | number | undefined>): string {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== '') sp.set(k, String(v));
+    }
+    return sp.toString();
 }
 
 // ============================================================
@@ -159,8 +150,8 @@ export const adminProblemDataApi = {
 
 
 export const adminUserApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminUserListResponse>(`/admin/users?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminUserListResponse>(`/admin/users?${qs({ page, page_size: pageSize, search })}`),
 
     detail: (id: number) =>
         api.get<AdminUser>(`/admin/user/${id}`),
@@ -184,16 +175,16 @@ export const adminUserApi = {
 
 
 export const adminContestApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminContestListResponse>(`/admin/contests?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, filters: { search?: string; status?: 'upcoming' | 'ongoing' | 'past' } = {}) =>
+        api.get<AdminContestListResponse>(`/admin/contests?${qs({ page, page_size: pageSize, ...filters })}`),
 
     detail: (key: string) =>
-        api.get<AdminContest & { problems: ContestProblem[] }>(`/admin/contest/${key}`),
+        api.get<AdminContestDetail>(`/admin/contest/${key}`),
 
     create: (data: AdminContestCreateRequest) =>
         api.post<{ success: boolean; contest: AdminContest }>('/admin/contests', data),
 
-    update: (key: string, data: Partial<AdminContestCreateRequest>) =>
+    update: (key: string, data: AdminContestUpdateRequest) =>
         api.patch(`/admin/contest/${key}`, data),
 
     delete: (key: string) =>
@@ -228,16 +219,16 @@ export const adminContestApi = {
 
 
 export const adminProblemApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminProblemListResponse>(`/admin/problems?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, filters: { search?: string; is_public?: 'true' | 'false'; group_id?: number } = {}) =>
+        api.get<AdminProblemListResponse>(`/admin/problems?${qs({ page, page_size: pageSize, ...filters })}`),
 
     detail: (code: string) =>
-        api.get<AdminProblem & { authors: ProblemAuthor[]; types: ProblemTypeRef[] }>(`/admin/problem/${code}`),
+        api.get<AdminProblemDetail>(`/admin/problem/${code}`),
 
     create: (data: AdminProblemCreateRequest) =>
         api.post<{ success: boolean; problem: AdminProblem }>('/admin/problems', data),
 
-    update: (code: string, data: Partial<AdminProblemCreateRequest>) =>
+    update: (code: string, data: AdminProblemUpdateRequest) =>
         api.patch(`/admin/problem/${code}`, data),
 
     delete: (code: string) =>
@@ -303,8 +294,8 @@ export interface AdminOrganizationUpdateRequest {
 }
 
 export const adminOrganizationApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminOrganizationListResponse>(`/admin/organizations?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminOrganizationListResponse>(`/admin/organizations?${qs({ page, page_size: pageSize, search })}`),
 
     create: (data: {
         name: string;
@@ -351,20 +342,6 @@ export interface BatchRejudgeResponse {
     message: string;
 }
 
-export interface MossAnalysisResult {
-    id: number;
-    submission_id: number;
-    match_count: number;
-    matches: MossMatch[];
-    created_at: string;
-}
-
-export interface MossMatch {
-    submission_id: number;
-    username: string;
-    similarity_percentage: number;
-    match_lines: number;
-}
 
 export interface BatchRescoreRequest {
     submission_ids?: number[];
@@ -380,8 +357,8 @@ export interface BatchRescoreResponse {
 }
 
 export const adminSubmissionApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminSubmissionListResponse>(`/admin/submissions?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, filters: { user?: string; problem?: string; result?: string; status?: string; language?: string } = {}) =>
+        api.get<AdminSubmissionListResponse>(`/admin/submissions?${qs({ page, page_size: pageSize, ...filters })}`),
 
     rejudge: (id: number) =>
         api.post(`/admin/submission/${id}/rejudge`),
@@ -401,11 +378,6 @@ export const adminSubmissionApi = {
     rescoreAll: (problemCode: string) =>
         api.post<BatchRescoreResponse>(`/admin/problem/${problemCode}/rescore-all`),
 
-    mossAnalyze: (id: number, language: string) =>
-        api.post<{ success: boolean; message: string }>(`/admin/submission/${id}/moss`, { language }),
-
-    mossResults: (id: number) =>
-        api.get<MossAnalysisResult>(`/admin/submission/${id}/moss`),
 };
 
 // ============================================================
@@ -752,4 +724,25 @@ export const adminAuditLogApi = {
         Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
         return api.get<{ results: AuditLogEntry[]; total: number }>(`/audit-logs?${params.toString()}`);
     },
+};
+
+// ============================================================
+// ADMIN CONTEST MOSS API (v1 ContestMoss parity)
+// ============================================================
+
+export interface ContestMossResult {
+    problem_code: string;
+    problem_name: string;
+    language: string;
+    submission_count: number;
+    url: string | null;
+}
+
+export const adminMossApi = {
+    list: (key: string) =>
+        api.get<{ running: boolean; results: ContestMossResult[]; error: string }>(`/admin/contest/${key}/moss`),
+    run: (key: string) =>
+        api.post<{ queued: boolean }>(`/admin/contest/${key}/moss`),
+    clear: (key: string) =>
+        api.delete<{ deleted: number }>(`/admin/contest/${key}/moss`),
 };

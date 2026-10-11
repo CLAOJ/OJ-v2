@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
-import { AdminProblem } from '@/types';
-import { adminProblemApi } from '@/lib/adminApi';
+import { adminProblemApi, adminProblemGroupApi } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
+import { useListParams } from '@/hooks/useListParams';
+import { useDebounce } from '@/hooks/useDebounce';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 import {
     Search,
     Code2,
@@ -22,26 +23,31 @@ import {
 } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 
+const FILTER_KEYS = ['search', 'is_public', 'group_id'] as const;
+const PAGE_SIZE = 50;
+
 export default function AdminProblemPage() {
     const t = useTranslations('Admin');
-    const [page, setPage] = useState(1);
-    const [search, setSearch] = useState('');
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [problemToClone, setProblemToClone] = useState<{code: string; name: string} | null>(null);
 
     const queryClient = useQueryClient();
 
-    const { data, isLoading, refetch } = useQuery({
-        queryKey: ['admin-problems', page, search],
-        queryFn: async () => {
-            const res = await api.get<{
-                data: AdminProblem[];
-                total: number;
-                page: number;
-                page_size: number;
-            }>(`/admin/problems?page=${page}&page_size=50&search=${search}`);
-            return res.data;
-        }
+    const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
+    const search = useDebounce(filters.search ?? '', 300);
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['admin-problems', page, search, filters.is_public, filters.group_id],
+        queryFn: async () => (await adminProblemApi.list(page, PAGE_SIZE, {
+            search,
+            is_public: filters.is_public as 'true' | 'false' | undefined,
+            group_id: filters.group_id ? Number(filters.group_id) : undefined,
+        })).data,
+    });
+
+    const { data: groups } = useQuery({
+        queryKey: ['problem-groups'],
+        queryFn: async () => (await adminProblemGroupApi.list(1, 500)).data,
     });
 
     const deleteMutation = useMutation({
@@ -53,33 +59,47 @@ export default function AdminProblemPage() {
 
     const problems = data?.data || [];
 
-    const filteredProblems = problems.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.code.toLowerCase().includes(search.toLowerCase())
-    );
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-semibold flex items-center gap-3">
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Code2 className="text-primary" size={32} />
                         {t('problems.title')}
                     </h1>
                     <p className="text-muted-foreground mt-1">{t('problems.subtitle')}</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <div className="relative w-full md:w-80">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type="text"
                             placeholder={t('problems.searchPlaceholder')}
                             className="w-full h-10 pl-10 pr-4 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            value={filters.search ?? ''}
+                            onChange={(e) => setFilters({ search: e.target.value })}
                         />
                     </div>
+                    <select
+                        aria-label={t('problems.visibilityFilter')}
+                        className="h-10 px-3 rounded-xl bg-card border"
+                        value={filters.is_public ?? ''}
+                        onChange={(e) => setFilters({ is_public: e.target.value })}
+                    >
+                        <option value="">{t('problems.visibilityAll')}</option>
+                        <option value="true">{t('problems.publicBadge')}</option>
+                        <option value="false">{t('problems.privateBadge')}</option>
+                    </select>
+                    <select
+                        aria-label={t('problems.groupFilter')}
+                        className="h-10 px-3 rounded-xl bg-card border"
+                        value={filters.group_id ?? ''}
+                        onChange={(e) => setFilters({ group_id: e.target.value })}
+                    >
+                        <option value="">{t('problems.groupAll')}</option>
+                        {groups?.data.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
                     <Link
                         href="/admin/problems/create"
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
@@ -100,27 +120,27 @@ export default function AdminProblemPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('problems.colProblem')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('problems.colStats')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground">{t('problems.colGroup')}</th>
-                                    <th className="px-6 py-4 text-xs font-medium uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colProblem')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colStats')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colGroup')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {filteredProblems.length === 0 ? (
+                                {problems.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
                                             {t('problems.noProblemsFound')}
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredProblems.map((problem) => (
+                                    problems.map((problem) => (
                                         <tr key={problem.code} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3 mb-1">
                                                     <Link
                                                         href={`/problem/${problem.code}`}
-                                                        className="font-medium text-sm hover:text-primary transition-colors"
+                                                        className="font-bold text-sm hover:text-primary transition-colors"
                                                     >
                                                         {problem.name}
                                                     </Link>
@@ -139,7 +159,7 @@ export default function AdminProblemPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1 text-sm">
-                                                    <span className="text-muted-foreground font-medium">
+                                                    <span className="text-muted-foreground font-bold">
                                                         {t('problems.pointsLabel', { count: problem.points.toFixed(1) })}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
@@ -201,35 +221,10 @@ export default function AdminProblemPage() {
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {filteredProblems.length > 0 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
-                            <div className="text-sm text-muted-foreground">
-                                {t('problems.showingCount', { shown: filteredProblems.length, total: data?.total || 0 })}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
-                                >
-                                    {t('common.previous')}
-                                </button>
-                                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">
-                                    {page}
-                                </div>
-                                <button
-                                    onClick={() => setPage(p => p + 1)}
-                                    disabled={filteredProblems.length < 50}
-                                    className="px-3 py-1.5 rounded-lg bg-card border disabled:opacity-50 hover:bg-muted transition-colors"
-                                >
-                                    {t('common.next')}
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
+
+            <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={PAGE_SIZE} />
         </div>
     );
 }
@@ -279,10 +274,10 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
         <Dialog open={open} onOpenChange={onOpenChange}>
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                <div className="bg-card rounded-md border shadow-lg w-full max-w-md pointer-events-auto">
+                <div className="bg-card rounded-md border shadow-md w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
-                            <h2 className="text-xl font-semibold">{t('problems.cloneModalTitle')}</h2>
+                            <h2 className="text-xl font-bold">{t('problems.cloneModalTitle')}</h2>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {t('problems.cloneModalSubtitle', { name: problemName })}
                             </p>
