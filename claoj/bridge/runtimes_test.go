@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"database/sql"
 	"net/http"
 	"testing"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 // runtimeRows loads a judge's judge_runtimeversion rows for assertions.
@@ -137,4 +140,24 @@ func TestEvent_JudgeRuntimesWithoutExecutorsIsBadRequest(t *testing.T) {
 		post(t, r, judgeName, "secret", Packet{"name": "judge-runtimes"}))
 	assert.Equal(t, http.StatusBadRequest,
 		post(t, r, judgeName, "secret", Packet{"name": "judge-runtimes", "executors": "nope"}))
+}
+
+// TestFindLanguageIDs_QuotesTheReservedKeyColumn pins the language lookup's
+// SQL against a real MySQL session. `key` is a reserved word in MySQL and
+// MariaDB (it is not in sqlite, which the rest of this package's tests run
+// on): production rejected the unquoted form with error 1064, so this test
+// is what keeps the quoting honest.
+func TestFindLanguageIDs_QuotesTheReservedKeyColumn(t *testing.T) {
+	// DryRun + a never-dialed connection: only the SQL is built, never sent.
+	sqlDB, err := sql.Open("mysql", "claoj:pw@tcp(127.0.0.1:3306)/claoj")
+	require.NoError(t, err)
+	t.Cleanup(func() { sqlDB.Close() })
+	mysqlDB, err := gorm.Open(mysql.New(mysql.Config{Conn: sqlDB, SkipInitializeWithVersion: true}),
+		&gorm.Config{DryRun: true, DisableAutomaticPing: true})
+	require.NoError(t, err)
+
+	res, _ := findLanguageIDs(mysqlDB, []string{"C", "PY3"})
+	require.NoError(t, res.Error)
+	assert.Contains(t, res.Statement.SQL.String(), "`key` IN",
+		"judge_language.key must be backtick-quoted: MySQL/MariaDB reserve KEY")
 }
