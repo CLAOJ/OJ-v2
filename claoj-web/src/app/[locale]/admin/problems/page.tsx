@@ -92,10 +92,10 @@ export default function AdminProblemPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-md" />)}
                 </div>
             ) : (
-                <div className="bg-card rounded-2xl border overflow-hidden">
+                <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
@@ -125,15 +125,15 @@ export default function AdminProblemPage() {
                                                         {problem.name}
                                                     </Link>
                                                     {problem.partial && (
-                                                        <Badge variant="secondary" className="text-[10px]">{t('problems.partialBadge')}</Badge>
+                                                        <Badge variant="secondary" className="text-xs">{t('problems.partialBadge')}</Badge>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <span className="font-mono">{problem.code}</span>
                                                     {problem.is_public ? (
-                                                        <Badge variant="success" className="text-[10px]">{t('problems.publicBadge')}</Badge>
+                                                        <Badge variant="success" className="text-xs">{t('problems.publicBadge')}</Badge>
                                                     ) : (
-                                                        <Badge variant="destructive" className="text-[10px]">{t('problems.privateBadge')}</Badge>
+                                                        <Badge variant="destructive" className="text-xs">{t('problems.privateBadge')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
@@ -277,9 +277,9 @@ function CloneProblemModal({ open, onOpenChange, problemCode, problemName, onSuc
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" />
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                <div className="bg-card rounded-2xl border shadow-2xl w-full max-w-md pointer-events-auto">
+                <div className="bg-card rounded-md border shadow-lg w-full max-w-md pointer-events-auto">
                     <form onSubmit={handleSubmit} className="space-y-6 p-6">
                         <div>
                             <h2 className="text-xl font-bold">{t('problems.cloneModalTitle')}</h2>

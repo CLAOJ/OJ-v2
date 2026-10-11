@@ -88,18 +88,18 @@ export default function AdminOrganizationsPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-md" />)}
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {filteredOrgs.length === 0 ? (
-                        <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
+                        <div className="text-center py-12 rounded-md border border-dashed bg-muted/30">
                             <Database size={48} className="mx-auto text-muted-foreground opacity-20" />
                             <p className="text-muted-foreground mt-4">{t('organizations.noOrgsFound')}</p>
                         </div>
                     ) : (
                         filteredOrgs.map((org) => (
-                            <div key={org.id} className="bg-card rounded-2xl p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
+                            <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
                                 <div className="flex items-center justify-between">
                                     <Link href={`/organization/${org.id}`} className="flex items-center gap-4 flex-1">
                                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
@@ -145,7 +145,7 @@ export default function AdminOrganizationsPage() {
             {/* Create Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-card rounded-2xl w-full max-w-md p-6">
+                    <div className="bg-card rounded-md w-full max-w-md p-6">
                         <h2 className="text-xl font-bold mb-4">{t('organizations.createModalTitle')}</h2>
 
                         <div className="space-y-4">

@@ -109,7 +109,7 @@ export default function AdminJudgesPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-success/10 text-success">
                             <Wifi size={20} />
@@ -120,7 +120,7 @@ export default function AdminJudgesPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
                             <WifiOff size={20} />
@@ -131,7 +131,7 @@ export default function AdminJudgesPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-warning/10 text-warning">
                             <Shield size={20} />
@@ -142,7 +142,7 @@ export default function AdminJudgesPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Power size={20} />
@@ -157,18 +157,18 @@ export default function AdminJudgesPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-md" />)}
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {filteredJudges.length === 0 ? (
-                        <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
+                        <div className="text-center py-12 rounded-md border border-dashed bg-muted/30">
                             <Server size={48} className="mx-auto text-muted-foreground opacity-20" />
                             <p className="text-muted-foreground mt-4">{t('judges.noJudgesFound')}</p>
                         </div>
                     ) : (
                         filteredJudges.map((judge) => (
-                            <div key={judge.id} className="bg-card rounded-2xl p-6 border hover:shadow-lg transition-shadow">
+                            <div key={judge.id} className="bg-card rounded-md p-6 border hover:shadow-lg transition-shadow">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex items-start gap-4 flex-1">
                                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${

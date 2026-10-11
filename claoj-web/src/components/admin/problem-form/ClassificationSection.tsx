@@ -32,7 +32,7 @@ export function ClassificationSection({
     const tProblems = useTranslations('Problems');
 
     return (
-        <div className="bg-card rounded-2xl border p-6 space-y-4">
+        <div className="bg-card rounded-md border p-6 space-y-4">
             <h3 className="text-lg font-bold">{tProblems('classification')}</h3>
 
             <div>

@@ -109,10 +109,10 @@ export default function AdminUserPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-md" />)}
                 </div>
             ) : (
-                <div className="bg-card rounded-2xl border overflow-hidden">
+                <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">
@@ -278,7 +278,7 @@ export default function AdminUserPage() {
             {/* User Actions Modal */}
             {selectedUser && showEditModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-card rounded-2xl w-full max-w-md p-6">
+                    <div className="bg-card rounded-md w-full max-w-md p-6">
                         <h2 className="text-xl font-bold mb-4">{t('users.manageUserTitle', { username: selectedUser.username })}</h2>
 
                         <div className="space-y-4">

@@ -269,7 +269,7 @@ export default function ProblemDataPage() {
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-hidden"
+                            className="bg-card rounded-md shadow-lg w-full max-w-4xl max-h-[80vh] overflow-hidden"
                         >
                             <div className="flex items-center justify-between p-4 border-b">
                                 <h3 className="font-bold text-lg">

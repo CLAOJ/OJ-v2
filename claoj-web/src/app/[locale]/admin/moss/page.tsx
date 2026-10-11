@@ -114,7 +114,7 @@ export default function AdminMossPage() {
             </div>
 
             {/* Info Card */}
-            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
                 <div className="flex items-start gap-3">
                     <FileText className="text-primary mt-0.5" size={20} />
                     <div className="text-sm">
@@ -128,10 +128,10 @@ export default function AdminMossPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-md" />)}
                 </div>
             ) : (
-                <div className="bg-card rounded-2xl border overflow-hidden">
+                <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 border-b">

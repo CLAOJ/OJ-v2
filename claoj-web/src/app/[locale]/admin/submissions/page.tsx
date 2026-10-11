@@ -184,8 +184,8 @@ export default function AdminSubmissionPage() {
 
             {/* Batch Rejudge Modal */}
             {showBatchModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-card rounded-2xl p-6 w-full max-w-md border shadow-2xl">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 ">
+                    <div className="bg-card rounded-md p-6 w-full max-w-md border shadow-lg">
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                             <RefreshCw className={cn(isExecutingBatch ? 'animate-spin' : '')} size={24} />
                             {t('submissions.batchRejudgeButton')}
@@ -239,7 +239,7 @@ export default function AdminSubmissionPage() {
             )}
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-2xl bg-card border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-md bg-card border">
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase text-muted-foreground ml-1">{t('submissions.usernameLabel')}</label>
                     <div className="relative">
@@ -293,17 +293,17 @@ export default function AdminSubmissionPage() {
             </div>
 
             {/* Submission Table */}
-            <div className="bg-card rounded-2xl border overflow-hidden shadow-2xl shadow-primary/5">
+            <div className="bg-card rounded-md border overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-muted/30 border-b">
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground w-40">{t('submissions.colUser')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">{t('submissions.colProblem')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground text-center">{t('submissions.colScore')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground text-right">{t('common.actions')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground w-40">{t('submissions.colUser')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground">{t('submissions.colProblem')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-center">{t('submissions.colScore')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-muted-foreground text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">

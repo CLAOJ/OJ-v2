@@ -129,7 +129,7 @@ export default function EditContestPage() {
             </div>
 
             {/* Submission Lock Section */}
-            <div className="p-6 rounded-2xl border bg-card">
+            <div className="p-6 rounded-md border bg-card">
                 <div className="flex items-center gap-3 mb-4">
                     {isLocked ? (
                         <Lock className="text-warning" size={24} />

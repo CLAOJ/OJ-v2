@@ -189,7 +189,7 @@ export default function AdminGroupsPage() {
             {groupsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <Skeleton key={i} className="h-32 rounded-2xl" />
+                        <Skeleton key={i} className="h-32 rounded-md" />
                     ))}
                 </div>
             ) : groupsError ? null : groups.length === 0 ? (
@@ -200,7 +200,7 @@ export default function AdminGroupsPage() {
                         <div
                             key={group.id}
                             className={cn(
-                                'bg-card rounded-2xl border p-6 cursor-pointer transition-all hover:shadow-lg hover:border-primary/30',
+                                'bg-card rounded-md border p-6 cursor-pointer transition-all hover:shadow-lg hover:border-primary/30',
                                 selectedGroupId === group.id && 'ring-2 ring-primary border-primary'
                             )}
                             onClick={() => setSelectedGroupId(group.id)}
@@ -254,7 +254,7 @@ export default function AdminGroupsPage() {
 
             {/* Group Detail Panel */}
             {selectedGroupId !== null && (
-                <div className="bg-card rounded-2xl border p-6">
+                <div className="bg-card rounded-md border p-6">
                     {detailLoading || !selectedGroup ? (
                         <Skeleton className="h-64 rounded-xl" />
                     ) : (

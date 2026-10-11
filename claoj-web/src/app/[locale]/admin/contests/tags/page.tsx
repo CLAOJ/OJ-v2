@@ -116,18 +116,18 @@ export default function AdminContestTagsPage() {
 
             {isLoading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-md" />)}
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {filteredTags.length === 0 ? (
-                        <div className="text-center py-12 rounded-2xl border border-dashed bg-muted/30">
+                        <div className="text-center py-12 rounded-md border border-dashed bg-muted/30">
                             <Tag size={48} className="mx-auto text-muted-foreground opacity-20" />
                             <p className="text-muted-foreground mt-4">{t('contestTags.noTagsFound')}</p>
                         </div>
                     ) : (
                         filteredTags.map((tag) => (
-                            <div key={tag.id} className="bg-card rounded-2xl p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
+                            <div key={tag.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4 flex-1">
                                         <div
@@ -250,7 +250,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-card rounded-2xl w-full max-w-md p-6">
+            <div className="bg-card rounded-md w-full max-w-md p-6">
                 <h2 className="text-xl font-bold mb-4">
                     {tag ? t('contestTags.editModalTitle') : t('contestTags.createModalTitle')}
                 </h2>
@@ -293,7 +293,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                                 <button
                                     key={c}
                                     onClick={() => setColor(c)}
-                                    className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                                    className={`w-8 h-8 rounded-lg border-2 transition-transform ${
                                         color === c ? 'border-primary scale-110' : 'border-transparent'
                                     }`}
                                     style={{ backgroundColor: c }}

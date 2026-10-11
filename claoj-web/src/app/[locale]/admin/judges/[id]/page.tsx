@@ -87,8 +87,8 @@ export default function AdminJudgeDetailPage() {
         return (
             <div className="space-y-6">
                 <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-64 rounded-2xl" />
-                <Skeleton className="h-64 rounded-2xl" />
+                <Skeleton className="h-64 rounded-md" />
+                <Skeleton className="h-64 rounded-md" />
             </div>
         );
     }
@@ -147,7 +147,7 @@ export default function AdminJudgeDetailPage() {
 
             {/* Status Card */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${judge.online ? 'bg-success/10 text-success' : 'bg-muted/50 text-muted-foreground'}`}>
                             {judge.online ? <Wifi size={20} /> : <WifiOff size={20} />}
@@ -158,7 +158,7 @@ export default function AdminJudgeDetailPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Activity size={20} />
@@ -169,7 +169,7 @@ export default function AdminJudgeDetailPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-accent/10 text-accent">
                             <Wifi size={20} />
@@ -180,7 +180,7 @@ export default function AdminJudgeDetailPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-card rounded-2xl p-4 border">
+                <div className="bg-card rounded-md p-4 border">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-warning/10 text-warning">
                             <Clock size={20} />
@@ -198,7 +198,7 @@ export default function AdminJudgeDetailPage() {
             {/* Info Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Problems */}
-                <div className="bg-card rounded-2xl p-6 border">
+                <div className="bg-card rounded-md p-6 border">
                     <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
                         <FileText size={20} className="text-primary" />
                         {t('judgeDetail.assignedProblems', { count: judge.problems.length })}
@@ -223,7 +223,7 @@ export default function AdminJudgeDetailPage() {
                 </div>
 
                 {/* Runtimes */}
-                <div className="bg-card rounded-2xl p-6 border">
+                <div className="bg-card rounded-md p-6 border">
                     <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
                         <Code size={20} className="text-primary" />
                         {t('judgeDetail.supportedLanguages', { count: judge.runtimes.length })}
@@ -244,7 +244,7 @@ export default function AdminJudgeDetailPage() {
             </div>
 
             {/* Description */}
-            <div className="bg-card rounded-2xl p-6 border">
+            <div className="bg-card rounded-md p-6 border">
                 <label htmlFor="judge-description" className="block font-bold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</label>
                 <textarea
                     id="judge-description"
@@ -266,7 +266,7 @@ export default function AdminJudgeDetailPage() {
             </div>
 
             {/* Additional Info */}
-            <div className="bg-card rounded-2xl p-6 border">
+            <div className="bg-card rounded-md p-6 border">
                 <h3 className="font-bold text-lg mb-4">{t('judgeDetail.additionalInfoTitle')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3">

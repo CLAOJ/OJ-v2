@@ -125,8 +125,8 @@ export default function AdminTicketDetailPage() {
         return (
             <div className="max-w-6xl mx-auto space-y-8 mt-4 pb-20">
                 <Skeleton className="h-12 w-48 rounded-xl" />
-                <Skeleton className="h-64 rounded-[2.5rem]" />
-                <Skeleton className="h-96 rounded-[2.5rem]" />
+                <Skeleton className="h-64 rounded-md" />
+                <Skeleton className="h-96 rounded-md" />
             </div>
         );
     }
@@ -135,7 +135,7 @@ export default function AdminTicketDetailPage() {
         return (
             <div className="max-w-2xl mx-auto text-center py-20">
                 <TicketIcon size={64} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                <h2 className="text-2xl font-black mb-2">{t('notFoundTitle')}</h2>
+                <h2 className="text-2xl font-semibold mb-2">{t('notFoundTitle')}</h2>
                 <p className="text-muted-foreground mb-6">{t('notFoundDesc')}</p>
                 <Link
                     href="/admin/tickets"
@@ -173,23 +173,23 @@ export default function AdminTicketDetailPage() {
             )}
         >
             <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-black text-lg",
+                "w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 font-semibold text-lg",
                 isOP ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
             )}>
                 {message.username[0]?.toUpperCase()}
             </div>
             <div className={cn(
-                "flex-1 bg-card border rounded-[2rem] p-6",
+                "flex-1 bg-card border rounded-md p-6",
                 isOP ? "" : "bg-muted/30"
             )}>
                 <div className="flex items-center gap-3 mb-3">
-                    <span className="font-black">{message.username}</span>
+                    <span className="font-medium">{message.username}</span>
                     {isOP && (
-                        <Badge className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/20">
+                        <Badge className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
                             <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
                         </Badge>
                     )}
-                    <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+                    <span className="text-xs text-muted-foreground font-mono ml-auto">
                         {dayjs(message.time).format('MMM D, YYYY [at] HH:mm')}
                     </span>
                 </div>
@@ -201,7 +201,7 @@ export default function AdminTicketDetailPage() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 mt-4 pb-20">
+        <div className="max-w-6xl mx-auto space-y-8 mt-4 pb-20">
             {/* Back Button */}
             <Link
                 href="/admin/tickets"
@@ -212,7 +212,7 @@ export default function AdminTicketDetailPage() {
             </Link>
 
             {/* Header */}
-            <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
+            <div className="bg-card border rounded-md p-8 shadow-sm">
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4 flex-1">
                         {ticket.is_open ? (
@@ -221,23 +221,23 @@ export default function AdminTicketDetailPage() {
                             <CheckCircle2 size={32} className="text-muted-foreground flex-shrink-0" />
                         )}
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight mb-2">{ticket.title}</h1>
+                            <h1 className="text-3xl font-semibold tracking-tight mb-2">{ticket.title}</h1>
                             <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <User size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-xs font-medium ">
                                         {ticket.creator}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <Clock size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-xs font-medium ">
                                         {t('createdLabel', { time: dayjs(ticket.created).fromNow() })}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <MessageSquare size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-xs font-medium ">
                                         {t('messagesCount', { count: ticket.messages.length })}
                                     </span>
                                 </div>
@@ -276,18 +276,18 @@ export default function AdminTicketDetailPage() {
                 <div className="flex items-center gap-4 mb-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Users size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{t('assigneesLabel')}</span>
+                        <span className="text-xs font-medium ">{t('assigneesLabel')}</span>
                     </div>
                     {ticket.assignees.length > 0 ? (
                         <div className="flex gap-2">
                             {ticket.assignees.map((assignee) => (
-                                <Badge key={assignee} variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
+                                <Badge key={assignee} variant="secondary" className="text-xs font-medium ">
                                     <User size={12} className="inline mr-1" /> {assignee}
                                 </Badge>
                             ))}
                         </div>
                     ) : (
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">{t('unassigned')}</span>
+                        <span className="text-xs font-medium text-muted-foreground/50">{t('unassigned')}</span>
                     )}
                     <button
                         onClick={() => {
@@ -303,8 +303,8 @@ export default function AdminTicketDetailPage() {
             </div>
 
             {/* Internal Notes */}
-            <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
-                <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+            <div className="bg-card border rounded-md p-8 shadow-sm">
+                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                     <FileText size={20} className="text-primary" />
                     {t('internalNotesTitle')}
                 </h3>
@@ -314,7 +314,7 @@ export default function AdminTicketDetailPage() {
                     onBlur={handleNotesBlur}
                     placeholder={t('notesPlaceholder')}
                     rows={4}
-                    className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                    className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                 />
                 {updateNotesMutation.isPending && (
                     <p className="text-xs text-muted-foreground mt-2">{t('savingIndicator')}</p>
@@ -332,7 +332,7 @@ export default function AdminTicketDetailPage() {
                         />
                     ))
                 ) : (
-                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-[3rem]">
+                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-md">
                         <MessageSquare size={48} className="mx-auto mb-4 opacity-10" />
                         <p className="font-bold">{t('noMessagesYet')}</p>
                     </div>
@@ -341,8 +341,8 @@ export default function AdminTicketDetailPage() {
 
             {/* Reply Form */}
             {ticket.is_open && (
-                <div className="bg-card border rounded-[3rem] p-8 shadow-sm">
-                    <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                <div className="bg-card border rounded-md p-8 shadow-sm">
+                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                         <MessageSquare size={20} className="text-primary" />
                         {t('replyTitle')}
                     </h3>
@@ -352,13 +352,13 @@ export default function AdminTicketDetailPage() {
                             onChange={(e) => setReplyContent(e.target.value)}
                             placeholder={t('replyPlaceholder')}
                             rows={6}
-                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                            className="w-full bg-muted/30 border border-muted-foreground/10 rounded-md px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={handleReply}
                                 disabled={replyMutation.isPending || !replyContent.trim()}
-                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/20"
+                                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg "
                             >
                                 {replyMutation.isPending ? (
                                     <Loader2 size={18} className="animate-spin" />
@@ -375,15 +375,15 @@ export default function AdminTicketDetailPage() {
             {/* Assign Modal */}
             {showAssignModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-card border rounded-[3rem] p-8 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-                        <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                    <div className="bg-card border rounded-md p-8 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+                        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                             <Users size={20} className="text-primary" />
                             {t('assignModalTitle')}
                         </h3>
                         <input
                             type="text"
                             placeholder={t('searchUsersPlaceholder')}
-                            className="w-full h-12 bg-muted/30 border border-muted-foreground/10 rounded-2xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none mb-4"
+                            className="w-full h-12 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none mb-4"
                             value={userSearch}
                             onChange={(e) => setUserSearch(e.target.value)}
                         />
@@ -392,7 +392,7 @@ export default function AdminTicketDetailPage() {
                                 <label
                                     key={user.id}
                                     className={cn(
-                                        "flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-all",
+                                        "flex items-center gap-3 p-4 rounded-md border cursor-pointer transition-all",
                                         selectedAssignees.includes(user.id)
                                             ? "bg-primary/10 border-primary"
                                             : "bg-muted/30 border-transparent hover:bg-muted"
@@ -410,9 +410,9 @@ export default function AdminTicketDetailPage() {
                                         }}
                                         className="w-4 h-4 rounded"
                                     />
-                                    <span className="font-black">{user.username}</span>
+                                    <span className="font-medium">{user.username}</span>
                                     {user.is_staff && (
-                                        <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
+                                        <Badge variant="secondary" className="text-xs font-medium ">
                                             {t('staffBadge')}
                                         </Badge>
                                     )}
