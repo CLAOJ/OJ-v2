@@ -179,6 +179,8 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/judge/:id/enable", v2.AdminJudgeEnable)
 			admin.POST("/admin/judge/:id/disable", v2.AdminJudgeDisable)
 			admin.PATCH("/admin/judge/:id", v2.AdminJudgeUpdate)
+			admin.POST("/admin/judges", auth.RequirePerm("judge.add_judge"), v2.AdminJudgeCreate)
+			admin.DELETE("/admin/judge/:id", auth.RequirePerm("judge.delete_judge"), v2.AdminJudgeDelete)
 
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)

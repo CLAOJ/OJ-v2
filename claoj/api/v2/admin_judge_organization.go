@@ -234,6 +234,8 @@ func AdminJudgeUpdate(c *gin.Context) {
 	}
 
 	var input struct {
+		Name        *string `json:"name"`
+		AuthKey     *string `json:"auth_key"`
 		Description *string `json:"description"`
 		ProblemIDs  []uint  `json:"problem_ids"`
 		RuntimeIDs  []uint  `json:"runtime_ids"`
@@ -245,12 +247,39 @@ func AdminJudgeUpdate(c *gin.Context) {
 	}
 
 	updates := make(map[string]interface{})
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" || len(name) > judgeNameMaxLen {
+			c.JSON(http.StatusBadRequest, apiUserError("name is required and must be at most 50 characters"))
+			return
+		}
+		taken, err := judgeNameTaken(name, judge.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		if taken {
+			c.JSON(http.StatusConflict, apiUserError("a judge with this name already exists"))
+			return
+		}
+		updates["name"] = name
+	}
+	if input.AuthKey != nil {
+		if *input.AuthKey == "" || len(*input.AuthKey) > judgeAuthKeyMaxLen {
+			c.JSON(http.StatusBadRequest, apiUserError("auth_key must be 1 to 100 characters"))
+			return
+		}
+		updates["auth_key"] = *input.AuthKey
+	}
 	if input.Description != nil {
 		updates["description"] = *input.Description
 	}
 
 	if len(updates) > 0 {
-		db.DB.Model(&judge).Updates(updates)
+		if err := db.DB.Model(&judge).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
 	}
 
 	// Update problem assignments
