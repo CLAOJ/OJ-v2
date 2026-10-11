@@ -44,12 +44,8 @@ export default function Footer() {
                             <p className="text-sm text-muted-foreground">
                                 <strong>{t('fullName')}</strong><br />
                                 {t('poweredBy')}{' '}
-                                <a href="https://dmoj.ca" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                                    <b>DMOJ</b>
-                                </a>{' '}
-                                {t('and')}{' '}
-                                <a href="https://oj.vnoi.info" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                                    <b>VNOI</b>
+                                <a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                                    <b>CLAOJ</b>
                                 </a>
                             </p>
                         </div>
