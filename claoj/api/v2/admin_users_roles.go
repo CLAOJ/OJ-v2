@@ -274,7 +274,9 @@ func AdminUserBan(c *gin.Context) {
 
 	var input struct {
 		Reason string `json:"reason" binding:"required"`
-		Day    int    `json:"day" binding:"required"`
+		// Accepted for older clients and ignored: judge_profile has no
+		// ban-expiry column, so every ban lasts until an unban.
+		Day int `json:"day"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {

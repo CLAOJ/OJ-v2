@@ -101,6 +101,8 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/user/:id", v2.AdminUserDelete)
 			admin.POST("/admin/user/:id/ban", v2.AdminUserBan)
 			admin.POST("/admin/user/:id/unban", v2.AdminUserUnban)
+			admin.POST("/admin/users", auth.RequirePerm("auth.add_user"), v2.AdminUserCreate)
+			admin.POST("/admin/user/:id/password", auth.RequirePerm("auth.change_user"), v2.AdminUserSetPassword)
 
 			// Django group (role) management — writes rows in Django's own auth tables
 			admin.GET("/admin/groups", v2.AdminGroupList)
