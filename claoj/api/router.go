@@ -119,6 +119,11 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/contest/:key/participation/:id/disqualify", auth.RequireContestEdit(), v2.AdminContestParticipationDisqualify)
 			admin.POST("/admin/contest/:key/participation/:id/undisqualify", auth.RequireContestEdit(), v2.AdminContestParticipationUndisqualify)
 
+			// Contest MOSS
+			admin.GET("/admin/contest/:key/moss", auth.RequireContestEdit(), v2.AdminContestMossList)
+			admin.POST("/admin/contest/:key/moss", auth.RequireContestEdit(), v2.AdminContestMossRun)
+			admin.DELETE("/admin/contest/:key/moss", auth.RequireContestEdit(), v2.AdminContestMossDelete)
+
 			// Contest Tags
 			admin.GET("/admin/contest-tags", v2.AdminContestTagList)
 			admin.GET("/admin/contest-tag/:id", v2.AdminContestTagDetail)

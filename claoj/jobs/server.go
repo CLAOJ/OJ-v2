@@ -49,6 +49,7 @@ func StartWorker() {
 	mux.HandleFunc(TypeRescoreProblem, HandleRescoreTask)
 	mux.HandleFunc(TypeRateContest, HandleRateContestTask)
 	mux.HandleFunc(TypeUserExport, HandleUserExportTask)
+	mux.HandleFunc(TypeContestMoss, HandleContestMossTask)
 
 	log.Println("jobs: Starting Asynq background worker")
 	if err := srv.Run(mux); err != nil {
