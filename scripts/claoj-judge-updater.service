@@ -1,0 +1,9 @@
+[Unit]
+Description=Update the claoj v2 judge agent when the judge queue is empty
+Documentation=file:///root/claoj-v2/RUNBOOK.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/claoj-v2/judge-updater.sh

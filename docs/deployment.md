@@ -545,6 +545,18 @@ serving through a backend/web recreate (no 502, no manual restart).
 service to an immutable build (freezing Watchtower); `... backend latest` resumes
 auto-updates.
 
+**Judge agent updates (not Watchtower).** The `claoj_v2_judge` image is built on
+the box, so Watchtower does not manage it — and Watchtower cannot gate an update
+on the judge queue (its lifecycle hooks never block an update, only log). Instead
+a systemd timer runs `scripts/judge-updater.sh` every 5 min: it fetches the
+public `OJ-v2` repo into a partial + sparse checkout (only `claoj-judge/` is
+downloaded, not the monorepo), rebuilds `claoj/claoj-judge-agent` when that
+source changes, and recreates `v2_judge` **only when asynq's `judge` queue is
+empty** (`pending`/`active`/`scheduled`/`retry` all zero on Redis DB 2). A failed
+build leaves the running judge untouched; a busy queue defers the recreate to the
+next idle window. Install: `scripts/claoj-judge-updater.{service,timer}` plus a
+copy of the script at `/root/claoj-v2/judge-updater.sh`.
+
 ## Judges and horizontal scaling (k3s / Docker Swarm)
 
 Submissions are queued in Redis (asynq queue `judge`); `claoj-judge`
