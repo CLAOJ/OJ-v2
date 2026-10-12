@@ -42,7 +42,6 @@ export default function Footer() {
                                 {t('description')}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                                <strong>{t('fullName')}</strong><br />
                                 {t('poweredBy')}{' '}
                                 <a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="text-primary hover:underline">
                                     <b>CLAOJ</b>
