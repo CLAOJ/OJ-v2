@@ -261,7 +261,7 @@ export default function BlogPostAdminPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm">
-                                            {post.author_names.join(', ')}
+                                            {post.author_names?.join(', ') || '-'}
                                         </div>
                                     </TableCell>
                                     <TableCell>
