@@ -182,3 +182,20 @@ func TestEvent_UnknownPacketIsIgnored(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "batch-begin", "submission-id": 7}))
 	assert.Equal(t, "QU", loadSub(t).Status)
 }
+
+func TestEvent_JudgeStatusRecordsPing(t *testing.T) {
+	judge := setupEventDB(t)
+	r := newEventRouter()
+	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "judge-status", "ping": 42.5}))
+
+	var j models.Judge
+	require.NoError(t, db.DB.First(&j, judge.ID).Error)
+	require.NotNil(t, j.Ping)
+	assert.InDelta(t, 42.5, *j.Ping, 1e-9)
+}
+
+func TestEvent_JudgeStatusWithoutPingIsIgnored(t *testing.T) {
+	setupEventDB(t)
+	r := newEventRouter()
+	assert.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "judge-status"}))
+}

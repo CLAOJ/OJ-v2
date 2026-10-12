@@ -75,7 +75,11 @@ func main() {
 	}
 	log.Printf("judge %q ready", name)
 
-	// 3. Pull work.
+	// 3. Report the backend round trip on a timer so judge_judge.ping stays
+	// fresh while the queue is idle; grading packets refresh it too.
+	go reportStatus(fwd)
+
+	// 4. Pull work.
 	agent := &Agent{child: child, abortWait: 30 * time.Second}
 	agent.post = func(p Packet) error {
 		err := fwd.Post(p)
@@ -104,6 +108,22 @@ func main() {
 	agent.stopping.Store(true)
 	srv.Shutdown()
 	os.Exit(0)
+}
+
+// reportStatus POSTs the agent's last measured backend round trip every 30 s.
+// The value is from the previous successful Post (this one refreshes it); the
+// agent also reports on every connect, so ping is populated before the first
+// tick and stays fresh. Nothing is sent until a round trip has been measured.
+func reportStatus(f *Forwarder) {
+	for range time.Tick(30 * time.Second) {
+		rtt := f.RTT()
+		if rtt <= 0 {
+			continue
+		}
+		if err := f.Post(Packet{"name": "judge-status", "ping": float64(rtt.Milliseconds())}); err != nil {
+			log.Printf("judge-status: %v", err)
+		}
+	}
 }
 
 func env(k, def string) string {

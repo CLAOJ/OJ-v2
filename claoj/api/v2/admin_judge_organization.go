@@ -36,11 +36,14 @@ func AdminJudgeList(c *gin.Context) {
 	total, _ := countRecords(models.Judge{})
 
 	type Item struct {
-		ID        uint   `json:"id"`
-		Name      string `json:"name"`
-		Online    bool   `json:"online"`
-		IsBlocked bool   `json:"is_blocked"`
-		LastIP    string `json:"last_ip"`
+		ID         uint     `json:"id"`
+		Name       string   `json:"name"`
+		Online     bool     `json:"online"`
+		IsBlocked  bool     `json:"is_blocked"`
+		IsDisabled bool     `json:"is_disabled"`
+		LastIP     string   `json:"last_ip"`
+		Ping       *float64 `json:"ping"`
+		Load       *float64 `json:"load"`
 	}
 	items := make([]Item, len(judges))
 	for i, j := range judges {
@@ -49,11 +52,14 @@ func AdminJudgeList(c *gin.Context) {
 			ip = *j.LastIP
 		}
 		items[i] = Item{
-			ID:        j.ID,
-			Name:      j.Name,
-			Online:    j.Online,
-			IsBlocked: j.IsBlocked,
-			LastIP:    ip,
+			ID:         j.ID,
+			Name:       j.Name,
+			Online:     j.Online,
+			IsBlocked:  j.IsBlocked,
+			IsDisabled: j.IsDisabled,
+			LastIP:     ip,
+			Ping:       j.Ping,
+			Load:       j.Load,
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,7 +24,13 @@ type Forwarder struct {
 	Client  *http.Client  //
 	MaxWait time.Duration // give up after this long; the asynq task is then retried
 	Backoff time.Duration // first retry delay; doubles up to 10 s
+
+	rtt atomic.Int64 // ns of the last 2xx response; see RTT
 }
+
+// RTT is the round trip of the most recent successful Post — the agent's own
+// view of how far the backend is. Zero until the first success.
+func (f *Forwarder) RTT() time.Duration { return time.Duration(f.rtt.Load()) }
 
 // Post delivers p, retrying network errors and 5xx. 401/403 return
 // errUnauthorized; 400 (malformed packet) is logged and dropped.
@@ -62,11 +69,15 @@ func (f *Forwarder) postOnce(body []byte) (int, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(f.Name, f.Key)
+	start := time.Now()
 	resp, err := f.Client.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
+	if resp.StatusCode < 300 {
+		f.rtt.Store(int64(time.Since(start)))
+	}
 	return resp.StatusCode, nil
 }

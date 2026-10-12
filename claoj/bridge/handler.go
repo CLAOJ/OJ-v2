@@ -32,6 +32,13 @@ func HandleEvent(judge *models.Judge, pkt Packet) error {
 		return onJudgeRuntimes(judge, pkt)
 	}
 
+	// judge-status also carries no submission-id: it reports the latency the
+	// agent measured posting to this backend — v2's replacement for v1's
+	// websocket ping (load is kept separately by jobs.SyncJudgeStatus).
+	if pkt.Name() == "judge-status" {
+		return onJudgeStatus(judge, pkt)
+	}
+
 	subID, ok := pkt.SubmissionID()
 	if !ok {
 		return fmt.Errorf("%w: %q has no submission-id", ErrBadPacket, pkt.Name())
@@ -57,6 +64,18 @@ func HandleEvent(judge *models.Judge, pkt Packet) error {
 	default:
 		return nil // batch-begin / batch-end and anything new: ignored, as before
 	}
+}
+
+// onJudgeStatus records the round trip the agent measured posting to this
+// backend, which is v2's analog of v1's judge_judge.ping. An absent or
+// negative ping (an older agent, or a failed measurement) leaves the last
+// value in place rather than zeroing it.
+func onJudgeStatus(judge *models.Judge, pkt Packet) error {
+	ping, ok := pkt["ping"].(float64)
+	if !ok || ping < 0 {
+		return nil
+	}
+	return db.DB.Model(&models.Judge{}).Where("id = ?", judge.ID).Update("ping", ping).Error
 }
 
 func onSubmissionAcknowledged(subID uint) error {

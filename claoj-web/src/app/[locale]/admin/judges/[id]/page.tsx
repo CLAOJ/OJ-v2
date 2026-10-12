@@ -176,7 +176,7 @@ export default function AdminJudgeDetailPage() {
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('judgeDetail.pingLabel')}</div>
-                            <div className="font-semibold">{judge.ping?.toFixed(0) ?? t('common.notAvailable')}ms</div>
+                            <div className="font-semibold">{judge.ping != null ? `${judge.ping.toFixed(0)}ms` : t('common.notAvailable')}</div>
                         </div>
                     </div>
                 </div>

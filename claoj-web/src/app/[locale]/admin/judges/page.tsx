@@ -248,7 +248,7 @@ export default function AdminJudgesPage() {
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                                     <Wifi size={14} />
-                                                    <span>{t('judges.pingPrefix')} <span className="font-medium text-foreground">{judge.ping?.toFixed(0) ?? t('common.notAvailable')}ms</span></span>
+                                                    <span>{t('judges.pingPrefix')} <span className="font-medium text-foreground">{judge.ping != null ? `${judge.ping.toFixed(0)}ms` : t('common.notAvailable')}</span></span>
                                                 </div>
                                                 {judge.last_ip && (
                                                     <div className="flex items-center gap-1.5 text-muted-foreground">

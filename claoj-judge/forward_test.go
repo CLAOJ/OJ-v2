@@ -81,3 +81,15 @@ func TestForwarder_GivesUpAfterMaxWait(t *testing.T) {
 	assert.Error(t, f.Post(Packet{"name": "grading-begin"}))
 	assert.Less(t, time.Since(start), time.Second)
 }
+
+func TestForwarder_RecordsRTT(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	f := newForwarder(srv.URL)
+	assert.Zero(t, f.RTT())
+	require.NoError(t, f.Post(Packet{"name": "judge-status", "ping": float64(0)}))
+	assert.Positive(t, f.RTT())
+}

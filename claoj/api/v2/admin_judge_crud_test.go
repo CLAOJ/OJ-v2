@@ -233,6 +233,21 @@ func TestAdminJudgeList_HidesAuthKey(t *testing.T) {
 	require.NotContains(t, w.Body.String(), "auth_key")
 }
 
+func TestAdminJudgeList_IncludesLoadPingAndDisabled(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "listed", false)
+	require.NoError(t, db.DB.Model(&models.Judge{}).Where("id = ?", j.ID).
+		Updates(map[string]interface{}{"ping": 12.5, "load": 0.5, "is_disabled": true}).Error)
+
+	router := authedRouter(1, http.MethodGet, "/admin/judges", AdminJudgeList)
+	w := doRequest(router, http.MethodGet, "/admin/judges", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := w.Body.String()
+	require.Contains(t, body, `"is_disabled":true`)
+	require.Contains(t, body, `"ping":12.5`)
+	require.Contains(t, body, `"load":0.5`)
+}
+
 func TestAdminJudgeCreate_CountsCharactersNotBytes(t *testing.T) {
 	setupJudgeCrudDB(t)
 	router := authedRouter(1, http.MethodPost, "/admin/judges", AdminJudgeCreate)
