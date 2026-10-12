@@ -14,32 +14,31 @@ import (
 var listServers = func() ([]*asynq.ServerInfo, error) { return Inspector.Servers() }
 
 // SyncJudgeStatus mirrors asynq's worker heartbeats into the shared v2
-// judge_judge row: online if any server consumes queue "judge", load =
-// busy slots / total slots, start_time = oldest such server. Every backend
-// replica may run it; the writes are idempotent.
+// judge_judge row: online if any server consumes queue "judge", start_time =
+// oldest such server. Every backend replica may run it; the writes are
+// idempotent. load is NOT set here — the judge agent reports the machine's
+// 1-minute load average (v1 parity) via a judge-status event, so overwriting
+// it with queue utilisation would clobber that.
 func SyncJudgeStatus(judgeName string) error {
 	servers, err := listServers()
 	if err != nil {
 		return err
 	}
 
-	var judges, busy, slots int
+	var judges int
 	var started time.Time
 	for _, s := range servers {
 		if _, ok := s.Queues[QueueJudge]; !ok {
 			continue
 		}
 		judges++
-		busy += len(s.ActiveWorkers)
-		slots += s.Concurrency
 		if started.IsZero() || s.Started.Before(started) {
 			started = s.Started
 		}
 	}
 
 	updates := map[string]interface{}{"online": judges > 0}
-	if judges > 0 && slots > 0 {
-		updates["load"] = float64(busy) / float64(slots)
+	if judges > 0 {
 		updates["start_time"] = started
 	}
 	return db.DB.Model(&models.Judge{}).Where("name = ?", judgeName).Updates(updates).Error

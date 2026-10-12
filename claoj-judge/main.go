@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -110,20 +111,54 @@ func main() {
 	os.Exit(0)
 }
 
-// reportStatus POSTs the agent's last measured backend round trip every 30 s.
-// The value is from the previous successful Post (this one refreshes it); the
-// agent also reports on every connect, so ping is populated before the first
-// tick and stays fresh. Nothing is sent until a round trip has been measured.
+// reportStatus POSTs the agent's last measured backend round trip plus the
+// machine load every 30 s. The round trip is from the previous successful Post
+// (this one refreshes it); the agent also reports on every connect, so ping is
+// populated before the first tick and stays fresh. Nothing is sent until a
+// round trip has been measured.
 func reportStatus(f *Forwarder) {
 	for range time.Tick(30 * time.Second) {
 		rtt := f.RTT()
 		if rtt <= 0 {
 			continue
 		}
-		if err := f.Post(Packet{"name": "judge-status", "ping": float64(rtt.Milliseconds())}); err != nil {
+		pkt := Packet{"name": "judge-status", "ping": float64(rtt.Milliseconds())}
+		if load, ok := hostLoad(); ok {
+			pkt["load"] = load
+		}
+		if err := f.Post(pkt); err != nil {
 			log.Printf("judge-status: %v", err)
 		}
 	}
+}
+
+// hostLoad is v1's judge_judge.load: the 1-minute load average divided by the
+// processor count ("to be fair", per v1's field help). v1's judge daemon sent
+// the same from the judge host; the container reads /proc/loadavg, which is
+// the host's, so the value stays comparable.
+func hostLoad() (float64, bool) {
+	b, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return 0, false
+	}
+	return parseLoadAvg(string(b), runtime.NumCPU())
+}
+
+// parseLoadAvg reads the 1-minute field of a /proc/loadavg line and normalises
+// it by ncpu. Split out so it is testable off Linux.
+func parseLoadAvg(s string, ncpu int) (float64, bool) {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return 0, false
+	}
+	avg, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil || avg < 0 {
+		return 0, false
+	}
+	if ncpu < 1 {
+		ncpu = 1
+	}
+	return avg / float64(ncpu), true
 }
 
 func env(k, def string) string {

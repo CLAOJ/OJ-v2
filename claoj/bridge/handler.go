@@ -66,16 +66,22 @@ func HandleEvent(judge *models.Judge, pkt Packet) error {
 	}
 }
 
-// onJudgeStatus records the round trip the agent measured posting to this
-// backend, which is v2's analog of v1's judge_judge.ping. An absent or
-// negative ping (an older agent, or a failed measurement) leaves the last
-// value in place rather than zeroing it.
+// onJudgeStatus records the round trip and machine load the agent measured,
+// which are v2's analog of v1's judge_judge.ping/load (v1's daemon reported
+// both). Fields that are absent or negative — an older agent, or a failed
+// read — are left untouched rather than zeroed.
 func onJudgeStatus(judge *models.Judge, pkt Packet) error {
-	ping, ok := pkt["ping"].(float64)
-	if !ok || ping < 0 {
+	updates := map[string]interface{}{}
+	if ping, ok := pkt["ping"].(float64); ok && ping >= 0 {
+		updates["ping"] = ping
+	}
+	if load, ok := pkt["load"].(float64); ok && load >= 0 {
+		updates["load"] = load
+	}
+	if len(updates) == 0 {
 		return nil
 	}
-	return db.DB.Model(&models.Judge{}).Where("id = ?", judge.ID).Update("ping", ping).Error
+	return db.DB.Model(&models.Judge{}).Where("id = ?", judge.ID).Updates(updates).Error
 }
 
 func onSubmissionAcknowledged(subID uint) error {

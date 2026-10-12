@@ -48,8 +48,6 @@ func TestSyncJudgeStatus_OnlineWhenAJudgeWorkerIsUp(t *testing.T) {
 	require.NoError(t, SyncJudgeStatus("Vịt Toàn Năng"))
 	j := loadJudge(t)
 	assert.True(t, j.Online)
-	require.NotNil(t, j.Load)
-	assert.InDelta(t, 0.5, *j.Load, 1e-9)
 	require.NotNil(t, j.StartTime)
 	assert.True(t, j.StartTime.Equal(started))
 }
@@ -63,27 +61,21 @@ func TestSyncJudgeStatus_OfflineWhenNoJudgeWorker(t *testing.T) {
 	assert.False(t, loadJudge(t).Online)
 }
 
-// Offline writes must not clobber the last known load/start_time: those
-// columns are only refreshed while a judge worker is actually up.
-func TestSyncJudgeStatus_OfflineKeepsLastLoadAndStartTime(t *testing.T) {
+// SyncJudgeStatus owns online/start_time only; load is the agent's (v1
+// parity), so an offline sync must not touch load or start_time.
+func TestSyncJudgeStatus_OfflineLeavesLoadAndStartTime(t *testing.T) {
 	setupJudgeRow(t)
 	started := time.Date(2026, 10, 9, 8, 0, 0, 0, time.UTC)
-	useServers(t, []*asynq.ServerInfo{
-		{Queues: map[string]int{"judge": 1}, Concurrency: 4, Started: started, ActiveWorkers: []*asynq.WorkerInfo{{}}},
-	})
-	require.NoError(t, SyncJudgeStatus("Vịt Toàn Năng")) // seeds load + start_time
-	seeded := loadJudge(t)
-	require.True(t, seeded.Online)
-	require.NotNil(t, seeded.Load)
-	require.NotNil(t, seeded.StartTime)
-
+	require.NoError(t, db.DB.Model(&models.Judge{}).Where("name = ?", "Vịt Toàn Năng").
+		Updates(map[string]interface{}{"online": true, "load": 0.03, "start_time": started}).Error)
 	useServers(t, []*asynq.ServerInfo{{Queues: map[string]int{"default": 3}, Concurrency: 10}})
+
 	require.NoError(t, SyncJudgeStatus("Vịt Toàn Năng"))
 
 	j := loadJudge(t)
 	assert.False(t, j.Online)
 	require.NotNil(t, j.Load)
-	assert.InDelta(t, 0.25, *j.Load, 1e-9) // unchanged from the seeded sync
+	assert.InDelta(t, 0.03, *j.Load, 1e-9)
 	require.NotNil(t, j.StartTime)
 	assert.True(t, j.StartTime.Equal(started))
 }
