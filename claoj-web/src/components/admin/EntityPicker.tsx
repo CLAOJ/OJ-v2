@@ -25,6 +25,8 @@ interface EntityPickerProps {
     /** Labels for ids already selected when the form opens. */
     initialOptions?: EntityOption[];
     placeholder?: string;
+    /** Only one value may be selected; picking another replaces it. */
+    single?: boolean;
 }
 
 /**
@@ -32,7 +34,7 @@ interface EntityPickerProps {
  * thousands of users/problems (list endpoints cap a page at 100). Selected
  * items render as removable chips in selection order.
  */
-export function EntityPicker({ id, label, value, onChange, search, queryKey, initialOptions = [], placeholder }: EntityPickerProps) {
+export function EntityPicker({ id, label, value, onChange, search, queryKey, initialOptions = [], placeholder, single = false }: EntityPickerProps) {
     const t = useTranslations('Admin');
     const [term, setTerm] = useState('');
     const [open, setOpen] = useState(false);
@@ -57,7 +59,7 @@ export function EntityPicker({ id, label, value, onChange, search, queryKey, ini
 
     const add = (o: EntityOption) => {
         setLearned(prev => ({ ...prev, [o.id]: o }));
-        onChange([...value, o.id]);
+        onChange(single ? [o.id] : [...value, o.id]);
         setTerm('');
     };
 

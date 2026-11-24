@@ -31,6 +31,8 @@ import type {
     SolutionUpdateRequest,
     AdminTicket,
     AdminTicketDetail,
+    AdminTicketUpdateRequest,
+    AdminTicketMessageUpdateRequest,
     AdminComment,
     AdminCommentUpdateRequest,
     AdminLanguage,
@@ -583,6 +585,15 @@ export const adminTicketApi = {
 
     updateNotes: (id: number, notes: string) =>
         api.patch<{ message: string }>(`/admin/ticket/${id}/notes`, { notes }),
+
+    update: (id: number, data: AdminTicketUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/ticket/${id}`, data),
+
+    updateMessage: (id: number, messageId: number, data: AdminTicketMessageUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/ticket/${id}/message/${messageId}`, data),
+
+    deleteMessage: (id: number, messageId: number) =>
+        api.delete<{ message: string }>(`/admin/ticket/${id}/message/${messageId}`),
 
     delete: (id: number) =>
         api.delete<{ message: string }>(`/admin/ticket/${id}`),

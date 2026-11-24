@@ -216,6 +216,9 @@ export default function AdminTicketListPage() {
             </div>
 
             {/* Ticket List */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">{t('totalCount', { count: total })}</p>
+            </div>
             <div className="space-y-4">
                 {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (

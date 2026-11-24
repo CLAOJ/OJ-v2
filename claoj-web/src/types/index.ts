@@ -926,12 +926,32 @@ export interface AdminTicketDetail {
     id: number;
     title: string;
     creator: string;
+    /** judge_profile.id of the creator, for the user picker. */
+    creator_id: number;
     is_open: boolean;
     is_contributive: boolean;
     notes: string;
     created: string;
     assignees: string[];
     messages: TicketMessage[];
+    linked_type: 'problem' | 'contest' | '';
+    linked_id: number;
+    /** "code – name" / "key – name", empty when unlinked. */
+    linked_label: string;
+    /** Public site path, e.g. /problem/P1, empty when unlinked. */
+    linked_path: string;
+}
+
+export interface AdminTicketUpdateRequest {
+    title?: string;
+    user_id?: number;
+    linked_type?: 'problem' | 'contest' | '';
+    linked_id?: number;
+}
+
+export interface AdminTicketMessageUpdateRequest {
+    body?: string;
+    user_id?: number;
 }
 
 // ============================================================

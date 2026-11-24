@@ -4,13 +4,16 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminTicketApi, adminUserApi, adminErrorMessage } from '@/lib/adminApi';
+import { searchProblems, searchContests, searchUsers } from '@/lib/adminSearch';
+import { EntityPicker } from '@/components/admin/EntityPicker';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { AdminTicketDetail, AdminUser, TicketMessage } from '@/types';
+import { AdminTicketDetail, TicketMessage } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
-import { Link, useRouter, usePathname } from '@/navigation';
+import { Link, useRouter } from '@/navigation';
 import { useParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import {
@@ -28,11 +31,231 @@ import {
     FileText,
     ToggleLeft,
     Trash2,
-    Users
+    Users,
+    Pencil,
+    Save,
+    X,
+    ExternalLink
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 dayjs.extend(relativeTime);
+
+/** Title, creator and linked item are the v1-editable ticket fields; `time` stays read-only. */
+function TicketDetailsForm({ ticket, onSaved }: { ticket: AdminTicketDetail; onSaved: () => void }) {
+    const t = useTranslations('Admin.Tickets');
+    const [title, setTitle] = useState(ticket.title);
+    const [creatorIds, setCreatorIds] = useState<number[]>(ticket.creator_id ? [ticket.creator_id] : []);
+    const [linkedType, setLinkedType] = useState<'problem' | 'contest' | ''>(ticket.linked_type || '');
+    const [linkedIds, setLinkedIds] = useState<number[]>(ticket.linked_id ? [ticket.linked_id] : []);
+
+    const saveMutation = useMutation({
+        mutationFn: () => adminTicketApi.update(ticket.id, {
+            title,
+            user_id: creatorIds[0] ?? ticket.creator_id,
+            linked_type: linkedType,
+            linked_id: linkedType ? (linkedIds[0] ?? 0) : 0,
+        }),
+        onSuccess: () => {
+            toast.success(t('detailsSaved'));
+            onSaved();
+        },
+        onError: (error) => toast.error(adminErrorMessage(error, t('detailsSaveFailed'))),
+    });
+
+    const linkedSearch = linkedType === 'contest' ? searchContests : searchProblems;
+    const linkedQueryKey = linkedType === 'contest' ? 'contests' : 'problems';
+    const linkedLabel = linkedType === 'contest' ? t('linkedContestOption') : t('linkedProblemOption');
+    const linkedInitial = ticket.linked_type === linkedType && ticket.linked_id
+        ? [{ id: ticket.linked_id, label: ticket.linked_label }]
+        : [];
+
+    return (
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <label htmlFor="ticket-title" className="text-sm font-medium text-muted-foreground block">{t('titleLabel')}</label>
+                <input
+                    id="ticket-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full text-3xl font-semibold tracking-tight bg-transparent border-b border-transparent hover:border-muted-foreground/20 focus:border-primary/40 outline-none pb-1 transition-colors"
+                />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <EntityPicker
+                    id="ticket-creator"
+                    label={t('creatorLabel')}
+                    value={creatorIds}
+                    onChange={setCreatorIds}
+                    search={searchUsers}
+                    queryKey="users"
+                    initialOptions={ticket.creator_id ? [{ id: ticket.creator_id, label: ticket.creator }] : []}
+                    single
+                />
+                <div className="space-y-2">
+                    <label htmlFor="ticket-linked-type" className="text-sm font-medium text-muted-foreground block">{t('linkedItemLabel')}</label>
+                    <select
+                        id="ticket-linked-type"
+                        value={linkedType}
+                        onChange={(e) => {
+                            setLinkedType(e.target.value as 'problem' | 'contest' | '');
+                            setLinkedIds([]);
+                        }}
+                        className="w-full h-9 px-3 rounded-md border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                    >
+                        <option value="">{t('linkedNoneOption')}</option>
+                        <option value="problem">{t('linkedProblemOption')}</option>
+                        <option value="contest">{t('linkedContestOption')}</option>
+                    </select>
+                    {linkedType !== '' && (
+                        <EntityPicker
+                            id="ticket-linked-item"
+                            label={linkedLabel}
+                            value={linkedIds}
+                            onChange={setLinkedIds}
+                            search={linkedSearch}
+                            queryKey={linkedQueryKey}
+                            initialOptions={linkedInitial}
+                            single
+                        />
+                    )}
+                    {ticket.linked_path && (
+                        <Link
+                            href={ticket.linked_path}
+                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                        >
+                            <ExternalLink size={14} />
+                            {ticket.linked_label}
+                        </Link>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending || !title.trim()}
+                    className="px-6 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                    {saveMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    {t('saveDetailsButton')}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+interface MessageBubbleProps {
+    ticketId: number;
+    message: TicketMessage;
+    isOP: boolean;
+    onDelete: (message: TicketMessage) => void;
+    onChanged: () => void;
+}
+
+function MessageBubble({ ticketId, message, isOP, onDelete, onChanged }: MessageBubbleProps) {
+    const t = useTranslations('Admin.Tickets');
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(message.body);
+
+    const updateMutation = useMutation({
+        mutationFn: (body: string) => adminTicketApi.updateMessage(ticketId, message.id, { body }),
+        onSuccess: () => {
+            toast.success(t('messageSaved'));
+            setEditing(false);
+            onChanged();
+        },
+        onError: (error) => toast.error(adminErrorMessage(error, t('messageSaveFailed'))),
+    });
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+                "flex gap-4",
+                isOP ? "flex-row" : "flex-row-reverse"
+            )}
+        >
+            <div className={cn(
+                "w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 font-semibold text-lg",
+                isOP ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            )}>
+                {message.username[0]?.toUpperCase()}
+            </div>
+            <div className={cn(
+                "flex-1 bg-card border rounded-md p-6",
+                isOP ? "" : "bg-muted/30"
+            )}>
+                <div className="flex items-center gap-3 mb-3">
+                    <span className="font-medium">{message.username}</span>
+                    {isOP && (
+                        <Badge className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
+                            <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
+                        </Badge>
+                    )}
+                    <div className="flex items-center gap-1 ml-auto">
+                        {!editing && (
+                            <>
+                                <button
+                                    onClick={() => { setDraft(message.body); setEditing(true); }}
+                                    aria-label={t('editMessage')}
+                                    title={t('editMessage')}
+                                    className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                >
+                                    <Pencil size={14} />
+                                </button>
+                                <button
+                                    onClick={() => onDelete(message)}
+                                    aria-label={t('deleteMessage')}
+                                    title={t('deleteMessage')}
+                                    className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </>
+                        )}
+                        <span className="text-xs text-muted-foreground font-mono ml-2">
+                            {dayjs(message.time).format('MMM D, YYYY [at] HH:mm')}
+                        </span>
+                    </div>
+                </div>
+                {editing ? (
+                    <div className="space-y-3">
+                        <textarea
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            rows={4}
+                            className="w-full bg-background border border-muted-foreground/10 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => { setDraft(message.body); setEditing(false); }}
+                                disabled={updateMutation.isPending}
+                                className="px-4 py-2 rounded-xl bg-muted text-muted-foreground font-medium text-sm hover:bg-muted/80 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                <X size={14} /> {t('cancelMessageButton')}
+                            </button>
+                            <button
+                                onClick={() => updateMutation.mutate(draft)}
+                                disabled={updateMutation.isPending || !draft.trim()}
+                                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                {t('saveMessageButton')}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                        <p className="whitespace-pre-wrap leading-relaxed">{message.body}</p>
+                    </div>
+                )}
+            </div>
+        </motion.div>
+    );
+}
 
 export default function AdminTicketDetailPage() {
     const t = useTranslations('Admin.Tickets');
@@ -47,6 +270,7 @@ export default function AdminTicketDetailPage() {
     const [selectedAssignees, setSelectedAssignees] = useState<number[]>([]);
     const [userSearch, setUserSearch] = useState('');
     const [showDelete, setShowDelete] = useState(false);
+    const [messageToDelete, setMessageToDelete] = useState<TicketMessage | null>(null);
 
     const { data: ticket, isLoading } = useQuery({
         queryKey: ['admin-ticket', id],
@@ -112,6 +336,16 @@ export default function AdminTicketDetailPage() {
         }
     });
 
+    const deleteMessageMutation = useMutation({
+        mutationFn: (messageId: number) => adminTicketApi.deleteMessage(parseInt(id), messageId),
+        onSuccess: () => {
+            toast.success(t('messageDeleted'));
+            queryClient.invalidateQueries({ queryKey: ['admin-ticket', id] });
+            setMessageToDelete(null);
+        },
+        onError: (error) => toast.error(adminErrorMessage(error, t('messageDeleteFailed'))),
+    });
+
     const assignMutation = useMutation({
         mutationFn: async (profileIds: number[]) => {
             const res = await adminTicketApi.assign(parseInt(id), profileIds);
@@ -175,43 +409,6 @@ export default function AdminTicketDetailPage() {
         assignMutation.mutate(selectedAssignees);
     };
 
-    const MessageBubble = ({ message, isOP }: { message: TicketMessage; isOP: boolean }) => (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-                "flex gap-4",
-                isOP ? "flex-row" : "flex-row-reverse"
-            )}
-        >
-            <div className={cn(
-                "w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 font-semibold text-lg",
-                isOP ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-            )}>
-                {message.username[0]?.toUpperCase()}
-            </div>
-            <div className={cn(
-                "flex-1 bg-card border rounded-md p-6",
-                isOP ? "" : "bg-muted/30"
-            )}>
-                <div className="flex items-center gap-3 mb-3">
-                    <span className="font-medium">{message.username}</span>
-                    {isOP && (
-                        <Badge className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
-                            <User size={12} className="inline mr-1" /> {t('ticketOwnerBadge')}
-                        </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground font-mono ml-auto">
-                        {dayjs(message.time).format('MMM D, YYYY [at] HH:mm')}
-                    </span>
-                </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                    <p className="whitespace-pre-wrap leading-relaxed">{message.body}</p>
-                </div>
-            </div>
-        </motion.div>
-    );
-
     return (
         <div className="max-w-6xl mx-auto space-y-8 mt-4 pb-20">
             {/* Back Button */}
@@ -226,33 +423,20 @@ export default function AdminTicketDetailPage() {
             {/* Header */}
             <div className="bg-card border rounded-md p-8 shadow-sm">
                 <div className="flex items-start justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center gap-4 flex-wrap">
                         {ticket.is_open ? (
                             <AlertCircle size={32} className="text-warning flex-shrink-0" />
                         ) : (
                             <CheckCircle2 size={32} className="text-muted-foreground flex-shrink-0" />
                         )}
-                        <div>
-                            <h1 className="text-3xl font-semibold tracking-tight mb-2">{ticket.title}</h1>
-                            <div className="flex flex-wrap items-center gap-4">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <User size={14} />
-                                    <span className="text-xs font-medium ">
-                                        {ticket.creator}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Clock size={14} />
-                                    <span className="text-xs font-medium ">
-                                        {t('createdLabel', { time: dayjs(ticket.created).fromNow() })}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <MessageSquare size={14} />
-                                    <span className="text-xs font-medium ">
-                                        {t('messagesCount', { count: ticket.messages.length })}
-                                    </span>
-                                </div>
+                        <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                                <Clock size={14} />
+                                <span className="text-xs font-medium ">{t('createdLabel', { time: dayjs(ticket.created).fromNow() })}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <MessageSquare size={14} />
+                                <span className="text-xs font-medium ">{t('messagesCount', { count: ticket.messages.length })}</span>
                             </div>
                         </div>
                     </div>
@@ -284,8 +468,13 @@ export default function AdminTicketDetailPage() {
                     </div>
                 </div>
 
+                <TicketDetailsForm
+                    ticket={ticket}
+                    onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-ticket', id] })}
+                />
+
                 {/* Assignees */}
-                <div className="flex items-center gap-4 mb-4">
+                <div className="mt-6 pt-6 border-t flex items-center gap-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Users size={14} />
                         <span className="text-xs font-medium ">{t('assigneesLabel')}</span>
@@ -348,11 +537,14 @@ export default function AdminTicketDetailPage() {
             {/* Messages */}
             <div className="space-y-6">
                 {ticket.messages.length > 0 ? (
-                    ticket.messages.map((message, index) => (
+                    ticket.messages.map((message) => (
                         <MessageBubble
                             key={message.id}
+                            ticketId={ticket.id}
                             message={message}
                             isOP={message.username === ticket.creator}
+                            onDelete={setMessageToDelete}
+                            onChanged={() => queryClient.invalidateQueries({ queryKey: ['admin-ticket', id] })}
                         />
                     ))
                 ) : (
@@ -412,6 +604,17 @@ export default function AdminTicketDetailPage() {
                     </p>
                 )}
             </ConfirmDialog>
+
+            <ConfirmDialog
+                isOpen={messageToDelete !== null}
+                onClose={() => setMessageToDelete(null)}
+                onConfirm={() => messageToDelete && deleteMessageMutation.mutate(messageToDelete.id)}
+                title={t('deleteMessageTitle')}
+                description={t('deleteMessageConfirm')}
+                confirmText={tc('common.delete')}
+                cancelText={tc('common.cancel')}
+                isLoading={deleteMessageMutation.isPending}
+            />
 
             {/* Assign Modal */}
             {showAssignModal && (
