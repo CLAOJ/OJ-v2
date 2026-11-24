@@ -167,10 +167,18 @@ export interface ContestDetail extends Contest {
         ac_rate: number;
         is_solved: boolean;
     }[];
+    announcements?: {
+        id: number;
+        title: string;
+        description: string;
+        date: string;
+    }[];
 }
 
 export interface RankingRow {
     username: string;
+    display_name?: string;
+    organization?: { id: number; name: string; short_name: string } | null;
     score: number;
     cumtime: number;
     rank: number;
@@ -179,6 +187,7 @@ export interface RankingRow {
     performance?: number | null;
     breakdown: BreakdownItem[];
     is_disqualified?: boolean;
+    is_virtual?: boolean;
     participation_id?: number;
 }
 
@@ -187,12 +196,25 @@ export interface BreakdownItem {
     penalty?: number;
     solved?: boolean;
     label?: string;
+    /** Seconds from the participation start (judge_contestparticipation.format_data). */
+    time?: number;
 }
 
 export interface RankingResponse {
     contest: string;
     problems: { label: string; points: number }[];
     rankings: RankingRow[];
+}
+
+/** GET /contest/:key/participations row. */
+export interface ContestParticipation {
+    contest: string;
+    user: string;
+    display_name: string;
+    score: number;
+    cumtime: number;
+    is_disqualified: boolean;
+    is_virtual: boolean;
 }
 export interface Comment {
     id: number;

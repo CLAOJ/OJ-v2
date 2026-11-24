@@ -312,7 +312,17 @@
     "pageSubtitle": "Participate in challenges, win recognition, and grow your rating.",
     "viewCalendar": "View Calendar",
     "viewAllPast": "View all past contests",
-    "viewLessPast": "Show fewer past contests"
+    "viewLessPast": "Show fewer past contests",
+    "participation": "Participation",
+    "fixedWindow": "{duration} window per contestant",
+    "totalAc": "Total AC",
+    "exportCsv": "Export CSV",
+    "showNames": "Names",
+    "showOrganizations": "Organizations",
+    "showVirtual": "Virtual participants",
+    "time": "Time",
+    "disqualified": "Disqualified",
+    "noParticipants": "No participants yet."
   },
   "Submissions": {
     "title": "Submissions",

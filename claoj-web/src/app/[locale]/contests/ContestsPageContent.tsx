@@ -5,26 +5,25 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import api from '@/lib/api';
-import { Contest, APIResponse } from '@/types';
+import { Contest } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
-import { Link, useRouter } from '@/navigation';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
+import { formatCountdown } from '@/lib/contestView';
+import { Link } from '@/navigation';
 import { useState, useEffect } from 'react';
 import {
     Trophy,
     Clock,
     Calendar,
     Users,
-    Zap,
     ChevronRight,
     Search,
     Play,
     Timer,
     History,
-    Eye,
     Star
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import duration from 'dayjs/plugin/duration';
@@ -38,7 +37,8 @@ export default function ContestsPageContent() {
     const { requireAuth } = useRequireAuth();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
-    const [showAllPast, setShowAllPast] = useState(false);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
     const [now, setNow] = useState(dayjs());
 
     useEffect(() => {
@@ -46,11 +46,14 @@ export default function ContestsPageContent() {
         return () => clearInterval(timer);
     }, []);
 
+    // The API caps page_size at 100 and now reports the filtered total, so the
+    // list pages instead of requesting everything in one call and silently
+    // dropping every contest past the cap.
     const { data: contestsData, isLoading } = useQuery({
-        queryKey: ['contests'],
+        queryKey: ['contests', search, page, pageSize],
         queryFn: async () => {
-            const res = await api.get<{ results: Contest[] }>('/contests', {
-                params: { page_size: 1000 }
+            const res = await api.get<{ results: Contest[]; total: number }>('/contests', {
+                params: { search, page, page_size: pageSize }
             });
             return res.data;
         }
@@ -70,15 +73,10 @@ export default function ContestsPageContent() {
 
     const allContests = contestsData?.results || [];
 
-    const filtered = allContests.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.key.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const active = filtered.filter(c => c.is_joined && now.isBefore(dayjs(c.end_time)));
-    const ongoing = filtered.filter(c => !c.is_joined && now.isAfter(dayjs(c.start_time)) && now.isBefore(dayjs(c.end_time)));
-    const upcoming = filtered.filter(c => now.isBefore(dayjs(c.start_time)));
-    const past = filtered.filter(c => now.isAfter(dayjs(c.end_time)));
+    const active = allContests.filter(c => c.is_joined && now.isBefore(dayjs(c.end_time)));
+    const ongoing = allContests.filter(c => !c.is_joined && now.isAfter(dayjs(c.start_time)) && now.isBefore(dayjs(c.end_time)));
+    const upcoming = allContests.filter(c => now.isBefore(dayjs(c.start_time)));
+    const past = allContests.filter(c => now.isAfter(dayjs(c.end_time)));
 
     const formatDuration = (start: string, end: string) => {
         const diff = dayjs(end).diff(dayjs(start));
@@ -117,6 +115,16 @@ export default function ContestsPageContent() {
                             <tbody className="divide-y">
                                 {contests.map((c) => {
                                     const isRunning = now.isAfter(dayjs(c.start_time)) && now.isBefore(dayjs(c.end_time));
+                                    const startsAt = dayjs(c.start_time);
+                                    const endsAt = dayjs(c.end_time);
+                                    // Live countdown mirrors the contest page: time to
+                                    // the start while upcoming, time to the end while
+                                    // running, nothing once it has ended.
+                                    const countdown = now.isBefore(startsAt)
+                                        ? { label: t('startIn'), ms: startsAt.diff(now) }
+                                        : now.isBefore(endsAt)
+                                            ? { label: t('endsIn'), ms: endsAt.diff(now) }
+                                            : null;
 
                                     return (
                                         <tr key={c.key} className="hover:bg-muted/30 transition-colors group">
@@ -150,6 +158,12 @@ export default function ContestsPageContent() {
                                                     <span className="text-xs text-muted-foreground">
                                                         {dayjs(c.start_time).format('MMM D, HH:mm')}
                                                     </span>
+                                                    {countdown && (
+                                                        <span className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
+                                                            <Clock size={12} />
+                                                            {countdown.label} {formatCountdown(countdown.ms)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
@@ -236,7 +250,7 @@ export default function ContestsPageContent() {
                                 placeholder={t('searchPlaceholder')}
                                 className="w-full h-12 bg-card border rounded-md pl-12 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                             />
                         </div>
                     </div>
@@ -278,23 +292,19 @@ export default function ContestsPageContent() {
                     />
 
                     <ContestTable
-                        contests={showAllPast ? past : past.slice(0, 10)}
+                        contests={past}
                         title={t('pastContests')}
                         icon={History}
                         emptyMsg={t('noPast')}
                     />
 
-                    {past.length > 10 && (
-                        <div className="flex justify-center pt-4">
-                            <button
-                                onClick={() => setShowAllPast(v => !v)}
-                                className="text-sm font-medium text-primary flex items-center gap-1 hover:underline"
-                            >
-                                {showAllPast ? t('viewLessPast') : t('viewAllPast')}
-                                <ChevronRight size={16} className={cn(showAllPast && 'rotate-90')} />
-                            </button>
-                        </div>
-                    )}
+                    <PaginationBar
+                        page={page}
+                        onPageChange={setPage}
+                        total={contestsData?.total}
+                        pageSize={pageSize}
+                        onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+                    />
                 </div>
             )}
         </div>

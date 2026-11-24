@@ -312,7 +312,17 @@
     "pageSubtitle": "Tham gia thử thách, khẳng định bản thân và nâng cao rating của bạn.",
     "viewCalendar": "Xem lịch thi",
     "viewAllPast": "Xem tất cả kỳ thi đã kết thúc",
-    "viewLessPast": "Thu gọn danh sách kỳ thi đã kết thúc"
+    "viewLessPast": "Thu gọn danh sách kỳ thi đã kết thúc",
+    "participation": "Tham gia",
+    "fixedWindow": "Cửa sổ {duration} cho mỗi thí sinh",
+    "totalAc": "Tổng AC",
+    "exportCsv": "Xuất CSV",
+    "showNames": "Tên hiển thị",
+    "showOrganizations": "Tổ chức",
+    "showVirtual": "Thí sinh ảo",
+    "time": "Thời gian",
+    "disqualified": "Bị loại",
+    "noParticipants": "Chưa có thí sinh tham gia."
   },
   "Submissions": {
     "title": "Bài nộp",
