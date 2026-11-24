@@ -223,6 +223,8 @@ func (s *LanguageService) DeleteLanguage(req DeleteLanguageRequest) error {
 // CONFLICT DO NOTHING so re-running it (or re-saving the form) is idempotent.
 // There is no detach counterpart: v1 does not remove the language when the
 // flag is cleared.
+// shortcut: every problem id is loaded into memory before the chunked insert,
+// switch to a dialect-specific INSERT ... SELECT past ~100k problems.
 func attachToAllProblems(tx *gorm.DB, languageID uint, include bool) error {
 	if !include || languageID == 0 {
 		return nil
