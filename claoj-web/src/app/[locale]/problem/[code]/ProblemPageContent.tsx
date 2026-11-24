@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter, Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import api, { problemClarificationApi, problemPdfApi } from '@/lib/api';
+import api, { problemClarificationApi, problemPdfApi, problemSubmitApi } from '@/lib/api';
 import { ProblemDetail, ProblemClarification } from '@/types';
 import MathRenderer from '@/components/ui/MathRenderer';
 import CodeEditor from '@/components/ui/CodeEditor';
@@ -131,20 +131,10 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
     const { mutate: submitSolution, isPending: isSubmitting } = useMutation({
         mutationFn: async () => {
-            const url = contestKey ? `/problem/${code}/submit?contest=${contestKey}` : `/problem/${code}/submit`;
-            if (isFileOnly) {
-                const form = new FormData();
-                form.append('language', language);
-                if (submissionFile) form.append('submission_file', submissionFile);
-                // Axios drops the instance's JSON content type for FormData so
-                // the browser can set the multipart boundary itself.
-                const res = await api.post<{ submission_id: number }>(url, form);
-                return res.data;
-            }
-            const res = await api.post<{ submission_id: number }>(url, {
-                language,
-                source: codeValue
-            });
+            const body = isFileOnly
+                ? { language, file: submissionFile ?? undefined }
+                : { language, source: codeValue };
+            const res = await problemSubmitApi.submit(code, body, contestKey);
             return res.data;
         },
         onSuccess: (data) => {
