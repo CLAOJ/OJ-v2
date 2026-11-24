@@ -79,9 +79,12 @@ func AdminJudgeCreate(c *gin.Context) {
 	}
 
 	judge := models.Judge{
-		Name:        name,
-		Created:     time.Now(),
-		AuthKey:     key,
+		Name:    name,
+		Created: time.Now(),
+		AuthKey: key,
+		// GORM drops zero values on create and judge_judge.tier has no DB
+		// default, so set v1's default explicitly.
+		Tier:        1,
 		Description: input.Description,
 	}
 	if err := db.DB.Create(&judge).Error; err != nil {

@@ -59,6 +59,7 @@ func TestAdminJudgeCreate_GeneratesKey(t *testing.T) {
 	require.Equal(t, "rack 3", j.Description)
 	require.False(t, j.Created.IsZero())
 	require.False(t, j.Online)
+	require.Equal(t, 1, j.Tier, "create must write v1's default tier (no DB default)")
 	require.Equal(t, float64(j.ID), body["id"])
 }
 
