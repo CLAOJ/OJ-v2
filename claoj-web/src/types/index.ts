@@ -92,6 +92,14 @@ export interface User {
     is_staff: boolean;
     /** Superuser or holder of judge.organization_admin (GET /user/me). */
     can_organization_admin?: boolean;
+    /** Present on GET /user/me; is_admin mirrors it. */
+    is_superuser?: boolean;
+    /** Effective Django permission codenames; staff only (GET /user/me). */
+    permissions?: string[];
+    /** True while a superuser is viewing the site as this account (GET /user/me). */
+    is_impersonating?: boolean;
+    /** Username of the superuser driving the impersonation, if any. */
+    impersonator_username?: string;
     rating?: number | null;
     performance_points?: number;
 }
@@ -316,6 +324,26 @@ export interface AdminContestTagUpdateRequest {
 export interface AdminUserGroupRef {
     id: number;
     name: string;
+}
+
+/** v1 django-registration-redux row shown read-only in the registrations admin. */
+export interface AdminRegistrationV1 {
+    /** registration_registrationprofile.id. */
+    id: number;
+    activated: boolean;
+    has_activation_key: boolean;
+}
+
+/** Row shape of GET /admin/registrations. */
+export interface AdminRegistration {
+    /** auth_user.id — what the activate/resend endpoints take. */
+    user_id: number;
+    username: string;
+    email: string;
+    is_active: boolean;
+    date_joined: string;
+    registration: AdminRegistrationV1 | null;
+    has_pending_token: boolean;
 }
 
 /** Row shape of GET /admin/users. */
@@ -665,6 +693,8 @@ export interface AdminProblem {
 export interface AdminJudge {
     id: number;
     name: string;
+    /** v1 tier: informational in v2, the queue has no tier routing. */
+    tier: number;
     online: boolean;
     is_blocked: boolean;
     is_disabled: boolean;
@@ -677,8 +707,12 @@ export interface AdminJudge {
 export interface AdminJudgeDetail extends AdminJudge {
     start_time?: string;
     description: string;
-    problems: { code: string; name: string }[];
+    problems: { id: number; code: string; name: string }[];
+    /** Language ids the judge is assigned (what the edit form writes). */
+    problem_ids: number[];
     runtimes: { key: string; name: string; version: string }[];
+    runtime_ids: number[];
+    assigned_runtimes: { id: number; key: string; name: string }[];
 }
 
 export interface AdminJudgeCreateRequest {
@@ -698,6 +732,7 @@ export interface AdminUserCreateRequest {
 export interface AdminJudgeUpdateRequest {
     name?: string;
     auth_key?: string;
+    tier?: number;
     description?: string;
     problem_ids?: number[];
     runtime_ids?: number[];
@@ -738,6 +773,7 @@ export interface AdminSubmission {
     id: number;
     user: string;
     problem: string;
+    problem_name?: string;
     language: string;
     status: string;
     result: string | null;
@@ -746,6 +782,69 @@ export interface AdminSubmission {
     memory: number | null;
     date: string;
     is_pretested: boolean;
+}
+
+/** GET /admin/submission/:id */
+export interface AdminSubmissionTestCase {
+    id: number;
+    case: number;
+    status: string;
+    time: number | null;
+    memory: number | null;
+    points: number | null;
+    total: number | null;
+    feedback: string;
+}
+
+export interface AdminSubmissionDetail {
+    id: number;
+    user: string;
+    problem: string;
+    problem_name: string;
+    language_id: number;
+    language: string;
+    language_name: string;
+    date: string;
+    time: number | null;
+    memory: number | null;
+    points: number | null;
+    status: string;
+    result: string | null;
+    error: string | null;
+    case_points: number;
+    case_total: number;
+    current_testcase: number;
+    batch: boolean;
+    is_pretested: boolean;
+    judged_on_id: number | null;
+    judged_on: string;
+    judged_date: string | null;
+    rejudged_date: string | null;
+    locked_after: string | null;
+    is_locked: boolean;
+    is_archived: boolean;
+    contest_object_id: number | null;
+    contest_key: string;
+    contest_name: string;
+    source: string;
+    test_cases: AdminSubmissionTestCase[];
+}
+
+/** PATCH /admin/submission/:id */
+export interface AdminSubmissionUpdateRequest {
+    language_id?: number;
+    status?: string;
+    result?: string | null;
+    points?: number;
+    case_points?: number;
+    case_total?: number;
+    judged_on_id?: number | null;
+    judged_date?: string | null;
+    error?: string;
+    contest_object_id?: number | null;
+    source?: string;
+    locked_after?: string | null;
+    is_archived?: boolean;
 }
 
 export interface AdminUserUpdateRequest {
@@ -1302,12 +1401,11 @@ export interface AdminLanguage {
     file_size_limit: number;
     include_in_problem: boolean;
     info: string;
-}
-
-export interface AdminLanguageDetail extends AdminLanguage {
     template: string;
     description: string;
 }
+
+export type AdminLanguageDetail = AdminLanguage;
 
 export interface AdminLanguageCreateRequest {
     key: string;
@@ -1502,6 +1600,7 @@ export type AdminLicenseListResponse = AdminListResponse<AdminLicense>;
 export type AdminProblemGroupListResponse = AdminListResponse<AdminProblemGroup>;
 export type AdminProblemTypeListResponse = AdminListResponse<AdminProblemType>;
 export type AdminUserListResponse = AdminListResponse<AdminUser>;
+export type AdminRegistrationListResponse = AdminListResponse<AdminRegistration>;
 export type AdminContestListResponse = AdminListResponse<AdminContest>;
 export type AdminProblemListResponse = AdminListResponse<AdminProblem>;
 export type AdminJudgeListResponse = AdminListResponse<AdminJudge>;
@@ -1524,7 +1623,8 @@ export interface AdminNavigationBar {
     key: string;
     label: string;
     path: string;
-    parent_id?: number;
+    regex: string;
+    parent_id?: number | null;
     order: number;
     level: number;
     parent?: {
@@ -1538,7 +1638,9 @@ export interface AdminNavigationBarDetail {
     key: string;
     label: string;
     path: string;
-    parent_id?: number;
+    regex: string;
+    parent_id?: number | null;
+    parent_label?: string;
     order: number;
     level: number;
     lft: number;
@@ -1550,6 +1652,7 @@ export interface AdminNavigationBarCreateRequest {
     key: string;
     label: string;
     path: string;
+    regex?: string;
     parent_id?: number;
     order?: number;
 }
@@ -1557,6 +1660,8 @@ export interface AdminNavigationBarCreateRequest {
 export interface AdminNavigationBarUpdateRequest {
     label?: string;
     path?: string;
+    regex?: string;
+    parent_id?: number | null;
     order?: number;
 }
 
@@ -1591,6 +1696,57 @@ export interface AdminMiscConfigUpdateRequest {
 export type AdminMiscConfigListResponse = AdminListResponse<AdminMiscConfig>;
 
 // ============================================================
+// ADMIN FLAT PAGE + REDIRECT TYPES (v1 contrib tables)
+// ============================================================
+
+export interface AdminFlatPage {
+    id: number;
+    url: string;
+    title: string;
+    registration_required: boolean;
+}
+
+export interface AdminFlatPageDetail extends AdminFlatPage {
+    content: string;
+    enable_comments: boolean;
+    template_name: string;
+}
+
+export interface AdminFlatPageCreateRequest {
+    url: string;
+    title: string;
+    content?: string;
+    registration_required?: boolean;
+}
+
+export interface AdminFlatPageUpdateRequest {
+    url?: string;
+    title?: string;
+    content?: string;
+    registration_required?: boolean;
+}
+
+export type AdminFlatPageListResponse = AdminListResponse<AdminFlatPage>;
+
+export interface AdminRedirect {
+    id: number;
+    old_path: string;
+    new_path: string;
+}
+
+export interface AdminRedirectCreateRequest {
+    old_path: string;
+    new_path: string;
+}
+
+export interface AdminRedirectUpdateRequest {
+    old_path?: string;
+    new_path?: string;
+}
+
+export type AdminRedirectListResponse = AdminListResponse<AdminRedirect>;
+
+// ============================================================
 // ADMIN LANGUAGE LIMIT TYPES (Task #35)
 // ============================================================
 
@@ -1606,7 +1762,7 @@ export interface LanguageLimit {
     memory_limit: number;
 }
 
-export interface AdminLanguageLimit extends LanguageLimit {}
+export type AdminLanguageLimit = LanguageLimit;
 
 export interface AdminLanguageLimitCreateRequest {
     problem_id: number;

@@ -17,6 +17,7 @@ type SubmissionProfile struct {
 	Username     string
 	ProblemID    uint
 	ProblemCode  string
+	ProblemName  string
 	LanguageID   uint
 	LanguageName string
 	Date         string
@@ -151,6 +152,7 @@ func (s *SubmissionService) ListSubmissions(req ListSubmissionsRequest) (*ListSu
 		models.Submission
 		Username     string `gorm:"column:username"`
 		ProblemCode  string `gorm:"column:problem_code"`
+		ProblemName  string `gorm:"column:problem_name"`
 		LanguageName string `gorm:"column:language_name"`
 	}
 
@@ -194,7 +196,7 @@ func (s *SubmissionService) ListSubmissions(req ListSubmissionsRequest) (*ListSu
 	}
 
 	if err := filter(joined()).
-		Select("judge_submission.*, auth_user.username, judge_problem.code as problem_code, judge_language.name as language_name").
+		Select("judge_submission.*, auth_user.username, judge_problem.code as problem_code, judge_problem.name as problem_name, judge_language.name as language_name").
 		Order("judge_submission.date DESC").
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
@@ -204,7 +206,7 @@ func (s *SubmissionService) ListSubmissions(req ListSubmissionsRequest) (*ListSu
 
 	result := make([]SubmissionProfile, len(submissions))
 	for i, s := range submissions {
-		result[i] = submissionToProfile(s.Submission, s.Username, s.ProblemCode, s.LanguageName)
+		result[i] = submissionToProfile(s.Submission, s.Username, s.ProblemCode, s.ProblemName, s.LanguageName)
 	}
 
 	return &ListSubmissionsResponse{
@@ -490,13 +492,14 @@ func (s *SubmissionService) RescoreAll(req RescoreAllRequest) (*BatchRescoreResp
 // Date is formatted as RFC3339 rather than time.String(): AdminSubmissionList
 // re-parses it with time.Parse(time.RFC3339, ...) and a failed parse silently
 // yields the zero time, which the dashboard renders as "2026 years ago".
-func submissionToProfile(s models.Submission, username, problemCode, languageName string) SubmissionProfile {
+func submissionToProfile(s models.Submission, username, problemCode, problemName, languageName string) SubmissionProfile {
 	return SubmissionProfile{
 		ID:           s.ID,
 		UserID:       s.UserID,
 		Username:     username,
 		ProblemID:    s.ProblemID,
 		ProblemCode:  problemCode,
+		ProblemName:  problemName,
 		LanguageID:   s.LanguageID,
 		LanguageName: languageName,
 		Date:         s.Date.Format(time.RFC3339Nano),

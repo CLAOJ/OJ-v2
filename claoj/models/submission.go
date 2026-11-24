@@ -25,6 +25,7 @@ type Submission struct {
 	IsPretested     bool       `gorm:"column:is_pretested;not null;default:0"`
 	ContestObjectID *uint      `gorm:"column:contest_object_id;index"`
 	LockedAfter     *time.Time `gorm:"column:locked_after"`
+	IsArchived      bool       `gorm:"column:is_archived;not null;default:0"`
 
 	// eager-loadable relations
 	User      Profile              `gorm:"foreignKey:UserID"`
@@ -65,6 +66,17 @@ type SubmissionTestCase struct {
 }
 
 func (SubmissionTestCase) TableName() string { return "judge_submissiontestcase" }
+
+// SubmissionStatus holds all possible submission status codes (v1 STATUS).
+var SubmissionStatus = map[string]string{
+	"QU": "Queued",
+	"P":  "Processing",
+	"G":  "Grading",
+	"D":  "Completed",
+	"IE": "Internal Error",
+	"CE": "Compile Error",
+	"AB": "Aborted",
+}
 
 // SubmissionResult holds all possible submission result codes.
 var SubmissionResult = map[string]string{

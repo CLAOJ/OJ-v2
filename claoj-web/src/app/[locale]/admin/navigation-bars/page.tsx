@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { adminNavigationBarApi } from '@/lib/adminApi';
-import { AdminNavigationBar, AdminNavigationBarCreateRequest, AdminNavigationBarUpdateRequest } from '@/types';
+import { navigationBarUpdatePayload } from '@/lib/adminForms';
+import { AdminNavigationBar, AdminNavigationBarCreateRequest, AdminNavigationBarDetail } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -16,11 +17,18 @@ import {
     DialogTitle,
 } from '@/components/ui/Dialog';
 import { Label } from '@/components/ui/Label';
+import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Link as LinkIcon, Layers } from 'lucide-react';
 
 export default function NavigationBarsAdminPage() {
     const t = useTranslations('Admin');
+    const { user } = useAuth();
+    // Mirrors the API's judge.change_navigationbar gate on writes.
+    const canWrite = hasPerm(user, 'judge.change_navigationbar');
     const [navBars, setNavBars] = useState<AdminNavigationBar[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -29,16 +37,18 @@ export default function NavigationBarsAdminPage() {
     const [search, setSearch] = useState('');
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [editingNavBar, setEditingNavBar] = useState<AdminNavigationBar | null>(null);
+    const [editingDetail, setEditingDetail] = useState<AdminNavigationBarDetail | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
     const [formData, setFormData] = useState<AdminNavigationBarCreateRequest>({
         key: '',
         label: '',
         path: '',
+        regex: '',
         parent_id: undefined,
         order: 0,
     });
+    const [samplePath, setSamplePath] = useState('/problems');
 
     const loadNavBars = async () => {
         setLoading(true);
@@ -58,10 +68,12 @@ export default function NavigationBarsAdminPage() {
     }, [page]);
 
     const openCreateDialog = () => {
+        setEditingDetail(null);
         setFormData({
             key: '',
             label: '',
             path: '',
+            regex: '',
             parent_id: undefined,
             order: 0,
         });
@@ -75,14 +87,49 @@ export default function NavigationBarsAdminPage() {
                 key: response.data.key,
                 label: response.data.label,
                 path: response.data.path,
+                regex: response.data.regex ?? '',
+                parent_id: response.data.parent_id ?? undefined,
                 order: response.data.order,
             });
-            setEditingNavBar(navBar);
+            setEditingDetail(response.data);
             setIsCreateDialogOpen(true);
         } catch (error) {
             toast.error(t('navigationBars.loadDetailFailed'));
         }
     };
+
+    // A nav bar cannot be moved under itself or one of its descendants.
+    const excludedParentIds = (() => {
+        const excluded = new Set<number>();
+        if (!editingDetail) return excluded;
+        excluded.add(editingDetail.id);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const nb of navBars) {
+                if (nb.parent_id != null && excluded.has(nb.parent_id) && !excluded.has(nb.id)) {
+                    excluded.add(nb.id);
+                    changed = true;
+                }
+            }
+        }
+        return excluded;
+    })();
+
+    // Preview the highlight regex against a sample path, same syntax as Go's
+    // regexp package on the server.
+    const regexPreview: 'empty' | 'invalid' | 'match' | 'no-match' = (() => {
+        if (!formData.regex) return 'empty';
+        try {
+            return new RegExp(formData.regex).test(samplePath) ? 'match' : 'no-match';
+        } catch {
+            return 'invalid';
+        }
+    })();
+    // A stored v1 pattern that does not compile in JS must stay saveable; only
+    // a pattern the admin just typed is blocked.
+    const regexBlocksSave = regexPreview === 'invalid'
+        && (formData.regex ?? '') !== (editingDetail?.regex ?? '');
 
     const handleCreate = async () => {
         try {
@@ -96,15 +143,10 @@ export default function NavigationBarsAdminPage() {
     };
 
     const handleUpdate = async () => {
-        if (!editingNavBar) return;
+        if (!editingDetail) return;
 
         try {
-            const updateData: AdminNavigationBarUpdateRequest = {
-                label: formData.label,
-                path: formData.path,
-                order: formData.order,
-            };
-            await adminNavigationBarApi.update(editingNavBar.id, updateData);
+            await adminNavigationBarApi.update(editingDetail.id, navigationBarUpdatePayload(formData, editingDetail));
             toast.success(t('navigationBars.updateSuccess'));
             setIsCreateDialogOpen(false);
             loadNavBars();
@@ -138,11 +180,14 @@ export default function NavigationBarsAdminPage() {
                         {t('navigationBars.subtitle')}
                     </p>
                 </div>
-                <Button onClick={openCreateDialog}>
+                <Button onClick={openCreateDialog} disabled={!canWrite}>
                     <Plus className="h-4 w-4 mr-2" />
                     {t('navigationBars.addButton')}
                 </Button>
             </div>
+            {!canWrite && (
+                <p className="text-xs text-muted-foreground">{t('navigationBars.writeHint')}</p>
+            )}
 
             {/* Search */}
             <div className="relative">
@@ -208,25 +253,29 @@ export default function NavigationBarsAdminPage() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => openEditDialog(navBar)}
-                                                title={t('common.edit')}
-                                                aria-label={t('common.edit')}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setDeleteConfirmId(navBar.id)}
-                                                className="text-destructive hover:text-destructive"
-                                                title={t('common.delete')}
-                                                aria-label={t('common.delete')}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            {canWrite && (
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openEditDialog(navBar)}
+                                                        title={t('common.edit')}
+                                                        aria-label={t('common.edit')}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setDeleteConfirmId(navBar.id)}
+                                                        className="text-destructive hover:text-destructive"
+                                                        title={t('common.delete')}
+                                                        aria-label={t('common.delete')}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -264,15 +313,15 @@ export default function NavigationBarsAdminPage() {
             {/* Create/Edit Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
                 setIsCreateDialogOpen(open);
-                if (!open) setEditingNavBar(null);
+                if (!open) setEditingDetail(null);
             }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingNavBar ? t('navigationBars.editDialogTitle') : t('navigationBars.createDialogTitle')}
+                            {editingDetail ? t('navigationBars.editDialogTitle') : t('navigationBars.createDialogTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingNavBar ? t('navigationBars.editDialogDesc') : t('navigationBars.createDialogDesc')}
+                            {editingDetail ? t('navigationBars.editDialogDesc') : t('navigationBars.createDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -285,7 +334,7 @@ export default function NavigationBarsAdminPage() {
                                     onChange={(e) => setFormData({
                 ...formData, key: e.target.value })}
                                     placeholder={t('navigationBars.keyPlaceholder')}
-                                    disabled={!!editingNavBar}
+                                    disabled={!!editingDetail}
                                 />
                                 <p className="text-xs text-muted-foreground">{t('navigationBars.keyHint')}</p>
                             </div>
@@ -312,7 +361,67 @@ export default function NavigationBarsAdminPage() {
                             />
                         </div>
 
+                        <div className="grid gap-2">
+                            <Label htmlFor="regex">{t('navigationBars.regexLabel')}</Label>
+                            <Textarea
+                                id="regex"
+                                rows={2}
+                                className="font-mono"
+                                value={formData.regex ?? ''}
+                                onChange={(e) => setFormData({
+                ...formData, regex: e.target.value })}
+                                placeholder={t('navigationBars.regexPlaceholder')}
+                            />
+                            <p className="text-xs text-muted-foreground">{t('navigationBars.regexHint')}</p>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    aria-label={t('navigationBars.regexPreviewLabel')}
+                                    value={samplePath}
+                                    onChange={(e) => setSamplePath(e.target.value)}
+                                    className="h-9 font-mono"
+                                />
+                                <Badge
+                                    variant={
+                                        regexPreview === 'match' ? 'success'
+                                            : regexPreview === 'invalid' ? 'destructive'
+                                                : regexPreview === 'no-match' ? 'warning' : 'outline'
+                                    }
+                                    className="shrink-0"
+                                >
+                                    {regexPreview === 'empty' && t('navigationBars.regexPreviewEmpty')}
+                                    {regexPreview === 'invalid' && t('navigationBars.regexPreviewInvalid')}
+                                    {regexPreview === 'match' && t('navigationBars.regexPreviewMatch')}
+                                    {regexPreview === 'no-match' && t('navigationBars.regexPreviewNoMatch')}
+                                </Badge>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="parent">{t('navigationBars.parentLabel')}</Label>
+                                <Select
+                                    id="parent"
+                                    value={formData.parent_id ?? ''}
+                                    onChange={(e) => setFormData({
+                ...formData, parent_id: e.target.value ? Number(e.target.value) : undefined })}
+                                >
+                                    <option value="">{t('navigationBars.parentNone')}</option>
+                                    {/* The current parent can sit on another page; inject it from the detail so the select is not blank. */}
+                                    {editingDetail?.parent_id != null && !navBars.some((nb) => nb.id === editingDetail.parent_id) && (
+                                        <option value={editingDetail.parent_id}>
+                                            {'\u00A0'.repeat(Math.max(0, editingDetail.level - 1) * 2)}{editingDetail.parent_label}
+                                        </option>
+                                    )}
+                                    {/* shortcut: options come from the loaded page (50), upgrade to a full fetch if nav items ever exceed one page */}
+                                    {navBars
+                                        .filter((nb) => !excludedParentIds.has(nb.id))
+                                        .map((nb) => (
+                                            <option key={nb.id} value={nb.id}>
+                                                {'\u00A0'.repeat(nb.level * 2)}{nb.label}
+                                            </option>
+                                        ))}
+                                </Select>
+                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="order">{t('navigationBars.orderLabel')}</Label>
                                 <Input
@@ -328,12 +437,12 @@ export default function NavigationBarsAdminPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => {
                             setIsCreateDialogOpen(false);
-                            setEditingNavBar(null);
+                            setEditingDetail(null);
                         }}>
                             {t('common.cancel')}
                         </Button>
-                        <Button onClick={editingNavBar ? handleUpdate : handleCreate}>
-                            {editingNavBar ? t('common.saveChanges') : t('common.create')}
+                        <Button onClick={editingDetail ? handleUpdate : handleCreate} disabled={regexBlocksSave}>
+                            {editingDetail ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

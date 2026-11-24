@@ -92,6 +92,10 @@ func NewRouter() *gin.Engine {
 		// =======================================================
 		admin := apiv2.Group("")
 		admin.Use(auth.AdminRequiredMiddleware())
+		// Session cookies are SameSite=None, so without this an admin write
+		// is forgeable cross-site. The web client echoes the csrf_token
+		// cookie in X-CSRF-Token on every non-GET request.
+		admin.Use(csrf.Middleware(csrf.DefaultConfig()))
 		admin.Use(middleware.Audit()) // Audit logging for all admin actions
 		{
 			// Users
@@ -101,8 +105,18 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/user/:id", v2.AdminUserDelete)
 			admin.POST("/admin/user/:id/ban", v2.AdminUserBan)
 			admin.POST("/admin/user/:id/unban", v2.AdminUserUnban)
+			// Impersonation start lives in the CSRF-protected group below:
+			// it mutates the session, so it must carry the double-submit
+			// token. The admin gate + audit are re-applied per route there.
 			admin.POST("/admin/users", auth.RequirePerm("auth.add_user"), v2.AdminUserCreate)
 			admin.POST("/admin/user/:id/password", auth.RequirePerm("auth.change_user"), v2.AdminUserSetPassword)
+
+			// Registrations / account activation (v1 registration profiles +
+			// v2 email-verification tokens). Mutations are superuser-only
+			// inside the handlers.
+			admin.GET("/admin/registrations", v2.AdminRegistrationList)
+			admin.POST("/admin/registration/:userId/activate", v2.AdminRegistrationActivate)
+			admin.POST("/admin/registration/:userId/resend", v2.AdminRegistrationResend)
 
 			// Django group (role) management — writes rows in Django's own auth tables
 			admin.GET("/admin/groups", v2.AdminGroupList)
@@ -213,9 +227,12 @@ func NewRouter() *gin.Engine {
 
 			// Submissions
 			admin.GET("/admin/submissions", v2.AdminSubmissionList)
+			admin.GET("/admin/submission/:id", v2.AdminSubmissionDetail)
+			admin.PATCH("/admin/submission/:id", auth.RequirePerm("judge.change_submission"), v2.AdminSubmissionUpdate)
 			admin.POST("/admin/submission/:id/rejudge", v2.AdminSubmissionRejudge)
 			admin.POST("/admin/submission/:id/abort", v2.AdminSubmissionAbort)
 			admin.DELETE("/admin/submission/:id", auth.RequirePerm("judge.delete_submission"), v2.AdminSubmissionDelete)
+			admin.POST("/admin/submissions/bulk-delete", auth.RequirePerm("judge.delete_submission"), v2.AdminSubmissionBulkDelete)
 			admin.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
 			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
@@ -284,12 +301,26 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/ticket/:id/message/:messageId", auth.RequirePerm("judge.change_ticket"), v2.AdminTicketMessageDelete)
 			admin.DELETE("/admin/ticket/:id", auth.RequirePerm("judge.delete_ticket"), v2.AdminTicketDelete)
 
-		// Navigation Bars
+		// Navigation Bars (v1 admin gates the whole model with
+		// judge.change_navigationbar; HasPerm lets superusers pass)
 		admin.GET("/admin/navigation-bars", v2.AdminNavigationBarList)
 		admin.GET("/admin/navigation-bar/:id", v2.AdminNavigationBarDetail)
-		admin.POST("/admin/navigation-bars", v2.AdminNavigationBarCreate)
-		admin.PATCH("/admin/navigation-bar/:id", v2.AdminNavigationBarUpdate)
-		admin.DELETE("/admin/navigation-bar/:id", v2.AdminNavigationBarDelete)
+		admin.POST("/admin/navigation-bars", auth.RequirePerm("judge.change_navigationbar"), v2.AdminNavigationBarCreate)
+		admin.PATCH("/admin/navigation-bar/:id", auth.RequirePerm("judge.change_navigationbar"), v2.AdminNavigationBarUpdate)
+		admin.DELETE("/admin/navigation-bar/:id", auth.RequirePerm("judge.change_navigationbar"), v2.AdminNavigationBarDelete)
+
+		// Flat pages + redirects (Django contrib tables, single site). Reads are
+		// staff-level; writes use the same codenames v1's Django admin checks.
+		admin.GET("/admin/flat-pages", v2.AdminFlatPageList)
+		admin.GET("/admin/flat-page/:id", v2.AdminFlatPageDetail)
+		admin.POST("/admin/flat-pages", auth.RequirePerm("flatpages.change_flatpage"), v2.AdminFlatPageCreate)
+		admin.PATCH("/admin/flat-page/:id", auth.RequirePerm("flatpages.change_flatpage"), v2.AdminFlatPageUpdate)
+		admin.DELETE("/admin/flat-page/:id", auth.RequirePerm("flatpages.change_flatpage"), v2.AdminFlatPageDelete)
+		admin.GET("/admin/redirects", v2.AdminRedirectList)
+		admin.GET("/admin/redirect/:id", v2.AdminRedirectDetail)
+		admin.POST("/admin/redirects", auth.RequirePerm("redirects.change_redirect"), v2.AdminRedirectCreate)
+		admin.PATCH("/admin/redirect/:id", auth.RequirePerm("redirects.change_redirect"), v2.AdminRedirectUpdate)
+		admin.DELETE("/admin/redirect/:id", auth.RequirePerm("redirects.change_redirect"), v2.AdminRedirectDelete)
 
 		// Misc Configs
 		admin.GET("/admin/misc-configs", v2.AdminMiscConfigList)
@@ -377,6 +408,11 @@ func NewRouter() *gin.Engine {
 		// Uploaded markdown images (blog posts, license text)
 		apiv2.GET("/media/:name", v2.MarkdownMediaServe)
 
+		// Flat pages + redirects (v1 contrib tables). /page feeds the web
+		// catch-all route, /redirects-map feeds the web proxy's path redirects.
+		apiv2.GET("/page", v2.FlatPageLookup)
+		apiv2.GET("/redirects-map", v2.RedirectMap)
+
 		// Sitemap (public)
 		apiv2.GET("/sitemap.xml", v2.SitemapIndex)
 		apiv2.GET("/sitemap-static.xml", v2.SitemapStatic)
@@ -414,6 +450,8 @@ func NewRouter() *gin.Engine {
 			protected.POST("/problem/:code/submit", v2.Submit)
 			protected.GET("/user/me", v2.CurrentUser)
 			protected.PATCH("/user/me", v2.UpdateProfile)
+			protected.POST("/admin/impersonate/:userId", auth.AdminRequiredMiddleware(), middleware.Audit(), v2.AdminImpersonateStart)
+			protected.POST("/admin/impersonate/exit", v2.AdminImpersonateExit)
 
 			// API Token Management
 			protected.GET("/user/api-token", v2.GetAPIToken)

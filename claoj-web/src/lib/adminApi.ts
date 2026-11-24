@@ -14,7 +14,8 @@ import type {
     AdminUserCreateRequest,
     AdminOrganizationDetail,
     AdminClassListResponse,
-    AdminSubmission,
+    AdminSubmissionDetail,
+    AdminSubmissionUpdateRequest,
     Group,
     GroupDetail,
     GroupMembersResponse,
@@ -48,6 +49,7 @@ import type {
     AdminLicenseUpdateRequest,
     AdminLicenseDetail,
     AdminUserListResponse,
+    AdminRegistrationListResponse,
     AdminContestListResponse,
     AdminProblemListResponse,
     AdminJudgeListResponse,
@@ -77,6 +79,14 @@ import type {
     AdminMiscConfigCreateRequest,
     AdminMiscConfigUpdateRequest,
     AdminMiscConfigListResponse,
+    AdminFlatPageDetail,
+    AdminFlatPageCreateRequest,
+    AdminFlatPageUpdateRequest,
+    AdminFlatPageListResponse,
+    AdminRedirect,
+    AdminRedirectCreateRequest,
+    AdminRedirectUpdateRequest,
+    AdminRedirectListResponse,
     LanguageLimit,
     AdminLanguageLimit,
     AdminLanguageLimitCreateRequest,
@@ -204,6 +214,34 @@ export const adminUserApi = {
 
     unban: (id: number) =>
         api.post(`/admin/user/${id}/unban`),
+
+    /** Superuser only: open an impersonated session as judge_profile id. */
+    impersonate: (id: number) =>
+        api.post<{ success: boolean; user: { id: number; username: string } }>(`/admin/impersonate/${id}`),
+
+    exitImpersonation: () =>
+        api.post<{ success: boolean; user: { id: number; username: string } }>('/admin/impersonate/exit'),
+};
+
+// ============================================================
+// ADMIN REGISTRATION (account activation) API
+// ============================================================
+
+export const adminRegistrationApi = {
+    list: (page: number = 1, pageSize: number = 50, filters: {
+        search?: string;
+        status?: 'pending' | 'active' | 'all';
+        order?: SortOrder;
+    } = {}) =>
+        api.get<AdminRegistrationListResponse>(`/admin/registrations?${qs({ page, page_size: pageSize, ...filters })}`),
+
+    /** :userId is auth_user.id. Idempotent; no-op when already active. */
+    activate: (userId: number) =>
+        api.post<{ success: boolean; already_active: boolean }>(`/admin/registration/${userId}/activate`),
+
+    /** Superuser only; 400 when the account is already active. */
+    resend: (userId: number) =>
+        api.post<{ success: boolean }>(`/admin/registration/${userId}/resend`),
 };
 
 // ============================================================
@@ -455,6 +493,15 @@ export interface BatchRescoreResponse {
 export const adminSubmissionApi = {
     list: (page: number = 1, pageSize: number = 50, filters: { user?: string; problem?: string; result?: string; status?: string; language?: string } = {}) =>
         api.get<AdminSubmissionListResponse>(`/admin/submissions?${qs({ page, page_size: pageSize, ...filters })}`),
+
+    detail: (id: number) =>
+        api.get<AdminSubmissionDetail>(`/admin/submission/${id}`),
+
+    update: (id: number, data: AdminSubmissionUpdateRequest) =>
+        api.patch<{ success: boolean; message: string }>(`/admin/submission/${id}`, data),
+
+    bulkDelete: (ids: number[]) =>
+        api.post<{ success: boolean; deleted: number; message: string }>('/admin/submissions/bulk-delete', { ids }),
 
     rejudge: (id: number) =>
         api.post(`/admin/submission/${id}/rejudge`),
@@ -797,6 +844,44 @@ export const adminMiscConfigApi = {
 
     delete: (id: number) =>
         api.delete<{ message: string }>(`/admin/misc-config/${id}`),
+};
+
+// ============================================================
+// ADMIN FLAT PAGE + REDIRECT API (v1 contrib tables)
+// ============================================================
+
+export const adminFlatPageApi = {
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminFlatPageListResponse>(`/admin/flat-pages?${qs({ page, page_size: pageSize, search })}`),
+
+    detail: (id: number) =>
+        api.get<AdminFlatPageDetail>(`/admin/flat-page/${id}`),
+
+    create: (data: AdminFlatPageCreateRequest) =>
+        api.post<{ message: string; flat_page: { id: number; url: string } }>('/admin/flat-pages', data),
+
+    update: (id: number, data: AdminFlatPageUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/flat-page/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/flat-page/${id}`),
+};
+
+export const adminRedirectApi = {
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminRedirectListResponse>(`/admin/redirects?${qs({ page, page_size: pageSize, search })}`),
+
+    detail: (id: number) =>
+        api.get<AdminRedirect>(`/admin/redirect/${id}`),
+
+    create: (data: AdminRedirectCreateRequest) =>
+        api.post<{ message: string; redirect: { id: number; old_path: string } }>('/admin/redirects', data),
+
+    update: (id: number, data: AdminRedirectUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/redirect/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/redirect/${id}`),
 };
 
 // ============================================================

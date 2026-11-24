@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,6 +41,7 @@ func AdminJudgeList(c *gin.Context) {
 	type Item struct {
 		ID         uint     `json:"id"`
 		Name       string   `json:"name"`
+		Tier       int      `json:"tier"`
 		Online     bool     `json:"online"`
 		IsBlocked  bool     `json:"is_blocked"`
 		IsDisabled bool     `json:"is_disabled"`
@@ -56,6 +58,7 @@ func AdminJudgeList(c *gin.Context) {
 		items[i] = Item{
 			ID:         j.ID,
 			Name:       j.Name,
+			Tier:       j.Tier,
 			Online:     j.Online,
 			IsBlocked:  j.IsBlocked,
 			IsDisabled: j.IsDisabled,
@@ -134,6 +137,7 @@ func AdminJudgeDetail(c *gin.Context) {
 	db.DB.Where("judge_id = ?", id).Preload("Language").Find(&runtimeVersions)
 
 	type ProblemInfo struct {
+		ID   uint   `json:"id"`
 		Code string `json:"code"`
 		Name string `json:"name"`
 	}
@@ -144,9 +148,26 @@ func AdminJudgeDetail(c *gin.Context) {
 		Version string `json:"version"`
 	}
 
+	type AssignedRuntime struct {
+		ID   uint   `json:"id"`
+		Key  string `json:"key"`
+		Name string `json:"name"`
+	}
+
 	problems := make([]ProblemInfo, len(judge.Problems))
+	problemIDs := make([]uint, len(judge.Problems))
 	for i, p := range judge.Problems {
-		problems[i] = ProblemInfo{Code: p.Code, Name: p.Name}
+		problems[i] = ProblemInfo{ID: p.ID, Code: p.Code, Name: p.Name}
+		problemIDs[i] = p.ID
+	}
+
+	// runtime_ids are the Language rows the judge is assigned (what the edit
+	// form writes); runtimes below report the versions the agent announced.
+	assigned := make([]AssignedRuntime, len(judge.Runtimes))
+	runtimeIDs := make([]uint, len(judge.Runtimes))
+	for i, r := range judge.Runtimes {
+		assigned[i] = AssignedRuntime{ID: r.ID, Key: r.Key, Name: r.Name}
+		runtimeIDs[i] = r.ID
 	}
 
 	runtimes := make([]RuntimeInfo, len(runtimeVersions))
@@ -168,20 +189,30 @@ func AdminJudgeDetail(c *gin.Context) {
 		startTime = judge.StartTime.Format(time.RFC3339)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":          judge.ID,
-		"name":        judge.Name,
-		"online":      judge.Online,
-		"is_blocked":  judge.IsBlocked,
-		"is_disabled": judge.IsDisabled,
-		"start_time":  startTime,
-		"ping":        judge.Ping,
-		"load":        judge.Load,
-		"description": judge.Description,
-		"last_ip":     lastIP,
-		"problems":    problems,
-		"runtimes":    runtimes,
-	})
+	body := gin.H{
+		"id":                judge.ID,
+		"name":              judge.Name,
+		"tier":              judge.Tier,
+		"online":            judge.Online,
+		"is_blocked":        judge.IsBlocked,
+		"is_disabled":       judge.IsDisabled,
+		"start_time":        startTime,
+		"ping":              judge.Ping,
+		"load":              judge.Load,
+		"description":       judge.Description,
+		"last_ip":           lastIP,
+		"problems":          problems,
+		"problem_ids":       problemIDs,
+		"runtimes":          runtimes,
+		"runtime_ids":       runtimeIDs,
+		"assigned_runtimes": assigned,
+	}
+	// v1 shows the auth key only on the change form, which needs change_judge:
+	// it is the judge's login, so it is not part of the plain read payload.
+	if auth.HasPerm(c, "judge.change_judge") {
+		body["auth_key"] = judge.AuthKey
+	}
+	c.JSON(http.StatusOK, body)
 }
 
 // AdminJudgeEnable - POST /api/v2/admin/judge/:id/enable
@@ -244,6 +275,7 @@ func AdminJudgeUpdate(c *gin.Context) {
 	var input struct {
 		Name        *string `json:"name"`
 		AuthKey     *string `json:"auth_key"`
+		Tier        *int    `json:"tier"`
 		Description *string `json:"description"`
 		ProblemIDs  []uint  `json:"problem_ids"`
 		RuntimeIDs  []uint  `json:"runtime_ids"`
@@ -295,6 +327,15 @@ func AdminJudgeUpdate(c *gin.Context) {
 	}
 	if input.Description != nil {
 		updates["description"] = *input.Description
+	}
+	// v1's PositiveIntegerField: 0 and negatives are rejected; model.Tier is a
+	// signed 32-bit int, so anything above that would wrap on insert.
+	if input.Tier != nil {
+		if *input.Tier < 1 || *input.Tier > math.MaxInt32 {
+			c.JSON(http.StatusBadRequest, apiUserError("tier must be an integer from 1 to 2147483647"))
+			return
+		}
+		updates["tier"] = *input.Tier
 	}
 
 	if len(updates) > 0 {

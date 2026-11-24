@@ -243,6 +243,10 @@ export default function AdminJudgesPage() {
                                             </div>
                                             <div className="flex flex-wrap gap-4 text-sm">
                                                 <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                    <Server size={14} />
+                                                    <span>{t('judges.tierPrefix')} <span className="font-medium text-foreground">{judge.tier}</span></span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-muted-foreground">
                                                     <Activity size={14} />
                                                     <span>{t('judges.loadPrefix')} <span className="font-medium text-foreground">{judge.load?.toFixed(2) ?? t('common.notAvailable')}</span></span>
                                                 </div>

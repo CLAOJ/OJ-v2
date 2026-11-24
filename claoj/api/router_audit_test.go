@@ -54,6 +54,7 @@ func TestAdminAuditLog_RecordsMutation(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/contest-tags", strings.NewReader(`{"name":"audit_tag","color":"#123456"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: token})
+	adminCSRF(req)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())

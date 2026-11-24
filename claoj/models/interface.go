@@ -51,6 +51,7 @@ type NavigationBar struct {
 	Key      string `gorm:"column:key;size:10;not null"`
 	Label    string `gorm:"column:label;size:20;not null"`
 	Path     string `gorm:"column:path;size:255;not null"`
+	Regex    string `gorm:"column:regex;type:longtext;not null"`
 	ParentID *uint  `gorm:"column:parent_id;index"`
 	Order    int    `gorm:"column:order;not null;default:0"`
 

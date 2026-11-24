@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import {
     LayoutDashboard,
     Users,
+    MailCheck,
     Globe,
     Server,
     Building2,
@@ -28,6 +29,8 @@ import {
     Tags,
     History,
     PanelTop,
+    Files,
+    Shuffle,
     ArrowLeft,
     ChevronRight,
     type LucideIcon,
@@ -53,6 +56,7 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
         key: 'community',
         items: [
             { href: '/admin/users', key: 'users', icon: Users },
+            { href: '/admin/registrations', key: 'registrations', icon: MailCheck },
             { href: '/admin/groups', key: 'groups', icon: Shield },
             { href: '/admin/organizations', key: 'organizations', icon: Building2 },
             { href: '/admin/tickets', key: 'tickets', icon: Ticket },
@@ -73,6 +77,8 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
         key: 'system',
         items: [
             { href: '/admin/navigation-bars', key: 'navigationBars', icon: PanelTop },
+            { href: '/admin/flat-pages', key: 'flatPages', icon: Files },
+            { href: '/admin/redirects', key: 'redirects', icon: Shuffle },
             { href: '/admin/misc-configs', key: 'miscConfigs', icon: Settings },
             { href: '/admin/audit-logs', key: 'auditLog', icon: History },
         ],

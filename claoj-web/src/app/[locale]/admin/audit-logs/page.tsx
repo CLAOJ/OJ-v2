@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { History, ChevronDown, ChevronRight } from 'lucide-react';
@@ -27,7 +28,13 @@ export default function AdminAuditLogPage() {
     const [pageSize, setPageSize] = useState(50);
     // Default to all actions: a create/delete-only trail must never look empty.
     // With no action filter the API returns reads too; VIEW stays selectable.
-    const [filters, setFilters] = useState<AuditLogFilters>({});
+    // A ?resource= deep link (e.g. from the submission detail page) starts the
+    // page pre-filtered.
+    const searchParams = useSearchParams();
+    const [filters, setFilters] = useState<AuditLogFilters>(() => {
+        const resource = searchParams.get('resource');
+        return resource ? { resource } : {};
+    });
     const [open, setOpen] = useState<string | null>(null);
 
     const setFilter = (k: keyof AuditLogFilters, v: string) => {

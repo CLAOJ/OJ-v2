@@ -3,16 +3,18 @@ package navigation
 
 // NavigationEntry represents a navigation bar entry.
 type NavigationEntry struct {
-	ID       uint
-	Key      string
-	Label    string
-	Path     string
-	ParentID *uint
-	Order    int
-	Lft      int
-	Rght     int
-	TreeID   int
-	Level    int
+	ID          uint
+	Key         string
+	Label       string
+	Path        string
+	Regex       string
+	ParentID    *uint
+	ParentLabel string
+	Order       int
+	Lft         int
+	Rght        int
+	TreeID      int
+	Level       int
 }
 
 // ListNavigationRequest holds parameters for listing navigation entries.
@@ -40,17 +42,21 @@ type CreateNavigationRequest struct {
 	Key      string
 	Label    string
 	Path     string
+	Regex    string
 	ParentID *uint
 	Order    int
 }
 
 // UpdateNavigationRequest holds parameters for updating a navigation entry.
+// SetParent distinguishes "leave the parent alone" from "move to root" (nil).
 type UpdateNavigationRequest struct {
-	NavID    uint
-	Label    *string
-	Path     *string
-	ParentID *uint
-	Order    *int
+	NavID     uint
+	Label     *string
+	Path      *string
+	Regex     *string
+	ParentID  *uint
+	SetParent bool
+	Order     *int
 }
 
 // DeleteNavigationRequest holds parameters for deleting a navigation entry.

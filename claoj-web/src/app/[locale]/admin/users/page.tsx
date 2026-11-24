@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useRouter } from '@/navigation';
 import { adminUserApi, adminGroupsApi, adminErrorMessage } from '@/lib/adminApi';
 import { toggleSort, type SortOrder, type UserSort } from '@/lib/listSort';
 import { useListParams } from '@/hooks/useListParams';
@@ -27,7 +28,8 @@ import {
     Shield,
     Users,
     Plus,
-    KeyRound
+    KeyRound,
+    LogIn
 } from 'lucide-react';
 
 const FILTER_KEYS = ['search', 'role', 'status', 'group_id', 'sort', 'order'] as const;
@@ -45,8 +47,10 @@ export default function AdminUserPage() {
     const [newPassword, setNewPassword] = useState('');
     const [banTarget, setBanTarget] = useState<AdminUser | null>(null);
     const [banReason, setBanReason] = useState('');
+    const [loginAsTarget, setLoginAsTarget] = useState<AdminUser | null>(null);
 
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
     const search = useDebounce(filters.search ?? '', 300);
@@ -121,6 +125,18 @@ export default function AdminUserPage() {
     const deleteMutation = useMutation({
         mutationFn: (id: number) => adminUserApi.delete(id),
         onSuccess: invalidateUsers,
+    });
+
+    const impersonateMutation = useMutation({
+        mutationFn: (id: number) => adminUserApi.impersonate(id),
+        onSuccess: () => {
+            setLoginAsTarget(null);
+            // /user/me refetch flips the viewer to the target and shows the
+            // impersonation banner; a non-staff target cannot stay in /admin.
+            window.dispatchEvent(new Event('auth-state-change'));
+            router.push('/');
+            router.refresh();
+        }
     });
 
     const closeCreate = () => {
@@ -320,6 +336,16 @@ export default function AdminUserPage() {
                                                     >
                                                         <Edit size={16} />
                                                     </button>
+                                                    {isSuperuser && !viewer?.is_impersonating && !user.is_super_user && user.is_active && (
+                                                        <button
+                                                            onClick={() => { impersonateMutation.reset(); setLoginAsTarget(user); }}
+                                                            className="p-1.5 hover:bg-warning/10 text-warning rounded-lg transition-colors"
+                                                            title={t('users.loginAsButton')}
+                                                            aria-label={t('users.loginAsButton')}
+                                                        >
+                                                            <LogIn size={16} />
+                                                        </button>
+                                                    )}
                                                     {canManageAccount(user) && (
                                                         <button
                                                             onClick={() => { passwordMutation.reset(); setNewPassword(''); setPasswordTarget(user); }}
@@ -405,6 +431,30 @@ export default function AdminUserPage() {
                         <Button type="submit" variant="destructive" disabled={banMutation.isPending}>{t('users.banUserButton')}</Button>
                     </DialogFooter>
                 </form>
+            </Dialog>
+
+            <Dialog open={loginAsTarget !== null} onOpenChange={(open) => { if (!open) setLoginAsTarget(null); }} className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle id="login-as-title">{t('users.loginAsTitle', { username: loginAsTarget?.username ?? '' })}</DialogTitle>
+                </DialogHeader>
+                <DialogContent>
+                    <p className="text-sm text-muted-foreground">{t('users.loginAsWarning')}</p>
+                    {impersonateMutation.isError && (
+                        <p role="alert" className="text-sm text-destructive mt-3">
+                            {adminErrorMessage(impersonateMutation.error, t('users.loginAsError'))}
+                        </p>
+                    )}
+                </DialogContent>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setLoginAsTarget(null)}>{t('common.cancel')}</Button>
+                    <Button
+                        type="button"
+                        disabled={impersonateMutation.isPending}
+                        onClick={() => { if (loginAsTarget) impersonateMutation.mutate(loginAsTarget.id); }}
+                    >
+                        {t('users.loginAsButton')}
+                    </Button>
+                </DialogFooter>
             </Dialog>
 
             <Dialog open={showCreate} onOpenChange={(open) => { if (!open) closeCreate(); }} className="max-w-md">

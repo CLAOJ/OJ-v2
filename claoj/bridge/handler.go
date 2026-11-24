@@ -23,9 +23,10 @@ const maxFeedback = 50
 var statusOrder = map[string]int{"AC": 0, "SC": 1, "WA": 2, "MLE": 3, "TLE": 4, "IR": 5, "RTE": 6, "OLE": 7}
 
 // HandleEvent applies one packet a judge agent forwarded from tiervnoj.
-// judge is the authenticated judge_judge row. Every branch must be safe to
-// replay: the agent re-POSTs a packet whose response it never received.
-func HandleEvent(judge *models.Judge, pkt Packet) error {
+// judge is the authenticated judge_judge row and clientIP is where the request
+// came from (dropped when empty). Every branch must be safe to replay: the
+// agent re-POSTs a packet whose response it never received.
+func HandleEvent(judge *models.Judge, pkt Packet, clientIP string) error {
 	// judge-runtimes carries no submission-id: it reports the executors
 	// tiervnoj announced in its handshake (v1's RuntimeVersion rewrite).
 	if pkt.Name() == "judge-runtimes" {
@@ -36,7 +37,7 @@ func HandleEvent(judge *models.Judge, pkt Packet) error {
 	// agent measured posting to this backend — v2's replacement for v1's
 	// websocket ping (load is kept separately by jobs.SyncJudgeStatus).
 	if pkt.Name() == "judge-status" {
-		return onJudgeStatus(judge, pkt)
+		return onJudgeStatus(judge, pkt, clientIP)
 	}
 
 	subID, ok := pkt.SubmissionID()
@@ -66,12 +67,26 @@ func HandleEvent(judge *models.Judge, pkt Packet) error {
 	}
 }
 
+// RecordLastIP stores the address the judge connected from, the way v1 wrote
+// judge_judge.last_ip when the daemon opened its websocket. Called only on the
+// handshake; the periodic status beat carries last_ip in its own update.
+func RecordLastIP(judgeID uint, ip string) error {
+	if ip == "" {
+		return nil
+	}
+	return db.DB.Model(&models.Judge{}).Where("id = ?", judgeID).Update("last_ip", ip).Error
+}
+
 // onJudgeStatus records the round trip and machine load the agent measured,
 // which are v2's analog of v1's judge_judge.ping/load (v1's daemon reported
 // both). Fields that are absent or negative — an older agent, or a failed
-// read — are left untouched rather than zeroed.
-func onJudgeStatus(judge *models.Judge, pkt Packet) error {
+// read — are left untouched rather than zeroed. last_ip rides along in the same
+// UPDATE (an empty client address never blanks it).
+func onJudgeStatus(judge *models.Judge, pkt Packet, clientIP string) error {
 	updates := map[string]interface{}{}
+	if clientIP != "" {
+		updates["last_ip"] = clientIP
+	}
 	if ping, ok := pkt["ping"].(float64); ok && ping >= 0 {
 		updates["ping"] = ping
 	}
