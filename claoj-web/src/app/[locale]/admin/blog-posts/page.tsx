@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { adminBlogPostApi } from '@/lib/adminApi';
-import { AdminBlogPost, AdminBlogPostCreateRequest, AdminBlogPostUpdateRequest } from '@/types';
+import { adminBlogPostApi, adminOrganizationApi } from '@/lib/adminApi';
+import { AdminBlogPost, AdminBlogPostCreateRequest, AdminBlogPostUpdateRequest, AdminOrganization } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -26,9 +26,28 @@ import {
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
 import { Switch } from '@/components/ui/Switch';
+import { Select } from '@/components/ui/Select';
+import { EntityPicker, EntityOption } from '@/components/admin/EntityPicker';
+import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
+import { searchUsers } from '@/lib/adminSearch';
+import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Eye, EyeOff, Pin } from 'lucide-react';
 import { formatDateTime } from '@/lib/date';
+
+const emptyForm: AdminBlogPostCreateRequest = {
+    title: '',
+    slug: '',
+    content: '',
+    summary: '',
+    author_ids: [],
+    publish_on: new Date().toISOString(),
+    visible: true,
+    sticky: false,
+    global_post: false,
+    og_image: '',
+    organization_id: undefined,
+};
 
 export default function BlogPostAdminPage() {
     const t = useTranslations('Admin');
@@ -38,29 +57,29 @@ export default function BlogPostAdminPage() {
     const [pageSize] = useState(20);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [visibleFilter, setVisibleFilter] = useState<'' | 'true' | 'false'>('');
+    const debouncedSearch = useDebounce(search.trim(), 300);
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<AdminBlogPost | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+    const [authorOptions, setAuthorOptions] = useState<EntityOption[]>([]);
+    const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
 
-    const [formData, setFormData] = useState<AdminBlogPostCreateRequest>({
-        title: '',
-        slug: '',
-        content: '',
-        summary: '',
-        publish_on: new Date().toISOString(),
-        visible: true,
-        sticky: false,
-        global_post: false,
-        og_image: '',
-        organization_id: undefined,
-    });
+    const [formData, setFormData] = useState<AdminBlogPostCreateRequest>(emptyForm);
+
+    useEffect(() => {
+        adminOrganizationApi.list(1, 100).then((res) => setOrganizations(res.data.data)).catch(() => {});
+    }, []);
 
     const loadPosts = async () => {
         setLoading(true);
         try {
-            const response = await adminBlogPostApi.list(page, pageSize);
+            const response = await adminBlogPostApi.list(page, pageSize, {
+                search: debouncedSearch || undefined,
+                visible: visibleFilter || undefined,
+            });
             setPosts(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
@@ -71,22 +90,16 @@ export default function BlogPostAdminPage() {
     };
 
     useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, visibleFilter]);
+
+    useEffect(() => {
         loadPosts();
-    }, [page]);
+    }, [page, debouncedSearch, visibleFilter]);
 
     const openCreateDialog = () => {
-        setFormData({
-            title: '',
-            slug: '',
-            content: '',
-            summary: '',
-            publish_on: new Date().toISOString(),
-            visible: true,
-            sticky: false,
-            global_post: false,
-            og_image: '',
-            organization_id: undefined,
-        });
+        setFormData({ ...emptyForm, publish_on: new Date().toISOString() });
+        setAuthorOptions([]);
         setIsCreateDialogOpen(true);
     };
 
@@ -98,6 +111,7 @@ export default function BlogPostAdminPage() {
                 slug: response.data.slug,
                 content: response.data.content,
                 summary: response.data.summary,
+                author_ids: response.data.author_ids ?? [],
                 publish_on: response.data.publish_on,
                 visible: response.data.visible,
                 sticky: response.data.sticky,
@@ -105,6 +119,10 @@ export default function BlogPostAdminPage() {
                 og_image: response.data.og_image,
                 organization_id: response.data.organization_id,
             });
+            setAuthorOptions((response.data.author_ids ?? []).map((authorId, i) => ({
+                id: authorId,
+                label: response.data.author_names?.[i] ?? `#${authorId}`,
+            })));
             setEditingPost(post);
             setIsEditDialogOpen(true);
         } catch (error) {
@@ -132,6 +150,7 @@ export default function BlogPostAdminPage() {
                 slug: formData.slug,
                 content: formData.content,
                 summary: formData.summary,
+                author_ids: formData.author_ids,
                 publish_on: formData.publish_on,
                 visible: formData.visible,
                 sticky: formData.sticky,
@@ -196,15 +215,28 @@ export default function BlogPostAdminPage() {
                 </Button>
             </div>
 
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder={t('blogPosts.searchPlaceholder')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10"
-                />
+            {/* Search and status filter */}
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder={t('blogPosts.searchPlaceholder')}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+                <div className="w-44">
+                    <Select
+                        value={visibleFilter}
+                        onChange={(e) => setVisibleFilter(e.target.value as '' | 'true' | 'false')}
+                        aria-label={t('blogPosts.colStatus')}
+                    >
+                        <option value="">{t('blogPosts.filterAll')}</option>
+                        <option value="true">{t('blogPosts.filterVisible')}</option>
+                        <option value="false">{t('blogPosts.filterHidden')}</option>
+                    </Select>
+                </div>
             </div>
 
             {/* Blog Posts Table */}
@@ -214,6 +246,7 @@ export default function BlogPostAdminPage() {
                         <TableRow>
                             <TableHead>{t('blogPosts.colTitle')}</TableHead>
                             <TableHead>{t('blogPosts.colAuthors')}</TableHead>
+                            <TableHead>{t('blogPosts.colOrganization')}</TableHead>
                             <TableHead>{t('blogPosts.colPublishDate')}</TableHead>
                             <TableHead>{t('blogPosts.colStatus')}</TableHead>
                             <TableHead className="text-right">{t('common.actions')}</TableHead>
@@ -222,13 +255,13 @@ export default function BlogPostAdminPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8">
+                                <TableCell colSpan={6} className="text-center py-8">
                                     {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : posts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                     {t('blogPosts.noPostsFound')}
                                 </TableCell>
                             </TableRow>
@@ -251,17 +284,17 @@ export default function BlogPostAdminPage() {
                                                         {t('blogPosts.globalBadge')}
                                                     </Badge>
                                                 )}
-                                                {post.organization && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        {post.organization}
-                                                    </Badge>
-                                                )}
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm">
                                             {post.author_names?.join(', ') || '-'}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-sm">
+                                            {post.organization_name || '-'}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -389,8 +422,43 @@ export default function BlogPostAdminPage() {
                             </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                            <EntityPicker
+                                id="authors"
+                                label={t('blogPosts.authorsLabel')}
+                                value={formData.author_ids ?? []}
+                                onChange={(ids) => setFormData({ ...formData, author_ids: ids })}
+                                search={searchUsers}
+                                queryKey="users"
+                                initialOptions={authorOptions}
+                            />
+                            <div className="grid gap-2">
+                                <Label htmlFor="organization_id">{t('blogPosts.organizationLabel')}</Label>
+                                <Select
+                                    id="organization_id"
+                                    value={formData.organization_id ?? ''}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        organization_id: e.target.value ? Number(e.target.value) : undefined,
+                                    })}
+                                >
+                                    <option value="">{t('blogPosts.noOrganization')}</option>
+                                    {organizations.map((org) => (
+                                        <option key={org.id} value={org.id}>{org.name}</option>
+                                    ))}
+                                </Select>
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
-                            <Label htmlFor="summary">{t('blogPosts.summaryLabel')}</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="summary">{t('blogPosts.summaryLabel')}</Label>
+                                <MarkdownImageButton
+                                    id="summary"
+                                    value={formData.summary}
+                                    onChange={(v) => setFormData((prev) => ({ ...prev, summary: v }))}
+                                />
+                            </div>
                             <Textarea
                                 id="summary"
                                 value={formData.summary}
@@ -401,7 +469,14 @@ export default function BlogPostAdminPage() {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="content">{t('blogPosts.contentLabel')}</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="content">{t('blogPosts.contentLabel')}</Label>
+                                <MarkdownImageButton
+                                    id="content"
+                                    value={formData.content}
+                                    onChange={(v) => setFormData((prev) => ({ ...prev, content: v }))}
+                                />
+                            </div>
                             <Textarea
                                 id="content"
                                 value={formData.content}

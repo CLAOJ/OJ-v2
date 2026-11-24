@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/Dialog';
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
+import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Scale } from 'lucide-react';
 
@@ -343,7 +344,14 @@ export default function LicenseAdminPage() {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="text">{t('licenses.textLabel')}</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="text">{t('licenses.textLabel')}</Label>
+                                <MarkdownImageButton
+                                    id="text"
+                                    value={formData.text ?? ''}
+                                    onChange={(v) => setFormData((prev) => ({ ...prev, text: v }))}
+                                />
+                            </div>
                             <Textarea
                                 id="text"
                                 value={formData.text}

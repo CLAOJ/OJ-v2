@@ -642,8 +642,11 @@ export const adminLanguageApi = {
 
 
 export const adminBlogPostApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminBlogPostListResponse>(`/admin/blog-posts?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, filters: {
+        search?: string;
+        visible?: 'true' | 'false';
+    } = {}) =>
+        api.get<AdminBlogPostListResponse>(`/admin/blog-posts?${qs({ page, page_size: pageSize, ...filters })}`),
 
     detail: (id: number) =>
         api.get<AdminBlogPostDetail>(`/admin/blog-post/${id}`),
@@ -656,6 +659,20 @@ export const adminBlogPostApi = {
 
     delete: (id: number) =>
         api.delete<{ message: string }>(`/admin/blog-post/${id}`),
+};
+
+// ============================================================
+// ADMIN MARKDOWN MEDIA API
+// ============================================================
+
+export const adminMediaApi = {
+    uploadImage: (file: File) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        return api.post<{ url: string }>('/admin/markdown/image', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
 };
 
 // ============================================================

@@ -1891,6 +1891,7 @@
       "searchPlaceholder": "Search posts...",
       "colTitle": "Title",
       "colAuthors": "Authors",
+      "colOrganization": "Organization",
       "colPublishDate": "Publish Date",
       "colStatus": "Status",
       "noPostsFound": "No blog posts found",
@@ -1912,6 +1913,12 @@
       "summaryPlaceholder": "Brief summary",
       "contentLabel": "Content",
       "contentPlaceholder": "Markdown content",
+      "authorsLabel": "Authors",
+      "organizationLabel": "Organization",
+      "noOrganization": "None",
+      "filterAll": "All statuses",
+      "filterVisible": "Visible",
+      "filterHidden": "Hidden",
       "publishDateLabel": "Publish Date",
       "ogImageLabel": "OG Image URL",
       "ogImagePlaceholder": "https://...",
@@ -1932,6 +1939,13 @@
       "visibleToast": "Blog post made visible",
       "unstickyToast": "Blog post unsticky",
       "stickyToast": "Blog post made sticky"
+    },
+    "markdownImage": {
+      "button": "Insert image",
+      "uploading": "Uploading…",
+      "uploadFailed": "Image upload failed",
+      "invalidType": "Only PNG, JPEG, GIF or WebP images are allowed",
+      "tooLarge": "Image must be 2 MB or smaller"
     },
     "miscConfigs": {
       "title": "Misc Configs",

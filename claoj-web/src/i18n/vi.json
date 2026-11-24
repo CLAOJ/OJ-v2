@@ -1891,6 +1891,7 @@
       "searchPlaceholder": "Tìm kiếm bài đăng...",
       "colTitle": "Tiêu đề",
       "colAuthors": "Tác giả",
+      "colOrganization": "Tổ chức",
       "colPublishDate": "Ngày đăng",
       "colStatus": "Trạng thái",
       "noPostsFound": "Không tìm thấy bài đăng nào",
@@ -1912,6 +1913,12 @@
       "summaryPlaceholder": "Tóm tắt ngắn gọn",
       "contentLabel": "Nội dung",
       "contentPlaceholder": "Nội dung Markdown",
+      "authorsLabel": "Tác giả",
+      "organizationLabel": "Tổ chức",
+      "noOrganization": "Không có",
+      "filterAll": "Tất cả trạng thái",
+      "filterVisible": "Hiển thị",
+      "filterHidden": "Đã ẩn",
       "publishDateLabel": "Ngày đăng",
       "ogImageLabel": "URL ảnh OG",
       "ogImagePlaceholder": "https://...",
@@ -1932,6 +1939,13 @@
       "visibleToast": "Đã hiển thị bài đăng",
       "unstickyToast": "Đã bỏ ghim bài đăng",
       "stickyToast": "Đã ghim bài đăng"
+    },
+    "markdownImage": {
+      "button": "Chèn ảnh",
+      "uploading": "Đang tải lên…",
+      "uploadFailed": "Tải ảnh lên thất bại",
+      "invalidType": "Chỉ chấp nhận ảnh PNG, JPEG, GIF hoặc WebP",
+      "tooLarge": "Ảnh phải có kích thước tối đa 2 MB"
     },
     "miscConfigs": {
       "title": "Cấu hình khác",

@@ -1319,7 +1319,8 @@ export interface AdminBlogPost {
     visible: boolean;
     sticky: boolean;
     global_post: boolean;
-    organization?: string;
+    organization_id?: number;
+    organization_name?: string;
     score: number;
 }
 
