@@ -20,9 +20,16 @@ export default function ProblemPrintView({ problem, autoPrint }: { problem: Prob
 
     useEffect(() => {
         if (!autoPrint) return;
-        // Let fonts and KaTeX finish laying out before the dialog snapshots the page.
-        const timer = setTimeout(() => window.print(), 300);
-        return () => clearTimeout(timer);
+        let cancelled = false;
+        const run = () => { if (!cancelled) window.print(); };
+        // Webfonts and KaTeX finish laying out after first paint; printing
+        // sooner snapshots a half-laid-out page. fonts.ready is that signal.
+        if (typeof document !== 'undefined' && document.fonts) {
+            void document.fonts.ready.then(run);
+        } else {
+            run();
+        }
+        return () => { cancelled = true; };
     }, [autoPrint]);
 
     return (

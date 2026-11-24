@@ -52,7 +52,7 @@ export function ImpersonationBanner() {
     };
 
     return (
-        <div role="status" className="bg-warning/15 border-b border-warning/40 text-sm">
+        <div role="status" className="bg-warning/15 border-b border-warning/40 text-sm print:hidden">
             <div className="container mx-auto px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <Eye size={16} className="text-warning shrink-0" aria-hidden="true" />
                 <span>

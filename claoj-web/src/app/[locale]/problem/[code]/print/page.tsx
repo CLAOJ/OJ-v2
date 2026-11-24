@@ -1,12 +1,19 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import api from '@/lib/api';
 import type { ProblemDetail } from '@/types';
 import ProblemPrintView from './ProblemPrintView';
 
+// Server-side fetch: forward the visitor's cookies so an editor of a private
+// problem gets their problem instead of a 404. The API's visibility gate stays
+// authoritative — the cookies grant nothing the API would not grant anyway.
 async function fetchProblem(code: string): Promise<ProblemDetail | null> {
+    const cookie = (await cookies()).toString();
     try {
-        const res = await api.get<ProblemDetail>(`/problem/${code}`);
+        const res = await api.get<ProblemDetail>(`/problem/${code}`, {
+            headers: cookie ? { Cookie: cookie } : undefined,
+        });
         return res.data;
     } catch {
         return null;
