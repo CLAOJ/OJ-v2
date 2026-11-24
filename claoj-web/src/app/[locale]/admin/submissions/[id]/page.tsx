@@ -38,8 +38,10 @@ export default function AdminSubmissionDetailPage() {
     const id = Number(params.id);
     const queryClient = useQueryClient();
     const { user } = useAuth();
-    const canLock = !!user?.is_admin;
-    const canArchive = !!user?.is_admin;
+    // Lock/archive are gated by their own Django permissions; superusers hold
+    // all of them. The backend enforces the same check.
+    const canLock = !!user && (!!user.is_superuser || (user.permissions ?? []).includes('judge.lock_submission'));
+    const canArchive = !!user && (!!user.is_superuser || (user.permissions ?? []).includes('judge.archive_submission'));
 
     const { data: sub, isLoading } = useQuery({
         queryKey: ['admin-submission', id],
@@ -182,9 +184,15 @@ export default function AdminSubmissionDetailPage() {
                     <div>
                         <div className="text-xs text-muted-foreground">{t('submissionDetail.contest')}</div>
                         <div className="font-medium">
-                            {sub.contest_object_id
-                                ? `${sub.contest_key || '#' + sub.contest_object_id}${sub.contest_name ? ' · ' + sub.contest_name : ''}`
-                                : t('common.notAvailable')}
+                            {sub.contest_object_id ? (
+                                sub.contest_key ? (
+                                    <Link href={`/contest/${sub.contest_key}`} className="text-accent hover:underline">
+                                        {sub.contest_key}{sub.contest_name ? ` · ${sub.contest_name}` : ''}
+                                    </Link>
+                                ) : (
+                                    `#${sub.contest_object_id}`
+                                )
+                            ) : t('common.notAvailable')}
                         </div>
                     </div>
                     <div>

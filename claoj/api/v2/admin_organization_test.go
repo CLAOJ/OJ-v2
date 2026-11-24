@@ -317,6 +317,33 @@ func TestCurrentUser_CanOrganizationAdmin(t *testing.T) {
 	require.Equal(t, true, flag(staff.ID))
 }
 
+// GET /user/me exposes the user's granted Django permission codenames so
+// permission-gated controls (e.g. submission lock/archive) can be enabled per
+// user. Superusers report is_superuser; their permissions list stays limited to
+// real grants instead of the whole catalogue.
+func TestCurrentUser_Permissions(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	granted, _ := seedAccount(t, "granted", true, false)
+	other, _ := seedAccount(t, "other", true, false)
+	grantOrgAdminPerm(t, granted.ID)
+
+	perms := func(userID uint) []any {
+		router := authedRouter(userID, http.MethodGet, "/user/me", CurrentUser)
+		w := doRequest(router, http.MethodGet, "/user/me", "")
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		list, ok := body["permissions"].([]any)
+		require.True(t, ok, "permissions must be a JSON array")
+		return list
+	}
+
+	require.Equal(t, []any{"judge.organization_admin"}, perms(granted.ID))
+	require.Empty(t, perms(other.ID), "a staff user without the grant must not report it")
+	require.Empty(t, perms(root.ID), "superusers get their real grants, not the catalogue")
+}
+
 func TestAdminOrganizationUpdate_UnknownAdminIDs(t *testing.T) {
 	setupAdminUserCreateDB(t)
 	root, _ := seedAccount(t, "root", true, true)

@@ -1666,7 +1666,7 @@
       "noResult": "No result",
       "judgedOnId": "Judge ID",
       "contestId": "Contest ID",
-      "lockHint": "Only superusers can change the lock and archive state.",
+      "lockHint": "Only superusers or holders of the submission lock/archive permissions can change this state.",
       "isArchived": "Archived",
       "error": "Compile error / message",
       "source": "Source code",

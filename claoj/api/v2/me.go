@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -53,6 +54,16 @@ func CurrentUser(c *gin.Context) {
 		return
 	}
 
+	// Staff get their effective Django permission codenames so permission-gated
+	// controls can be shown per user. LoadUserAccess returns only permissions
+	// actually granted to this user (never the whole catalogue, even for a
+	// superuser); superusers are still told apart by is_superuser.
+	perms := []string{}
+	if authUser.IsStaff {
+		perms = append(perms, access.PermList...)
+		sort.Strings(perms)
+	}
+
 	// We don't expose sensitive info like Password or TOTP keys.
 	// is_staff and is_admin drive the frontend admin surface: the admin gate
 	// (AdminAccessWrapper / AdminSidebar) hides all admin UI unless is_staff is
@@ -74,6 +85,7 @@ func CurrentUser(c *gin.Context) {
 			"timezone": profile.Timezone,
 		},
 		"can_organization_admin": access.HasPerm("judge.organization_admin"),
+		"permissions":            perms,
 	})
 }
 

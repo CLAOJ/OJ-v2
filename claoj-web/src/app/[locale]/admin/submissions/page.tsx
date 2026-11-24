@@ -117,7 +117,7 @@ export default function AdminSubmissionPage() {
     const toggleSelected = (id: number) =>
         setSelected(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
 
-    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'AB'];
+    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'SC', 'AB'];
     const statuses = ['QU', 'P', 'G', 'D', 'IE', 'CE', 'AB'];
 
     // Batch rejudge preview
@@ -386,7 +386,9 @@ export default function AdminSubmissionPage() {
                                                 onChange={() => toggleSelected(s.id)}
                                             />
                                         </td>
-                                        <td className="px-3 py-4 font-mono text-xs text-muted-foreground">#{s.id}</td>
+                                        <td className="px-3 py-4 font-mono text-xs text-muted-foreground">
+                                            <Link href={`/admin/submissions/${s.id}`} className="hover:text-primary hover:underline outline-none">#{s.id}</Link>
+                                        </td>
                                         <td className="px-3 py-4">
                                             <Link href={`/user/${s.user}`} className="flex items-center gap-3 group outline-none">
                                                 <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground font-medium text-xs">

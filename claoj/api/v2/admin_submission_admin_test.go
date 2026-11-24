@@ -3,6 +3,7 @@ package v2
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -157,10 +158,50 @@ func TestAdminSubmissionUpdate_HappyPathAndSource(t *testing.T) {
 	require.Nil(t, got.LockedAfter)
 	require.False(t, got.IsArchived)
 	require.Equal(t, 2026, got.JudgedDate.Year())
+	require.Equal(t, f.lang.ID, got.LanguageID)
+	require.Equal(t, 0.0, *got.Points)
+	require.Equal(t, f.judge.ID, *got.JudgedOnID)
 
 	var src models.SubmissionSource
 	require.NoError(t, db.DB.Where("submission_id = ?", f.sub.ID).First(&src).Error)
 	require.Equal(t, "print(1)", src.Source)
+}
+
+func TestAdminSubmissionUpdate_SourceByteCap(t *testing.T) {
+	setupAdminSubmissionDB(t)
+	f := seedAdminSubmission(t)
+	root := newSubmissionUser(t, "root", true)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/submission/:id", AdminSubmissionUpdate)
+
+	tooLong := `{"source":"` + strings.Repeat("a", maxSourceBytes+1) + `"}`
+	require.Equal(t, http.StatusBadRequest, doRequest(router, http.MethodPatch, "/admin/submission/1", tooLong).Code)
+
+	var src models.SubmissionSource
+	require.NoError(t, db.DB.Where("submission_id = ?", f.sub.ID).First(&src).Error)
+	require.Equal(t, "int main() {}", src.Source, "an oversized source must not be written")
+
+	// Exactly at the cap is allowed, matching the submit path.
+	atCap := `{"source":"` + strings.Repeat("b", maxSourceBytes) + `"}`
+	require.Equal(t, http.StatusOK, doRequest(router, http.MethodPatch, "/admin/submission/1", atCap).Code)
+	require.NoError(t, db.DB.Where("submission_id = ?", f.sub.ID).First(&src).Error)
+	require.Len(t, src.Source, maxSourceBytes)
+}
+
+// A second PATCH must update the existing judge_submissionsource row instead of
+// inserting a duplicate.
+func TestAdminSubmissionUpdate_SecondPatchDoesNotDuplicateSource(t *testing.T) {
+	setupAdminSubmissionDB(t)
+	f := seedAdminSubmission(t)
+	root := newSubmissionUser(t, "root", true)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/submission/:id", AdminSubmissionUpdate)
+
+	require.Equal(t, http.StatusOK, doRequest(router, http.MethodPatch, "/admin/submission/1", `{"source":"first"}`).Code)
+	require.Equal(t, http.StatusOK, doRequest(router, http.MethodPatch, "/admin/submission/1", `{"source":"second"}`).Code)
+
+	require.Equal(t, int64(1), countSubmissionRows(t, "judge_submissionsource", f.sub.ID))
+	var src models.SubmissionSource
+	require.NoError(t, db.DB.Where("submission_id = ?", f.sub.ID).First(&src).Error)
+	require.Equal(t, "second", src.Source)
 }
 
 func TestAdminSubmissionUpdate_GatesAndValidation(t *testing.T) {
@@ -190,9 +231,16 @@ func TestAdminSubmissionUpdate_GatesAndValidation(t *testing.T) {
 		`{"judged_on_id": 999}`,
 		`{"contest_object_id": 999}`,
 		`{"judged_date": "not-a-date"}`,
+		`{"points": -1}`,
+		`{"points": 100001}`,
+		`{"case_points": -0.5}`,
+		`{"case_total": 100001}`,
 	} {
 		require.Equal(t, http.StatusBadRequest, doRequest(rootRouter, http.MethodPatch, "/admin/submission/1", body).Code, body)
 	}
+
+	// The bound itself is allowed.
+	require.Equal(t, http.StatusOK, doRequest(rootRouter, http.MethodPatch, "/admin/submission/1", `{"points": 100000}`).Code)
 
 	var got models.Submission
 	require.NoError(t, db.DB.First(&got, f.sub.ID).Error)
@@ -227,6 +275,17 @@ func TestAdminSubmissionList_FilteredTotalAndProblemName(t *testing.T) {
 	require.Equal(t, "A+B", body.Data[0]["problem_name"])
 
 	w = doRequest(router, http.MethodGet, "/admin/submissions?status=QU", "")
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, int64(0), body.Total)
+	require.Len(t, body.Data, 0)
+
+	// Combined filters must intersect, not either-or.
+	w = doRequest(router, http.MethodGet, "/admin/submissions?status=D&result=AC", "")
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, int64(1), body.Total)
+	require.Len(t, body.Data, 1)
+
+	w = doRequest(router, http.MethodGet, "/admin/submissions?status=D&result=WA", "")
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	require.Equal(t, int64(0), body.Total)
 	require.Len(t, body.Data, 0)

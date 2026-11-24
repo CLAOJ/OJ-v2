@@ -92,6 +92,10 @@ export interface User {
     is_staff: boolean;
     /** Superuser or holder of judge.organization_admin (GET /user/me). */
     can_organization_admin?: boolean;
+    /** Present on GET /user/me; is_admin mirrors it. */
+    is_superuser?: boolean;
+    /** Effective Django permission codenames; staff only (GET /user/me). */
+    permissions?: string[];
     rating?: number | null;
     performance_points?: number;
 }

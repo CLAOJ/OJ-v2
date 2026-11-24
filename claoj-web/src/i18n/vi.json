@@ -1666,7 +1666,7 @@
       "noResult": "Không có kết quả",
       "judgedOnId": "ID máy chấm",
       "contestId": "ID cuộc thi",
-      "lockHint": "Chỉ quản trị viên cấp cao mới thay đổi được trạng thái khóa và lưu trữ.",
+      "lockHint": "Chỉ quản trị viên cấp cao hoặc người có quyền khóa/lưu trữ bài nộp mới thay đổi được trạng thái này.",
       "isArchived": "Lưu trữ",
       "error": "Lỗi biên dịch / thông báo",
       "source": "Mã nguồn",

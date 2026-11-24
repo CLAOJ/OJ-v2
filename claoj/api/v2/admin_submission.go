@@ -587,6 +587,27 @@ func AdminSubmissionUpdate(c *gin.Context) {
 		return
 	}
 
+	// The public submit path enforces maxSourceBytes; an admin edit must not be a
+	// way around it.
+	if req.Source != nil && len(*req.Source) > maxSourceBytes {
+		c.JSON(http.StatusBadRequest, apiUserError("source code too long"))
+		return
+	}
+
+	for _, f := range []struct {
+		name string
+		v    *float64
+	}{
+		{"points", req.Points},
+		{"case_points", req.CasePoints},
+		{"case_total", req.CaseTotal},
+	} {
+		if f.v != nil && (*f.v < 0 || *f.v > 100000) {
+			c.JSON(http.StatusBadRequest, apiUserError("invalid "+f.name))
+			return
+		}
+	}
+
 	updates := map[string]interface{}{}
 
 	if req.LanguageID != nil {

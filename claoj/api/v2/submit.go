@@ -13,6 +13,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// maxSourceBytes is Django's hard per-submission source limit.
+const maxSourceBytes = 65536
+
 type SubmitRequest struct {
 	Language   string `json:"language" binding:"required"`
 	Source     string `json:"source" binding:"required"`
@@ -82,7 +85,7 @@ func Submit(c *gin.Context) {
 		return
 	}
 	// Note: normally there's a 65536 byte hard limit from Django, or custom per language
-	if len(req.Source) > 65536 {
+	if len(req.Source) > maxSourceBytes {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "source code too long"})
 		return
 	}
