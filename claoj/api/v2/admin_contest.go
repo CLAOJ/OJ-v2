@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/contest"
 	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/gin-gonic/gin"
@@ -44,6 +46,16 @@ func requireElevatedContestFields(c *gin.Context, problemLabelScript, performanc
 		return false
 	}
 	return true
+}
+
+// storedGatedContestFields reads the two v1-gated fields so an update that
+// leaves them as they are needs no extra permission. ok is false when the
+// contest cannot be read; the service then reports that error itself.
+func storedGatedContestFields(key string) (script string, ceiling *int, ok bool) {
+	var stored models.Contest
+	err := db.DB.Select("problem_label_script", "performance_ceiling_override").
+		Where(&models.Contest{Key: key}).First(&stored).Error
+	return stored.ProblemLabelScript, stored.PerformanceCeilingOverride, err == nil
 }
 
 // AdminContestList - GET /api/v2/admin/contests
@@ -314,12 +326,17 @@ func AdminContestUpdate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
-	// A nil pointer means "unchanged"; a supplied value (or an explicit clear)
-	// writes the gated field, so it needs the permission.
-	if !requireElevatedContestFields(c,
-		input.ProblemLabelScript != nil && *input.ProblemLabelScript != "",
-		input.PerformanceCeilingOverride != nil || input.ClearPerformanceCeilingOverride) {
-		return
+	// A nil pointer means "unchanged", and a value equal to the stored one is
+	// not a write either: the form PATCHes every field, so a plain author must
+	// still be able to save. Only a real change needs the permission.
+	if script, ceiling, stored := storedGatedContestFields(key); stored {
+		scriptChanged := input.ProblemLabelScript != nil && *input.ProblemLabelScript != script
+		ceilingChanged := (input.PerformanceCeilingOverride != nil &&
+			(ceiling == nil || *input.PerformanceCeilingOverride != *ceiling)) ||
+			(input.ClearPerformanceCeilingOverride && ceiling != nil)
+		if !requireElevatedContestFields(c, scriptChanged, ceilingChanged) {
+			return
+		}
 	}
 
 	profile, err := getContestService().UpdateContest(contest.UpdateContestRequest{

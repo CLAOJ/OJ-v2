@@ -3,6 +3,7 @@ package v2
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,8 @@ func createContestTestOrg(t *testing.T, name string) models.Organization {
 	require.NoError(t, db.DB.Omit("Admins", "Members").Create(&o).Error)
 	return o
 }
+
+func intp(v int) *int { return &v }
 
 // grantContestPerm seeds judge.<codename> and attaches it to the auth user,
 // the same rows v1's Django admin reads.
@@ -226,7 +229,7 @@ func TestAdminContest_ElevatedFieldsForbiddenWithoutPerm(t *testing.T) {
 	author := createContestTestUser(t, "author")
 	c := models.Contest{
 		Key: "gated", Name: "Gated", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour),
-		FormatName: "default", ProblemLabelScript: "keep",
+		FormatName: "default", ProblemLabelScript: "keep", PerformanceCeilingOverride: intp(2100),
 	}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
 
@@ -243,7 +246,7 @@ func TestAdminContest_ElevatedFieldsForbiddenWithoutPerm(t *testing.T) {
 			createBody: `{"key":"gated2","name":"G","description":"d",
 				"start_time":"2026-11-01T09:00:00Z","end_time":"2026-11-01T12:00:00Z",
 				"performance_ceiling_override":2100}`,
-			updateBody: `{"performance_ceiling_override":2100}`,
+			updateBody: `{"performance_ceiling_override":2200}`,
 		},
 		{
 			name:       "clear_performance_ceiling_override",
@@ -271,7 +274,54 @@ func TestAdminContest_ElevatedFieldsForbiddenWithoutPerm(t *testing.T) {
 	var got models.Contest
 	require.NoError(t, db.DB.First(&got, c.ID).Error)
 	require.Equal(t, "keep", got.ProblemLabelScript, "a denied update must not write")
-	require.Nil(t, got.PerformanceCeilingOverride)
+	require.Equal(t, intp(2100), got.PerformanceCeilingOverride, "a denied clear must not write")
+}
+
+// TestAdminContest_UnchangedElevatedFieldsNeedNoPerm covers the form
+// round-trip: the edit page PATCHes every field, so an author without the
+// elevated permissions must still save while those two values stay as stored.
+func TestAdminContest_UnchangedElevatedFieldsNeedNoPerm(t *testing.T) {
+	setupAdminDetailDB(t)
+	author := createContestTestUser(t, "author")
+	c := models.Contest{
+		Key: "roundtrip", Name: "Roundtrip", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour),
+		FormatName: "default", ProblemLabelScript: "keep", PerformanceCeilingOverride: intp(2100),
+	}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+
+	patch := func(body string) *httptest.ResponseRecorder {
+		return doRequest(authedRouter(author.UserID, http.MethodPatch, "/admin/contest/:key", AdminContestUpdate),
+			http.MethodPatch, "/admin/contest/roundtrip", body)
+	}
+	stored := func() models.Contest {
+		var got models.Contest
+		require.NoError(t, db.DB.First(&got, c.ID).Error)
+		return got
+	}
+
+	w := patch(`{"name":"Renamed","problem_label_script":"keep","performance_ceiling_override":2100}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	got := stored()
+	require.Equal(t, "Renamed", got.Name)
+	require.Equal(t, "keep", got.ProblemLabelScript)
+	require.Equal(t, intp(2100), got.PerformanceCeilingOverride)
+
+	w = patch(`{"summary":"just a summary"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// A real change still needs the permission and writes nothing.
+	for _, body := range []string{
+		`{"name":"Nope","problem_label_script":"changed"}`,
+		`{"performance_ceiling_override":2200}`,
+		`{"clear_performance_ceiling_override":true}`,
+	} {
+		w = patch(body)
+		require.Equal(t, http.StatusForbidden, w.Code, body)
+	}
+	got = stored()
+	require.Equal(t, "Renamed", got.Name)
+	require.Equal(t, "keep", got.ProblemLabelScript)
+	require.Equal(t, intp(2100), got.PerformanceCeilingOverride)
 }
 
 // TestAdminContest_ElevatedFieldsAllowedWithPerm is the positive half: the
