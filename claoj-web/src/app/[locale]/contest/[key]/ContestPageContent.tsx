@@ -28,6 +28,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from '@/navigation';
 import Comments from '@/components/common/Comments';
+import MathRenderer from '@/components/ui/MathRenderer';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { toast } from 'sonner';
@@ -230,8 +231,12 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     </div>
                                 )}
 
-                                <div className="prose prose-zinc dark:prose-invert max-w-none text-muted-foreground leading-relaxed">
-                                    {contest.description || t('descriptionPlaceholder')}
+                                <div className="prose prose-zinc dark:prose-invert max-w-none leading-relaxed">
+                                    {contest.description?.trim() ? (
+                                        <MathRenderer content={contest.description} />
+                                    ) : (
+                                        <span className="text-muted-foreground">{t('descriptionPlaceholder')}</span>
+                                    )}
                                 </div>
                             </section>
 

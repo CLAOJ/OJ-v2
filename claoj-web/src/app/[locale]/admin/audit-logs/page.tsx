@@ -26,7 +26,7 @@ export default function AdminAuditLogPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
     // Default to all actions: a create/delete-only trail must never look empty.
-    // Reads are opt-in, so VIEW stays selectable but is not preselected.
+    // With no action filter the API returns reads too; VIEW stays selectable.
     const [filters, setFilters] = useState<AuditLogFilters>({});
     const [open, setOpen] = useState<string | null>(null);
 

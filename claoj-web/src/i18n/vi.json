@@ -2016,7 +2016,7 @@
       "formatSettingsTitle": "Thể thức & Cài đặt",
       "formatLabel": "Thể thức kỳ thi",
       "formatConfigLabel": "Cấu hình thể thức (JSON)",
-      "formatConfigPlaceholder": "penalty: 20",
+      "formatConfigPlaceholder": "{\"penalty\": 20}",
       "formatConfigHint": "Đối tượng JSON tùy chọn cho thể thức. Để trống để dùng mặc định của thể thức.",
       "formatConfigInvalid": "Cấu hình thể thức phải là JSON hợp lệ.",
       "accessCodeLabel": "Mã truy cập (cho kỳ thi riêng tư)",

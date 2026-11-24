@@ -2016,7 +2016,7 @@
       "formatSettingsTitle": "Format & Settings",
       "formatLabel": "Contest Format",
       "formatConfigLabel": "Format Config (JSON)",
-      "formatConfigPlaceholder": "penalty: 20",
+      "formatConfigPlaceholder": "{\"penalty\": 20}",
       "formatConfigHint": "Optional JSON object for the format. Leave empty to use the format defaults.",
       "formatConfigInvalid": "Format config must be valid JSON.",
       "accessCodeLabel": "Access Code (for private contests)",

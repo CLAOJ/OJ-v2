@@ -27,3 +27,7 @@
 
 ## Task 3 — Audit log recording (Go)
 `/admin/audit-logs` and the dashboard "Recent changes" are always empty despite live admin API traffic. v2's audit model is v2-owned (`auditlog` package). Required: find why no entries are written, fix so successful admin mutations (create/update/delete) are recorded with user, action, resource, result; add/extend Go tests proving an admin API call produces a log row retrievable via the admin audit-log endpoint. Keep payloads small; do not log secrets (password bodies, auth keys).
+
+## Rulings
+
+**Raw HTML is trusted.** Problem statements, contest descriptions and blog post bodies are authored only by staff and problem setters, so `MathRenderer` renders them with `rehype-raw` and no `rehype-sanitize` — the same trust boundary as v1 (Python-Markdown passes inline HTML through). Task 1.3 asked for sanitization against XSS; that is deliberately not done, because sanitizing would strip legitimate `<i>`, `<sub>`, `<table>` markup from existing imported statements. Revisit this if problem or blog authoring ever opens to non-staff: at that point every `MathRenderer` call site needs sanitization (or per-role rendering), not just the statement page.
