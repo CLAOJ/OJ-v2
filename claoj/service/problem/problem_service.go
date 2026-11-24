@@ -77,7 +77,6 @@ type CreateProblemRequest struct {
 	LicenseID                      *uint
 	OgImage                        string
 	Summary                        string
-	ShortCircuit                   bool
 	IsFullMarkup                   bool
 	SubmissionSourceVisibilityMode string
 	TestcaseVisibilityMode         string
@@ -119,7 +118,6 @@ type UpdateProblemRequest struct {
 	LicenseID                      *uint
 	OgImage                        *string
 	Summary                        *string
-	ShortCircuit                   *bool
 	IsFullMarkup                   *bool
 	SubmissionSourceVisibilityMode *string
 	TestcaseVisibilityMode         *string
@@ -127,6 +125,9 @@ type UpdateProblemRequest struct {
 	OrganizationIDs                *[]uint
 	BannedUserIDs                  *[]uint
 	SuggesterID                    *uint
+	ClearDate                      bool
+	ClearLicenseID                 bool
+	ClearSuggesterID               bool
 }
 
 // DeleteProblemRequest holds the parameters for deleting a problem.
@@ -293,7 +294,7 @@ func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfil
 		LicenseID:                      req.LicenseID,
 		OgImage:                        req.OgImage,
 		Summary:                        req.Summary,
-		ShortCircuit:                   req.ShortCircuit,
+		ShortCircuit:                   !req.Partial, // v1 derives it; never client input
 		IsFullMarkup:                   req.IsFullMarkup,
 		SubmissionSourceVisibilityMode: srcMode,
 		TestcaseVisibilityMode:         tcMode,
@@ -301,12 +302,15 @@ func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfil
 		SuggesterID:                    req.SuggesterID,
 	}
 
-	if err := db.DB.Create(&problem).Error; err != nil {
-		return nil, err
-	}
-
-	// Handle many-to-many relations
+	// Insert and relations in one transaction so a rejected relation id
+	// cannot leave an orphan problem row.
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := checkLicenseExists(tx, req.LicenseID); err != nil {
+			return err
+		}
+		if err := tx.Create(&problem).Error; err != nil {
+			return err
+		}
 		if len(req.TypeIDs) > 0 {
 			var types []models.ProblemType
 			tx.Where("id IN ?", req.TypeIDs).Find(&types)
@@ -360,6 +364,7 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 	}
 	if req.Partial != nil {
 		updates["partial"] = *req.Partial
+		updates["short_circuit"] = !*req.Partial // v1 derives it (Problem.save)
 	}
 	if req.IsPublic != nil {
 		updates["is_public"] = *req.IsPublic
@@ -389,10 +394,17 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 	if req.Source != nil {
 		updates["source"] = *req.Source
 	}
-	if req.Date != nil {
+	if req.ClearDate {
+		updates["date"] = nil
+	} else if req.Date != nil {
 		updates["date"] = *req.Date
 	}
-	if req.LicenseID != nil {
+	if req.ClearLicenseID {
+		updates["license_id"] = nil
+	} else if req.LicenseID != nil {
+		if err := checkLicenseExists(db.DB, req.LicenseID); err != nil {
+			return nil, err
+		}
 		updates["license_id"] = *req.LicenseID
 	}
 	if req.OgImage != nil {
@@ -401,16 +413,15 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 	if req.Summary != nil {
 		updates["summary"] = *req.Summary
 	}
-	if req.ShortCircuit != nil {
-		updates["short_circuit"] = *req.ShortCircuit
-	}
 	if req.IsFullMarkup != nil {
 		updates["is_full_markup"] = *req.IsFullMarkup
 	}
 	if req.IsOrganizationPrivate != nil {
 		updates["is_organization_private"] = *req.IsOrganizationPrivate
 	}
-	if req.SuggesterID != nil {
+	if req.ClearSuggesterID {
+		updates["suggester_id"] = nil
+	} else if req.SuggesterID != nil {
 		updates["suggester_id"] = *req.SuggesterID
 	}
 	if req.SubmissionSourceVisibilityMode != nil || req.TestcaseVisibilityMode != nil {
@@ -666,6 +677,21 @@ func visibilityModes(src, tc string) (string, string, error) {
 		return "", "", fmt.Errorf("%w: testcase_visibility_mode %q", ErrInvalidVisibilityMode, tc)
 	}
 	return src, tc, nil
+}
+
+// checkLicenseExists rejects a license id with no row (nil = no change).
+func checkLicenseExists(tx *gorm.DB, id *uint) error {
+	if id == nil {
+		return nil
+	}
+	var count int64
+	if err := tx.Model(&models.License{}).Where("id = ?", *id).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrInvalidLicense
+	}
+	return nil
 }
 
 // fullList maps an empty create-time list to nil so relations.Sync is a no-op.

@@ -117,7 +117,6 @@ func AdminProblemCreate(c *gin.Context) {
 		LicenseID                      *uint      `json:"license_id"`
 		OgImage                        string     `json:"og_image"`
 		Summary                        string     `json:"summary"`
-		ShortCircuit                   bool       `json:"short_circuit"`
 		IsFullMarkup                   bool       `json:"is_full_markup"`
 		SubmissionSourceVisibilityMode string     `json:"submission_source_visibility_mode"`
 		TestcaseVisibilityMode         string     `json:"testcase_visibility_mode"`
@@ -154,7 +153,6 @@ func AdminProblemCreate(c *gin.Context) {
 		LicenseID:                      input.LicenseID,
 		OgImage:                        input.OgImage,
 		Summary:                        input.Summary,
-		ShortCircuit:                   input.ShortCircuit,
 		IsFullMarkup:                   input.IsFullMarkup,
 		SubmissionSourceVisibilityMode: input.SubmissionSourceVisibilityMode,
 		TestcaseVisibilityMode:         input.TestcaseVisibilityMode,
@@ -164,7 +162,8 @@ func AdminProblemCreate(c *gin.Context) {
 		SuggesterID:                    input.SuggesterID,
 	})
 	if err != nil {
-		if errors.Is(err, problem.ErrInvalidVisibilityMode) || errors.Is(err, relations.ErrUnknownID) {
+		if errors.Is(err, problem.ErrInvalidVisibilityMode) || errors.Is(err, problem.ErrInvalidLicense) ||
+			errors.Is(err, relations.ErrUnknownID) {
 			c.JSON(http.StatusBadRequest, apiError(err.Error()))
 			return
 		}
@@ -213,7 +212,6 @@ func AdminProblemUpdate(c *gin.Context) {
 		LicenseID                      *uint      `json:"license_id"`
 		OgImage                        *string    `json:"og_image"`
 		Summary                        *string    `json:"summary"`
-		ShortCircuit                   *bool      `json:"short_circuit"`
 		IsFullMarkup                   *bool      `json:"is_full_markup"`
 		SubmissionSourceVisibilityMode *string    `json:"submission_source_visibility_mode"`
 		TestcaseVisibilityMode         *string    `json:"testcase_visibility_mode"`
@@ -221,6 +219,9 @@ func AdminProblemUpdate(c *gin.Context) {
 		OrganizationIDs                *[]uint    `json:"organization_ids"`
 		BannedUserIDs                  *[]uint    `json:"banned_user_ids"`
 		SuggesterID                    *uint      `json:"suggester_id"`
+		ClearDate                      bool       `json:"clear_date"`
+		ClearLicenseID                 bool       `json:"clear_license_id"`
+		ClearSuggesterID               bool       `json:"clear_suggester_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -257,7 +258,6 @@ func AdminProblemUpdate(c *gin.Context) {
 		LicenseID:                      input.LicenseID,
 		OgImage:                        input.OgImage,
 		Summary:                        input.Summary,
-		ShortCircuit:                   input.ShortCircuit,
 		IsFullMarkup:                   input.IsFullMarkup,
 		SubmissionSourceVisibilityMode: input.SubmissionSourceVisibilityMode,
 		TestcaseVisibilityMode:         input.TestcaseVisibilityMode,
@@ -265,6 +265,9 @@ func AdminProblemUpdate(c *gin.Context) {
 		OrganizationIDs:                input.OrganizationIDs,
 		BannedUserIDs:                  input.BannedUserIDs,
 		SuggesterID:                    input.SuggesterID,
+		ClearDate:                      input.ClearDate,
+		ClearLicenseID:                 input.ClearLicenseID,
+		ClearSuggesterID:               input.ClearSuggesterID,
 	})
 	if err != nil {
 		if errors.Is(err, problem.ErrProblemNotFound) {

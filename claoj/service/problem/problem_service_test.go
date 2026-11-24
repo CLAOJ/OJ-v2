@@ -6,6 +6,7 @@ import (
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gorm.io/driver/sqlite"
@@ -552,7 +553,7 @@ func (s *ProblemServiceTestSuite) TestCreateProblem_V1FieldsRoundTrip() {
 		Points: 100, TimeLimit: 1.5, MemoryLimit: 262144, GroupID: group.ID,
 		Source: "VOI 2026", Date: &date, LicenseID: &license.ID,
 		OgImage: "https://example.com/og.png", Summary: "short summary",
-		ShortCircuit: true, IsFullMarkup: true,
+		IsFullMarkup:                   true,
 		SubmissionSourceVisibilityMode: models.SubmissionSourceAccessSolved,
 		TestcaseVisibilityMode:         models.ProblemTestcaseAccessAuthorOnly,
 		IsOrganizationPrivate:          true,
@@ -645,7 +646,7 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem_V1FieldsAndOrgBannedSync() {
 	date := time.Date(2026, 5, 6, 7, 8, 9, 0, time.UTC)
 
 	source, og, summary := "ICPC 2025", "https://example.com/og.png", "one line"
-	shortCircuit, fullMarkup, orgPrivate := true, true, true
+	partialTrue, fullMarkup, orgPrivate := true, true, true
 	srcMode, tcMode := models.SubmissionSourceAccessAlways, models.ProblemTestcaseAccessAlways
 	orgIDs := []uint{org1.ID}
 	bannedIDs := []uint{banned.ID}
@@ -653,7 +654,7 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem_V1FieldsAndOrgBannedSync() {
 	_, err := s.service.UpdateProblem(UpdateProblemRequest{
 		ProblemCode: "UPD1",
 		Source:      &source, Date: &date, LicenseID: &license.ID, OgImage: &og, Summary: &summary,
-		ShortCircuit: &shortCircuit, IsFullMarkup: &fullMarkup,
+		Partial: &partialTrue, IsFullMarkup: &fullMarkup,
 		SubmissionSourceVisibilityMode: &srcMode, TestcaseVisibilityMode: &tcMode,
 		IsOrganizationPrivate: &orgPrivate, OrganizationIDs: &orgIDs, BannedUserIDs: &bannedIDs,
 		SuggesterID: &suggester.ID,
@@ -669,7 +670,7 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem_V1FieldsAndOrgBannedSync() {
 	s.Equal(license.ID, *got.LicenseID)
 	s.Equal("https://example.com/og.png", got.OgImage)
 	s.Equal("one line", got.Summary)
-	s.True(got.ShortCircuit)
+	s.False(got.ShortCircuit, "derived: partial was set to true")
 	s.True(got.IsFullMarkup)
 	s.Equal(models.SubmissionSourceAccessAlways, got.SubmissionSourceVisibilityMode)
 	s.Equal(models.ProblemTestcaseAccessAlways, got.TestcaseVisibilityMode)
@@ -691,4 +692,78 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem_V1FieldsAndOrgBannedSync() {
 	s.Empty(got.BannedUserIDs)
 	s.NotNil(got.BannedUserIDs)
 	s.Equal("ICPC 2025", got.Source, "omitted scalars must stay unchanged")
+}
+
+func (s *ProblemServiceTestSuite) TestPartialFlipsShortCircuit() {
+	group := s.createTestGroup("gsc")
+	created, err := s.service.CreateProblem(CreateProblemRequest{
+		Code: "SC1", Name: "Stops", Description: "body", GroupID: group.ID,
+		Points: 100, TimeLimit: 1, MemoryLimit: 262144, Partial: false,
+	})
+	s.Require().NoError(err)
+	s.True(created.ShortCircuit, "short_circuit = not partial")
+
+	partial := true
+	got, err := s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: "SC1", Partial: &partial})
+	s.Require().NoError(err)
+	s.False(got.ShortCircuit)
+
+	partial = false
+	got, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: "SC1", Partial: &partial})
+	s.Require().NoError(err)
+	s.True(got.ShortCircuit)
+}
+
+func (s *ProblemServiceTestSuite) TestCreateProblem_UnknownRelationRollsBack() {
+	group := s.createTestGroup("groll")
+	_, err := s.service.CreateProblem(CreateProblemRequest{
+		Code: "ROLL1", Name: "Rollback", Description: "body", GroupID: group.ID,
+		Points: 100, TimeLimit: 1, MemoryLimit: 262144,
+		OrganizationIDs: []uint{424242},
+	})
+	s.Require().ErrorIs(err, relations.ErrUnknownID)
+
+	var count int64
+	s.database.Model(&models.Problem{}).Where("code = ?", "ROLL1").Count(&count)
+	s.Equal(int64(0), count, "a rejected relation must not leave an orphan problem row")
+}
+
+func (s *ProblemServiceTestSuite) TestCreateProblem_UnknownLicenseRejected() {
+	group := s.createTestGroup("glic")
+	missing := uint(98765)
+	_, err := s.service.CreateProblem(CreateProblemRequest{
+		Code: "LIC1", Name: "License", Description: "body", GroupID: group.ID,
+		Points: 100, TimeLimit: 1, MemoryLimit: 262144, LicenseID: &missing,
+	})
+	s.Require().ErrorIs(err, ErrInvalidLicense)
+
+	var count int64
+	s.database.Model(&models.Problem{}).Where("code = ?", "LIC1").Count(&count)
+	s.Equal(int64(0), count)
+
+	s.Require().NoError(s.database.Create(&models.Problem{
+		Code: "LIC2", Name: "License", GroupID: group.ID,
+	}).Error)
+	_, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: "LIC2", LicenseID: &missing})
+	s.ErrorIs(err, ErrInvalidLicense)
+}
+
+func (s *ProblemServiceTestSuite) TestUpdateProblem_ClearNullableFields() {
+	group := s.createTestGroup("gclear")
+	license := s.createTestLicense("apache")
+	suggester := s.createTestProfile("suggester")
+	date := time.Date(2026, 7, 8, 9, 10, 11, 0, time.UTC)
+
+	s.Require().NoError(s.database.Create(&models.Problem{
+		Code: "CLR9", Name: "Clear", GroupID: group.ID, Date: &date,
+		LicenseID: &license.ID, SuggesterID: &suggester.ID,
+	}).Error)
+
+	got, err := s.service.UpdateProblem(UpdateProblemRequest{
+		ProblemCode: "CLR9", ClearDate: true, ClearLicenseID: true, ClearSuggesterID: true,
+	})
+	s.Require().NoError(err)
+	s.Nil(got.Date)
+	s.Nil(got.LicenseID)
+	s.Nil(got.SuggesterID)
 }
