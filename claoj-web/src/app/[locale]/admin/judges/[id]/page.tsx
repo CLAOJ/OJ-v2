@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { adminJudgeApi } from '@/lib/adminApi';
+import { adminJudgeApi, adminErrorMessage } from '@/lib/adminApi';
+import { searchProblems, searchLanguages } from '@/lib/adminSearch';
+import { EntityPicker } from '@/components/admin/EntityPicker';
 import { Link } from '@/navigation';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
@@ -40,19 +42,60 @@ export default function AdminJudgeDetailPage() {
     });
 
     const judge = judgeResponse?.data;
-    // null = untouched, so the field tracks the server value until edited.
-    const [draft, setDraft] = useState<string | null>(null);
-    const description = draft ?? judge?.description ?? '';
+    // null = untouched, so the fields track the server values until edited.
+    const [draft, setDraft] = useState<{
+        name: string;
+        auth_key: string;
+        tier: string;
+        description: string;
+        problem_ids: number[];
+        runtime_ids: number[];
+    } | null>(null);
     const [showKey, setShowKey] = useState(false);
 
+    const form = draft ?? {
+        name: judge?.name ?? '',
+        auth_key: judge?.auth_key ?? '',
+        tier: String(judge?.tier ?? 1),
+        description: judge?.description ?? '',
+        problem_ids: judge?.problem_ids ?? [],
+        runtime_ids: judge?.runtime_ids ?? [],
+    };
+    const patch = (change: Partial<typeof form>) => setDraft({ ...form, ...change });
+
+    const dirty = !!judge && (
+        form.name !== judge.name ||
+        form.auth_key !== (judge.auth_key ?? '') ||
+        form.tier !== String(judge.tier ?? 1) ||
+        form.description !== (judge.description ?? '') ||
+        form.problem_ids.join(',') !== (judge.problem_ids ?? []).join(',') ||
+        form.runtime_ids.join(',') !== (judge.runtime_ids ?? []).join(',')
+    );
+
     const updateMutation = useMutation({
-        mutationFn: (judgeId: number) => adminJudgeApi.update(judgeId, { description }),
+        mutationFn: (judgeId: number) => {
+            // Send the identity fields only when they actually changed: an
+            // unchanged name/key would otherwise make the backend reject a
+            // description-only save from someone without change_judge, or
+            // while the judge is online.
+            const identity: { name?: string; auth_key?: string } = {};
+            if (judge && form.name !== judge.name) identity.name = form.name;
+            if (judge && form.auth_key !== (judge.auth_key ?? '')) identity.auth_key = form.auth_key;
+            return adminJudgeApi.update(judgeId, {
+                ...identity,
+                tier: Number(form.tier),
+                description: form.description,
+                problem_ids: form.problem_ids,
+                runtime_ids: form.runtime_ids,
+            });
+        },
         onSuccess: () => {
-            toast.success(t('judgeDetail.descriptionSaved'));
+            toast.success(t('judgeDetail.saved'));
             setDraft(null);
             queryClient.invalidateQueries({ queryKey: ['admin-judge', id] });
+            queryClient.invalidateQueries({ queryKey: ['admin-judges'] });
         },
-        onError: () => toast.error(t('judgeDetail.descriptionSaveFailed')),
+        onError: (err) => toast.error(adminErrorMessage(err, t('judgeDetail.saveFailed'))),
     });
 
     const blockMutation = useMutation({
@@ -243,22 +286,104 @@ export default function AdminJudgeDetailPage() {
                 </div>
             </div>
 
-            {/* Description */}
-            <div className="bg-card rounded-md p-6 border">
-                <label htmlFor="judge-description" className="block font-semibold text-lg mb-3">{t('judgeDetail.descriptionTitle')}</label>
-                <textarea
-                    id="judge-description"
-                    rows={4}
-                    value={description}
-                    onChange={e => setDraft(e.target.value)}
-                    placeholder={t('judgeDetail.descriptionPlaceholder')}
-                    className="w-full rounded-md border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-                <div className="mt-3 flex justify-end">
+            {/* Configuration */}
+            <div className="bg-card rounded-md p-6 border space-y-5">
+                <h3 className="font-semibold text-lg">{t('judgeDetail.editTitle')}</h3>
+                {judge.online && (
+                    <p className="text-sm text-warning">{t('judgeDetail.onlineHint')}</p>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label htmlFor="judge-name" className="text-sm font-medium text-muted-foreground block mb-2">{t('judgeDetail.nameLabel')}</label>
+                        <input
+                            id="judge-name"
+                            value={form.name}
+                            maxLength={50}
+                            disabled={judge.online}
+                            onChange={e => patch({ name: e.target.value })}
+                            className="w-full h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:opacity-50"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="judge-auth-key" className="text-sm font-medium text-muted-foreground block mb-2">{t('judgeDetail.authKeyLabel')}</label>
+                        <div className="relative">
+                            <input
+                                id="judge-auth-key"
+                                type={showKey ? 'text' : 'password'}
+                                value={form.auth_key}
+                                maxLength={100}
+                                disabled={judge.online}
+                                onChange={e => patch({ auth_key: e.target.value })}
+                                className="w-full h-9 pl-3 pr-9 rounded-md border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:opacity-50"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowKey(v => !v)}
+                                aria-label={showKey ? t('judgeDetail.hideKey') : t('judgeDetail.showKey')}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-muted text-muted-foreground"
+                            >
+                                {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="judge-tier" className="text-sm font-medium text-muted-foreground block mb-2">{t('judgeDetail.tierLabel')}</label>
+                        <input
+                            id="judge-tier"
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={form.tier}
+                            onChange={e => patch({ tier: e.target.value })}
+                            className="w-full h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">{t('judgeDetail.tierHint')}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="judge-description" className="text-sm font-medium text-muted-foreground block mb-2">{t('judgeDetail.descriptionTitle')}</label>
+                    <textarea
+                        id="judge-description"
+                        rows={4}
+                        value={form.description}
+                        onChange={e => patch({ description: e.target.value })}
+                        placeholder={t('judgeDetail.descriptionPlaceholder')}
+                        className="w-full rounded-md border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <EntityPicker
+                        id="judge-problems"
+                        label={t('judgeDetail.problemsPickerLabel')}
+                        value={form.problem_ids}
+                        onChange={ids => patch({ problem_ids: ids })}
+                        search={searchProblems}
+                        queryKey="problems"
+                        initialOptions={judge.problems.map(p => ({ id: p.id, label: p.code, detail: p.name }))}
+                        placeholder={t('judgeDetail.problemsPickerPlaceholder')}
+                    />
+                    <EntityPicker
+                        id="judge-runtimes"
+                        label={t('judgeDetail.runtimesPickerLabel')}
+                        value={form.runtime_ids}
+                        onChange={ids => patch({ runtime_ids: ids })}
+                        search={searchLanguages}
+                        queryKey="languages"
+                        initialOptions={judge.assigned_runtimes.map(r => ({ id: r.id, label: r.name, detail: r.key }))}
+                        placeholder={t('judgeDetail.runtimesPickerPlaceholder')}
+                    />
+                </div>
+                <p className="text-xs text-muted-foreground">{t('judgeDetail.capabilitiesHint')}</p>
+
+                <div className="flex justify-between items-center gap-3">
+                    <p className="text-xs text-muted-foreground">{t('judgeDetail.keyHint')}</p>
                     <button
                         onClick={() => updateMutation.mutate(judge.id)}
-                        disabled={updateMutation.isPending || description === (judge.description ?? '')}
-                        className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                        disabled={updateMutation.isPending || !dirty || Number(form.tier) < 1 || !form.name.trim() || !form.auth_key}
+                        className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 shrink-0"
                     >
                         {updateMutation.isPending ? t('common.saving') : t('common.saveChanges')}
                     </button>
@@ -283,19 +408,8 @@ export default function AdminJudgeDetailPage() {
                             <Shield size={18} />
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">{t('judgeDetail.authKeyLabel')}</div>
-                            <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm truncate max-w-[200px]">
-                                    {showKey ? judge.auth_key : '•'.repeat(16)}
-                                </span>
-                                <button
-                                    onClick={() => setShowKey(v => !v)}
-                                    aria-label={showKey ? t('judgeDetail.hideKey') : t('judgeDetail.showKey')}
-                                    className="p-1 rounded hover:bg-muted text-muted-foreground"
-                                >
-                                    {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
-                            </div>
+                            <div className="text-sm text-muted-foreground">{t('judgeDetail.tierLabel')}</div>
+                            <div className="font-semibold text-sm">{judge.tier}</div>
                         </div>
                     </div>
                 </div>

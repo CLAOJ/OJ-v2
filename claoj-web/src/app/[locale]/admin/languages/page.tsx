@@ -26,6 +26,7 @@ import {
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
 import { Switch } from '@/components/ui/Switch';
+import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 
@@ -258,7 +259,14 @@ export default function LanguageAdminPage() {
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="description">{t('languages.descriptionLabel')}</Label>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="description">{t('languages.descriptionLabel')}</Label>
+                    <MarkdownImageButton
+                        id="description"
+                        value={formData.description ?? ''}
+                        onChange={(v) => setFormData((prev) => ({ ...prev, description: v }))}
+                    />
+                </div>
                 <Textarea
                     id="description"
                     value={formData.description}

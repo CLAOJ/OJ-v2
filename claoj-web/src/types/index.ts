@@ -693,6 +693,8 @@ export interface AdminProblem {
 export interface AdminJudge {
     id: number;
     name: string;
+    /** v1 tier: informational in v2, the queue has no tier routing. */
+    tier: number;
     online: boolean;
     is_blocked: boolean;
     is_disabled: boolean;
@@ -705,8 +707,12 @@ export interface AdminJudge {
 export interface AdminJudgeDetail extends AdminJudge {
     start_time?: string;
     description: string;
-    problems: { code: string; name: string }[];
+    problems: { id: number; code: string; name: string }[];
+    /** Language ids the judge is assigned (what the edit form writes). */
+    problem_ids: number[];
     runtimes: { key: string; name: string; version: string }[];
+    runtime_ids: number[];
+    assigned_runtimes: { id: number; key: string; name: string }[];
 }
 
 export interface AdminJudgeCreateRequest {
@@ -726,6 +732,7 @@ export interface AdminUserCreateRequest {
 export interface AdminJudgeUpdateRequest {
     name?: string;
     auth_key?: string;
+    tier?: number;
     description?: string;
     problem_ids?: number[];
     runtime_ids?: number[];

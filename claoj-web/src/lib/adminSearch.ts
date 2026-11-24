@@ -1,5 +1,5 @@
 // Server-side search functions for EntityPicker.
-import { adminUserApi, adminProblemApi, adminContestApi, adminOrganizationApi, adminClassApi } from '@/lib/adminApi';
+import { adminUserApi, adminProblemApi, adminContestApi, adminOrganizationApi, adminClassApi, adminLanguageApi } from '@/lib/adminApi';
 import type { EntityOption } from '@/components/admin/EntityPicker';
 
 const LIMIT = 20;
@@ -27,4 +27,15 @@ export async function searchOrganizations(term: string): Promise<EntityOption[]>
 export async function searchClasses(term: string): Promise<EntityOption[]> {
     const res = await adminClassApi.list(1, LIMIT, term);
     return res.data.data.map(c => ({ id: c.id, label: c.name, detail: c.organization_name }));
+}
+
+// /admin/languages has no search filter and the table is small (a few dozen
+// rows), so one page covers it and the term is matched client-side.
+export async function searchLanguages(term: string): Promise<EntityOption[]> {
+    const res = await adminLanguageApi.list(1, 100);
+    const needle = term.toLowerCase();
+    return res.data.data
+        .filter(l => `${l.key} ${l.name} ${l.common_name}`.toLowerCase().includes(needle))
+        .slice(0, LIMIT)
+        .map(l => ({ id: l.id, label: l.name, detail: l.key }));
 }
