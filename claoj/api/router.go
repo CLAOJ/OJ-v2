@@ -336,6 +336,11 @@ func NewRouter() *gin.Engine {
 
 		apiv2.GET("/problems", v2.ProblemList)
 		apiv2.GET("/problems/random", v2.RandomProblem)
+		// Suggestions awaiting review (judge.suggest_new_problem), and the
+		// public taxonomy the problem-list filters are built from.
+		apiv2.GET("/problems/suggest", v2.SuggestProblemList)
+		apiv2.GET("/problem-groups", v2.ProblemGroupList)
+		apiv2.GET("/problem-types", v2.ProblemTypeList)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
