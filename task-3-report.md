@@ -35,3 +35,39 @@ npx eslint (touched files)                             0 errors (1 pre-existing 
 ```
 
 Repo-wide eslint still reports the pre-existing errors/warnings (unchanged).
+---
+
+# Task 3 (Registrations) review fixes â€” Report
+
+## Status
+DONE â€” commit `2d9634a` (`fix(admin): registration review fixes`) on `feat/admin-ux-phase4c`, on top of `5e2be0a`.
+
+## Fixes
+
+1. **Critical: invented `created` column removed.** `registration_registrationprofile` has no `created` column (django-registration-redux derives expiry from `auth_user.date_joined`). Dropped `Created` from `models.RegistrationProfile`, `rp.created`/`V1Created` from the list query, scan struct and response, and `created` from the FE `AdminRegistrationV1`. `activation_key` size corrected 40 â†’ 64. The list query now selects only `rp.id`, `rp.activation_key`, `rp.activated` (+ the `auth_user` columns); the profile-to-user link is the join itself.
+2. **Sonner toasts.** The registrations page uses `toast.success` / `toast.error` like every other admin page; the persistent inline `Alert` and its `notice` state are gone.
+3. Minors:
+   - Dropped the duplicate top-level list `id` (the v1 profile id stays at `registration.id`), so nobody can pass it to activate.
+   - `activate` blanks `activation_key` together with `activated = true`, matching v1.
+   - Search escapes LIKE wildcards via `db.ContainsPattern` + `ESCAPE '!'`.
+   - `ActivationKey` is tagged `json:"-"`.
+   - `router_test.go` gate table covers both new POSTs (staff 403) and asserts anonymous 401 for each.
+   - New tests: activate succeeds with no v1 row; activation rolls back when the v1 write fails (table dropped â†’ 500, `is_active` unchanged).
+   - `setupRegistrationDB` restores the previous `authHandlers.OneTimeTokens`.
+   - New Go files are gofmt-clean with trailing newlines (repo-wide `gofmt -l` noise is pre-existing CRLF).
+4. Skipped (noted): no per-action resend rate limit (endpoint is superuser-only and the helper replaces the previous token); a missing `registration_registrationprofile` table is not tolerated, consistent with the other v1 joins.
+
+## Verification
+
+```
+cd claoj
+go build ./...                     OK
+go test ./api/v2/ ./api/ -count=1   ok, ok
+go test ./... -count=1             all 28 packages ok
+cd claoj-web
+npx tsc --noEmit                   OK
+npm test -- --silent               27 suites / 281 tests passed
+npx eslint (registrations page)    0 problems
+```
+
+`npx eslint src/types/index.ts` still reports one pre-existing error (`AdminLanguageLimit extends LanguageLimit {}`) and `adminApi.ts` keeps its pre-existing unused-import warnings; neither is touched by this change.
