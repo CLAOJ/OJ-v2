@@ -285,7 +285,14 @@ func AdminContestTagDelete(c *gin.Context) {
 		return
 	}
 
-	if err := db.DB.Delete(&models.ContestTag{}, id).Error; err != nil {
+	// Drop the join rows first: the FK would otherwise reject the tag delete.
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("DELETE FROM judge_contest_tags WHERE contesttag_id = ?", id).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.ContestTag{}, id).Error
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}

@@ -10,5 +10,5 @@ var (
 	ErrEmptyTypeName      = errors.New("type: type name cannot be empty")
 	ErrEmptyTypeFullName  = errors.New("type: type full name cannot be empty")
 	ErrTypeNameExists     = errors.New("type: type name already exists")
-	ErrUnknownProblemIDs  = errors.New("type: unknown problem IDs")
+	ErrUnknownProblemIDs  = errors.New("unknown problem IDs")
 )

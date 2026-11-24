@@ -116,14 +116,18 @@ export default function ProblemTaxonomyAdminPage() {
     };
 
     const openEditGroupDialog = async (group: AdminProblemGroup) => {
-        const response = await adminProblemGroupApi.detail(group.id);
-        setGroupFormData({
-            name: response.data.name,
-            full_name: response.data.full_name,
-        });
-        setEditingGroupProblemCount(response.data.problem_count ?? 0);
-        setEditingGroup(group);
-        setIsEditGroupDialogOpen(true);
+        try {
+            const response = await adminProblemGroupApi.detail(group.id);
+            setGroupFormData({
+                name: response.data.name,
+                full_name: response.data.full_name,
+            });
+            setEditingGroupProblemCount(response.data.problem_count ?? 0);
+            setEditingGroup(group);
+            setIsEditGroupDialogOpen(true);
+        } catch {
+            toast.error(t('taxonomy.loadDetailFailed'));
+        }
     };
 
     const handleCreateGroup = async () => {
@@ -169,15 +173,20 @@ export default function ProblemTaxonomyAdminPage() {
     };
 
     const openEditTypeDialog = async (ptype: AdminProblemType) => {
-        const response = await adminProblemTypeApi.detail(ptype.id);
-        setTypeFormData({
-            name: response.data.name,
-            full_name: response.data.full_name,
-            problem_ids: response.data.problem_ids ?? [],
-        });
-        setTypeProblemOptions((response.data.problems ?? []).map((p) => ({ id: p.id, label: p.code, detail: p.name })));
-        setEditingType(ptype);
-        setIsEditTypeDialogOpen(true);
+        try {
+            const response = await adminProblemTypeApi.detail(ptype.id);
+            setTypeFormData({
+                name: response.data.name,
+                full_name: response.data.full_name,
+                problem_ids: response.data.problem_ids ?? [],
+            });
+            setTypeProblemOptions((response.data.problems ?? []).map((p) => ({ id: p.id, label: p.code, detail: p.name })));
+            setEditingType(ptype);
+            setIsEditTypeDialogOpen(true);
+        } catch {
+            // Never open with an unknown selection: saving would clear the type's problems.
+            toast.error(t('taxonomy.loadDetailFailed'));
+        }
     };
 
     const handleCreateType = async () => {

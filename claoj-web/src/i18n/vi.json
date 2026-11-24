@@ -1880,6 +1880,7 @@
       "deleteTypeDesc": "Bạn có chắc chắn muốn xóa dạng bài này? Hành động này không thể hoàn tác.",
       "loadGroupsFailed": "Không thể tải danh sách nhóm bài tập",
       "loadTypesFailed": "Không thể tải danh sách dạng bài",
+      "loadDetailFailed": "Không thể tải chi tiết",
       "groupCreated": "Đã tạo nhóm bài tập",
       "groupCreateFailed": "Tạo nhóm bài tập thất bại",
       "groupUpdated": "Đã cập nhật nhóm bài tập",
