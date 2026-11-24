@@ -1177,7 +1177,7 @@ export interface UserListItem {
     contribution_points: number;
     display_rank: string;
     avatar_url?: string;
-    organizations?: { id: number; name: string; slug: string }[];
+    organizations?: { id: number; short_name: string }[];
 }
 
 // ============================================================

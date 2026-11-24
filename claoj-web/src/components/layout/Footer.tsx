@@ -61,13 +61,13 @@ export default function Footer() {
                             <h4 className="font-semibold mb-4">{t('support')}</h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li><Link href="/tickets" className="hover:text-primary transition-colors">{t('helpTickets')}</Link></li>
+                                {/* Flat pages served by the [...] slug catch-all. prefetch is
+                                    off: they are outside the app's route tree, so Next has
+                                    nothing useful to prefetch and a missing page would only
+                                    log a 404. */}
+                                <li><Link href="/wiki" prefetch={false} className="hover:text-primary transition-colors">{t('wiki')}</Link></li>
+                                <li><Link href="/about" prefetch={false} className="hover:text-primary transition-colors">{t('aboutUs')}</Link></li>
                                 <li><a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">{t('builtBy')}</a></li>
-                                {/* The "About us" and "Donate" entries linked to /about and
-                                    /donate, neither of which exists as a route. Next prefetched
-                                    both on every page that renders the footer, so each one was a
-                                    steady source of 404s in the console. Their translation keys
-                                    (Footer.aboutUs / Footer.donate) are still in en.json and
-                                    vi.json — restore these <li>s once the pages are written. */}
                             </ul>
                         </div>
                     </div>
