@@ -1427,6 +1427,7 @@
       "manageDataLink": "Manage Data",
       "clarificationsLink": "Clarifications",
       "editorialLink": "Editorial",
+      "languageLimitsLink": "Language Limits",
       "saved": "Problem saved",
       "saveFailed": "Could not save: {error}"
     },
@@ -2087,7 +2088,38 @@
       "descriptionPlaceholder": "Problem description in Markdown...",
       "pointsLabel": "Points *",
       "timeLimitLabel": "Time Limit (seconds) *",
-      "memoryLimitLabel": "Memory Limit (MB) *"
+      "memoryLimitLabel": "Memory Limit (MB) *",
+      "peopleTitle": "People",
+      "suggesterLabel": "Suggester",
+      "curatorsLabel": "Curators",
+      "testersLabel": "Testers",
+      "publishingTitle": "Publishing",
+      "dateLabel": "Date of publishing",
+      "licenseLabel": "License",
+      "licenseNoneOption": "No license",
+      "sourceLabel": "Problem source",
+      "sourcePlaceholder": "e.g., Vietnamese Olympiad in Informatics 2026",
+      "submissionVisibilityLabel": "Submission source visibility",
+      "submissionVisibility": {
+        "A": "Always visible",
+        "S": "Visible if problem solved",
+        "O": "Only own submissions",
+        "F": "Follow global setting"
+      },
+      "testcaseVisibilityLabel": "Testcase visibility",
+      "testcaseVisibility": {
+        "A": "Always visible",
+        "C": "Visible if user is not in a contest",
+        "O": "Visible for authors"
+      },
+      "fullMarkupLabel": "Allow full markdown (raw HTML)",
+      "ogImageLabel": "OG image URL",
+      "summaryLabel": "Summary",
+      "summaryPlaceholder": "Short summary shown in problem lists and previews...",
+      "accessTitle": "Access",
+      "privateToOrgLabel": "Private to organizations",
+      "organizationsLabel": "Organizations",
+      "bannedUsersLabel": "Banned users"
     },
     "moss": {
       "title": "MOSS",

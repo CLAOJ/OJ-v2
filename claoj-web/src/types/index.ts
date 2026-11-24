@@ -360,6 +360,10 @@ export interface UserRef {
     username: string;
 }
 
+/** v1 single-char codes, see judge/models/problem.py. */
+export type SubmissionSourceVisibilityMode = 'A' | 'S' | 'O' | 'F';
+export type TestcaseVisibilityMode = 'A' | 'C' | 'O';
+
 export interface AdminProblemDetail {
     id: number;
     code: string;
@@ -381,6 +385,19 @@ export interface AdminProblemDetail {
     authors: UserRef[];
     curators: UserRef[];
     testers: UserRef[];
+    source: string;
+    date: string | null;
+    license_id: number | null;
+    og_image: string;
+    summary: string;
+    is_full_markup: boolean;
+    submission_source_visibility_mode: SubmissionSourceVisibilityMode;
+    testcase_visibility_mode: TestcaseVisibilityMode;
+    is_organization_private: boolean;
+    organization_ids: number[];
+    banned_user_ids: number[];
+    suggester_id: number | null;
+    banned_users: UserRef[];
 }
 
 export interface AdminProblemUpdateRequest {
@@ -399,6 +416,22 @@ export interface AdminProblemUpdateRequest {
     tester_ids?: number[];
     type_ids?: number[];
     allowed_lang_ids?: number[];
+    source?: string;
+    date?: string | null;
+    license_id?: number | null;
+    og_image?: string;
+    summary?: string;
+    is_full_markup?: boolean;
+    submission_source_visibility_mode?: SubmissionSourceVisibilityMode;
+    testcase_visibility_mode?: TestcaseVisibilityMode;
+    is_organization_private?: boolean;
+    organization_ids?: number[];
+    banned_user_ids?: number[];
+    suggester_id?: number | null;
+    /** Nullable columns: a null alone means "no change" on PATCH. */
+    clear_date?: boolean;
+    clear_license_id?: boolean;
+    clear_suggester_id?: boolean;
 }
 
 export interface AdminContestProblemRow {
@@ -609,6 +642,20 @@ export interface AdminProblemCreateRequest {
     allowed_lang_ids?: number[];
     is_manually_managed?: boolean;
     pdf_url?: string;
+    source?: string;
+    date?: string | null;
+    license_id?: number | null;
+    og_image?: string;
+    summary?: string;
+    is_full_markup?: boolean;
+    submission_source_visibility_mode?: SubmissionSourceVisibilityMode;
+    testcase_visibility_mode?: TestcaseVisibilityMode;
+    is_organization_private?: boolean;
+    organization_ids?: number[];
+    banned_user_ids?: number[];
+    suggester_id?: number | null;
+    curator_ids?: number[];
+    tester_ids?: number[];
 }
 
 // ============================================================

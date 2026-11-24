@@ -99,11 +99,14 @@ export default function LanguageLimitsAdminPage() {
     useEffect(() => {
         loadProblems();
         loadLanguages();
+        // Deep link from the problem edit page: /admin/language-limits?problem=CODE
+        const preset = new URLSearchParams(window.location.search).get('problem');
+        if (preset) setSearchProblemCode(preset);
     }, []);
 
     useEffect(() => {
         loadLimits();
-    }, [page, searchProblemCode]);
+    }, [page, searchProblemCode, problems]);
 
     const openCreateDialog = () => {
         setFormData({

@@ -1427,6 +1427,7 @@
       "manageDataLink": "Quản lý dữ liệu",
       "clarificationsLink": "Làm rõ",
       "editorialLink": "Lời giải",
+      "languageLimitsLink": "Giới hạn ngôn ngữ",
       "saved": "Đã lưu bài tập",
       "saveFailed": "Không lưu được: {error}"
     },
@@ -2087,7 +2088,38 @@
       "descriptionPlaceholder": "Nội dung đề bài dạng Markdown...",
       "pointsLabel": "Điểm *",
       "timeLimitLabel": "Giới hạn thời gian (giây) *",
-      "memoryLimitLabel": "Giới hạn bộ nhớ (MB) *"
+      "memoryLimitLabel": "Giới hạn bộ nhớ (MB) *",
+      "peopleTitle": "Nhân sự",
+      "suggesterLabel": "Người đề xuất",
+      "curatorsLabel": "Người phụ trách",
+      "testersLabel": "Người kiểm thử",
+      "publishingTitle": "Xuất bản",
+      "dateLabel": "Ngày đăng",
+      "licenseLabel": "Giấy phép",
+      "licenseNoneOption": "Không có giấy phép",
+      "sourceLabel": "Nguồn bài",
+      "sourcePlaceholder": "ví dụ: Olympic Tin học Việt Nam 2026",
+      "submissionVisibilityLabel": "Hiển thị mã nguồn bài nộp",
+      "submissionVisibility": {
+        "A": "Luôn hiển thị",
+        "S": "Hiển thị khi đã giải được bài",
+        "O": "Chỉ bài nộp của mình",
+        "F": "Theo cài đặt chung"
+      },
+      "testcaseVisibilityLabel": "Hiển thị test",
+      "testcaseVisibility": {
+        "A": "Luôn hiển thị",
+        "C": "Hiển thị khi không trong kỳ thi",
+        "O": "Chỉ tác giả xem được"
+      },
+      "fullMarkupLabel": "Cho phép markdown đầy đủ (HTML thô)",
+      "ogImageLabel": "URL ảnh OG",
+      "summaryLabel": "Tóm tắt",
+      "summaryPlaceholder": "Tóm tắt ngắn hiển thị trong danh sách và bản xem trước...",
+      "accessTitle": "Quyền truy cập",
+      "privateToOrgLabel": "Riêng tư với tổ chức",
+      "organizationsLabel": "Tổ chức",
+      "bannedUsersLabel": "Người dùng bị cấm"
     },
     "moss": {
       "title": "MOSS",

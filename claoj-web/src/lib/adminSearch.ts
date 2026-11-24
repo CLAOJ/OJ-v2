@@ -1,5 +1,5 @@
 // Server-side search functions for EntityPicker.
-import { adminUserApi, adminProblemApi, adminContestApi } from '@/lib/adminApi';
+import { adminUserApi, adminProblemApi, adminContestApi, adminOrganizationApi } from '@/lib/adminApi';
 import type { EntityOption } from '@/components/admin/EntityPicker';
 
 const LIMIT = 20;
@@ -17,4 +17,9 @@ export async function searchProblems(term: string): Promise<EntityOption[]> {
 export async function searchContests(term: string): Promise<EntityOption[]> {
     const res = await adminContestApi.list(1, LIMIT, { search: term });
     return res.data.data.map(c => ({ id: c.id, label: c.key, detail: c.name }));
+}
+
+export async function searchOrganizations(term: string): Promise<EntityOption[]> {
+    const res = await adminOrganizationApi.list(1, LIMIT, term);
+    return res.data.data.map(o => ({ id: o.id, label: o.short_name || o.name, detail: o.name }));
 }

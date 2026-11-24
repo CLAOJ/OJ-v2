@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminProblemApi } from '@/lib/adminApi';
+import { problemFormToCreate } from '@/lib/adminForms';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
 import { Code2, ArrowLeft } from 'lucide-react';
@@ -14,7 +15,7 @@ export default function CreateProblemPage() {
     const router = useRouter();
 
     const createMutation = useMutation({
-        mutationFn: (data: ProblemFormData) => adminProblemApi.create(data),
+        mutationFn: (data: ProblemFormData) => adminProblemApi.create(problemFormToCreate(data)),
         onSuccess: (response) => {
             if (response.data.problem?.code) {
                 router.push(`/admin/problems`);

@@ -2,6 +2,8 @@
 // Kept free of React so the round-trips are unit-tested.
 import type {
     AdminProblemDetail,
+    AdminProblemCreateRequest,
+    AdminProblemUpdateRequest,
     AdminContestDetail,
     AdminContestProblemRow,
     AdminContestUpdateRequest,
@@ -41,6 +43,76 @@ export function problemToFormData(p: AdminProblemDetail): ProblemFormData {
         allowed_lang_ids: [...p.allowed_lang_ids],
         is_manually_managed: p.is_manually_managed,
         pdf_url: p.pdf_url,
+        source: p.source,
+        date: p.date ? toLocalInput(p.date) : '',
+        license_id: p.license_id ?? undefined,
+        og_image: p.og_image,
+        summary: p.summary,
+        is_full_markup: p.is_full_markup,
+        submission_source_visibility_mode: p.submission_source_visibility_mode,
+        testcase_visibility_mode: p.testcase_visibility_mode,
+        is_organization_private: p.is_organization_private,
+        organization_ids: [...p.organization_ids],
+        banned_user_ids: [...p.banned_user_ids],
+        suggester_id: p.suggester_id ?? undefined,
+        curator_ids: [...p.curator_ids],
+        tester_ids: [...p.tester_ids],
+    };
+}
+
+function sharedProblemFields(data: ProblemFormData) {
+    return {
+        name: data.name,
+        description: data.description,
+        points: data.points,
+        partial: data.partial,
+        is_public: data.is_public,
+        time_limit: data.time_limit,
+        memory_limit: data.memory_limit,
+        is_manually_managed: data.is_manually_managed ?? false,
+        pdf_url: data.pdf_url ?? '',
+        group_id: data.group_id,
+        type_ids: data.type_ids ?? [],
+        author_ids: data.author_ids ?? [],
+        allowed_lang_ids: data.allowed_lang_ids ?? [],
+        source: data.source ?? '',
+        date: data.date ? fromLocalInput(data.date) : null,
+        license_id: data.license_id ?? null,
+        og_image: data.og_image ?? '',
+        summary: data.summary ?? '',
+        is_full_markup: data.is_full_markup ?? false,
+        submission_source_visibility_mode: data.submission_source_visibility_mode,
+        testcase_visibility_mode: data.testcase_visibility_mode,
+        is_organization_private: data.is_organization_private ?? false,
+        organization_ids: data.organization_ids ?? [],
+        banned_user_ids: data.banned_user_ids ?? [],
+        suggester_id: data.suggester_id ?? null,
+        curator_ids: data.curator_ids ?? [],
+        tester_ids: data.tester_ids ?? [],
+    };
+}
+
+export function problemFormToCreate(data: ProblemFormData): AdminProblemCreateRequest {
+    return { ...sharedProblemFields(data), code: data.code };
+}
+
+/**
+ * PATCH ignores a null on `date`/`license_id`/`suggester_id` (nil = no change),
+ * so an emptied field has to say so with its clear flag instead.
+ */
+export function problemFormToUpdate(data: ProblemFormData, existing?: AdminProblemDetail): AdminProblemUpdateRequest {
+    const fields = sharedProblemFields(data);
+    const clearDate = !data.date && !!existing?.date;
+    const clearLicenseID = data.license_id == null && existing?.license_id != null;
+    const clearSuggesterID = data.suggester_id == null && existing?.suggester_id != null;
+    return {
+        ...fields,
+        date: clearDate ? undefined : fields.date,
+        license_id: clearLicenseID ? undefined : fields.license_id,
+        suggester_id: clearSuggesterID ? undefined : fields.suggester_id,
+        ...(clearDate ? { clear_date: true } : {}),
+        ...(clearLicenseID ? { clear_license_id: true } : {}),
+        ...(clearSuggesterID ? { clear_suggester_id: true } : {}),
     };
 }
 
