@@ -27,6 +27,8 @@ interface EntityPickerProps {
     placeholder?: string;
     /** Only one value may be selected; picking another replaces it. */
     single?: boolean;
+    /** Set false to render no remove button (e.g. a required single value). */
+    clearable?: boolean;
 }
 
 /**
@@ -34,7 +36,7 @@ interface EntityPickerProps {
  * thousands of users/problems (list endpoints cap a page at 100). Selected
  * items render as removable chips in selection order.
  */
-export function EntityPicker({ id, label, value, onChange, search, queryKey, initialOptions = [], placeholder, single = false }: EntityPickerProps) {
+export function EntityPicker({ id, label, value, onChange, search, queryKey, initialOptions = [], placeholder, single = false, clearable = true }: EntityPickerProps) {
     const t = useTranslations('Admin');
     const [term, setTerm] = useState('');
     const [open, setOpen] = useState(false);
@@ -75,14 +77,16 @@ export function EntityPicker({ id, label, value, onChange, search, queryKey, ini
                             <li key={v} className="inline-flex items-center gap-1 rounded-md border bg-muted/50 pl-2 pr-1 py-0.5 text-sm">
                                 <span>{text}</span>
                                 {o?.detail && <span className="text-xs text-muted-foreground">{o.detail}</span>}
-                                <button
-                                    type="button"
-                                    aria-label={t('picker.remove', { label: text })}
-                                    onClick={() => onChange(value.filter(x => x !== v))}
-                                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                                >
-                                    <X size={14} />
-                                </button>
+                                {clearable && (
+                                    <button
+                                        type="button"
+                                        aria-label={t('picker.remove', { label: text })}
+                                        onClick={() => onChange(value.filter(x => x !== v))}
+                                        className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                             </li>
                         );
                     })}

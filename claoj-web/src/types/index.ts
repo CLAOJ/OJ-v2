@@ -951,7 +951,6 @@ export interface AdminTicketUpdateRequest {
 
 export interface AdminTicketMessageUpdateRequest {
     body?: string;
-    user_id?: number;
 }
 
 // ============================================================

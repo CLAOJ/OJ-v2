@@ -45,6 +45,12 @@ describe('EntityPicker', () => {
         expect(onChange).toHaveBeenCalledWith([]);
     });
 
+    it('offers no remove button when not clearable', () => {
+        renderPicker({ single: true, clearable: false });
+        expect(screen.getByText('alice')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'picker.remove' })).not.toBeInTheDocument();
+    });
+
     it('does not search for an empty term', async () => {
         const { search } = renderPicker();
         fireEvent.change(screen.getByRole('combobox'), { target: { value: '   ' } });

@@ -7,7 +7,7 @@ import { adminTicketApi, adminUserApi, adminErrorMessage } from '@/lib/adminApi'
 import { searchProblems, searchContests, searchUsers } from '@/lib/adminSearch';
 import { EntityPicker } from '@/components/admin/EntityPicker';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { AdminTicketDetail, TicketMessage } from '@/types';
+import { AdminTicketDetail, AdminTicketUpdateRequest, TicketMessage } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
@@ -47,15 +47,30 @@ function TicketDetailsForm({ ticket, onSaved }: { ticket: AdminTicketDetail; onS
     const [title, setTitle] = useState(ticket.title);
     const [creatorIds, setCreatorIds] = useState<number[]>(ticket.creator_id ? [ticket.creator_id] : []);
     const [linkedType, setLinkedType] = useState<'problem' | 'contest' | ''>(ticket.linked_type || '');
-    const [linkedIds, setLinkedIds] = useState<number[]>(ticket.linked_id ? [ticket.linked_id] : []);
+    // Selections are kept per type so toggling problem -> contest -> problem
+    // does not throw the previous pick away.
+    const [linkedSelections, setLinkedSelections] = useState<Record<string, number[]>>(
+        () => (ticket.linked_type && ticket.linked_id ? { [ticket.linked_type]: [ticket.linked_id] } : {})
+    );
+    const linkedIds = linkedSelections[linkedType] ?? [];
+    const setLinkedIds = (ids: number[]) => setLinkedSelections(prev => ({ ...prev, [linkedType]: ids }));
+    const linkedIncomplete = linkedType !== '' && !linkedIds[0];
 
     const saveMutation = useMutation({
-        mutationFn: () => adminTicketApi.update(ticket.id, {
-            title,
-            user_id: creatorIds[0] ?? ticket.creator_id,
-            linked_type: linkedType,
-            linked_id: linkedType ? (linkedIds[0] ?? 0) : 0,
-        }),
+        mutationFn: () => {
+            // Only send what changed: an untouched (possibly orphaned) link must
+            // survive a save, and user_id is a judge_profile id, so 0 is invalid.
+            const data: AdminTicketUpdateRequest = {};
+            if (title !== ticket.title) data.title = title;
+            if (creatorIds[0] && creatorIds[0] !== ticket.creator_id) data.user_id = creatorIds[0];
+            const linkedChanged = linkedType !== (ticket.linked_type || '')
+                || (linkedType !== '' && linkedIds[0] !== ticket.linked_id);
+            if (linkedChanged) {
+                data.linked_type = linkedType;
+                data.linked_id = linkedType === '' ? 0 : linkedIds[0];
+            }
+            return adminTicketApi.update(ticket.id, data);
+        },
         onSuccess: () => {
             toast.success(t('detailsSaved'));
             onSaved();
@@ -92,16 +107,14 @@ function TicketDetailsForm({ ticket, onSaved }: { ticket: AdminTicketDetail; onS
                     queryKey="users"
                     initialOptions={ticket.creator_id ? [{ id: ticket.creator_id, label: ticket.creator }] : []}
                     single
+                    clearable={false}
                 />
                 <div className="space-y-2">
                     <label htmlFor="ticket-linked-type" className="text-sm font-medium text-muted-foreground block">{t('linkedItemLabel')}</label>
                     <select
                         id="ticket-linked-type"
                         value={linkedType}
-                        onChange={(e) => {
-                            setLinkedType(e.target.value as 'problem' | 'contest' | '');
-                            setLinkedIds([]);
-                        }}
+                        onChange={(e) => setLinkedType(e.target.value as 'problem' | 'contest' | '')}
                         className="w-full h-9 px-3 rounded-md border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                     >
                         <option value="">{t('linkedNoneOption')}</option>
@@ -118,6 +131,7 @@ function TicketDetailsForm({ ticket, onSaved }: { ticket: AdminTicketDetail; onS
                             queryKey={linkedQueryKey}
                             initialOptions={linkedInitial}
                             single
+                            clearable={false}
                         />
                     )}
                     {ticket.linked_path && (
@@ -135,7 +149,7 @@ function TicketDetailsForm({ ticket, onSaved }: { ticket: AdminTicketDetail; onS
             <div className="flex justify-end">
                 <button
                     onClick={() => saveMutation.mutate()}
-                    disabled={saveMutation.isPending || !title.trim()}
+                    disabled={saveMutation.isPending || !title.trim() || linkedIncomplete}
                     className="px-6 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                     {saveMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
