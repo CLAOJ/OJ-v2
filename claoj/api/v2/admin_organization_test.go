@@ -110,6 +110,11 @@ func TestAdminOrganizationCreateUpdate_RoundTrip(t *testing.T) {
 		"logo_override_image":"/logo/rt.png","admins":[`+strconv.Itoa(int(ada.ID))+`]}`)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
+	created := detailBody(t, w.Body)
+	require.Equal(t, "Round Trip", created["name"])
+	require.NotContains(t, created, "organization", "create returns the flat detail body")
+	require.Len(t, created["admins"], 1)
+
 	var org models.Organization
 	require.NoError(t, db.DB.Where("slug = ?", "round-trip").First(&org).Error)
 	require.Equal(t, "/logo/rt.png", org.LogoOverrideImage)
@@ -121,6 +126,10 @@ func TestAdminOrganizationCreateUpdate_RoundTrip(t *testing.T) {
 		"is_open":false,"slots":9}`)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
+	updated := detailBody(t, w.Body)
+	require.Equal(t, "/logo/rt2.png", updated["logo_override_image"])
+	require.NotContains(t, updated, "organization", "update returns the flat detail body")
+
 	require.NoError(t, db.DB.First(&org, org.ID).Error)
 	require.Equal(t, "/logo/rt2.png", org.LogoOverrideImage)
 	require.False(t, org.IsOpen)
@@ -131,6 +140,66 @@ func TestAdminOrganizationCreateUpdate_RoundTrip(t *testing.T) {
 	w = doRequest(update, http.MethodPatch, orgURL(org, ""), `{"admins":[]}`)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	require.Empty(t, dbOrgAdminIDs(t, org.ID))
+}
+
+// A patch that does not mention admins must not touch the m2m table; the
+// empty-slice case is covered by the round-trip test above.
+func TestAdminOrganizationUpdate_OmittingAdminsKeepsMembership(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	_, ada := seedAccount(t, "ada", false, false)
+	_, bob := seedAccount(t, "bob", false, false)
+	org := seedOrganization(t, "keep")
+	require.NoError(t, db.DB.Model(&org).Association("Admins").Append(&ada, &bob))
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	w := doRequest(router, http.MethodPatch, orgURL(org, ""), `{"name":"Keep2"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	require.Equal(t, []uint{ada.ID, bob.ID}, dbOrgAdminIDs(t, org.ID),
+		"a patch without admins must leave membership intact")
+	require.Len(t, detailBody(t, w.Body)["admins"], 2)
+}
+
+// v1 keeps admins/is_open/slots readonly on create without
+// judge.organization_admin; the create handler must 403 before inserting.
+func TestAdminOrganizationCreate_RestrictedFieldsGate(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	_, plainUser := seedAccount(t, "staffer", true, false)
+	_, ada := seedAccount(t, "ada", false, false)
+
+	router := authedRouter(plainUser.ID, http.MethodPost, "/admin/organizations", AdminOrganizationCreate)
+	bodies := []string{
+		`{"name":"Open","slug":"open","short_name":"O","is_open":true}`,
+		`{"name":"Slots","slug":"slots","short_name":"S","slots":5}`,
+		`{"name":"Admins","slug":"admins","short_name":"A","admins":[` + strconv.Itoa(int(ada.ID)) + `]}`,
+	}
+	for _, body := range bodies {
+		w := doRequest(router, http.MethodPost, "/admin/organizations", body)
+		require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	}
+
+	var count int64
+	require.NoError(t, db.DB.Model(&models.Organization{}).Count(&count).Error)
+	require.Zero(t, count, "a rejected create must not insert the organization")
+
+	w := doRequest(router, http.MethodPost, "/admin/organizations", `{"name":"Plain","slug":"plain","short_name":"P"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+}
+
+func TestAdminOrganizationUpdate_ClearSlots(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	org := seedOrganization(t, "slotted")
+	require.NoError(t, db.DB.Model(&org).Update("slots", 5).Error)
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	w := doRequest(router, http.MethodPatch, orgURL(org, ""), `{"clear_slots":true}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var stored models.Organization
+	require.NoError(t, db.DB.First(&stored, org.ID).Error)
+	require.Nil(t, stored.Slots)
 }
 
 func TestAdminOrganizationUpdate_CreationDateIgnored(t *testing.T) {
@@ -155,6 +224,7 @@ func TestAdminOrganizationUpdate_RestrictedFieldsGate(t *testing.T) {
 	_, plainUser := seedAccount(t, "orgadmin", true, false)
 	_, adminProfile := seedAccount(t, "ada", false, false)
 	org := seedOrganization(t, "gated")
+	require.NoError(t, db.DB.Model(&org).Update("slots", 5).Error)
 	require.NoError(t, db.DB.Model(&org).Association("Admins").Append(&adminProfile))
 
 	withoutPerm := authedRouter(plainUser.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
@@ -168,6 +238,7 @@ func TestAdminOrganizationUpdate_RestrictedFieldsGate(t *testing.T) {
 		{"echoed values pass", `{"name":"Gated","is_open":false,"admins":[` + adminJSON + `]}`, http.StatusOK},
 		{"open status change", `{"is_open":true}`, http.StatusForbidden},
 		{"slots change", `{"slots":4}`, http.StatusForbidden},
+		{"slots clear", `{"clear_slots":true}`, http.StatusForbidden},
 		{"admins change", `{"admins":[]}`, http.StatusForbidden},
 	}
 	for _, tc := range cases {
@@ -187,6 +258,11 @@ func TestAdminOrganizationUpdate_RestrictedFieldsGate(t *testing.T) {
 	require.True(t, stored.IsOpen)
 	require.Equal(t, 4, *stored.Slots)
 	require.Empty(t, dbOrgAdminIDs(t, org.ID))
+
+	w = doRequest(withPerm, http.MethodPatch, orgURL(org, ""), `{"clear_slots":true}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&stored, org.ID).Error)
+	require.Nil(t, stored.Slots)
 }
 
 func TestAdminOrganizationUpdate_UnknownAdminIDs(t *testing.T) {

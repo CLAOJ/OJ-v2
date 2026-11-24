@@ -362,6 +362,7 @@ export interface AdminOrganizationUpdateRequest {
     is_open?: boolean;
     is_unlisted?: boolean;
     slots?: number;
+    clear_slots?: boolean;
     access_code?: string;
     logo_override_image?: string;
     admins?: number[];
@@ -388,10 +389,10 @@ export const adminOrganizationApi = {
         api.get<AdminOrganizationDetail>(`/admin/organization/${id}`),
 
     create: (data: AdminOrganizationCreateRequest) =>
-        api.post<{ success: boolean; organization: AdminOrganizationDetail }>('/admin/organizations', data),
+        api.post<AdminOrganizationDetail>('/admin/organizations', data),
 
     update: (id: number, data: AdminOrganizationUpdateRequest) =>
-        api.patch<{ success: boolean; organization: AdminOrganizationDetail }>(`/admin/organization/${id}`, data),
+        api.patch<AdminOrganizationDetail>(`/admin/organization/${id}`, data),
 
     recalculate: (id: number) =>
         api.post<{ performance_points: number }>(`/admin/organization/${id}/recalculate`),

@@ -395,7 +395,13 @@ func AdminOrganizationDetail(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, organizationDetailBody(profile))
+}
+
+// organizationDetailBody is the flat admin organization payload shared by
+// detail, create and update so all three return one shape.
+func organizationDetailBody(profile *organization.OrganizationProfile) gin.H {
+	return gin.H{
 		"id":                  profile.ID,
 		"name":                profile.Name,
 		"slug":                profile.Slug,
@@ -410,7 +416,7 @@ func AdminOrganizationDetail(c *gin.Context) {
 		"member_count":        profile.MemberCount,
 		"performance_points":  profile.PerformancePoints,
 		"admins":              profile.Admins,
-	})
+	}
 }
 
 // AdminOrganizationCreate - POST /api/v2/admin/organizations
@@ -461,10 +467,7 @@ func AdminOrganizationCreate(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"organization": profile,
-	})
+	c.JSON(http.StatusOK, organizationDetailBody(profile))
 }
 
 // AdminOrganizationUpdate - PATCH /api/v2/admin/organization/:id
@@ -484,6 +487,7 @@ func AdminOrganizationUpdate(c *gin.Context) {
 		IsOpen            *bool   `json:"is_open"`
 		IsUnlisted        *bool   `json:"is_unlisted"`
 		Slots             *int    `json:"slots"`
+		ClearSlots        bool    `json:"clear_slots"` // explicit null: *int cannot tell absent from null
 		AccessCode        *string `json:"access_code"`
 		LogoOverrideImage *string `json:"logo_override_image"`
 		Admins            *[]uint `json:"admins"`
@@ -504,6 +508,7 @@ func AdminOrganizationUpdate(c *gin.Context) {
 	// v1 where these fields are readonly without judge.organization_admin.
 	restrictedChange := (input.IsOpen != nil && *input.IsOpen != org.IsOpen) ||
 		(input.Slots != nil && (org.Slots == nil || *org.Slots != *input.Slots)) ||
+		(input.ClearSlots && org.Slots != nil) ||
 		(input.Admins != nil && !sameIDs(orgAdminIDs(org.Admins), *input.Admins))
 	if restrictedChange && !auth.HasPerm(c, "judge.organization_admin") {
 		c.JSON(http.StatusForbidden, apiUserError("changing administrators, open status or slots requires the judge.organization_admin permission"))
@@ -525,6 +530,7 @@ func AdminOrganizationUpdate(c *gin.Context) {
 		IsOpen:            input.IsOpen,
 		IsUnlisted:        input.IsUnlisted,
 		Slots:             input.Slots,
+		ClearSlots:        input.ClearSlots,
 		AccessCode:        input.AccessCode,
 		LogoOverrideImage: input.LogoOverrideImage,
 		AdminIDs:          input.Admins,
@@ -538,10 +544,7 @@ func AdminOrganizationUpdate(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"organization": profile,
-	})
+	c.JSON(http.StatusOK, organizationDetailBody(profile))
 }
 
 // AdminOrganizationRecalculate - POST /api/v2/admin/organization/:id/recalculate

@@ -53,7 +53,7 @@ const inputClass = 'w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focu
 export default function OrganizationEditModal({ organizationId, onClose }: OrganizationEditModalProps) {
     const t = useTranslations('Admin');
     const isEdit = organizationId !== null;
-    const { data: detail, isLoading } = useQuery({
+    const { data: detail, isLoading, isError } = useQuery({
         queryKey: ['admin-organization', organizationId],
         queryFn: async () => (await adminOrganizationApi.get(organizationId as number)).data,
         enabled: isEdit,
@@ -73,6 +73,8 @@ export default function OrganizationEditModal({ organizationId, onClose }: Organ
 
                 {isEdit && isLoading ? (
                     <p className="text-muted-foreground py-8 text-center">{t('common.loading')}</p>
+                ) : isEdit && isError ? (
+                    <p className="text-destructive py-8 text-center">{t('organizations.loadFailed')}</p>
                 ) : (
                     <OrganizationForm organizationId={organizationId} detail={detail} onClose={onClose} />
                 )}
@@ -127,6 +129,7 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
                     admins: form.admins,
                 };
                 if (slots !== undefined) payload.slots = slots;
+                else payload.clear_slots = true;
                 return adminOrganizationApi.update(organizationId as number, payload);
             }
             const create: AdminOrganizationCreateRequest = {

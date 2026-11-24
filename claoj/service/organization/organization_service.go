@@ -28,7 +28,6 @@ type OrganizationProfile struct {
 	PerformancePoints float64
 	Admins            []relations.UserRef
 	AdminIDs          []uint
-	MemberIDs         []uint
 }
 
 // CreateOrganizationRequest holds the parameters for creating an organization.
@@ -55,6 +54,7 @@ type UpdateOrganizationRequest struct {
 	IsOpen            *bool
 	IsUnlisted        *bool
 	Slots             *int
+	ClearSlots        bool
 	AccessCode        *string
 	LogoOverrideImage *string
 	AdminIDs          *[]uint
@@ -158,9 +158,11 @@ func (s *OrganizationService) ListOrganizations(req ListOrganizationsRequest) (*
 }
 
 // GetOrganization retrieves an organization by ID with full details.
+// Members are not preloaded: the admin form needs only member_count, which
+// Django maintains on the row, so loading every member would be wasted.
 func (s *OrganizationService) GetOrganization(req GetOrganizationRequest) (*OrganizationProfile, error) {
 	var org models.Organization
-	if err := db.DB.Preload("Admins.User").Preload("Members").First(&org, req.OrganizationID).Error; err != nil {
+	if err := db.DB.Preload("Admins.User").First(&org, req.OrganizationID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrOrganizationNotFound
 		}
@@ -232,6 +234,8 @@ func (s *OrganizationService) UpdateOrganization(req UpdateOrganizationRequest) 
 		}
 		if req.Slots != nil {
 			updates["slots"] = *req.Slots
+		} else if req.ClearSlots {
+			updates["slots"] = nil
 		}
 		if req.AccessCode != nil {
 			updates["access_code"] = *req.AccessCode
@@ -338,7 +342,6 @@ func (s *OrganizationService) KickUser(req KickUserRequest) error {
 
 func organizationToProfile(o models.Organization) OrganizationProfile {
 	adminIDs := getProfileIDs(o.Admins)
-	memberIDs := getProfileIDs(o.Members)
 
 	return OrganizationProfile{
 		ID:                o.ID,
@@ -356,7 +359,6 @@ func organizationToProfile(o models.Organization) OrganizationProfile {
 		PerformancePoints: o.PerformancePoints,
 		Admins:            relations.UserRefs(o.Admins),
 		AdminIDs:          adminIDs,
-		MemberIDs:         memberIDs,
 	}
 }
 
