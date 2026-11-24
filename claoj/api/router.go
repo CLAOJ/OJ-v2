@@ -417,6 +417,10 @@ func NewRouter() *gin.Engine {
 		// Uploaded markdown images (blog posts, license text)
 		apiv2.GET("/media/:name", v2.MarkdownMediaServe)
 
+		// Uploaded submission files for file-only languages. The judge agent
+		// fetches SiteFullURL + SubmissionSource.source, i.e. this route.
+		apiv2.GET("/submission-file/:name", v2.SubmissionFileServe)
+
 		// Flat pages + redirects (v1 contrib tables). /page feeds the web
 		// catch-all route, /redirects-map feeds the web proxy's path redirects.
 		apiv2.GET("/page", v2.FlatPageLookup)
