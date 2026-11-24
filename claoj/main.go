@@ -29,6 +29,8 @@ func main() {
 	// replica shares them and the MySQL schema stays Django-owned.
 	authHandlers.RefreshStore = tokenstore.NewRedisStore(cache.Client)
 	authHandlers.OneTimeTokens = tokenstore.NewRedisOneTime(cache.Client)
+	// NewRedisStore falls back to the in-memory store (with a warning) when
+	// cache.Client is nil, so a missing Redis client cannot panic on write.
 	auditlog.Default = auditlog.NewRedisStore(cache.Client)
 
 	// Background jobs. Submissions go to asynq queue "judge", consumed only

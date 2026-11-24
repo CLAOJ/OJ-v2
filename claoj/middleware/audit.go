@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -90,11 +91,24 @@ func Audit() gin.HandlerFunc {
 			}
 		}
 
-		// Save audit log asynchronously (don't block response)
+		// Save audit log asynchronously (don't block response). Failures are
+		// logged: silently dropping them made a broken audit trail (Redis
+		// down, store not wired) look like "no admin traffic".
 		go func() {
-			if err := auditlog.Default.Write(entry); err != nil {
-				// Log error but don't fail the request
-				// In production, consider sending to error monitoring
+			// A panic here runs outside the request goroutine, so
+			// RecoveryMiddleware cannot catch it and the process would die.
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("audit: recovered panic writing %s %s: %v", entry.Action, entry.Resource, r)
+				}
+			}()
+			store := auditlog.Default
+			if store == nil {
+				log.Printf("audit: auditlog.Default is not configured; dropping %s %s", entry.Action, entry.Resource)
+				return
+			}
+			if err := store.Write(entry); err != nil {
+				log.Printf("audit: write failed for %s %s: %v", entry.Action, entry.Resource, err)
 			}
 		}()
 	}

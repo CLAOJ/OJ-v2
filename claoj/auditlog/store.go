@@ -8,6 +8,7 @@ package auditlog
 import (
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"sync"
@@ -185,6 +186,12 @@ type redisStore struct {
 // in-code (a stream has no secondary indexes); Get looks up a single
 // entry by its exact stream ID via XRANGE id id.
 func NewRedisStore(client *redis.Client) Store {
+	if client == nil {
+		// No Redis client wired (e.g. cache.Client is nil); writing through a
+		// nil *redis.Client would panic, so keep entries in-process instead.
+		log.Printf("warning: auditlog: Redis client is nil; falling back to the in-memory store")
+		return NewMemoryStore()
+	}
 	return &redisStore{client: client, ctx: context.Background()}
 }
 

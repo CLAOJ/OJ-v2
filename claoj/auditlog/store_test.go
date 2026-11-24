@@ -191,3 +191,20 @@ func TestRedisStore_StreamLayout(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, length)
 }
+
+// TestNewRedisStore_NilClient_FallsBackToMemory covers startup wiring where
+// cache.Client is nil: the store must keep writing (in-process) instead of
+// panicking on a nil *redis.Client inside the audit middleware's goroutine.
+func TestNewRedisStore_NilClient_FallsBackToMemory(t *testing.T) {
+	store := NewRedisStore(nil)
+
+	require.NotPanics(t, func() {
+		require.NoError(t, store.Write(Entry{Action: "CREATE", Resource: "Problem"}))
+	})
+
+	entries, total, err := store.List(Filters{}, 1, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Len(t, entries, 1)
+	require.Equal(t, "CREATE", entries[0].Action)
+}
