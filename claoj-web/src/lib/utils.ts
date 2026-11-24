@@ -34,6 +34,18 @@ export function formatLimitMemory(kilobytes: number | null | undefined): string 
     return `${Math.round(kilobytes / 1024)} MB`;
 }
 
+/**
+ * Problem memory limit in KB → "512 MB" / "512 KB". Kept separate from
+ * formatLimitMemory because sub-megabyte values stay in KB (v1 shows them so)
+ * and non-integers keep one decimal.
+ */
+export function formatMemoryLimit(kilobytes?: number | null): string {
+    if (kilobytes == null) return '—';
+    if (kilobytes < 1024) return `${kilobytes} KB`;
+    const mb = kilobytes / 1024;
+    return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
+}
+
 export function getStatusColor(status: string): string {
     switch (status) {
         case 'AC': return 'text-emerald-500';

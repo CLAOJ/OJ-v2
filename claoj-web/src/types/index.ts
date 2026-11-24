@@ -44,7 +44,15 @@ export interface ProblemDetail extends Problem {
     time_limit: number;
     memory_limit: number;
     group: string;
-    languages: { key: string; name: string }[];
+    languages: {
+        key: string;
+        name: string;
+        /** File extension without the dot, e.g. "cpp" (used by file-only languages). */
+        extension?: string;
+        file_only?: boolean;
+        /** Max upload size in MB; 0 means file submissions are disabled. */
+        file_size_limit?: number;
+    }[];
     types: { name: string }[];
     authors: { username: string }[];
     is_solved: boolean;

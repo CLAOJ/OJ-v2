@@ -192,6 +192,26 @@
     "summary": "Tóm tắt",
     "searchPlaceholder": "Mã hoặc tên bài...",
     "submitFailed": "Nộp bài thất bại",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "loadFromFile": "Tải từ tệp",
+    "loadFromFileHint": "Đọc tệp mã nguồn (tối đa {size} KB) vào trình soạn thảo",
+    "downloadPdf": "Tải PDF",
+    "reportProblem": "Báo lỗi đề bài",
+    "partialScoring": "Chấm điểm từng phần",
+    "fileSubmit": {
+      "label": "Tệp mã nguồn",
+      "choose": "Chọn tệp",
+      "hint": "Chấp nhận: .{ext} · tối đa {size} MB",
+      "errors": {
+        "empty": "Tệp rỗng",
+        "tooLarge": "Tệp quá lớn",
+        "wrongExtension": "Sai định dạng tệp cho ngôn ngữ này",
+        "notEnabled": "Ngôn ngữ này chưa bật nộp bằng tệp",
+        "missing": "Hãy chọn tệp để nộp",
+        "unreadable": "Không đọc được tệp"
+      }
+    },
     "advancedFilters": "Bộ lọc nâng cao",
     "solvedStatus": "Trạng thái giải",
     "statusAll": "Tất cả",
@@ -237,6 +257,11 @@
       "suggester": "Người đề xuất",
       "date": "Ngày"
     }
+  },
+  "ProblemPrint": {
+    "print": "In / Lưu thành PDF",
+    "back": "Quay lại bài toán",
+    "uploadedPdfNote": "Bài này còn có đề PDF chính thức; mở trang bài toán để xem."
   },
   "Contest": {
     "title": "Kỳ thi",

@@ -33,7 +33,7 @@ export default function Footer() {
 
     return (
         <>
-            <footer className="border-t bg-card pt-12 pb-6">
+            <footer className="border-t bg-card pt-12 pb-6 print:hidden">
                 <div className="container mx-auto px-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                         <div className="col-span-1 md:col-span-2">
@@ -91,14 +91,14 @@ export default function Footer() {
                     onClick={() => setExpanded(true)}
                     aria-label={t('supportTitle')}
                     title={t('supportTitle')}
-                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform "
+                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform print:hidden"
                 >
                     <Heart size={20} className="fill-white" />
                 </button>
             )}
 
             {!dismissed && expanded && (
-                <div className="fixed bottom-5 right-5 z-40 w-[180px] rounded-lg border border-border bg-background shadow-xl">
+                <div className="fixed bottom-5 right-5 z-40 w-[180px] rounded-lg border border-border bg-background shadow-xl print:hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
                         <span className="text-xs font-semibold text-foreground">{t('supportTitle')}</span>

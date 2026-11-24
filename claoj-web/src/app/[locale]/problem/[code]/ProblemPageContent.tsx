@@ -10,7 +10,7 @@ import MathRenderer from '@/components/ui/MathRenderer';
 import CodeEditor from '@/components/ui/CodeEditor';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import {
     Clock,
     HardDrive,
@@ -30,23 +30,23 @@ import {
     BookOpen,
     MessageSquare,
     FileText,
+    Flag,
+    Printer,
+    Upload,
     X
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatMemoryLimit } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import Comments from '@/components/common/Comments';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { toast } from 'sonner';
-
-// The API returns memory_limit in kilobytes (DMOJ convention). Render it in MB
-// when it is at least 1 MB, otherwise keep KB. Previously the raw KB value was
-// printed with an "MB" suffix, so 512 MB showed as "524288MB".
-function formatMemoryLimit(kb?: number | null): string {
-    if (kb == null) return '—';
-    if (kb < 1024) return `${kb} KB`;
-    const mb = kb / 1024;
-    return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
-}
+import {
+    MAX_TEXT_SOURCE_BYTES,
+    problemPrintPath,
+    problemReportPath,
+    validateSubmissionFile,
+    validateTextSourceFile,
+} from '@/lib/submissionFile';
 
 // react-pdf touches browser-only APIs — load it client-side only.
 const PdfStatementViewer = dynamic(() => import('@/components/ui/PdfStatementViewer'), {
@@ -76,6 +76,10 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
     const [language, setLanguage] = useState('');
     const [langOpen, setLangOpen] = useState(false);
     const [showPdfViewer, setShowPdfViewer] = useState(false);
+    const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+    const [isReadingFile, setIsReadingFile] = useState(false);
+    const submissionFileInput = useRef<HTMLInputElement>(null);
+    const textFileInput = useRef<HTMLInputElement>(null);
 
     const { data: problem, isLoading } = useQuery({
         queryKey: ['problem', code, contestKey],
@@ -118,9 +122,25 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
         enabled: !!problem
     });
 
-    const { mutate: submitCode, isPending: isSubmitting } = useMutation({
+    // The selected language decides the submit shape: file-only languages take
+    // an uploaded file, everything else keeps the JSON source path.
+    const selectedLanguage = problem?.languages.find(l => l.key === language);
+    const isFileOnly = !!selectedLanguage?.file_only;
+    // DMOJ stores the extension without a dot ("zip"); tolerate either shape.
+    const fileExtension = (selectedLanguage?.extension ?? '').replace(/^\./, '');
+
+    const { mutate: submitSolution, isPending: isSubmitting } = useMutation({
         mutationFn: async () => {
             const url = contestKey ? `/problem/${code}/submit?contest=${contestKey}` : `/problem/${code}/submit`;
+            if (isFileOnly) {
+                const form = new FormData();
+                form.append('language', language);
+                if (submissionFile) form.append('submission_file', submissionFile);
+                // Axios drops the instance's JSON content type for FormData so
+                // the browser can set the multipart boundary itself.
+                const res = await api.post<{ submission_id: number }>(url, form);
+                return res.data;
+            }
             const res = await api.post<{ submission_id: number }>(url, {
                 language,
                 source: codeValue
@@ -130,10 +150,47 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
         onSuccess: (data) => {
             router.push(`/submission/${data.submission_id}`);
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.error || t('submitFailed'));
+        onError: (err) => {
+            const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
+            toast.error(message || t('submitFailed'));
         }
     });
+
+    const pickSubmissionFile = (file: File | null | undefined) => {
+        if (!file || !selectedLanguage) return;
+        const reason = validateSubmissionFile(file, selectedLanguage);
+        if (reason) {
+            setSubmissionFile(null);
+            toast.error(t(`fileSubmit.errors.${reason}`));
+            return;
+        }
+        setSubmissionFile(file);
+    };
+
+    const loadTextFile = async (file: File | null | undefined) => {
+        if (!file) return;
+        const reason = validateTextSourceFile(file);
+        if (reason) {
+            toast.error(t(`fileSubmit.errors.${reason}`));
+            return;
+        }
+        setIsReadingFile(true);
+        try {
+            setCodeValue(await file.text());
+        } catch {
+            toast.error(t('fileSubmit.errors.unreadable'));
+        } finally {
+            setIsReadingFile(false);
+        }
+    };
+
+    const handleSubmitClick = () => requireAuth(() => {
+        if (isFileOnly && !submissionFile) {
+            toast.error(t('fileSubmit.errors.missing'));
+            return;
+        }
+        submitSolution();
+    }, tAuth('loginToSubmit'));
 
     if (isLoading) {
         return (
@@ -242,6 +299,36 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                     </div>
                 )}
 
+                {/* Print / Save as PDF. v2 has no server-side HTML to PDF engine, so
+                    problems without an uploaded PDF open a print-optimized view and
+                    hand off to the browser's print dialog. */}
+                {!problem.pdf_url && (
+                    <div className="bg-card border rounded-md p-6 shadow-sm">
+                        <Link
+                            href={problemPrintPath(problem.code)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
+                        >
+                            <Printer size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">{t('downloadPdf')}</span>
+                            <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
+                        </Link>
+                    </div>
+                )}
+
+                {/* Problem-scoped report / clarification ticket */}
+                <div className="bg-card border rounded-md p-6 shadow-sm">
+                    <Link
+                        href={problemReportPath(problem.code)}
+                        className="flex items-center gap-3 p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
+                    >
+                        <Flag size={18} className="text-muted-foreground" />
+                        <span className="text-sm font-medium">{t('reportProblem')}</span>
+                        <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
+                    </Link>
+                </div>
+
                 {/* Problem Clarifications Link */}
                 {clarificationsData && clarificationsData.length > 0 && (
                     <div className="bg-card border rounded-md p-6 shadow-sm">
@@ -324,12 +411,17 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                                 <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary font-medium px-3 py-1">
                                     {problem.points} {t('points')}
                                 </Badge>
+                                {problem.partial && (
+                                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/5 text-amber-600 font-medium px-3 py-1">
+                                        {t('partialScoring')}
+                                    </Badge>
+                                )}
                             </div>
                         </header>
 
                         {(problem.description?.trim() || !problem.pdf_url) && (
                             <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-md p-4 shadow-sm leading-relaxed">
-                                <MathRenderer content={problem.description} />
+                                <MathRenderer content={problem.description} copyable />
                             </div>
                         )}
                         {problem.pdf_url && <PdfStatementViewer code={code} />}
@@ -384,65 +476,131 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                     {/* Editor Section */}
                     <div className="flex flex-col gap-4 lg:sticky lg:top-4 h-[75vh] xl:h-[85vh]">
-                        <div className="flex justify-between items-center bg-card border p-2 rounded-md shadow-sm">
-                            <div className="flex items-center gap-2 pl-2">
-                                <Code2 size={16} className="text-muted-foreground" />
-                                <div
-                                    className="relative"
-                                    onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setLangOpen(false); }}
-                                >
-                                    <button
-                                        type="button"
-                                        aria-haspopup="listbox"
-                                        aria-expanded={langOpen}
-                                        onClick={() => setLangOpen(o => !o)}
-                                        className="bg-transparent font-medium outline-none text-xs cursor-pointer hover:text-primary transition-colors"
+                        <div className="bg-card border rounded-md shadow-sm">
+                            <div className="flex justify-between items-center p-2">
+                                <div className="flex items-center gap-2 pl-2">
+                                    <Code2 size={16} className="text-muted-foreground" />
+                                    <div
+                                        className="relative"
+                                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setLangOpen(false); }}
                                     >
-                                        {problem.languages.find(l => l.key === language)?.name ?? ''}
-                                    </button>
-                                    {langOpen && (
-                                        <ul role="listbox" className="absolute left-0 z-20 mt-1 max-h-72 min-w-[10rem] overflow-y-auto rounded-md border bg-card py-1 shadow-md">
-                                            {problem.languages.map(l => (
-                                                <li
-                                                    key={l.key}
-                                                    role="option"
-                                                    aria-selected={l.key === language}
-                                                    tabIndex={0}
-                                                    onClick={() => { setLanguage(l.key); setLangOpen(false); }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' || e.key === ' ') {
-                                                            e.preventDefault();
-                                                            setLanguage(l.key);
-                                                            setLangOpen(false);
-                                                        }
-                                                    }}
-                                                    className="cursor-pointer px-3 py-1 text-xs font-medium text-primary hover:bg-muted hover:text-muted-foreground outline-none"
-                                                >
-                                                    {l.name}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
+                                        <button
+                                            type="button"
+                                            aria-haspopup="listbox"
+                                            aria-expanded={langOpen}
+                                            onClick={() => setLangOpen(o => !o)}
+                                            className="bg-transparent font-medium outline-none text-xs cursor-pointer hover:text-primary transition-colors"
+                                        >
+                                            {problem.languages.find(l => l.key === language)?.name ?? ''}
+                                        </button>
+                                        {langOpen && (
+                                            <ul role="listbox" className="absolute left-0 z-20 mt-1 max-h-72 min-w-[10rem] overflow-y-auto rounded-md border bg-card py-1 shadow-md">
+                                                {problem.languages.map(l => (
+                                                    <li
+                                                        key={l.key}
+                                                        role="option"
+                                                        aria-selected={l.key === language}
+                                                        tabIndex={0}
+                                                        onClick={() => { setLanguage(l.key); setLangOpen(false); setSubmissionFile(null); }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                                e.preventDefault();
+                                                                setLanguage(l.key);
+                                                                setLangOpen(false);
+                                                                setSubmissionFile(null);
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer px-3 py-1 text-xs font-medium text-primary hover:bg-muted hover:text-muted-foreground outline-none"
+                                                    >
+                                                        {l.name}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
                                 </div>
+
+                                <button
+                                    onClick={handleSubmitClick}
+                                    disabled={isSubmitting}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all disabled:opacity-50"
+                                >
+                                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    {t('submit')}
+                                </button>
                             </div>
 
-                            <button
-                                onClick={() => requireAuth(() => submitCode(), tAuth('loginToSubmit'))}
-                                disabled={isSubmitting}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all disabled:opacity-50"
-                            >
-                                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                                {t('submit')}
-                            </button>
+                            {/* Allowed languages: the exact set the submit dropdown offers. */}
+                            <div className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2 text-xs text-muted-foreground">
+                                <span className="font-medium">{t('allowedLanguages')}:</span>
+                                {problem.languages.map(l => (
+                                    <span key={l.key} className="rounded bg-muted px-2 py-0.5 font-medium">
+                                        {l.name}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className="flex-1 rounded-md border overflow-hidden shadow-inner bg-[#1e1e1e]">
-                            <CodeEditor
-                                value={codeValue}
-                                onChange={(val) => setCodeValue(val || '')}
-                                language={language}
-                            />
-                        </div>
+                        {isFileOnly ? (
+                            <div className="flex-1 rounded-md border bg-card flex flex-col items-center justify-center gap-3 p-6 text-center">
+                                <Upload size={32} className="text-muted-foreground" />
+                                <p className="text-sm font-medium">{t('fileSubmit.label')}</p>
+                                <input
+                                    ref={submissionFileInput}
+                                    type="file"
+                                    accept={fileExtension ? `.${fileExtension}` : undefined}
+                                    className="sr-only"
+                                    onChange={(e) => {
+                                        pickSubmissionFile(e.target.files?.[0]);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => submissionFileInput.current?.click()}
+                                    className="max-w-full truncate rounded-md border bg-muted/30 px-4 py-2 text-sm font-medium hover:border-primary/40 hover:text-primary transition-all"
+                                >
+                                    {submissionFile ? submissionFile.name : t('fileSubmit.choose')}
+                                </button>
+                                <p className="text-xs text-muted-foreground">
+                                    {t('fileSubmit.hint', {
+                                        ext: fileExtension,
+                                        size: selectedLanguage?.file_size_limit ?? 0,
+                                    })}
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-end gap-2 text-xs">
+                                    <input
+                                        ref={textFileInput}
+                                        type="file"
+                                        className="sr-only"
+                                        onChange={(e) => {
+                                            void loadTextFile(e.target.files?.[0]);
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => textFileInput.current?.click()}
+                                        disabled={isReadingFile}
+                                        title={t('loadFromFileHint', { size: MAX_TEXT_SOURCE_BYTES / 1024 })}
+                                        className="flex items-center gap-1.5 font-medium text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                                    >
+                                        {isReadingFile ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                                        {t('loadFromFile')}
+                                    </button>
+                                </div>
+                                <div className="flex-1 rounded-md border overflow-hidden shadow-inner bg-[#1e1e1e]">
+                                    <CodeEditor
+                                        value={codeValue}
+                                        onChange={(val) => setCodeValue(val || '')}
+                                        language={language}
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

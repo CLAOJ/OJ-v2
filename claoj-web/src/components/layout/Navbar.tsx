@@ -29,7 +29,7 @@ export default function Navbar() {
 
     return (
         <>
-            <header className="site-nav sticky top-0 z-50 w-full border-b bg-card text-foreground shadow-md">
+            <header className="site-nav sticky top-0 z-50 w-full border-b bg-card text-foreground shadow-md print:hidden">
                 <div className="container mx-auto px-4">
                     <div className="flex h-16 items-center justify-between">
                         {/* Logo and Nav Links */}
