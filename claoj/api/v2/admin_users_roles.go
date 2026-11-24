@@ -311,20 +311,6 @@ func AdminUserUpdate(c *gin.Context) {
 		input.Mute = input.IsMuted
 	}
 
-	if input.Username != nil {
-		if !usernameRegex.MatchString(*input.Username) || len(*input.Username) > 30 {
-			c.JSON(http.StatusBadRequest, apiUserError("invalid username: must be 1-30 chars, alphanumeric or underscore"))
-			return
-		}
-	}
-	if input.Email != nil {
-		addr, err := mail.ParseAddress(*input.Email)
-		if err != nil || addr.Address != *input.Email {
-			c.JSON(http.StatusBadRequest, apiUserError("invalid email address"))
-			return
-		}
-	}
-
 	var target models.Profile
 	if err := db.DB.Preload("User").First(&target, uint(userID)).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -333,6 +319,24 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
+	}
+
+	// Only a *changed* username/email is validated: a legacy account may hold
+	// values that predate these rules (a "." in the username, a display-name
+	// email), and echoing them back unchanged must not block saving the rest of
+	// the form.
+	if input.Username != nil && *input.Username != target.User.Username {
+		if !usernameRegex.MatchString(*input.Username) || len(*input.Username) > 30 {
+			c.JSON(http.StatusBadRequest, apiUserError("invalid username: must be 1-30 chars, alphanumeric or underscore"))
+			return
+		}
+	}
+	if input.Email != nil && *input.Email != target.User.Email {
+		addr, err := mail.ParseAddress(*input.Email)
+		if err != nil || addr.Address != *input.Email {
+			c.JSON(http.StatusBadRequest, apiUserError("invalid email address"))
+			return
+		}
 	}
 
 	// v1 parity: appointing or removing an organization administrator requires
@@ -437,13 +441,23 @@ func AdminUserUpdate(c *gin.Context) {
 			c.JSON(http.StatusConflict, apiUserError(err.Error()))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		// Anything else is an unexpected write failure; never echo DB text.
+		c.JSON(http.StatusInternalServerError, apiError("failed to update user: "+err.Error()))
 		return
 	}
 
-	if input.IsStaff != nil || input.IsSuperuser != nil {
-		// Role changes must invalidate the cached permission snapshot.
+	// Only a real status change warrants the cache bump and the session
+	// revocation; the editor sends the current value on every save.
+	activeChanged := input.IsActive != nil && *input.IsActive != target.User.IsActive
+	if input.IsStaff != nil || input.IsSuperuser != nil || activeChanged {
+		// Role and account-status changes must invalidate the cached
+		// permission snapshot.
 		auth.BumpPermVersion()
+	}
+	if activeChanged {
+		// A deactivated account must not keep sessions opened before the
+		// change (and a reactivated one should start clean).
+		revokeUserSessions(target.UserID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -502,6 +516,11 @@ func AdminUserDelete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
+
+	// Soft deletion deactivates the account: end its sessions and drop the
+	// cached permission snapshot immediately.
+	auth.BumpPermVersion()
+	revokeUserSessions(target.UserID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

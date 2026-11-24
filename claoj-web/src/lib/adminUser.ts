@@ -84,11 +84,17 @@ export function userDetailToForm(d: AdminUserDetail): UserEditorForm {
  * disabled controls never trip the backend's self-demotion/403 guards.
  * `language_id` 0 means "unset", which PATCH cannot express (it validates the
  * id exists), so it is omitted rather than rejected.
+ *
+ * username/email are sent only when they changed: a legacy account may hold a
+ * value the current rules reject, and echoing it back unchanged would fail the
+ * whole save.
  */
-export function formToPatch(form: UserEditorForm, guard: UserFlagGuard): AdminUserUpdateRequest {
+export function formToPatch(
+    form: UserEditorForm,
+    guard: UserFlagGuard,
+    initial: UserEditorForm
+): AdminUserUpdateRequest {
     const patch: AdminUserUpdateRequest = {
-        username: form.username.trim(),
-        email: form.email.trim(),
         first_name: form.first_name,
         last_name: form.last_name,
         username_display_override: form.username_display_override,
@@ -103,6 +109,8 @@ export function formToPatch(form: UserEditorForm, guard: UserFlagGuard): AdminUs
         display_rank: form.display_rank,
         ban_reason: form.ban_reason,
     };
+    if (form.username.trim() !== initial.username) patch.username = form.username.trim();
+    if (form.email.trim() !== initial.email) patch.email = form.email.trim();
     if (form.language_id > 0) patch.language_id = form.language_id;
     if (guard.is_active) patch.is_active = form.is_active;
     if (guard.is_staff) patch.is_staff = form.is_staff;
@@ -163,7 +171,7 @@ export function buildUserSavePlan(
     const formChanged = (Object.keys(initial) as (keyof UserEditorForm)[])
         .some(key => initial[key] !== form[key]);
     return {
-        patch: formChanged ? formToPatch(form, guard) : null,
+        patch: formChanged ? formToPatch(form, guard, initial) : null,
         groupIds: sameIds(groupIds, detail.group_ids) ? null : groupIds,
         permissionIds: sameIds(permissionIds, detail.permission_ids) ? null : permissionIds,
     };

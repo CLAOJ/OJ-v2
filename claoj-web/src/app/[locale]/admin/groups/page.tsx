@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/Dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 import { Shield, Plus, Edit, Trash2, Users, Key, X, UserPlus, AlertCircle } from 'lucide-react';
 
@@ -462,6 +463,10 @@ interface GroupMembersEditorProps {
  */
 function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
     const queryClient = useQueryClient();
+    const { user: viewer } = useAuth();
+    // The member add/remove endpoints are superuser-only; everyone else sees
+    // the list read-only.
+    const canManage = !!viewer?.is_admin;
     const [term, setTerm] = useState('');
     const debouncedTerm = useDebounce(term.trim(), 300);
 
@@ -503,15 +508,19 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
 
     return (
         <div className="space-y-2">
-            <Label htmlFor="group-member-search">{t('addMember')}</Label>
-            <Input
-                id="group-member-search"
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                placeholder={t('searchUsersPlaceholder')}
-            />
+            {canManage && (
+                <>
+                    <Label htmlFor="group-member-search">{t('addMember')}</Label>
+                    <Input
+                        id="group-member-search"
+                        value={term}
+                        onChange={(e) => setTerm(e.target.value)}
+                        placeholder={t('searchUsersPlaceholder')}
+                    />
+                </>
+            )}
 
-            {debouncedTerm.length >= 2 && (
+            {canManage && debouncedTerm.length >= 2 && (
                 <div className="border rounded-xl divide-y max-h-40 overflow-y-auto">
                     {searching ? (
                         <div className="p-3 text-sm text-muted-foreground">{t('loading')}</div>
@@ -546,16 +555,18 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
                                 <p className="text-sm font-medium truncate">{m.username}</p>
                                 <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                aria-label={t('removeMemberNamed', { name: m.username })}
-                                disabled={removeMutation.isPending}
-                                onClick={() => removeMutation.mutate(m.id)}
-                            >
-                                {t('removeMember')}
-                            </Button>
+                            {canManage && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    aria-label={t('removeMemberNamed', { name: m.username })}
+                                    disabled={removeMutation.isPending}
+                                    onClick={() => removeMutation.mutate(m.id)}
+                                >
+                                    {t('removeMember')}
+                                </Button>
+                            )}
                         </div>
                     ))
                 )}

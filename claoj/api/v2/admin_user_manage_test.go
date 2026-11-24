@@ -580,3 +580,84 @@ func TestAdminUserList_FiltersSortAndGroups(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, doRequest(router, http.MethodGet, "/admin/users"+bad, "").Code, bad)
 	}
 }
+
+// seedLegacyAccount inserts a row with values the current validation rules
+// would reject: a "." in the username and a display-name email.
+func seedLegacyAccount(t *testing.T) (models.AuthUser, models.Profile) {
+	t.Helper()
+	u := models.AuthUser{
+		Username: "old.user", Email: "Old User <old@example.com>",
+		Password: "old-hash", IsActive: true,
+	}
+	require.NoError(t, db.DB.Create(&u).Error)
+	p := models.Profile{UserID: u.ID, Timezone: "UTC"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+	return u, p
+}
+
+// Echoing an unchanged legacy username/email back in the PATCH must not block
+// saving other fields; only a *changed* value is validated.
+func TestAdminUserUpdate_UnchangedLegacyIdentityPasses(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	legacy, legacyProfile := seedLegacyAccount(t)
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/user/:id", AdminUserUpdate)
+	w := doRequest(router, http.MethodPatch, profileURL(legacyProfile, ""),
+		`{"username":"old.user","email":"Old User <old@example.com>","first_name":"Legacy"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var got models.AuthUser
+	require.NoError(t, db.DB.First(&got, legacy.ID).Error)
+	require.Equal(t, "Legacy", got.FirstName)
+	require.Equal(t, "old.user", got.Username, "the unchanged legacy username must survive")
+	require.Equal(t, "Old User <old@example.com>", got.Email, "the unchanged legacy email must survive")
+
+	// A different invalid value is still rejected.
+	require.Equal(t, http.StatusBadRequest,
+		doRequest(router, http.MethodPatch, profileURL(legacyProfile, ""), `{"username":"bad name!"}`).Code)
+	require.Equal(t, http.StatusBadRequest,
+		doRequest(router, http.MethodPatch, profileURL(legacyProfile, ""), `{"email":"nope"}`).Code)
+}
+
+// An unexpected write failure must not surface raw database text as a 400.
+func TestAdminUserUpdate_WriteFailureIs500(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	_, targetProfile := seedAccount(t, "bob", false, false)
+
+	require.NoError(t, db.DB.Exec(
+		`CREATE TRIGGER auth_user_update_fails BEFORE UPDATE ON auth_user
+		 BEGIN SELECT RAISE(ABORT, 'boom'); END;`).Error)
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/user/:id", AdminUserUpdate)
+	w := doRequest(router, http.MethodPatch, profileURL(targetProfile, ""), `{"first_name":"X"}`)
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	require.NotContains(t, w.Body.String(), "boom", "raw DB text must not leak to the client")
+	require.Contains(t, w.Body.String(), "An error occurred")
+}
+
+// Unban is also the restore path for a soft-deleted account.
+func TestAdminUserUnban_RestoresSoftDeletedUser(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	plain, plainProfile := seedAccount(t, "bob", false, false)
+
+	deleteRouter := authedRouter(root.ID, http.MethodDelete, "/admin/user/:id", AdminUserDelete)
+	w := doRequest(deleteRouter, http.MethodDelete, profileURL(plainProfile, ""), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	unbanRouter := authedRouter(root.ID, http.MethodPost, "/admin/user/:id/unban", AdminUserUnban)
+	w = doRequest(unbanRouter, http.MethodPost, profileURL(plainProfile, "/unban"), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var got models.AuthUser
+	require.NoError(t, db.DB.First(&got, plain.ID).Error)
+	require.True(t, got.IsActive, "unban must reinstate a soft-deleted account")
+
+	var p models.Profile
+	require.NoError(t, db.DB.First(&p, plainProfile.ID).Error)
+	require.False(t, p.IsUnlisted)
+	require.False(t, p.Mute)
+	require.Nil(t, p.BanReason)
+}

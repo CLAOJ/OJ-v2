@@ -43,7 +43,9 @@ func (s *UserService) BanUser(req BanUserRequest) error {
 	}).Error
 }
 
-// UnbanUser unbans a previously banned user.
+// UnbanUser unbans a previously banned user. It also reactivates the account
+// so a soft-deleted (deactivated + hidden) user has a restore path, matching
+// v1 where unban reinstates.
 func (s *UserService) UnbanUser(req UnbanUserRequest) error {
 	if req.UserID == 0 {
 		return ErrInvalidUserID
@@ -57,11 +59,16 @@ func (s *UserService) UnbanUser(req UnbanUserRequest) error {
 		return err
 	}
 
-	return db.DB.Model(&profile).Updates(map[string]interface{}{
+	if err := db.DB.Model(&profile).Updates(map[string]interface{}{
 		"is_unlisted": false,
 		"mute":        false,
 		"ban_reason":  gorm.Expr("NULL"),
-	}).Error
+	}).Error; err != nil {
+		return err
+	}
+
+	return db.DB.Model(&models.AuthUser{}).Where("id = ?", profile.UserID).
+		Update("is_active", true).Error
 }
 
 // UpdateUser updates a user's profile information.

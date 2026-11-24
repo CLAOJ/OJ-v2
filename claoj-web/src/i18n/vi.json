@@ -1295,6 +1295,7 @@
       "groupFilter": "Lọc theo nhóm",
       "groupAll": "Tất cả nhóm",
       "noUsersFound": "Không tìm thấy người dùng nào",
+      "loadError": "Không thể tải danh sách người dùng. Vui lòng thử lại.",
       "pointsLabel": "{count} điểm",
       "problemsLabel": "{count} bài tập",
       "active": "Hoạt động",

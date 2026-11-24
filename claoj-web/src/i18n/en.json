@@ -1295,6 +1295,7 @@
       "groupFilter": "Group filter",
       "groupAll": "All groups",
       "noUsersFound": "No users found",
+      "loadError": "Could not load users. Please try again.",
       "pointsLabel": "{count} Points",
       "problemsLabel": "{count} Problems",
       "active": "Active",

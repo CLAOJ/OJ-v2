@@ -128,7 +128,8 @@ describe('formToPatch', () => {
     it('omits the flag fields the guard locked', () => {
         const patch = formToPatch(
             { ...form, is_active: false, is_staff: true, is_superuser: true },
-            userFlagGuard(true, true)
+            userFlagGuard(true, true),
+            form
         );
         expect(patch).not.toHaveProperty('is_active');
         expect(patch).not.toHaveProperty('is_staff');
@@ -136,7 +137,7 @@ describe('formToPatch', () => {
     });
 
     it('sends the flag fields when the guard allows them', () => {
-        const patch = formToPatch({ ...form, is_active: false }, userFlagGuard(false, true));
+        const patch = formToPatch({ ...form, is_active: false }, userFlagGuard(false, true), form);
         expect(patch.is_active).toBe(false);
         expect(patch.is_staff).toBe(false);
         expect(patch.is_superuser).toBe(false);
@@ -145,15 +146,24 @@ describe('formToPatch', () => {
     it('trims identity fields and omits an unset language', () => {
         const patch = formToPatch(
             { ...form, username: '  bob ', email: ' b@x.io ', language_id: 0 },
-            userFlagGuard(false, true)
+            userFlagGuard(false, true),
+            form
         );
         expect(patch.username).toBe('bob');
         expect(patch.email).toBe('b@x.io');
         expect(patch).not.toHaveProperty('language_id');
     });
 
+    it('omits an unchanged username/email so a legacy value cannot block the save', () => {
+        const legacy = { ...form, username: 'old.user', email: 'Old User <old@example.com>' };
+        const patch = formToPatch({ ...legacy, first_name: 'New' }, userFlagGuard(false, true), legacy);
+        expect(patch).not.toHaveProperty('username');
+        expect(patch).not.toHaveProperty('email');
+        expect(patch.first_name).toBe('New');
+    });
+
     it('sends a set language id', () => {
-        expect(formToPatch(form, userFlagGuard(false, true)).language_id).toBe(3);
+        expect(formToPatch(form, userFlagGuard(false, true), form).language_id).toBe(3);
     });
 });
 
@@ -216,6 +226,23 @@ describe('buildUserSavePlan', () => {
         expect(plan.patch).toMatchObject({ about: 'new bio' });
         expect(plan.groupIds).toBeNull();
         expect(plan.permissionIds).toBeNull();
+    });
+
+    it('does not echo an unchanged legacy username/email in a profile-only save', () => {
+        const legacy = {
+            ...detail,
+            username: 'old.user',
+            email: 'Old User <old@example.com>',
+        };
+        const plan = buildUserSavePlan(
+            legacy,
+            { ...userDetailToForm(legacy), about: 'new bio' },
+            guard,
+            [...legacy.group_ids],
+            [...legacy.permission_ids]
+        );
+        expect(plan.patch).not.toHaveProperty('username');
+        expect(plan.patch).not.toHaveProperty('email');
     });
 
     it('returns an empty plan when nothing changed', () => {

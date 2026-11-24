@@ -136,13 +136,20 @@ func AdminUserSetPassword(c *gin.Context) {
 	}
 
 	// Sessions opened with the old password must not survive the reset.
-	// RefreshStore is nil in tests.
-	if authHandlers.RefreshStore != nil {
-		if err := authHandlers.RefreshStore.RevokeAllForUser(profile.UserID); err != nil {
-			// Best-effort: the password itself is already changed.
-			log.Printf("admin: revoke sessions of user %d after password reset: %v", profile.UserID, err)
-		}
-	}
+	revokeUserSessions(profile.UserID)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// revokeUserSessions signs the auth_user out everywhere after a credential,
+// account-status or 2FA change, so a stolen session cannot outlive it.
+// RefreshStore is nil in tests.
+func revokeUserSessions(authUserID uint) {
+	if authHandlers.RefreshStore == nil {
+		return
+	}
+	if err := authHandlers.RefreshStore.RevokeAllForUser(authUserID); err != nil {
+		// Best-effort: the state change itself already landed.
+		log.Printf("admin: revoke sessions of user %d: %v", authUserID, err)
+	}
 }

@@ -65,7 +65,7 @@ export default function AdminUserPage() {
         queryFn: async () => (await adminGroupsApi.list()).data.data,
     });
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isError } = useQuery({
         queryKey: ['admin-users', page, search, role, status, filters.group_id, sort, order],
         queryFn: async () => (await adminUserApi.list(page, PAGE_SIZE, {
             search,
@@ -129,6 +129,10 @@ export default function AdminUserPage() {
     };
 
     const users = data?.data || [];
+    const isSuperuser = !!viewer?.is_admin;
+    // Status/password endpoints refuse a non-superuser acting on a staff or
+    // superuser account, so those row actions are hidden rather than failing.
+    const canManageAccount = (u: AdminUser) => isSuperuser || !(u.is_staff || u.is_super_user);
 
     return (
         <div className="space-y-6">
@@ -195,6 +199,10 @@ export default function AdminUserPage() {
             {isLoading ? (
                 <div className="space-y-4">
                     {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-md" />)}
+                </div>
+            ) : isError ? (
+                <div role="alert" className="bg-card rounded-md border p-12 text-center text-destructive">
+                    {t('users.loadError')}
                 </div>
             ) : (
                 <div className="bg-card rounded-md border overflow-hidden">
@@ -312,15 +320,17 @@ export default function AdminUserPage() {
                                                     >
                                                         <Edit size={16} />
                                                     </button>
-                                                    <button
-                                                        onClick={() => { passwordMutation.reset(); setNewPassword(''); setPasswordTarget(user); }}
-                                                        className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                                                        title={t('users.setPasswordButton')}
-                                                        aria-label={t('users.setPasswordButton')}
-                                                    >
-                                                        <KeyRound size={16} />
-                                                    </button>
-                                                    {!user.is_active ? (
+                                                    {canManageAccount(user) && (
+                                                        <button
+                                                            onClick={() => { passwordMutation.reset(); setNewPassword(''); setPasswordTarget(user); }}
+                                                            className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                            title={t('users.setPasswordButton')}
+                                                            aria-label={t('users.setPasswordButton')}
+                                                        >
+                                                            <KeyRound size={16} />
+                                                        </button>
+                                                    )}
+                                                    {canManageAccount(user) && (!user.is_active ? (
                                                         <button
                                                             onClick={() => unbanMutation.mutate(user.id)}
                                                             disabled={unbanMutation.isPending}
@@ -339,16 +349,18 @@ export default function AdminUserPage() {
                                                         >
                                                             <Ban size={16} />
                                                         </button>
+                                                    ))}
+                                                    {canManageAccount(user) && (
+                                                        <button
+                                                            onClick={() => deleteMutation.mutate(user.id)}
+                                                            disabled={deleteMutation.isPending}
+                                                            className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
+                                                            title={t('common.delete')}
+                                                            aria-label={t('common.delete')}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
                                                     )}
-                                                    <button
-                                                        onClick={() => deleteMutation.mutate(user.id)}
-                                                        disabled={deleteMutation.isPending}
-                                                        className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                                        title={t('common.delete')}
-                                                        aria-label={t('common.delete')}
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

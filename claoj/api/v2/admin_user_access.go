@@ -197,9 +197,10 @@ func AdminUserSecurity(c *gin.Context) {
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		if input.TotpEnabled != nil {
 			if err := tx.Model(&models.Profile{}).Where("id = ?", profile.ID).Updates(map[string]interface{}{
-				"is_totp_enabled": false,
-				"totp_key":        nil,
-				"scratch_codes":   nil,
+				"is_totp_enabled":    false,
+				"totp_key":           nil,
+				"scratch_codes":      nil,
+				"last_totp_timecode": 0,
 			}).Error; err != nil {
 				return err
 			}
@@ -219,6 +220,9 @@ func AdminUserSecurity(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
+
+	// A stolen session must not survive a 2FA change.
+	revokeUserSessions(profile.UserID)
 
 	var credCount int64
 	if err := db.DB.Model(&models.WebAuthnCredential{}).Where("user_id = ?", profile.ID).Count(&credCount).Error; err != nil {
