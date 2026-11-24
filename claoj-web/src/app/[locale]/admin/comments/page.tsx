@@ -29,6 +29,8 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Trash2, Edit, Search, Filter, Link as LinkIcon } from 'lucide-react';
 import { Link } from '@/navigation';
 import { formatDateTime } from '@/lib/date';
+import { EntityPicker } from '@/components/admin/EntityPicker';
+import { searchUsers } from '@/lib/adminSearch';
 
 export default function CommentAdminPage() {
     const t = useTranslations('Admin');
@@ -43,12 +45,19 @@ export default function CommentAdminPage() {
     const [editBody, setEditBody] = useState('');
     const [editHidden, setEditHidden] = useState(false);
     const [editReason, setEditReason] = useState('');
+    const [editAuthorIds, setEditAuthorIds] = useState<number[]>([]);
+    const [editPage, setEditPage] = useState('');
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
     const [pageTypeFilter, setPageTypeFilter] = useState<'all' | 'problem' | 'editorial' | 'blog'>('all');
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    // null = bulk confirmation closed; true = hide, false = unhide.
+    const [bulkHidden, setBulkHidden] = useState<boolean | null>(null);
+    const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
     const loadComments = async () => {
         setLoading(true);
+        setSelectedIds([]);
         try {
             const filters: { search?: string; hidden?: 'true' | 'false'; page_type?: 'problem' | 'editorial' | 'blog' } = {};
             if (search) filters.search = search;
@@ -80,6 +89,8 @@ export default function CommentAdminPage() {
         setEditBody(comment.body);
         setEditHidden(comment.hidden);
         setEditReason('');
+        setEditAuthorIds([comment.author_id]);
+        setEditPage(comment.page);
         setIsEditDialogOpen(true);
     };
 
@@ -90,6 +101,8 @@ export default function CommentAdminPage() {
             await adminCommentApi.update(editingComment.id, {
                 body: editBody,
                 hidden: editHidden,
+                author_id: editAuthorIds[0],
+                page: editPage,
                 reason: editReason,
             });
             toast.success(t('comments.updateSuccess'));
@@ -97,6 +110,31 @@ export default function CommentAdminPage() {
             loadComments();
         } catch (error) {
             toast.error(t('comments.updateError'));
+        }
+    };
+
+    const toggleSelected = (id: number) => {
+        setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    };
+
+    const toggleAllOnPage = () => {
+        setSelectedIds((prev) => prev.length === comments.length ? [] : comments.map((c) => c.id));
+    };
+
+    const toggleExpanded = (id: number) => {
+        setExpandedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    };
+
+    const handleBulkHide = async () => {
+        if (bulkHidden === null) return;
+        const ids = [...selectedIds];
+        try {
+            await adminCommentApi.bulkHide(ids, bulkHidden);
+            toast.success(t('comments.bulkSuccess', { count: ids.length }));
+            setBulkHidden(null);
+            loadComments();
+        } catch (error) {
+            toast.error(t('comments.bulkError'));
         }
     };
 
@@ -179,11 +217,38 @@ export default function CommentAdminPage() {
                 </Button>
             </form>
 
+            {/* Bulk actions */}
+            {selectedIds.length > 0 && (
+                <div className="flex items-center gap-3 flex-wrap rounded-lg border bg-muted/40 px-3 py-2">
+                    <span className="text-sm">{t('comments.selectedCount', { count: selectedIds.length })}</span>
+                    <Button size="sm" variant="outline" onClick={() => setBulkHidden(true)}>
+                        <EyeOff className="h-4 w-4 mr-1" />
+                        {t('comments.bulkHideButton')}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setBulkHidden(false)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        {t('comments.bulkUnhideButton')}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
+                        {t('comments.clearSelection')}
+                    </Button>
+                </div>
+            )}
+
             {/* Comments Table */}
             <div className="border rounded-lg overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-10">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4"
+                                    checked={comments.length > 0 && selectedIds.length === comments.length}
+                                    onChange={toggleAllOnPage}
+                                    aria-label={t('comments.selectAll')}
+                                />
+                            </TableHead>
                             <TableHead>{t('comments.colId')}</TableHead>
                             <TableHead>{t('comments.colAuthor')}</TableHead>
                             <TableHead>{t('comments.colPage')}</TableHead>
@@ -197,19 +262,28 @@ export default function CommentAdminPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8">
+                                <TableCell colSpan={9} className="text-center py-8">
                                     {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : comments.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                     {t('comments.noCommentsFound')}
                                 </TableCell>
                             </TableRow>
                         ) : (
                             comments.map((comment) => (
                                 <TableRow key={comment.id}>
+                                    <TableCell>
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4"
+                                            checked={selectedIds.includes(comment.id)}
+                                            onChange={() => toggleSelected(comment.id)}
+                                            aria-label={t('comments.selectRow', { id: comment.id })}
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-mono text-sm">{comment.id}</TableCell>
                                     <TableCell>
                                         <Link
@@ -225,10 +299,19 @@ export default function CommentAdminPage() {
                                             <code className="text-xs">{comment.page}</code>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="max-w-md">
-                                        <div className={`truncate ${comment.hidden ? 'text-muted-foreground italic' : ''}`}>
+                                    <TableCell className="max-w-md align-top">
+                                        <div className={`${expandedIds.includes(comment.id) ? '' : 'line-clamp-2'} ${comment.hidden ? 'text-muted-foreground italic' : ''}`}>
                                             {comment.body}
                                         </div>
+                                        {comment.body.length > 150 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleExpanded(comment.id)}
+                                                className="mt-1 text-xs text-primary hover:underline"
+                                            >
+                                                {expandedIds.includes(comment.id) ? t('comments.showLess') : t('comments.showMore')}
+                                            </button>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={comment.score > 0 ? 'default' : comment.score < 0 ? 'destructive' : 'secondary'}>
@@ -329,6 +412,44 @@ export default function CommentAdminPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <EntityPicker
+                                id="comment_author"
+                                label={t('comments.authorLabel')}
+                                value={editAuthorIds}
+                                onChange={setEditAuthorIds}
+                                search={searchUsers}
+                                queryKey="users"
+                                single
+                                clearable={false}
+                                initialOptions={editingComment ? [{ id: editingComment.author_id, label: editingComment.username }] : []}
+                            />
+                            <div className="grid gap-2">
+                                <Label htmlFor="page">{t('comments.pageLabel')}</Label>
+                                <Input
+                                    id="page"
+                                    value={editPage}
+                                    maxLength={30}
+                                    onChange={(e) => setEditPage(e.target.value)}
+                                    placeholder={t('comments.pagePlaceholder')}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span className="font-medium">{t('comments.revisionsLabel')}: </span>
+                                <span className="text-muted-foreground">{editingComment?.revisions}</span>
+                            </div>
+                            <div>
+                                <span className="font-medium">{t('comments.parentLabel')}: </span>
+                                <span className="text-muted-foreground">
+                                    {editingComment?.parent_id ? `#${editingComment.parent_id}` : t('comments.noParent')}
+                                </span>
+                            </div>
+                        </div>
+                        {editingComment?.parent_id && (
+                            <p className="text-xs text-muted-foreground">{t('comments.parentReadOnlyHint')}</p>
+                        )}
                         <div className="grid gap-2">
                             <Label htmlFor="body">{t('comments.bodyLabel')}</Label>
                             <Textarea
@@ -367,6 +488,30 @@ export default function CommentAdminPage() {
                         </Button>
                         <Button onClick={handleUpdateComment}>
                             {t('common.saveChanges')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Bulk hide/unhide confirmation */}
+            <Dialog open={bulkHidden !== null} onOpenChange={() => setBulkHidden(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {bulkHidden ? t('comments.bulkHideTitle') : t('comments.bulkUnhideTitle')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {bulkHidden
+                                ? t('comments.bulkHideDesc', { count: selectedIds.length })
+                                : t('comments.bulkUnhideDesc', { count: selectedIds.length })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBulkHidden(null)}>
+                            {t('common.cancel')}
+                        </Button>
+                        <Button variant={bulkHidden ? 'destructive' : 'default'} onClick={handleBulkHide}>
+                            {bulkHidden ? t('comments.bulkHideButton') : t('comments.bulkUnhideButton')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

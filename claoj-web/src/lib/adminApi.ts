@@ -621,6 +621,9 @@ export const adminCommentApi = {
     update: (id: number, data: AdminCommentUpdateRequest) =>
         api.patch<{ message: string; comment: { id: number; body: string; hidden: boolean } }>(`/admin/comment/${id}`, data),
 
+    bulkHide: (ids: number[], hidden: boolean) =>
+        api.post<{ updated: number; hidden: boolean }>('/admin/comments/bulk-hide', { ids, hidden }),
+
     delete: (id: number) =>
         api.delete<{ message: string }>(`/admin/comment/${id}`),
 };

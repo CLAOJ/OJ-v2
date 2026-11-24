@@ -1268,11 +1268,14 @@ export interface AdminComment {
     hidden: boolean;
     time: string;
     parent_id?: number;
+    revisions: number;
 }
 
 export interface AdminCommentUpdateRequest {
     body?: string;
     hidden?: boolean;
+    author_id?: number;
+    page?: string;
     reason?: string;
 }
 
