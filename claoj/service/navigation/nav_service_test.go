@@ -1,13 +1,18 @@
 package navigation
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func setupNavServiceDB(t *testing.T) {
@@ -21,6 +26,71 @@ func setupNavServiceDB(t *testing.T) {
 	sqlDB.SetMaxOpenConns(1)
 	require.NoError(t, database.AutoMigrate(&models.NavigationBar{}))
 	db.DB = database
+}
+
+// sqlCapture records the SQL gorm logs, so a test can assert statement order.
+type sqlCapture struct{ lines []string }
+
+func (s *sqlCapture) Printf(format string, args ...interface{}) {
+	s.lines = append(s.lines, fmt.Sprintf(format, args...))
+}
+
+var deleteIDPattern = regexp.MustCompile(`DELETE FROM .*navigationbar.*WHERE.*?= (\d+)`)
+
+// deletedIDs returns the row ids of single-row DELETEs in issue order.
+func (s *sqlCapture) deletedIDs() []uint {
+	var ids []uint
+	for _, line := range s.lines {
+		if m := deleteIDPattern.FindStringSubmatch(line); m != nil {
+			id, err := strconv.Atoi(m[1])
+			if err == nil {
+				ids = append(ids, uint(id))
+			}
+		}
+	}
+	return ids
+}
+
+func setupNavServiceDBWithLogger(t *testing.T, out *sqlCapture) {
+	t.Helper()
+	old := db.DB
+	t.Cleanup(func() { db.DB = old })
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		Logger:                                   logger.New(out, logger.Config{SlowThreshold: time.Second, LogLevel: logger.Info}),
+	})
+	require.NoError(t, err)
+	sqlDB, err := database.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	require.NoError(t, database.AutoMigrate(&models.NavigationBar{}))
+	db.DB = database
+}
+
+// MySQL enforces the self-FK per row (RESTRICT), so deleting a subtree
+// root-first — or in one multi-row statement whose row order is arbitrary —
+// fails with error 1451. SQLite only checks at statement end and cannot
+// reproduce that, so assert the DELETE order instead: leaves first.
+func TestDeleteNavigation_DeletesLeavesFirst(t *testing.T) {
+	var out sqlCapture
+	setupNavServiceDBWithLogger(t, &out)
+	svc := NewNavigationService()
+
+	root, err := svc.CreateNavigation(CreateNavigationRequest{Key: "root", Label: "Root", Path: "/"})
+	require.NoError(t, err)
+	child, err := svc.CreateNavigation(CreateNavigationRequest{Key: "child", Label: "Child", Path: "/c", ParentID: &root.ID})
+	require.NoError(t, err)
+	grand, err := svc.CreateNavigation(CreateNavigationRequest{Key: "grand", Label: "Grand", Path: "/c/g", ParentID: &child.ID})
+	require.NoError(t, err)
+
+	out.lines = nil
+	require.NoError(t, svc.DeleteNavigation(DeleteNavigationRequest{NavID: root.ID}))
+
+	require.Equal(t, []uint{grand.ID, child.ID, root.ID}, out.deletedIDs())
+
+	var remaining int64
+	require.NoError(t, db.DB.Model(&models.NavigationBar{}).Count(&remaining).Error)
+	require.Zero(t, remaining)
 }
 
 // TestRebuildTree_LegacyCycleDoesNotHang covers parent_id rows that already

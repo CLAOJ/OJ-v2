@@ -221,8 +221,14 @@ func (s *NavigationService) DeleteNavigation(req DeleteNavigationRequest) error 
 		if err != nil {
 			return err
 		}
-		if err := tx.Where("id IN ?", ids).Delete(&models.NavigationBar{}).Error; err != nil {
-			return err
+		// Django's CASCADE runs in Python; at the DB level the self-FK is
+		// RESTRICT, so a single multi-row DELETE trips InnoDB 1451 in
+		// arbitrary row order. subtreeIDs is breadth-first (parents before
+		// children), so delete in reverse: leaves first.
+		for i := len(ids) - 1; i >= 0; i-- {
+			if err := tx.Delete(&models.NavigationBar{}, ids[i]).Error; err != nil {
+				return err
+			}
 		}
 		return rebuildTree(tx)
 	})
