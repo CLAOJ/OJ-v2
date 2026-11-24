@@ -149,7 +149,18 @@ func SubmissionDetail(c *gin.Context) {
 
 	source := ""
 	if sub.Source != nil {
-		source = sub.Source.Source
+		// File-only submissions store the uploaded file's public URL in
+		// source. v1 (judge/views/submission.py) gives that URL only to the
+		// submitter, so anonymous viewers get no source at all.
+		if !sub.Language.FileOnly {
+			source = sub.Source.Source
+		} else {
+			access := auth.GetAccess(c)
+			profileID, _ := auth.CurrentProfileID(c)
+			if (access.IsSuperuser && access.IsActive) || (profileID != 0 && profileID == sub.UserID) {
+				source = sub.Source.Source
+			}
+		}
 	}
 
 	type TestCaseItem struct {
