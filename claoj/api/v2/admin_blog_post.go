@@ -19,10 +19,22 @@ import (
 func AdminBlogPostList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 
+	var visible *bool
+	switch c.Query("visible") {
+	case "true":
+		v := true
+		visible = &v
+	case "false":
+		v := false
+		visible = &v
+	}
+
 	resp, err := getBlogPostService().ListBlogPosts(blogpost.ListBlogPostsRequest{
 		Page:        page,
 		PageSize:    pageSize,
 		VisibleOnly: false,
+		Search:      c.Query("search"),
+		Visible:     visible,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -30,30 +42,33 @@ func AdminBlogPostList(c *gin.Context) {
 	}
 
 	type BlogPostItem struct {
-		ID           uint      `json:"id"`
-		Title        string    `json:"title"`
-		Slug         string    `json:"slug"`
-		AuthorNames  []string  `json:"author_names"`
-		PublishOn    time.Time `json:"publish_on"`
-		Visible      bool      `json:"visible"`
-		Sticky       bool      `json:"sticky"`
-		GlobalPost   bool      `json:"global_post"`
-		Organization *string   `json:"organization,omitempty"`
-		Score        int       `json:"score"`
+		ID               uint      `json:"id"`
+		Title            string    `json:"title"`
+		Slug             string    `json:"slug"`
+		AuthorNames      []string  `json:"author_names"`
+		PublishOn        time.Time `json:"publish_on"`
+		Visible          bool      `json:"visible"`
+		Sticky           bool      `json:"sticky"`
+		GlobalPost       bool      `json:"global_post"`
+		OrganizationID   *uint     `json:"organization_id"`
+		OrganizationName *string   `json:"organization_name"`
+		Score            int       `json:"score"`
 	}
 
 	items := make([]BlogPostItem, len(resp.BlogPosts))
 	for i, post := range resp.BlogPosts {
 		items[i] = BlogPostItem{
-			ID:           post.ID,
-			Title:        post.Title,
-			Slug:         post.Slug,
-			PublishOn:    post.PublishOn,
-			Visible:      post.Visible,
-			Sticky:       post.Sticky,
-			GlobalPost:   post.GlobalPost,
-			Score:        post.Score,
-			Organization: nil,
+			ID:               post.ID,
+			Title:            post.Title,
+			Slug:             post.Slug,
+			AuthorNames:      post.AuthorNames,
+			PublishOn:        post.PublishOn,
+			Visible:          post.Visible,
+			Sticky:           post.Sticky,
+			GlobalPost:       post.GlobalPost,
+			OrganizationID:   post.OrganizationID,
+			OrganizationName: post.OrganizationName,
+			Score:            post.Score,
 		}
 	}
 

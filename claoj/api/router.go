@@ -249,6 +249,9 @@ func NewRouter() *gin.Engine {
 			admin.PATCH("/admin/blog-post/:id", v2.AdminBlogPostUpdate)
 			admin.DELETE("/admin/blog-post/:id", v2.AdminBlogPostDelete)
 
+			// Shared markdown image upload (blog posts, license text)
+			admin.POST("/admin/markdown/image", v2.AdminMarkdownImageUpload)
+
 			// Licenses Admin
 			admin.GET("/admin/licenses", v2.AdminLicenseList)
 			admin.GET("/admin/license/:id", v2.AdminLicenseDetail)
@@ -366,6 +369,9 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/blog/:id", v2.BlogDetail)
 		apiv2.GET("/blogs/feed/rss", v2.BlogFeedRSS)
 		apiv2.GET("/blogs/feed/atom", v2.BlogFeedAtom)
+
+		// Uploaded markdown images (blog posts, license text)
+		apiv2.GET("/media/:name", v2.MarkdownMediaServe)
 
 		// Sitemap (public)
 		apiv2.GET("/sitemap.xml", v2.SitemapIndex)

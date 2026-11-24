@@ -36,6 +36,13 @@ func (s *BlogPostService) ListBlogPosts(req ListBlogPostsRequest) (*ListBlogPost
 	if req.VisibleOnly {
 		query = query.Where("visible = ?", true)
 	}
+	if req.Visible != nil {
+		query = query.Where("visible = ?", *req.Visible)
+	}
+	if req.Search != "" {
+		like := "%" + req.Search + "%"
+		query = query.Where("title LIKE ? OR slug LIKE ?", like, like)
+	}
 
 	// Get total count
 	var total int64
@@ -246,23 +253,32 @@ func (s *BlogPostService) DeleteBlogPost(req DeleteBlogPostRequest) error {
 
 func blogPostToModel(p models.BlogPost) BlogPost {
 	authorIDs := make([]uint, len(p.Authors))
+	authorNames := make([]string, len(p.Authors))
 	for i, a := range p.Authors {
 		authorIDs[i] = a.ID
+		authorNames[i] = a.User.Username
+	}
+
+	var organizationName *string
+	if p.Organization != nil {
+		organizationName = &p.Organization.Name
 	}
 
 	return BlogPost{
-		ID:             p.ID,
-		Title:          p.Title,
-		Slug:           p.Slug,
-		AuthorIDs:      authorIDs,
-		PublishOn:      p.PublishOn,
-		Content:        p.Content,
-		Summary:        p.Summary,
-		Visible:        p.Visible,
-		Sticky:         p.Sticky,
-		Score:          p.Score,
-		GlobalPost:     p.GlobalPost,
-		OgImage:        p.OgImage,
-		OrganizationID: p.OrganizationID,
+		ID:               p.ID,
+		Title:            p.Title,
+		Slug:             p.Slug,
+		AuthorIDs:        authorIDs,
+		PublishOn:        p.PublishOn,
+		Content:          p.Content,
+		Summary:          p.Summary,
+		Visible:          p.Visible,
+		Sticky:           p.Sticky,
+		Score:            p.Score,
+		GlobalPost:       p.GlobalPost,
+		OgImage:          p.OgImage,
+		OrganizationID:   p.OrganizationID,
+		AuthorNames:      authorNames,
+		OrganizationName: organizationName,
 	}
 }

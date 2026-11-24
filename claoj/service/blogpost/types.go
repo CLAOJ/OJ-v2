@@ -18,13 +18,19 @@ type BlogPost struct {
 	GlobalPost     bool
 	OgImage        string
 	OrganizationID *uint
+
+	// Relations, populated when the query preloads Authors.User/Organization.
+	AuthorNames      []string
+	OrganizationName *string
 }
 
 // ListBlogPostsRequest holds parameters for listing blog posts.
 type ListBlogPostsRequest struct {
-	Page       int
-	PageSize   int
-	VisibleOnly bool // If true, only return visible posts
+	Page        int
+	PageSize    int
+	VisibleOnly bool   // If true, only return visible posts
+	Search      string // Matches title OR slug (LIKE)
+	Visible     *bool  // If set, filter by visible; overrides nothing else
 }
 
 // ListBlogPostsResponse holds the response for listing blog posts.
