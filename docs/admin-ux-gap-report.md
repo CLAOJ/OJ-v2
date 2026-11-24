@@ -139,7 +139,7 @@ Same gaps as problems: no bulk actions, no sorting, no pagination/total UI, icon
 
 **Blog posts.** Missing: Authors + Organization fields (Authors column shows "-" for all 68 posts), markdown image upload, status filter. Otherwise good parity + quick Show/Sticky toggles. → API+FE (`BlogPost` in `models/interface.go`).
 
-**Tickets.** v2 has better filters/reply/internal notes/assignees, but the **linked problem/contest is neither shown nor editable** (model has `ContentTypeID`/`ObjectID` ✓), and individual messages can't be edited/removed; title/creator/creation time not editable. → API+FE.
+**Tickets.** v2 has better filters/reply/internal notes/assignees, and Phase 4b closed the gaps: the linked problem/contest is shown and editable, messages can be edited/deleted, and title/creator are editable with creation time read-only.
 
 **Taxonomy & Contest Tags.** "Included problems/contests" M2M relations missing on types/groups/tags; taxonomy has no search across 77 types (4 blind page flips). → API+FE.
 

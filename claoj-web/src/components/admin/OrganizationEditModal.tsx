@@ -42,7 +42,7 @@ const EMPTY_FORM: OrgForm = {
     short_name: '',
     about: '',
     is_open: false,
-    is_unlisted: false,
+    is_unlisted: true,
     slots: '',
     access_code: '',
     logo_override_image: '',

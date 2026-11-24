@@ -172,7 +172,7 @@ function MessageBubble({ ticketId, message, isOP, onDelete, onChanged }: Message
     const t = useTranslations('Admin.Tickets');
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(message.body);
-    const [authorIds, setAuthorIds] = useState<number[]>([message.user_id]);
+    const [authorIds, setAuthorIds] = useState<number[]>(message.user_id == null ? [] : [message.user_id]);
 
     const updateMutation = useMutation({
         mutationFn: (body: string) => {
@@ -250,7 +250,7 @@ function MessageBubble({ ticketId, message, isOP, onDelete, onChanged }: Message
                             onChange={setAuthorIds}
                             search={searchUsers}
                             queryKey="users"
-                            initialOptions={[{ id: message.user_id, label: message.username }]}
+                            initialOptions={message.user_id == null ? [] : [{ id: message.user_id, label: message.username }]}
                             single
                             clearable={false}
                         />

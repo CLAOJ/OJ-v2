@@ -908,8 +908,8 @@ export interface TicketDetail extends Ticket {
 // Matches ticket message shape: { id, user_id, body, time, username }
 export interface TicketMessage {
     id: number;
-    /** Author's judge_profile id (what the admin edit picker needs). */
-    user_id: number;
+    /** Author's judge_profile id; absent from the public GET /ticket/:id payload. */
+    user_id?: number;
     body: string;
     time: string;
     username: string;
