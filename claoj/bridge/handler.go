@@ -10,6 +10,7 @@ import (
 	"github.com/CLAOJ/claoj/contest_format"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/scoring"
 	"gorm.io/gorm"
 )
 
@@ -246,6 +247,10 @@ func onGradingEnd(subID uint) error {
 	})
 	PostGlobalSubmissionUpdate(subID, "grading-end", true)
 
+	// v1 refreshes the submitter's stored points on every grading end
+	// (judge_handler.on_grading_end -> Profile.calculate_points).
+	recalcProfilePoints(&sub)
+
 	// notification.user_id is keyed by auth_user.id; sub.UserID is a
 	// judge_profile.id — pass the profile's owning auth user id.
 	authUserID := sub.User.UserID
@@ -264,6 +269,34 @@ func onGradingEnd(subID uint) error {
 		}
 	}
 	return nil
+}
+
+// recalcProfilePoints refreshes the stored points columns after a grading end,
+// the way v1 does (Profile.calculate_points also refreshes the user's
+// organizations). Mirrors the PP visibility rule: a non-public or
+// organization-private problem, or an archived submission, contributes
+// nothing, so there is no reason to recalculate. Failures are logged and never
+// returned — a points problem must not fail grading.
+func recalcProfilePoints(sub *models.Submission) {
+	if sub.IsArchived || !sub.Problem.IsPublic || sub.Problem.IsOrganizationPrivate {
+		return
+	}
+	if err := scoring.CalculateProfilePoints(db.DB, sub.UserID); err != nil {
+		log.Printf("bridge: sub %d: recalculate profile %d points: %v", sub.ID, sub.UserID, err)
+		return
+	}
+
+	var orgIDs []uint
+	if err := db.DB.Table("judge_profile_organizations").
+		Where("profile_id = ?", sub.UserID).Pluck("organization_id", &orgIDs).Error; err != nil {
+		log.Printf("bridge: sub %d: list organizations of profile %d: %v", sub.ID, sub.UserID, err)
+		return
+	}
+	for _, orgID := range orgIDs {
+		if err := scoring.CalculateOrganizationPoints(db.DB, orgID); err != nil {
+			log.Printf("bridge: sub %d: recalculate organization %d points: %v", sub.ID, orgID, err)
+		}
+	}
 }
 
 func onCompileError(subID uint, pkt Packet) error {

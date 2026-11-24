@@ -237,6 +237,7 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
 			admin.POST("/admin/problem/:code/rescore-all", v2.AdminProblemRescoreAll)
+			admin.POST("/admin/recalculate-points", v2.AdminRecalculatePoints)
 
 			admin.POST("/admin/comment/:id/hide", v2.CommentHide)
 

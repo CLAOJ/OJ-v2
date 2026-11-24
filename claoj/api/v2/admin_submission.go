@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
-	"github.com/CLAOJ/claoj/jobs"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/submission"
 	"github.com/gin-gonic/gin"
@@ -347,12 +345,9 @@ func AdminProblemRescoreAll(c *gin.Context) {
 		return
 	}
 
-	// Refresh the stored judge_profile points columns with the current rules
-	// (the existing recalc path; a rejudge alone does not touch them).
-	if err := jobs.EnqueueRescore(problem.ID); err != nil {
-		log.Printf("rescore-all: enqueue profile points recalc for problem %d: %v", problem.ID, err)
-	}
-
+	// Points are refreshed by the grading-end hook of the rejudge itself
+	// (bridge.onGradingEnd), so nothing is recalculated here: doing it now
+	// would store values from the submissions as they are before the rejudge.
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "problem rescore initiated",
 		"rescored":     resp.Rescored,
