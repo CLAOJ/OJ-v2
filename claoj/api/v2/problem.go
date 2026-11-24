@@ -288,8 +288,11 @@ func RandomProblem(c *gin.Context) {
 // tags, encoding/json emits the Go field names and every field reads as
 // undefined on the client — which blanked out the submit-language <select>.
 type problemLangItem struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
+	Key           string `json:"key"`
+	Name          string `json:"name"`
+	Extension     string `json:"extension"`
+	FileOnly      bool   `json:"file_only"`
+	FileSizeLimit int    `json:"file_size_limit"`
 }
 
 type problemTypeItem struct {
@@ -326,7 +329,13 @@ func ProblemDetail(c *gin.Context) {
 
 	langs := make([]problemLangItem, len(p.AllowedLangs))
 	for i, l := range p.AllowedLangs {
-		langs[i] = problemLangItem{Key: l.Key, Name: l.Name}
+		langs[i] = problemLangItem{
+			Key:           l.Key,
+			Name:          l.Name,
+			Extension:     l.Extension,
+			FileOnly:      l.FileOnly,
+			FileSizeLimit: l.FileSizeLimit,
+		}
 	}
 
 	types := make([]problemTypeItem, len(p.Types))
