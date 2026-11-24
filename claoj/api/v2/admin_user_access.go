@@ -239,9 +239,9 @@ func AdminUserSecurity(c *gin.Context) {
 	})
 }
 
-// dedupeIDs drops duplicate ids, keeping first-seen order. The Django join
-// tables have no unique constraint on (user_id, x_id), so a duplicate input
-// id would otherwise insert two identical join rows.
+// dedupeIDs drops duplicate ids, keeping first-seen order. Django's
+// auto-created through tables have a unique (user_id, x_id) constraint, so a
+// duplicate input id would otherwise fail the insert on the second row.
 func dedupeIDs(ids []uint) []uint {
 	seen := make(map[uint]struct{}, len(ids))
 	out := make([]uint, 0, len(ids))

@@ -154,15 +154,29 @@ func (s *UserService) UpdateUser(req UpdateUserRequest) error {
 	if req.IsActive != nil {
 		userUpdates["is_active"] = *req.IsActive
 	}
-
-	if len(profileUpdates) > 0 {
-		if err := db.DB.Model(&profile).Updates(profileUpdates).Error; err != nil {
-			return err
-		}
+	if req.IsStaff != nil {
+		userUpdates["is_staff"] = *req.IsStaff
+	}
+	if req.IsSuperuser != nil {
+		userUpdates["is_superuser"] = *req.IsSuperuser
 	}
 
-	if len(userUpdates) > 0 {
-		if err := db.DB.Model(&profile.User).Updates(userUpdates).Error; err != nil {
+	// One transaction covers both rows so a failure on either side cannot
+	// leave the account half updated.
+	if len(profileUpdates) > 0 || len(userUpdates) > 0 {
+		if err := db.DB.Transaction(func(tx *gorm.DB) error {
+			if len(profileUpdates) > 0 {
+				if err := tx.Model(&profile).Updates(profileUpdates).Error; err != nil {
+					return err
+				}
+			}
+			if len(userUpdates) > 0 {
+				if err := tx.Model(&profile.User).Updates(userUpdates).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
 	}
@@ -346,7 +360,7 @@ func (s *UserService) ListUsers(req ListUsersRequest) (*ListUsersResponse, error
 	query := db.DB.Table("judge_profile").
 		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
 		Select("judge_profile.*, auth_user.username, auth_user.first_name, auth_user.last_name, auth_user.email, auth_user.is_active, auth_user.is_staff, auth_user.is_superuser, auth_user.date_joined, auth_user.last_login").
-		Order(sortColumn + " " + direction)
+		Order(sortColumn + " " + direction + ", judge_profile.id " + direction)
 
 	if req.Search != "" {
 		searchPattern := "%" + req.Search + "%"

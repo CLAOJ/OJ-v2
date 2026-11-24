@@ -76,6 +76,8 @@ type UpdateUserRequest struct {
 	AceTheme                *string
 	SiteTheme               *string
 	IsActive                *bool
+	IsStaff                 *bool
+	IsSuperuser             *bool
 	IsUnlisted              *bool
 	IsMuted                 *bool
 	DisplayRank             *string

@@ -149,6 +149,7 @@ func TestAdminUserUpdate_Validation(t *testing.T) {
 		{"unknown language", `{"language_id":999}`, http.StatusBadRequest},
 		{"duplicate username", `{"username":"taken","timezone":"Europe/Paris"}`, http.StatusConflict},
 		{"duplicate email", `{"email":"taken@example.com"}`, http.StatusConflict},
+		{"display-name email", `{"email":"Bob <bob@example.com>"}`, http.StatusBadRequest},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -211,6 +212,70 @@ func TestAdminUserUpdate_StaffFlagsNeedSuperuser(t *testing.T) {
 	require.False(t, got.IsStaff)
 }
 
+func TestAdminUserUpdate_RejectedPatchDoesNotCommitFlags(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	seedAccount(t, "taken", false, false)
+	target, targetProfile := seedAccount(t, "bob", false, false)
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/user/:id", AdminUserUpdate)
+	url := profileURL(targetProfile, "")
+
+	// A taken username is only discovered in the service; the role flags in
+	// the same patch must not be committed by a 409.
+	w := doRequest(router, http.MethodPatch, url, `{"is_staff":true,"username":"taken"}`)
+	require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+
+	var got models.AuthUser
+	require.NoError(t, db.DB.First(&got, target.ID).Error)
+	require.False(t, got.IsStaff, "a rejected patch must not set is_staff")
+
+	// Same for validation that happens before the service (bad language_id).
+	w = doRequest(router, http.MethodPatch, url, `{"is_superuser":true,"language_id":999}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, target.ID).Error)
+	require.False(t, got.IsSuperuser, "a rejected patch must not set is_superuser")
+
+	// A valid patch still writes both the auth_user and profile rows.
+	w = doRequest(router, http.MethodPatch, url, `{"is_staff":true,"first_name":"Bob"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, target.ID).Error)
+	require.True(t, got.IsStaff)
+	require.Equal(t, "Bob", got.FirstName)
+}
+
+func TestAdminUserUpdate_StaffEditingPrivilegedTargetForbidden(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	staff, _ := seedAccount(t, "mod", true, false)
+	root, rootProfile := seedAccount(t, "root", true, true)
+	_, plainProfile := seedAccount(t, "bob", false, false)
+
+	staffRouter := authedRouter(staff.ID, http.MethodPatch, "/admin/user/:id", AdminUserUpdate)
+
+	// Staff may not edit a superuser at all, not even their name.
+	w := doRequest(staffRouter, http.MethodPatch, profileURL(rootProfile, ""), `{"first_name":"Hacked"}`)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	var got models.AuthUser
+	require.NoError(t, db.DB.First(&got, root.ID).Error)
+	require.Empty(t, got.FirstName)
+
+	// Staff may still edit a regular user's identity/profile.
+	w = doRequest(staffRouter, http.MethodPatch, profileURL(plainProfile, ""),
+		`{"first_name":"Bobby","username":"bob2","timezone":"Europe/Paris"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// But not their account status.
+	w = doRequest(staffRouter, http.MethodPatch, profileURL(plainProfile, ""), `{"is_active":false}`)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+
+	// A superuser can edit a superuser.
+	rootRouter := authedRouter(root.ID, http.MethodPatch, "/admin/user/:id", AdminUserUpdate)
+	w = doRequest(rootRouter, http.MethodPatch, profileURL(rootProfile, ""), `{"first_name":"Rooty"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, root.ID).Error)
+	require.Equal(t, "Rooty", got.FirstName)
+}
+
 func TestAdminUserReplaceGroups(t *testing.T) {
 	setupAdminUserCreateDB(t)
 	root, _ := seedAccount(t, "root", true, true)
@@ -238,7 +303,8 @@ func TestAdminUserReplaceGroups(t *testing.T) {
 	}
 	require.Equal(t, []uint{groups[1].ID, groups[2].ID}, memberships())
 
-	// Duplicate ids collapse to one join row (the table has no unique index).
+	// Duplicate ids collapse to one join row (Django's through table has a
+	// unique (user_id, group_id) constraint, so a repeat would fail the insert).
 	w = doRequest(router, http.MethodPut, url,
 		`{"group_ids":[`+strconv.Itoa(int(groups[1].ID))+`,`+strconv.Itoa(int(groups[1].ID))+`]}`)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())

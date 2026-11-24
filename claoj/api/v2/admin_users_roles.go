@@ -318,7 +318,8 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 	}
 	if input.Email != nil {
-		if _, err := mail.ParseAddress(*input.Email); err != nil {
+		addr, err := mail.ParseAddress(*input.Email)
+		if err != nil || addr.Address != *input.Email {
 			c.JSON(http.StatusBadRequest, apiUserError("invalid email address"))
 			return
 		}
@@ -347,7 +348,9 @@ func AdminUserUpdate(c *gin.Context) {
 
 	// Self-demotion and self-deactivation lock the caller out of the admin
 	// they are using, so they are refused rather than silently applied.
-	if target.UserID == c.GetUint("user_id") {
+	callerID := c.GetUint("user_id")
+	callerIsSuperuser := auth.GetAccess(c).IsSuperuser
+	if target.UserID == callerID {
 		if input.IsActive != nil && !*input.IsActive {
 			c.JSON(http.StatusBadRequest, apiUserError("you cannot deactivate your own account"))
 			return
@@ -362,38 +365,36 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 	}
 
+	// Editing another staff/superuser account is a takeover primitive
+	// (rename, deactivate, email swap), so it is superuser-only. Any change to
+	// is_staff/is_superuser/is_active on someone else is likewise
+	// superuser-only, including deactivating a regular user.
+	if target.UserID != callerID && !callerIsSuperuser {
+		if target.User.IsStaff || target.User.IsSuperuser {
+			c.JSON(http.StatusForbidden, apiUserError("superuser access required to edit a staff account"))
+			return
+		}
+		if input.IsStaff != nil || input.IsSuperuser != nil || input.IsActive != nil {
+			c.JSON(http.StatusForbidden, apiUserError("superuser access required to change account status"))
+			return
+		}
+	}
+
 	// Changing the email of a staff/superuser account would let a non-superuser
 	// take it over through the password-reset flow, so it is superuser-only.
-	if input.Email != nil && !auth.GetAccess(c).IsSuperuser {
+	if input.Email != nil && !callerIsSuperuser {
 		if target.User.IsStaff || target.User.IsSuperuser {
 			c.JSON(http.StatusForbidden, apiUserError("superuser access required to change the email of a staff account"))
 			return
 		}
 	}
 
-	// is_staff / is_superuser changes are superuser-only. This writes
-	// directly to Django's auth_user row (id, is_staff, is_superuser),
-	// which is a different primary key than the judge_profile.id used as
-	// :id throughout this handler family -- resolved via the profile above.
-	if input.IsStaff != nil || input.IsSuperuser != nil {
-		if !auth.GetAccess(c).IsSuperuser {
-			c.JSON(http.StatusForbidden, apiError("superuser access required to change staff/superuser status"))
-			return
-		}
-
-		authUserUpdates := make(map[string]interface{})
-		if input.IsStaff != nil {
-			authUserUpdates["is_staff"] = *input.IsStaff
-		}
-		if input.IsSuperuser != nil {
-			authUserUpdates["is_superuser"] = *input.IsSuperuser
-		}
-		if err := db.DB.Model(&models.AuthUser{}).Where("id = ?", target.UserID).Updates(authUserUpdates).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-			return
-		}
-
-		auth.BumpPermVersion()
+	// is_staff / is_superuser changes are superuser-only; the write itself
+	// lands in auth_user (a different primary key than judge_profile.id,
+	// resolved above) inside the service transaction.
+	if (input.IsStaff != nil || input.IsSuperuser != nil) && !callerIsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required to change staff/superuser status"))
+		return
 	}
 
 	if input.LanguageID != nil {
@@ -423,6 +424,8 @@ func AdminUserUpdate(c *gin.Context) {
 		AceTheme:                input.AceTheme,
 		SiteTheme:               input.SiteTheme,
 		IsActive:                input.IsActive,
+		IsStaff:                 input.IsStaff,
+		IsSuperuser:             input.IsSuperuser,
 		IsUnlisted:              input.IsUnlisted,
 		IsMuted:                 input.Mute,
 		DisplayRank:             input.DisplayRank,
@@ -442,6 +445,11 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
+	}
+
+	if input.IsStaff != nil || input.IsSuperuser != nil {
+		// Role changes must invalidate the cached permission snapshot.
+		auth.BumpPermVersion()
 	}
 
 	c.JSON(http.StatusOK, gin.H{
