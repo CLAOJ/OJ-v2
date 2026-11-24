@@ -414,6 +414,7 @@ func AdminTicketDetail(c *gin.Context) {
 
 	type MsgItem struct {
 		ID       uint      `json:"id"`
+		UserID   uint      `json:"user_id"`
 		Body     string    `json:"body"`
 		Time     time.Time `json:"time"`
 		Username string    `json:"username"`
@@ -423,6 +424,7 @@ func AdminTicketDetail(c *gin.Context) {
 	for i, m := range ticket.Messages {
 		messages[i] = MsgItem{
 			ID:       m.ID,
+			UserID:   m.UserID,
 			Body:     m.Body,
 			Time:     m.Time,
 			Username: m.User.User.Username,
@@ -612,13 +614,18 @@ func AdminTicketUpdate(c *gin.Context) {
 		return
 	}
 
+	// Only the columns a request actually changes are written: a full-row Save
+	// would also rewrite unrelated columns (and any concurrent edit) from a
+	// stale read.
+	updates := map[string]any{}
+
 	if req.Title != nil {
 		title := sanitization.SanitizeTitle(*req.Title)
 		if title == "" {
 			c.JSON(http.StatusBadRequest, apiUserError("title is required"))
 			return
 		}
-		ticket.Title = title
+		updates["title"] = title
 	}
 
 	if req.UserID != nil {
@@ -632,7 +639,7 @@ func AdminTicketUpdate(c *gin.Context) {
 			return
 		}
 		// judge_ticket.user_id is a judge_profile id, not an auth_user id.
-		ticket.UserID = profile.ID
+		updates["user_id"] = profile.ID
 	}
 
 	if req.LinkedType != nil || req.LinkedID != nil {
@@ -646,7 +653,7 @@ func AdminTicketUpdate(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, apiUserError("linked_id must be 0 when linked_type is empty"))
 				return
 			}
-			ticket.ContentTypeID, ticket.ObjectID = 0, 0
+			updates["content_type_id"], updates["object_id"] = 0, 0
 		} else {
 			if linkedID == 0 {
 				c.JSON(http.StatusBadRequest, apiUserError("linked_id is required with linked_type"))
@@ -661,20 +668,23 @@ func AdminTicketUpdate(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, apiUserError("linked item not found"))
 				return
 			}
-			ticket.ContentTypeID, ticket.ObjectID = contentTypeID, linkedID
+			updates["content_type_id"], updates["object_id"] = contentTypeID, linkedID
 		}
 	}
 
-	if err := db.DB.Save(&ticket).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update ticket"})
-		return
+	if len(updates) > 0 {
+		if err := db.DB.Model(&models.Ticket{}).Where("id = ?", ticket.ID).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update ticket"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "ticket updated"})
 }
 
 type AdminTicketMessageUpdateRequest struct {
-	Body *string `json:"body"`
+	Body   *string `json:"body"`
+	UserID *uint   `json:"user_id"` // judge_profile id, same space as the ticket creator
 }
 
 // loadTicketMessage resolves the :id/:messageId pair, writing 404 when the
@@ -724,18 +734,36 @@ func AdminTicketMessageUpdate(c *gin.Context) {
 		return
 	}
 
+	updates := map[string]any{}
+
 	if req.Body != nil {
 		body := sanitization.SanitizeTicketBody(*req.Body)
 		if body == "" {
 			c.JSON(http.StatusBadRequest, apiUserError("body is required"))
 			return
 		}
-		message.Body = body
+		updates["body"] = body
 	}
 
-	if err := db.DB.Save(message).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update message"})
-		return
+	if req.UserID != nil {
+		var profile models.Profile
+		if err := db.DB.Select("id").First(&profile, *req.UserID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusBadRequest, apiUserError("user not found"))
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		// judge_ticketmessage.user_id is a judge_profile id, like the ticket's.
+		updates["user_id"] = profile.ID
+	}
+
+	if len(updates) > 0 {
+		if err := db.DB.Model(&models.TicketMessage{}).Where("id = ?", message.ID).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update message"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "message updated"})

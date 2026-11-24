@@ -7,7 +7,7 @@ import { adminTicketApi, adminUserApi, adminErrorMessage } from '@/lib/adminApi'
 import { searchProblems, searchContests, searchUsers } from '@/lib/adminSearch';
 import { EntityPicker } from '@/components/admin/EntityPicker';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { AdminTicketDetail, AdminTicketUpdateRequest, TicketMessage } from '@/types';
+import { AdminTicketDetail, AdminTicketMessageUpdateRequest, AdminTicketUpdateRequest, TicketMessage } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
@@ -172,9 +172,15 @@ function MessageBubble({ ticketId, message, isOP, onDelete, onChanged }: Message
     const t = useTranslations('Admin.Tickets');
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(message.body);
+    const [authorIds, setAuthorIds] = useState<number[]>([message.user_id]);
 
     const updateMutation = useMutation({
-        mutationFn: (body: string) => adminTicketApi.updateMessage(ticketId, message.id, { body }),
+        mutationFn: (body: string) => {
+            const data: AdminTicketMessageUpdateRequest = { body };
+            // Only send the author when the picker changed it (profile id).
+            if (authorIds[0] && authorIds[0] !== message.user_id) data.user_id = authorIds[0];
+            return adminTicketApi.updateMessage(ticketId, message.id, data);
+        },
         onSuccess: () => {
             toast.success(t('messageSaved'));
             setEditing(false);
@@ -237,6 +243,17 @@ function MessageBubble({ ticketId, message, isOP, onDelete, onChanged }: Message
                 </div>
                 {editing ? (
                     <div className="space-y-3">
+                        <EntityPicker
+                            id={`message-author-${message.id}`}
+                            label={t('messageAuthorLabel')}
+                            value={authorIds}
+                            onChange={setAuthorIds}
+                            search={searchUsers}
+                            queryKey="users"
+                            initialOptions={[{ id: message.user_id, label: message.username }]}
+                            single
+                            clearable={false}
+                        />
                         <textarea
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
@@ -483,6 +500,7 @@ export default function AdminTicketDetailPage() {
                 </div>
 
                 <TicketDetailsForm
+                    key={ticket.id}
                     ticket={ticket}
                     onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-ticket', id] })}
                 />

@@ -90,6 +90,8 @@ export interface User {
     username: string;
     is_admin: boolean;
     is_staff: boolean;
+    /** Superuser or holder of judge.organization_admin (GET /user/me). */
+    can_organization_admin?: boolean;
     rating?: number | null;
     performance_points?: number;
 }
@@ -903,9 +905,11 @@ export interface TicketDetail extends Ticket {
     };
 }
 
-// Matches ticket message shape: { id, body, time, username }
+// Matches ticket message shape: { id, user_id, body, time, username }
 export interface TicketMessage {
     id: number;
+    /** Author's judge_profile id (what the admin edit picker needs). */
+    user_id: number;
     body: string;
     time: string;
     username: string;
@@ -957,6 +961,8 @@ export interface AdminTicketUpdateRequest {
 
 export interface AdminTicketMessageUpdateRequest {
     body?: string;
+    /** judge_profile id of the message author. */
+    user_id?: number;
 }
 
 // ============================================================

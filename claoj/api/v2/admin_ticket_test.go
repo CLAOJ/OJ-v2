@@ -289,6 +289,13 @@ func TestAdminTicketMessageUpdateDelete(t *testing.T) {
 		TicketID: other.ID, UserID: f.creator.ID, Body: "other body", Time: time.Now(),
 	}).Error)
 
+	// The detail payload carries each message's author profile id, which the
+	// admin edit form needs to seed its author picker.
+	detailRouter := authedRouter(f.root.ID, http.MethodGet, "/admin/ticket/:id", AdminTicketDetail)
+	w := doRequest(detailRouter, http.MethodGet, "/admin/ticket/"+itoa(tk.ID), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"user_id":`+itoa(f.creator.ID))
+
 	patchRouter := authedRouter(f.root.ID, http.MethodPatch, "/admin/ticket/:id/message/:messageId", AdminTicketMessageUpdate)
 	deleteRouter := authedRouter(f.root.ID, http.MethodDelete, "/admin/ticket/:id/message/:messageId", AdminTicketMessageDelete)
 	patch := func(ticketID uint, body string) int {
@@ -303,18 +310,31 @@ func TestAdminTicketMessageUpdateDelete(t *testing.T) {
 	require.Equal(t, http.StatusOK, patch(tk.ID, `{"body":"edited"}`))
 	require.Equal(t, "edited", load().Body)
 
-	// The author is not editable; an unknown user_id in the body is ignored.
-	require.Equal(t, http.StatusOK, patch(tk.ID, `{"body":"edited again","user_id":`+itoa(f.plainProfile.ID)+`}`))
+	// The author is editable: user_id is a judge_profile id, and the fixture's
+	// creator keeps ID != UserID, so an auth-user id would fail here.
+	require.Equal(t, http.StatusOK, patch(tk.ID, `{"body":"edited again","user_id":`+itoa(f.creator.ID)+`}`))
 	require.Equal(t, "edited again", load().Body)
 	require.Equal(t, f.creator.ID, load().UserID)
+	require.NotEqual(t, f.creator.UserID, load().UserID)
+
+	require.Equal(t, http.StatusOK, patch(tk.ID, `{"user_id":`+itoa(f.plainProfile.ID)+`}`))
+	require.Equal(t, f.plainProfile.ID, load().UserID)
+
+	// A body-only edit leaves the author alone.
+	require.Equal(t, http.StatusOK, patch(tk.ID, `{"body":"third"}`))
+	require.Equal(t, f.plainProfile.ID, load().UserID)
+
+	require.Equal(t, http.StatusBadRequest, patch(tk.ID, `{"user_id":999}`))
+	require.Equal(t, "third", load().Body)
+	require.Equal(t, f.plainProfile.ID, load().UserID)
 
 	require.Equal(t, http.StatusBadRequest, patch(tk.ID, `{"body":"   "}`))
-	require.Equal(t, "edited again", load().Body)
+	require.Equal(t, "third", load().Body)
 
 	// A message reached through the wrong ticket is a 404, for edit and delete.
 	require.Equal(t, http.StatusNotFound, patch(other.ID, `{"body":"stolen"}`))
 	require.Equal(t, http.StatusNotFound, doRequest(deleteRouter, http.MethodDelete, "/admin/ticket/"+itoa(other.ID)+"/message/"+itoa(msg.ID), "").Code)
-	require.Equal(t, "edited again", load().Body)
+	require.Equal(t, "third", load().Body)
 
 	require.Equal(t, http.StatusNotFound, doRequest(patchRouter, http.MethodPatch, "/admin/ticket/"+itoa(tk.ID)+"/message/999", `{"body":"x"}`).Code)
 	require.Equal(t, http.StatusBadRequest, doRequest(patchRouter, http.MethodPatch, "/admin/ticket/"+itoa(tk.ID)+"/message/abc", `{"body":"x"}`).Code)
