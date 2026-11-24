@@ -47,24 +47,33 @@ func SubmissionList(c *gin.Context) {
 	}
 
 	// Branch the filtered statement: one COUNT for the pager, one page fetch.
+	writeSubmissionList(c, q, page, pageSize)
+}
+
+// submissionListRow is the public submission row shape, shared by the global
+// list and the organization submissions tab.
+type submissionListRow struct {
+	ID          uint      `json:"id"`
+	Problem     string    `json:"problem"`
+	ProblemName string    `json:"problem_name"`
+	User        string    `json:"user"`
+	Date        time.Time `json:"date"`
+	Language    string    `json:"language"`
+	Status      string    `json:"status"`
+	Result      *string   `json:"result"`
+	Points      *float64  `json:"points"`
+	Time        *float64  `json:"time"`
+	Memory      *float64  `json:"memory"`
+}
+
+// writeSubmissionList pages a submission query (which must already carry the
+// judge_profile/ auth_user / judge_problem / judge_language joins) and writes
+// the list response.
+func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int) {
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
-	}
-
-	type Row struct {
-		ID          uint      `json:"id"`
-		Problem     string    `json:"problem"`
-		ProblemName string    `json:"problem_name"`
-		User        string    `json:"user"`
-		Date        time.Time `json:"date"`
-		Language    string    `json:"language"`
-		Status      string    `json:"status"`
-		Result      *string   `json:"result"`
-		Points      *float64  `json:"points"`
-		Time        *float64  `json:"time"`
-		Memory      *float64  `json:"memory"`
 	}
 
 	var rows []struct {
@@ -85,9 +94,9 @@ func SubmissionList(c *gin.Context) {
 		return
 	}
 
-	items := make([]Row, len(rows))
+	items := make([]submissionListRow, len(rows))
 	for i, r := range rows {
-		items[i] = Row{
+		items[i] = submissionListRow{
 			ID:          r.Submission.ID,
 			Problem:     r.ProblemCode,
 			ProblemName: r.ProblemName,

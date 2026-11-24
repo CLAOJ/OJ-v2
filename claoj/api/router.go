@@ -383,6 +383,9 @@ func NewRouter() *gin.Engine {
 
 		apiv2.GET("/organizations", v2.OrganizationList)
 		apiv2.GET("/organization/:id", v2.OrganizationDetail)
+		apiv2.GET("/organization/:id/problems", v2.OrganizationProblemList)
+		apiv2.GET("/organization/:id/contests", v2.OrganizationContestList)
+		apiv2.GET("/organization/:id/submissions", v2.OrganizationSubmissionList)
 		apiv2.GET("/languages", v2.LanguageList)
 		apiv2.GET("/judges", v2.JudgeList)
 

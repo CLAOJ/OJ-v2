@@ -138,7 +138,25 @@ func ProblemList(c *gin.Context) {
 		return
 	}
 
-	// Get solved problems for the current user
+	c.JSON(http.StatusOK, apiListWithTotal(problemListItems(problems, profileID), total))
+}
+
+// problemListItem is the public problem-list row shape, shared with the
+// organization problems tab so both lists always look the same.
+type problemListItem struct {
+	Code      string  `json:"code"`
+	Name      string  `json:"name"`
+	Points    float64 `json:"points"`
+	Partial   bool    `json:"partial"`
+	UserCount int     `json:"user_count"`
+	AcRate    float64 `json:"ac_rate"`
+	Group     string  `json:"group"`
+	IsSolved  bool    `json:"is_solved"`
+}
+
+// problemListItems builds those rows, flagging what profileID already solved
+// (0 = anonymous, nothing is flagged).
+func problemListItems(problems []models.Problem, profileID uint) []problemListItem {
 	solvedIDs := make(map[uint]bool)
 	if profileID > 0 {
 		var solved []uint
@@ -151,20 +169,9 @@ func ProblemList(c *gin.Context) {
 		}
 	}
 
-	type ProblemItem struct {
-		Code      string  `json:"code"`
-		Name      string  `json:"name"`
-		Points    float64 `json:"points"`
-		Partial   bool    `json:"partial"`
-		UserCount int     `json:"user_count"`
-		AcRate    float64 `json:"ac_rate"`
-		Group     string  `json:"group"`
-		IsSolved  bool    `json:"is_solved"`
-	}
-
-	items := make([]ProblemItem, len(problems))
+	items := make([]problemListItem, len(problems))
 	for i, p := range problems {
-		items[i] = ProblemItem{
+		items[i] = problemListItem{
 			Code:      p.Code,
 			Name:      p.Name,
 			Points:    p.Points,
@@ -175,7 +182,7 @@ func ProblemList(c *gin.Context) {
 			IsSolved:  solvedIDs[p.ID],
 		}
 	}
-	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+	return items
 }
 
 // publicEditorialCondition is the v1 editorial visibility rule

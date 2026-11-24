@@ -65,54 +65,112 @@ func OrganizationList(c *gin.Context) {
 }
 
 // OrganizationDetail – GET /api/v2/organization/:id
+// ?sort=points|problem_count|rating|performance_points&order=asc|desc orders the
+// member table (v1 OrganizationUsers: all four sorts default to descending).
 func OrganizationDetail(c *gin.Context) {
 	id, ok := numericParam(c, "id")
 	if !ok {
 		return
 	}
 	var org models.Organization
-	if err := db.DB.
-		Preload("Members.User").
-		Preload("Admins.User").
-		First(&org, id).Error; err != nil {
+	if err := db.DB.First(&org, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("organization not found"))
 		return
 	}
 
+	type Member struct {
+		ID                uint    `json:"id"`
+		Username          string  `json:"username"`
+		DisplayName       string  `json:"display_name"`
+		Role              string  `json:"role"`
+		JoinedAt          string  `json:"joined_at"`
+		Points            float64 `json:"points"`
+		ProblemCount      int     `json:"problem_count"`
+		Rating            *int    `json:"rating"`
+		PerformancePoints float64 `json:"performance_points"`
+	}
+
+	// One joined query for the member table: the stats live on judge_profile,
+	// so nothing else has to be loaded. Unknown sort columns fall back to the
+	// v1 default (-performance_points).
+	memberSorts := map[string]string{
+		"points":             "judge_profile.points",
+		"problem_count":      "judge_profile.problem_count",
+		"rating":             "COALESCE(judge_profile.rating, 0)",
+		"performance_points": "judge_profile.performance_points",
+	}
+	sortExpr, ok := memberSorts[c.DefaultQuery("sort", "performance_points")]
+	if !ok {
+		sortExpr = memberSorts["performance_points"]
+	}
+	orderDir := "DESC"
+	if c.Query("order") == "asc" {
+		orderDir = "ASC"
+	}
+
+	var memberRows []struct {
+		models.Profile
+		Username string
+	}
+	if err := db.DB.Model(&models.Profile{}).
+		Select("judge_profile.*, au.username").
+		Joins("JOIN judge_profile_organizations po ON po.profile_id = judge_profile.id").
+		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
+		Where("po.organization_id = ?", org.ID).
+		Order(sortExpr + " " + orderDir).
+		Order("judge_profile.id ASC").
+		Find(&memberRows).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var adminRows []struct {
+		models.Profile
+		Username string
+	}
+	if err := db.DB.Model(&models.Profile{}).
+		Select("judge_profile.*, au.username").
+		Joins("JOIN judge_organization_admins oa ON oa.profile_id = judge_profile.id").
+		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
+		Where("oa.organization_id = ?", org.ID).
+		Order("judge_profile.performance_points DESC").
+		Order("judge_profile.id ASC").
+		Find(&adminRows).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
 	// Members who are also admins are labelled with the "admin" role.
-	adminIDs := make(map[uint]bool, len(org.Admins))
-	for _, a := range org.Admins {
+	adminIDs := make(map[uint]bool, len(adminRows))
+	for _, a := range adminRows {
 		adminIDs[a.ID] = true
 	}
 
-	type Member struct {
-		ID          uint   `json:"id"`
-		Username    string `json:"username"`
-		DisplayName string `json:"display_name"`
-		Role        string `json:"role"`
-		JoinedAt    string `json:"joined_at"`
-	}
-	toMember := func(p models.Profile) Member {
+	toMember := func(p models.Profile, username string) Member {
 		role := "member"
 		if adminIDs[p.ID] {
 			role = "admin"
 		}
 		return Member{
 			ID:          p.ID,
-			Username:    p.User.Username,
+			Username:    username,
 			DisplayName: p.UsernameDisplayOverride,
 			Role:        role,
 			// judge_profile_organizations has no join timestamp; left empty.
-			JoinedAt: "",
+			JoinedAt:          "",
+			Points:            p.Points,
+			ProblemCount:      p.ProblemCount,
+			Rating:            p.Rating,
+			PerformancePoints: p.PerformancePoints,
 		}
 	}
-	members := make([]Member, len(org.Members))
-	for i, m := range org.Members {
-		members[i] = toMember(m)
+	members := make([]Member, len(memberRows))
+	for i, m := range memberRows {
+		members[i] = toMember(m.Profile, m.Username)
 	}
-	admins := make([]Member, len(org.Admins))
-	for i, a := range org.Admins {
-		admins[i] = toMember(a)
+	admins := make([]Member, len(adminRows))
+	for i, a := range adminRows {
+		admins[i] = toMember(a.Profile, a.Username)
 	}
 
 	// The requesting user's own profile id, so the client can tell whether the
@@ -522,6 +580,202 @@ func KickUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "user kicked successfully"})
+}
+
+// ============================================================
+// ORGANIZATION PUBLIC TABS
+//
+// v1 gates all three lists behind CustomOrganizationMixin.dispatch: an
+// organization member, or a holder of the view's bypass permissions. The row
+// filters below then mirror ProblemListOrganization.get_filter,
+// ContestListOrganization._get_queryset and SubmissionListOrganization.
+// ============================================================
+
+// loadOrganization resolves the :id path param, writing 400/404 itself.
+func loadOrganization(c *gin.Context) (models.Organization, bool) {
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return models.Organization{}, false
+	}
+	var org models.Organization
+	if err := db.DB.First(&org, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		return models.Organization{}, false
+	}
+	return org, true
+}
+
+// orgTabAccess reports whether the viewer may read one of the organization's
+// private tabs: a member, a superuser, or a holder of one of the bypass
+// permissions (v1 CustomOrganizationMixin.permission_bypass).
+func orgTabAccess(c *gin.Context, orgID uint, bypass ...string) (uint, bool) {
+	profileID, _ := auth.CurrentProfileID(c)
+	if profileID > 0 {
+		var count int64
+		db.DB.Table("judge_profile_organizations").
+			Where("profile_id = ? AND organization_id = ?", profileID, orgID).
+			Count(&count)
+		if count > 0 {
+			return profileID, true
+		}
+	}
+	access := auth.GetAccess(c)
+	if access.IsSuperuser && access.IsActive {
+		return profileID, true
+	}
+	for _, perm := range bypass {
+		if access.HasPerm(perm) {
+			return profileID, true
+		}
+	}
+	return profileID, false
+}
+
+func orgForbidden(c *gin.Context) {
+	c.JSON(http.StatusForbidden, apiUserError("you must join the organization to view its private data"))
+}
+
+// OrganizationProblemList – GET /api/v2/organization/:id/problems
+// v1 ProblemListOrganization.get_filter: everything in the organization when
+// the viewer holds judge.see_private_problem, otherwise the public problems plus
+// the ones they author/curate/test.
+func OrganizationProblemList(c *gin.Context) {
+	org, ok := loadOrganization(c)
+	if !ok {
+		return
+	}
+	profileID, allowed := orgTabAccess(c, org.ID, "judge.see_organization_problem", "judge.edit_all_problem")
+	if !allowed {
+		orgForbidden(c)
+		return
+	}
+	page, pageSize := parsePagination(c)
+
+	visExpr, visArgs := auth.VisibleProblemFilter(c)
+	q := db.DB.Model(&models.Problem{}).
+		Where(visExpr, visArgs...).
+		Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_organizations WHERE organization_id = ?)", org.ID)
+
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var problems []models.Problem
+	if err := q.Session(&gorm.Session{}).
+		Preload("Group").
+		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.partial, judge_problem.is_public, judge_problem.user_count, judge_problem.ac_rate, judge_problem.group_id, judge_problem.date").
+		Order("judge_problem.code ASC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&problems).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(problemListItems(problems, profileID), total))
+}
+
+// OrganizationContestList – GET /api/v2/organization/:id/contests
+// v1 ContestListOrganization: visible contests of the organization (for
+// non-privileged viewers), past ones only, newest first.
+func OrganizationContestList(c *gin.Context) {
+	org, ok := loadOrganization(c)
+	if !ok {
+		return
+	}
+	if _, allowed := orgTabAccess(c, org.ID, "judge.see_private_contest", "judge.edit_all_contest"); !allowed {
+		orgForbidden(c)
+		return
+	}
+	page, pageSize := parsePagination(c)
+
+	visExpr, visArgs := auth.VisibleContestFilter(c)
+	q := db.DB.Model(&models.Contest{}).
+		Where(visExpr, visArgs...).
+		Where("is_organization_private = ?", true).
+		Where("id IN (SELECT contest_id FROM judge_contest_organizations WHERE organization_id = ?)", org.ID).
+		Where("end_time < ?", time.Now())
+
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var contests []models.Contest
+	if err := q.Session(&gorm.Session{}).
+		Select("judge_contest.id, judge_contest.key, judge_contest.name, judge_contest.start_time, judge_contest.end_time, judge_contest.is_rated, judge_contest.format_name, judge_contest.user_count").
+		Order("start_time DESC, id DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&contests).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type Item struct {
+		Key       string    `json:"key"`
+		Name      string    `json:"name"`
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		IsRated   bool      `json:"is_rated"`
+		Format    string    `json:"format"`
+		UserCount int       `json:"user_count"`
+	}
+	items := make([]Item, len(contests))
+	for i, ct := range contests {
+		items[i] = Item{ct.Key, ct.Name, ct.StartTime, ct.EndTime, ct.IsRated, ct.FormatName, ct.UserCount}
+	}
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// orgSubmissionVisibilitySQL is v1 SubmissionsListBase._get_queryset's rule for
+// viewers without judge.see_private_contest: their own submissions, submissions
+// outside any contest, and submissions of contests whose scoreboard/submissions
+// they may see. judge_contest_view_contest_submissions is the per-contest
+// "can see contest submissions" list.
+const orgSubmissionVisibilitySQL = "(judge_submission.user_id = ?" +
+	" OR judge_submission.contest_object_id IS NULL" +
+	" OR judge_submission.contest_object_id IN (SELECT c.id FROM judge_contest c WHERE" +
+	" EXISTS (SELECT 1 FROM judge_contest_authors a WHERE a.contest_id = c.id AND a.profile_id = ?)" +
+	" OR EXISTS (SELECT 1 FROM judge_contest_curators cu WHERE cu.contest_id = c.id AND cu.profile_id = ?)" +
+	" OR (c.tester_see_submissions = ? AND EXISTS (SELECT 1 FROM judge_contest_testers te WHERE te.contest_id = c.id AND te.profile_id = ?))" +
+	" OR EXISTS (SELECT 1 FROM judge_contest_view_contest_submissions vcs WHERE vcs.contest_id = c.id AND vcs.profile_id = ?)" +
+	" OR c.scoreboard_visibility = ?" +
+	" OR (c.end_time < ? AND c.scoreboard_visibility IN (?, ?))))"
+
+// OrganizationSubmissionList – GET /api/v2/organization/:id/submissions
+// v1 SubmissionListOrganization: submissions to this organization's problems,
+// with the base contest visibility rules applied.
+func OrganizationSubmissionList(c *gin.Context) {
+	org, ok := loadOrganization(c)
+	if !ok {
+		return
+	}
+	profileID, allowed := orgTabAccess(c, org.ID, "judge.view_all_submission")
+	if !allowed {
+		orgForbidden(c)
+		return
+	}
+	page, pageSize := parsePagination(c)
+
+	q := db.DB.Model(&models.Submission{}).
+		Joins("JOIN judge_profile jp ON jp.id = judge_submission.user_id").
+		Joins("JOIN auth_user au ON au.id = jp.user_id").
+		Joins("JOIN judge_problem pr ON pr.id = judge_submission.problem_id").
+		Joins("JOIN judge_language l ON l.id = judge_submission.language_id").
+		Where("pr.id IN (SELECT problem_id FROM judge_problem_organizations WHERE organization_id = ?)", org.ID)
+
+	access := auth.GetAccess(c)
+	if !access.HasPerm("judge.see_private_contest") {
+		q = q.Where(orgSubmissionVisibilitySQL,
+			profileID, profileID, profileID, true, profileID, profileID,
+			"V", time.Now(), "C", "P")
+	}
+
+	writeSubmissionList(c, q, page, pageSize)
 }
 
 // helpers
