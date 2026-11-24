@@ -29,6 +29,8 @@ import {
     Tags,
     History,
     PanelTop,
+    Files,
+    Shuffle,
     ArrowLeft,
     ChevronRight,
     type LucideIcon,
@@ -75,6 +77,8 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
         key: 'system',
         items: [
             { href: '/admin/navigation-bars', key: 'navigationBars', icon: PanelTop },
+            { href: '/admin/flat-pages', key: 'flatPages', icon: Files },
+            { href: '/admin/redirects', key: 'redirects', icon: Shuffle },
             { href: '/admin/misc-configs', key: 'miscConfigs', icon: Settings },
             { href: '/admin/audit-logs', key: 'auditLog', icon: History },
         ],

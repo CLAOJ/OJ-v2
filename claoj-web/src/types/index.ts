@@ -1696,6 +1696,57 @@ export interface AdminMiscConfigUpdateRequest {
 export type AdminMiscConfigListResponse = AdminListResponse<AdminMiscConfig>;
 
 // ============================================================
+// ADMIN FLAT PAGE + REDIRECT TYPES (v1 contrib tables)
+// ============================================================
+
+export interface AdminFlatPage {
+    id: number;
+    url: string;
+    title: string;
+    registration_required: boolean;
+}
+
+export interface AdminFlatPageDetail extends AdminFlatPage {
+    content: string;
+    enable_comments: boolean;
+    template_name: string;
+}
+
+export interface AdminFlatPageCreateRequest {
+    url: string;
+    title: string;
+    content?: string;
+    registration_required?: boolean;
+}
+
+export interface AdminFlatPageUpdateRequest {
+    url?: string;
+    title?: string;
+    content?: string;
+    registration_required?: boolean;
+}
+
+export type AdminFlatPageListResponse = AdminListResponse<AdminFlatPage>;
+
+export interface AdminRedirect {
+    id: number;
+    old_path: string;
+    new_path: string;
+}
+
+export interface AdminRedirectCreateRequest {
+    old_path: string;
+    new_path: string;
+}
+
+export interface AdminRedirectUpdateRequest {
+    old_path?: string;
+    new_path?: string;
+}
+
+export type AdminRedirectListResponse = AdminListResponse<AdminRedirect>;
+
+// ============================================================
 // ADMIN LANGUAGE LIMIT TYPES (Task #35)
 // ============================================================
 
@@ -1711,7 +1762,7 @@ export interface LanguageLimit {
     memory_limit: number;
 }
 
-export interface AdminLanguageLimit extends LanguageLimit {}
+export type AdminLanguageLimit = LanguageLimit;
 
 export interface AdminLanguageLimitCreateRequest {
     problem_id: number;

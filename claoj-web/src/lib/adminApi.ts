@@ -79,6 +79,14 @@ import type {
     AdminMiscConfigCreateRequest,
     AdminMiscConfigUpdateRequest,
     AdminMiscConfigListResponse,
+    AdminFlatPageDetail,
+    AdminFlatPageCreateRequest,
+    AdminFlatPageUpdateRequest,
+    AdminFlatPageListResponse,
+    AdminRedirect,
+    AdminRedirectCreateRequest,
+    AdminRedirectUpdateRequest,
+    AdminRedirectListResponse,
     LanguageLimit,
     AdminLanguageLimit,
     AdminLanguageLimitCreateRequest,
@@ -836,6 +844,44 @@ export const adminMiscConfigApi = {
 
     delete: (id: number) =>
         api.delete<{ message: string }>(`/admin/misc-config/${id}`),
+};
+
+// ============================================================
+// ADMIN FLAT PAGE + REDIRECT API (v1 contrib tables)
+// ============================================================
+
+export const adminFlatPageApi = {
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminFlatPageListResponse>(`/admin/flat-pages?${qs({ page, page_size: pageSize, search })}`),
+
+    detail: (id: number) =>
+        api.get<AdminFlatPageDetail>(`/admin/flat-page/${id}`),
+
+    create: (data: AdminFlatPageCreateRequest) =>
+        api.post<{ message: string; flat_page: { id: number; url: string } }>('/admin/flat-pages', data),
+
+    update: (id: number, data: AdminFlatPageUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/flat-page/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/flat-page/${id}`),
+};
+
+export const adminRedirectApi = {
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminRedirectListResponse>(`/admin/redirects?${qs({ page, page_size: pageSize, search })}`),
+
+    detail: (id: number) =>
+        api.get<AdminRedirect>(`/admin/redirect/${id}`),
+
+    create: (data: AdminRedirectCreateRequest) =>
+        api.post<{ message: string; redirect: { id: number; old_path: string } }>('/admin/redirects', data),
+
+    update: (id: number, data: AdminRedirectUpdateRequest) =>
+        api.patch<{ message: string }>(`/admin/redirect/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/redirect/${id}`),
 };
 
 // ============================================================
