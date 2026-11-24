@@ -70,6 +70,35 @@ func TestStore_List_FilterByAction(t *testing.T) {
 	}
 }
 
+func TestStore_List_ExcludeAction(t *testing.T) {
+	// Read (VIEW) traffic must not crowd changes out of the page window: with
+	// ExcludeAction the exclusion happens before pagination on both backends.
+	for name, store := range storeFactories(t) {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, store.Write(Entry{Action: "CREATE", Resource: "Problem"}))
+			require.NoError(t, store.Write(Entry{Action: "VIEW", Resource: "Problem"}))
+			require.NoError(t, store.Write(Entry{Action: "VIEW", Resource: "Problem"}))
+			require.NoError(t, store.Write(Entry{Action: "DELETE", Resource: "Problem"}))
+
+			entries, total, err := store.List(Filters{ExcludeAction: "VIEW"}, 1, 1)
+			require.NoError(t, err)
+			require.EqualValues(t, 2, total, "total must count only non-excluded entries")
+			require.Len(t, entries, 1)
+			require.Equal(t, "DELETE", entries[0].Action)
+
+			entries, _, err = store.List(Filters{ExcludeAction: "VIEW"}, 2, 1)
+			require.NoError(t, err)
+			require.Len(t, entries, 1)
+			require.Equal(t, "CREATE", entries[0].Action)
+
+			// An empty ExcludeAction excludes nothing.
+			_, total, err = store.List(Filters{}, 1, 20)
+			require.NoError(t, err)
+			require.EqualValues(t, 4, total)
+		})
+	}
+}
+
 func TestStore_List_FilterByResourceStatusUserID(t *testing.T) {
 	for name, store := range storeFactories(t) {
 		t.Run(name, func(t *testing.T) {

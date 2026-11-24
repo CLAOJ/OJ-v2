@@ -99,4 +99,23 @@ func TestAdminAuditLog_RecordsMutation(t *testing.T) {
 	require.NotEmpty(t, change.ID)
 	require.Contains(t, change.Details, `"status_code":201`)
 	require.Contains(t, change.Details, `"path":"/api/admin/contest-tags"`)
+
+	// The dashboard asks for changes only (exclude_action=VIEW); the poll's own
+	// VIEW rows must not appear, and the mutation must still be there.
+	exclReq := httptest.NewRequest(http.MethodGet, "/api/audit-logs?page=1&page_size=8&exclude_action=VIEW", nil)
+	exclReq.AddCookie(&http.Cookie{Name: "access_token", Value: token})
+	exclW := httptest.NewRecorder()
+	router.ServeHTTP(exclW, exclReq)
+	require.Equal(t, http.StatusOK, exclW.Code, exclW.Body.String())
+
+	var exclResp struct {
+		Results []auditlog.Entry `json:"results"`
+		Total   int64            `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(exclW.Body.Bytes(), &exclResp))
+	require.NotEmpty(t, exclResp.Results)
+	for _, e := range exclResp.Results {
+		require.NotEqual(t, "VIEW", e.Action, "exclude_action=VIEW must drop read entries")
+	}
+	require.Equal(t, "CREATE", exclResp.Results[0].Action)
 }

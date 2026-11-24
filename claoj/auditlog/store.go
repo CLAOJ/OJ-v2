@@ -33,14 +33,17 @@ type Entry struct {
 }
 
 // Filters narrows List results. A zero value for a field means "no filter"
-// on that field.
+// on that field. ExcludeAction drops a single action, so callers that want
+// "changes only" (everything but VIEW) are not defeated by read traffic
+// crowding mutations out of the page window.
 type Filters struct {
-	Action   string
-	Resource string
-	Status   string
-	UserID   uint
-	Start    *time.Time
-	End      *time.Time
+	Action        string
+	ExcludeAction string
+	Resource      string
+	Status        string
+	UserID        uint
+	Start         *time.Time
+	End           *time.Time
 }
 
 // Store persists and queries audit-log entries.
@@ -61,6 +64,9 @@ var Default Store
 // matches reports whether e satisfies every non-zero field in f.
 func matches(e Entry, f Filters) bool {
 	if f.Action != "" && e.Action != f.Action {
+		return false
+	}
+	if f.ExcludeAction != "" && e.Action == f.ExcludeAction {
 		return false
 	}
 	if f.Resource != "" && e.Resource != f.Resource {

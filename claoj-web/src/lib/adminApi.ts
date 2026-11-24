@@ -730,6 +730,7 @@ export interface AuditLogEntry {
 
 export interface AuditLogFilters {
     action?: string;
+    exclude_action?: string; // e.g. VIEW, so read traffic can't crowd out changes
     resource?: string;
     status?: string;
     user_id?: string;

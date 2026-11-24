@@ -25,8 +25,9 @@ export default function AdminAuditLogPage() {
     const t = useTranslations('Admin');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
-    // Changes are what staff audit; reads are opt-in.
-    const [filters, setFilters] = useState<AuditLogFilters>({ action: 'UPDATE' });
+    // Default to all actions: a create/delete-only trail must never look empty.
+    // Reads are opt-in, so VIEW stays selectable but is not preselected.
+    const [filters, setFilters] = useState<AuditLogFilters>({});
     const [open, setOpen] = useState<string | null>(null);
 
     const setFilter = (k: keyof AuditLogFilters, v: string) => {

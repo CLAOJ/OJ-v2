@@ -94,10 +94,11 @@ export default function AdminDashboardPage() {
         refetchInterval: REFRESH_MS,
     });
 
-    // Every GET is audited too; the dashboard only cares about changes.
+    // Reads are audited too and this panel polls, so exclude VIEW server-side;
+    // filtering client-side would let reads push mutations out of the window.
     const changes = useQuery({
         queryKey: ['admin-dashboard', 'audit'],
-        queryFn: async () => (await adminAuditLogApi.list(1, 100)).data.results.filter(e => e.action !== 'VIEW').slice(0, 8),
+        queryFn: async () => (await adminAuditLogApi.list(1, 8, { exclude_action: 'VIEW' })).data.results,
         refetchInterval: REFRESH_MS,
     });
 

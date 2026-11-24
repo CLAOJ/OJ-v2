@@ -171,6 +171,7 @@ func AdminAuditLogList(c *gin.Context) {
 
 	// Get filter parameters
 	action := c.Query("action")
+	excludeAction := c.Query("exclude_action")
 	resource := c.Query("resource")
 	userIDStr := c.Query("user_id")
 	status := c.Query("status")
@@ -179,9 +180,10 @@ func AdminAuditLogList(c *gin.Context) {
 
 	// Build filters
 	f := auditlog.Filters{
-		Action:   action,
-		Resource: resource,
-		Status:   status,
+		Action:        action,
+		ExcludeAction: excludeAction,
+		Resource:      resource,
+		Status:        status,
 	}
 
 	// Parse optional filters
