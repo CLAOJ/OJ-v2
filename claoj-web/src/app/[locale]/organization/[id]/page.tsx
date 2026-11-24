@@ -18,14 +18,17 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { toggleSort } from '@/lib/listSort';
 import {
     DEFAULT_MEMBER_SORT,
+    DEFAULT_PROBLEM_SORT,
     formatPoints,
     parseOrgTab,
     type OrgMemberSort,
+    type OrgProblemSort,
     type OrgTab,
 } from '@/lib/organizationView';
 import { Link, useRouter, usePathname } from '@/navigation';
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { isAxiosError } from 'axios';
 import { parseLeadingId } from '@/utils/route';
 import {
     Building2,
@@ -177,9 +180,15 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     // follows every tab change (same pattern as the contest page).
     const [activeTab, setActiveTab] = useState<OrgTab>(() => parseOrgTab(searchParams.get('tab')));
     const [memberSort, setMemberSort] = useState<{ sort: OrgMemberSort; order: 'asc' | 'desc' }>(DEFAULT_MEMBER_SORT);
+    const [problemSort, setProblemSort] = useState<{ sort: OrgProblemSort; order: 'asc' | 'desc' }>(DEFAULT_PROBLEM_SORT);
     const [tabPage, setTabPage] = useState(1);
     const [tabPageSize, setTabPageSize] = useState(TAB_PAGE_SIZE);
     const queryClient = useQueryClient();
+
+    // Back/forward changes the query string without remounting; follow it.
+    useEffect(() => {
+        setActiveTab(parseOrgTab(searchParams.get('tab')));
+    }, [searchParams]);
 
     const isAuthenticated = !!user;
 
@@ -202,10 +211,10 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     });
 
     const problemsQuery = useQuery({
-        queryKey: ['organization-problems', id, tabPage, tabPageSize],
+        queryKey: ['organization-problems', id, tabPage, tabPageSize, problemSort.sort, problemSort.order],
         queryFn: async () => {
             const res = await api.get<PaginatedList<OrganizationProblemRow>>(`/organization/${id}/problems`, {
-                params: { page: tabPage, page_size: tabPageSize },
+                params: { page: tabPage, page_size: tabPageSize, sort: problemSort.sort, order: problemSort.order },
             });
             return res.data;
         },
@@ -314,7 +323,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     const currentQuery =
         activeTab === 'problems' ? problemsQuery : activeTab === 'contests' ? contestsQuery : activeTab === 'submissions' ? submissionsQuery : null;
     const needsTab = activeTab === 'problems' || activeTab === 'contests' || activeTab === 'submissions';
-    const tabForbidden = needsTab && currentQuery?.error != null;
+    const tabForbidden =
+        needsTab && isAxiosError(currentQuery?.error) && currentQuery?.error.response?.status === 403;
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 mt-4 pb-20">
@@ -481,10 +491,37 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                     <table className="w-full text-left border-collapse">
                                         <thead>
                                             <tr className="bg-muted/30 border-b">
-                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('problem')}</th>
+                                                <SortableHeader
+                                                    label={t('problem')}
+                                                    className="px-6 py-4"
+                                                    active={problemSort.sort === 'name'}
+                                                    order={problemSort.order}
+                                                    onClick={() => {
+                                                        setProblemSort(toggleSort(problemSort, 'name', 'asc'));
+                                                        setTabPage(1);
+                                                    }}
+                                                />
                                                 <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('group')}</th>
-                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('points')}</th>
-                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('solvedBy')}</th>
+                                                <SortableHeader
+                                                    label={t('points')}
+                                                    className="px-6 py-4 text-center w-28"
+                                                    active={problemSort.sort === 'points'}
+                                                    order={problemSort.order}
+                                                    onClick={() => {
+                                                        setProblemSort(toggleSort(problemSort, 'points', 'desc'));
+                                                        setTabPage(1);
+                                                    }}
+                                                />
+                                                <SortableHeader
+                                                    label={t('solvedBy')}
+                                                    className="px-6 py-4 text-center w-28"
+                                                    active={problemSort.sort === 'user_count'}
+                                                    order={problemSort.order}
+                                                    onClick={() => {
+                                                        setProblemSort(toggleSort(problemSort, 'user_count', 'desc'));
+                                                        setTabPage(1);
+                                                    }}
+                                                />
                                                 <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('acRate')}</th>
                                             </tr>
                                         </thead>

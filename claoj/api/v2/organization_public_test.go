@@ -61,10 +61,13 @@ func setupOrgTabsDB(t *testing.T) orgTabsFixture {
 
 	group := models.ProblemGroup{Name: "g", FullName: "Group"}
 	require.NoError(t, db.DB.Create(&group).Error)
+	// Distinct, increasing dates keep -date (v1's default order) deterministic.
+	problemDate := time.Now().Add(-24 * time.Hour)
 	newProblem := func(code string, public bool) models.Problem {
+		problemDate = problemDate.Add(time.Minute)
 		p := models.Problem{
 			Code: code, Name: code, GroupID: group.ID, TimeLimit: 1, MemoryLimit: 256,
-			Points: 100, IsPublic: public, IsOrganizationPrivate: true,
+			Points: 100, IsPublic: public, IsOrganizationPrivate: true, Date: &problemDate,
 		}
 		require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
 		return p
@@ -253,6 +256,74 @@ func TestOrganizationSubmissions_Scoping(t *testing.T) {
 	// submission stays out).
 	_, body = orgTabRequest(t, fx.org.ID, fx.rootUser.ID, "submissions")
 	require.EqualValues(t, 4, body["total"])
+}
+
+// v1 SubmissionListOrganization inherits Problem.get_visible_problems, so a
+// hidden organization problem's submissions stay out of a plain member's list
+// while its author still sees them.
+func TestOrganizationSubmissions_HiddenProblem(t *testing.T) {
+	fx := setupOrgTabsDB(t)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.Submission{
+		UserID: fx.author.ID, ProblemID: fx.orgHidden.ID, LanguageID: 1, Date: time.Now(), Status: "AC",
+	}).Error)
+
+	_, body := orgTabRequest(t, fx.org.ID, fx.memberUser.ID, "submissions")
+	require.EqualValues(t, 3, body["total"], "the hidden problem's row must not leak")
+	for _, r := range body["data"].([]any) {
+		require.Equal(t, "orgpub", r.(map[string]any)["problem"])
+	}
+
+	_, body = orgTabRequest(t, fx.org.ID, fx.authorUser.ID, "submissions")
+	require.EqualValues(t, 4, body["total"])
+	var hiddenRows int
+	for _, r := range body["data"].([]any) {
+		if r.(map[string]any)["problem"] == "orghidden" {
+			hiddenRows++
+		}
+	}
+	require.Equal(t, 1, hiddenRows, "the problem's author still sees it")
+}
+
+// v1 OrganizationUsers hides unlisted profiles from the member table but keeps
+// the organization's stored member_count.
+func TestOrganizationDetail_UnlistedMembers(t *testing.T) {
+	fx := setupOrgTabsDB(t)
+	require.NoError(t, db.DB.Model(&models.Profile{}).
+		Where("id = ?", fx.author.ID).Update("is_unlisted", true).Error)
+	require.NoError(t, db.DB.Model(&models.Organization{}).
+		Where("id = ?", fx.org.ID).Update("member_count", 2).Error)
+
+	router := authedRouter(fx.memberUser.ID, http.MethodGet, "/organization/:id", OrganizationDetail)
+	w := doRequest(router, http.MethodGet, "/organization/"+strconv.Itoa(int(fx.org.ID)), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body struct {
+		Members     []map[string]any `json:"members"`
+		MemberCount int              `json:"member_count"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.EqualValues(t, 2, body.MemberCount)
+	require.Len(t, body.Members, 1)
+	require.Equal(t, "member", body.Members[0]["username"])
+}
+
+// The problems tab accepts v1's sort allow-list (default -date) and ignores
+// unknown columns.
+func TestOrganizationProblems_Sort(t *testing.T) {
+	fx := setupOrgTabsDB(t)
+
+	problemCodes := func(query string) []string {
+		router := authedRouter(fx.authorUser.ID, http.MethodGet, "/organization/:id/problems", OrganizationProblemList)
+		w := doRequest(router, http.MethodGet,
+			"/organization/"+strconv.Itoa(int(fx.org.ID))+"/problems"+query, "")
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return orgCodes(t, body, "code")
+	}
+
+	require.Equal(t, []string{"orgpub", "orghidden"}, problemCodes("?sort=name&order=desc"))
+	require.Equal(t, []string{"orghidden", "orgpub"}, problemCodes("?sort=name&order=asc"))
+	require.Equal(t, []string{"orghidden", "orgpub"}, problemCodes("?sort=password"))
 }
 
 // The detail endpoint carries the member stats (v1 OrganizationUsers columns)

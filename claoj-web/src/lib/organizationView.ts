@@ -15,9 +15,18 @@ export function parseOrgTab(value: string | null | undefined): OrgTab {
 /** Sort keys the organization member table accepts (v1 OrganizationUsers). */
 export type OrgMemberSort = 'performance_points' | 'points' | 'problem_count' | 'rating';
 
+/** Sort keys the organization problems tab accepts (v1 ProblemListOrganization). */
+export type OrgProblemSort = 'code' | 'name' | 'points' | 'date' | 'user_count';
+
 /** v1 sorts the member table by -performance_points and every column desc-first. */
 export const DEFAULT_MEMBER_SORT: { sort: OrgMemberSort; order: 'desc' } = {
     sort: 'performance_points',
+    order: 'desc',
+};
+
+/** v1's default problem order is -date (newest first). */
+export const DEFAULT_PROBLEM_SORT: { sort: OrgProblemSort; order: 'desc' } = {
+    sort: 'date',
     order: 'desc',
 };
 

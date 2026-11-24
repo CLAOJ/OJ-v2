@@ -117,6 +117,7 @@ func OrganizationDetail(c *gin.Context) {
 		Joins("JOIN judge_profile_organizations po ON po.profile_id = judge_profile.id").
 		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("po.organization_id = ?", org.ID).
+		Where("judge_profile.is_unlisted = ?", false).
 		Order(sortExpr + " " + orderDir).
 		Order("judge_profile.id ASC").
 		Find(&memberRows).Error; err != nil {
@@ -133,6 +134,7 @@ func OrganizationDetail(c *gin.Context) {
 		Joins("JOIN judge_organization_admins oa ON oa.profile_id = judge_profile.id").
 		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("oa.organization_id = ?", org.ID).
+		Where("judge_profile.is_unlisted = ?", false).
 		Order("judge_profile.performance_points DESC").
 		Order("judge_profile.id ASC").
 		Find(&adminRows).Error; err != nil {
@@ -651,6 +653,24 @@ func OrganizationProblemList(c *gin.Context) {
 	}
 	page, pageSize := parsePagination(c)
 
+	// v1 lists the organization's problems newest first; ?sort= keeps the same
+	// allow-list as the problem table (unknown columns fall back to -date).
+	problemSorts := map[string]string{
+		"code":       "judge_problem.code",
+		"name":       "judge_problem.name",
+		"points":     "judge_problem.points",
+		"date":       "judge_problem.date",
+		"user_count": "judge_problem.user_count",
+	}
+	sortExpr, valid := problemSorts[c.DefaultQuery("sort", "date")]
+	if !valid {
+		sortExpr = problemSorts["date"]
+	}
+	orderDir := "DESC"
+	if c.Query("order") == "asc" {
+		orderDir = "ASC"
+	}
+
 	visExpr, visArgs := auth.VisibleProblemFilter(c)
 	q := db.DB.Model(&models.Problem{}).
 		Where(visExpr, visArgs...).
@@ -666,7 +686,7 @@ func OrganizationProblemList(c *gin.Context) {
 	if err := q.Session(&gorm.Session{}).
 		Preload("Group").
 		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.partial, judge_problem.is_public, judge_problem.user_count, judge_problem.ac_rate, judge_problem.group_id, judge_problem.date").
-		Order("judge_problem.code ASC").
+		Order(sortExpr + " " + orderDir + ", judge_problem.id ASC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&problems).Error; err != nil {
@@ -767,6 +787,11 @@ func OrganizationSubmissionList(c *gin.Context) {
 		Joins("JOIN judge_problem pr ON pr.id = judge_submission.problem_id").
 		Joins("JOIN judge_language l ON l.id = judge_submission.language_id").
 		Where("pr.id IN (SELECT problem_id FROM judge_problem_organizations WHERE organization_id = ?)", org.ID)
+
+	// Problem.get_visible_problems: a submission is only listed when its problem
+	// is visible to the viewer (hidden org problems appear for their authors).
+	visExpr, visArgs := auth.VisibleProblemFilterFor(c, "pr")
+	q = q.Where(visExpr, visArgs...)
 
 	access := auth.GetAccess(c)
 	if !access.HasPerm("judge.see_private_contest") {

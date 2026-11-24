@@ -1,4 +1,4 @@
-import { DEFAULT_MEMBER_SORT, formatPoints, parseOrgTab } from '@/lib/organizationView';
+import { DEFAULT_MEMBER_SORT, DEFAULT_PROBLEM_SORT, formatPoints, parseOrgTab } from '@/lib/organizationView';
 
 describe('parseOrgTab', () => {
     it('accepts every organization tab', () => {
@@ -18,6 +18,12 @@ describe('parseOrgTab', () => {
 describe('DEFAULT_MEMBER_SORT', () => {
     it('matches v1 OrganizationUsers (-performance_points)', () => {
         expect(DEFAULT_MEMBER_SORT).toEqual({ sort: 'performance_points', order: 'desc' });
+    });
+});
+
+describe('DEFAULT_PROBLEM_SORT', () => {
+    it('matches v1 ProblemListOrganization (-date)', () => {
+        expect(DEFAULT_PROBLEM_SORT).toEqual({ sort: 'date', order: 'desc' });
     });
 });
 
