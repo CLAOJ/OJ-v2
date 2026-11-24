@@ -183,7 +183,7 @@ func TestEvent_UnknownPacketIsIgnored(t *testing.T) {
 	assert.Equal(t, "QU", loadSub(t).Status)
 }
 
-func TestEvent_JudgeStatusRecordsPingAndLoad(t *testing.T) {
+func TestEvent_JudgeStatusRecordsPingLoadAndIP(t *testing.T) {
 	judge := setupEventDB(t)
 	r := newEventRouter()
 	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "judge-status", "ping": 42.5, "load": 0.03}))
@@ -194,12 +194,34 @@ func TestEvent_JudgeStatusRecordsPingAndLoad(t *testing.T) {
 	assert.InDelta(t, 42.5, *j.Ping, 1e-9)
 	require.NotNil(t, j.Load)
 	assert.InDelta(t, 0.03, *j.Load, 1e-9)
+	require.NotNil(t, j.LastIP)
+	assert.Equal(t, "192.0.2.1", *j.LastIP, "the status beat carries last_ip in its single update")
 }
 
-func TestEvent_JudgeStatusWithoutPingOrLoadIsIgnored(t *testing.T) {
-	setupEventDB(t)
+func TestEvent_JudgeStatusWithoutPingOrLoadStillRecordsIP(t *testing.T) {
+	judge := setupEventDB(t)
 	r := newEventRouter()
 	assert.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "judge-status"}))
+
+	var j models.Judge
+	require.NoError(t, db.DB.First(&j, judge.ID).Error)
+	assert.Nil(t, j.Ping, "absent ping stays untouched")
+	require.NotNil(t, j.LastIP)
+	assert.Equal(t, "192.0.2.1", *j.LastIP)
+}
+
+// An empty client address must never blank the stored one.
+func TestJudgeStatus_EmptyClientIPKeepsLastIP(t *testing.T) {
+	judge := setupEventDB(t)
+	require.NoError(t, db.DB.Model(&models.Judge{}).Where("id = ?", judge.ID).Update("last_ip", "203.0.113.9").Error)
+
+	require.NoError(t, HandleEvent(judge, Packet{"name": "judge-status", "ping": 3.0}, ""))
+
+	var j models.Judge
+	require.NoError(t, db.DB.First(&j, judge.ID).Error)
+	require.NotNil(t, j.LastIP)
+	assert.Equal(t, "203.0.113.9", *j.LastIP)
+	require.NotNil(t, j.Ping)
 }
 
 func TestEvent_HandshakeRecordsLastIP(t *testing.T) {

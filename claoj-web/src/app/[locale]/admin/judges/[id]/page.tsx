@@ -333,9 +333,10 @@ export default function AdminJudgeDetailPage() {
                             id="judge-tier"
                             type="number"
                             min={1}
+                            max={2147483647}
                             step={1}
                             value={form.tier}
-                            onChange={e => patch({ tier: e.target.value })}
+                            onChange={e => patch({ tier: e.target.value.replace(/[^0-9]/g, '') })}
                             className="w-full h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                         />
                         <p className="text-xs text-muted-foreground mt-1">{t('judgeDetail.tierHint')}</p>
@@ -382,7 +383,7 @@ export default function AdminJudgeDetailPage() {
                     <p className="text-xs text-muted-foreground">{t('judgeDetail.keyHint')}</p>
                     <button
                         onClick={() => updateMutation.mutate(judge.id)}
-                        disabled={updateMutation.isPending || !dirty || Number(form.tier) < 1 || !form.name.trim() || !form.auth_key}
+                        disabled={updateMutation.isPending || !dirty || Number(form.tier) < 1 || Number(form.tier) > 2147483647 || !form.name.trim() || (judge.auth_key !== undefined && !form.auth_key)}
                         className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 shrink-0"
                     >
                         {updateMutation.isPending ? t('common.saving') : t('common.saveChanges')}

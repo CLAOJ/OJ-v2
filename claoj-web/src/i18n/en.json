@@ -1788,7 +1788,7 @@
       "problemsPickerPlaceholder": "Search problems by code or name...",
       "runtimesPickerLabel": "Allowed languages",
       "runtimesPickerPlaceholder": "Search languages...",
-      "capabilitiesHint": "An empty problem list means the judge may grade any problem. Languages limit which runtime a submission may use on this judge.",
+      "capabilitiesHint": "Informational in v2: an empty problem list means any problem, and languages limit which runtime a submission may use here. v2 does not route the queue by them.",
       "keyHint": "Changing the auth key breaks the running agent until it is restarted with the new key.",
       "descriptionPlaceholder": "Where this judge runs, who maintains it, anything staff should know.",
       "showKey": "Show auth key",

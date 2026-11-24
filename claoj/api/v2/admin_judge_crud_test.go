@@ -323,6 +323,27 @@ func TestAdminJudgeUpdate_RejectsNonPositiveTier(t *testing.T) {
 	require.Equal(t, 1, got.Tier)
 }
 
+// judge_judge.tier is a signed 32-bit int; a bigger value would wrap on insert.
+func TestAdminJudgeUpdate_RejectsTierAboveInt32(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "tiered", false)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+
+	w := doRequest(router, http.MethodPatch, "/admin/judge/1", `{"tier":2147483648}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	var got models.Judge
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, 1, got.Tier)
+
+	w = doRequest(router, http.MethodPatch, "/admin/judge/1", `{"tier":2147483647}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, 2147483647, got.Tier)
+}
+
 func TestAdminJudge_TierEditableWhileOnline(t *testing.T) {
 	setupJudgeCrudDB(t)
 	j := seedJudge(t, "live", true)
@@ -347,7 +368,9 @@ func TestAdminJudgeDetail_ShowsKeyAndCapabilityIDs(t *testing.T) {
 	require.NoError(t, db.DB.Model(&j).Association("Problems").Append(&p))
 	require.NoError(t, db.DB.Model(&j).Association("Runtimes").Append(&lang))
 
-	router := authedRouter(1, http.MethodGet, "/admin/judge/:id", AdminJudgeDetail)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodGet, "/admin/judge/:id", AdminJudgeDetail)
 	w := doRequest(router, http.MethodGet, "/admin/judge/1", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
@@ -356,4 +379,25 @@ func TestAdminJudgeDetail_ShowsKeyAndCapabilityIDs(t *testing.T) {
 	require.Equal(t, j.AuthKey, body["auth_key"], "v1 shows the key on the change form")
 	require.Equal(t, []any{float64(p.ID)}, body["problem_ids"])
 	require.Equal(t, []any{float64(lang.ID)}, body["runtime_ids"])
+}
+
+// The auth key is the judge's login: staff who cannot reach the v1 change form
+// (no judge.change_judge) must not get it from the read endpoint either.
+func TestAdminJudgeDetail_HidesKeyFromStaffWithoutChangePerm(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "capable", false)
+
+	staff := models.AuthUser{Username: "staff", IsActive: true, IsStaff: true}
+	require.NoError(t, db.DB.Create(&staff).Error)
+	router := authedRouter(staff.ID, http.MethodGet, "/admin/judge/:id", AdminJudgeDetail)
+
+	w := doRequest(router, http.MethodGet, "/admin/judge/1", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	_, hasKey := body["auth_key"]
+	require.False(t, hasKey, "auth_key stays out of the payload")
+	require.NotContains(t, w.Body.String(), j.AuthKey)
+	require.Equal(t, j.Name, body["name"], "the rest of the detail is unchanged")
 }

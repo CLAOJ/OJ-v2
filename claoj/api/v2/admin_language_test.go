@@ -182,6 +182,25 @@ func TestAdminLanguageUpdate_IncludeInProblemIsIdempotentAndNeverDetaches(t *tes
 	require.False(t, got.IncludeInProblem)
 }
 
+// The row update and the attach are one unit of work: a failed attach must
+// leave the language exactly as it was.
+func TestAdminLanguageUpdate_AttachFailureRollsBackUpdate(t *testing.T) {
+	setupLanguageDB(t)
+	seedProblems(t, "aplusb")
+	lang := seedLanguage(t, "PY3")
+	root := newLanguageUser(t, "root", true)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/language/:id", AdminLanguageUpdate)
+	require.NoError(t, db.DB.Migrator().DropTable("judge_problem_allowed_languages"))
+
+	w := doRequest(router, http.MethodPatch, "/admin/language/1", `{"name":"Renamed","include_in_problem":true}`)
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	var got models.Language
+	require.NoError(t, db.DB.First(&got, lang.ID).Error)
+	require.Equal(t, "PY3", got.Name, "the update rolls back with the failed attach")
+	require.False(t, got.IncludeInProblem)
+}
+
 func TestAdminLanguageUpdate_ReturnsLanguageKey(t *testing.T) {
 	setupLanguageDB(t)
 	seedLanguage(t, "PY3")

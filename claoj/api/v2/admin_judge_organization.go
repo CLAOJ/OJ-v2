@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -188,10 +189,9 @@ func AdminJudgeDetail(c *gin.Context) {
 		startTime = judge.StartTime.Format(time.RFC3339)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	body := gin.H{
 		"id":                judge.ID,
 		"name":              judge.Name,
-		"auth_key":          judge.AuthKey, // v1 shows it on the change form
 		"tier":              judge.Tier,
 		"online":            judge.Online,
 		"is_blocked":        judge.IsBlocked,
@@ -206,7 +206,13 @@ func AdminJudgeDetail(c *gin.Context) {
 		"runtimes":          runtimes,
 		"runtime_ids":       runtimeIDs,
 		"assigned_runtimes": assigned,
-	})
+	}
+	// v1 shows the auth key only on the change form, which needs change_judge:
+	// it is the judge's login, so it is not part of the plain read payload.
+	if auth.HasPerm(c, "judge.change_judge") {
+		body["auth_key"] = judge.AuthKey
+	}
+	c.JSON(http.StatusOK, body)
 }
 
 // AdminJudgeEnable - POST /api/v2/admin/judge/:id/enable
@@ -322,10 +328,11 @@ func AdminJudgeUpdate(c *gin.Context) {
 	if input.Description != nil {
 		updates["description"] = *input.Description
 	}
-	// v1's PositiveIntegerField: 0 and negatives are rejected.
+	// v1's PositiveIntegerField: 0 and negatives are rejected; model.Tier is a
+	// signed 32-bit int, so anything above that would wrap on insert.
 	if input.Tier != nil {
-		if *input.Tier < 1 {
-			c.JSON(http.StatusBadRequest, apiUserError("tier must be a positive integer"))
+		if *input.Tier < 1 || *input.Tier > math.MaxInt32 {
+			c.JSON(http.StatusBadRequest, apiUserError("tier must be an integer from 1 to 2147483647"))
 			return
 		}
 		updates["tier"] = *input.Tier

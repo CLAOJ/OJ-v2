@@ -173,16 +173,21 @@ func (s *LanguageService) UpdateLanguage(req UpdateLanguageRequest) (*Language, 
 		updates["include_in_problem"] = *req.IncludeInProblem
 	}
 
-	if len(updates) > 0 {
-		if err := db.DB.Model(&lang).Updates(updates).Error; err != nil {
-			return nil, err
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if len(updates) > 0 {
+			if err := tx.Model(&lang).Updates(updates).Error; err != nil {
+				return err
+			}
 		}
-	}
-	// v1 only adds: turning the flag off never detaches the language.
-	if req.IncludeInProblem != nil && *req.IncludeInProblem {
-		if err := attachToAllProblems(db.DB, lang.ID, true); err != nil {
-			return nil, err
+		// v1 only adds: turning the flag off never detaches the language. While
+		// the flag is set every save re-attaches, which is how problems created
+		// after the language are picked up.
+		if req.IncludeInProblem != nil && *req.IncludeInProblem {
+			return attachToAllProblems(tx, lang.ID, true)
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	result := languageToModel(lang)

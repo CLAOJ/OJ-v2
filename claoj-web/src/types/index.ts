@@ -1401,12 +1401,11 @@ export interface AdminLanguage {
     file_size_limit: number;
     include_in_problem: boolean;
     info: string;
-}
-
-export interface AdminLanguageDetail extends AdminLanguage {
     template: string;
     description: string;
 }
+
+export type AdminLanguageDetail = AdminLanguage;
 
 export interface AdminLanguageCreateRequest {
     key: string;
