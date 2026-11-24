@@ -61,9 +61,23 @@ func ContestList(c *gin.Context) {
 	sql := "SELECT * FROM judge_contest WHERE " + visExpr
 	args := append([]any{}, visArgs...)
 
+	where := sql
+	whereArgs := append([]any{}, visArgs...)
 	if search != "" {
 		sql += " AND (name LIKE ? OR `key` LIKE ?)"
 		args = append(args, "%"+search+"%", "%"+search+"%")
+		where += " AND (name LIKE ? OR `key` LIKE ?)"
+		whereArgs = append(whereArgs, "%"+search+"%", "%"+search+"%")
+	}
+
+	// The filtered row count, so the client can page past the page-size cap
+	// instead of requesting page_size=1000 and silently seeing only the first
+	// 100 rows.
+	var total int64
+	if err := db.DB.Raw("SELECT COUNT(*) FROM ("+where+") AS visible_contests", whereArgs...).
+		Scan(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
 	}
 
 	sql += " ORDER BY start_time DESC LIMIT ? OFFSET ?"
@@ -144,7 +158,7 @@ func ContestList(c *gin.Context) {
 			tags,
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, gin.H{"results": items, "total": total})
 }
 
 // ContestDetail – GET /api/v2/contest/:key
@@ -220,21 +234,41 @@ func ContestDetail(c *gin.Context) {
 		}
 	}
 
+	// v1 renders every contest announcement on the contest page (there is no
+	// draft/unpublished state in judge_contestannouncement, and date is
+	// auto_now_add), newest first.
+	type AnnouncementItem struct {
+		ID          uint      `json:"id"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		Date        time.Time `json:"date"`
+	}
+	announcementItems := []AnnouncementItem{}
+	var announcements []models.ContestAnnouncement
+	if err := db.DB.Where("contest_id = ?", ct.ID).Order("date DESC, id DESC").Find(&announcements).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	for _, a := range announcements {
+		announcementItems = append(announcementItems, AnnouncementItem{a.ID, a.Title, a.Description, a.Date})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"key":         ct.Key,
-		"name":        ct.Name,
-		"description": ct.Description,
-		"summary":     ct.Summary,
-		"start_time":  ct.StartTime,
-		"end_time":    ct.EndTime,
-		"time_limit":  ct.TimeLimit,
-		"is_rated":    ct.IsRated,
-		"format":      ct.FormatName,
-		"problems":    problems,
-		"is_joined":   isJoined,
-		"is_virtual":  isVirtual,
-		"is_active":   isActive,
-		"has_ended":   hasEnded,
-		"can_virtual": canVirtual,
+		"key":           ct.Key,
+		"name":          ct.Name,
+		"description":   ct.Description,
+		"summary":       ct.Summary,
+		"start_time":    ct.StartTime,
+		"end_time":      ct.EndTime,
+		"time_limit":    ct.TimeLimit,
+		"is_rated":      ct.IsRated,
+		"format":        ct.FormatName,
+		"problems":      problems,
+		"announcements": announcementItems,
+		"is_joined":     isJoined,
+		"is_virtual":    isVirtual,
+		"is_active":     isActive,
+		"has_ended":     hasEnded,
+		"can_virtual":   canVirtual,
 	})
 }
