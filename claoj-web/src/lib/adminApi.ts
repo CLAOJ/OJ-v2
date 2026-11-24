@@ -82,6 +82,7 @@ import type {
     AdminProblemUpdateRequest,
     AdminContestDetail,
     AdminContestUpdateRequest,
+    ContestAnnouncement,
 } from '@/types';
 
 /** Builds a query string from non-empty params. */
@@ -220,6 +221,24 @@ export const adminContestApi = {
         api.post<{ message: string; participation: { id: number; is_disqualified: boolean } }>(
             `/admin/contest/${key}/participation/${participationId}/undisqualify`
         ),
+};
+
+// ============================================================
+// ADMIN CONTEST ANNOUNCEMENTS API
+// ============================================================
+
+export const announcementApi = {
+    list: (key: string) =>
+        api.get<{ data: ContestAnnouncement[] }>(`/admin/contest/${key}/announcements`),
+
+    create: (key: string, data: { title: string; description: string }) =>
+        api.post<ContestAnnouncement>(`/admin/contest/${key}/announcements`, data),
+
+    update: (key: string, id: number, data: { title: string; description: string }) =>
+        api.patch<ContestAnnouncement>(`/admin/contest/${key}/announcements/${id}`, data),
+
+    delete: (key: string, id: number) =>
+        api.delete<{ message: string }>(`/admin/contest/${key}/announcements/${id}`),
 };
 
 // ============================================================

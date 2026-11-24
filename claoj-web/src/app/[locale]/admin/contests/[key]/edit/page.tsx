@@ -7,7 +7,7 @@ import { adminContestApi } from '@/lib/adminApi';
 import { contestToFormData, contestFormToUpdate } from '@/lib/adminForms';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
-import { Trophy, ArrowLeft, Lock, Unlock, Users } from 'lucide-react';
+import { Trophy, ArrowLeft, Lock, Unlock, Users, Megaphone } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/Button';
 import { useState } from 'react';
@@ -110,13 +110,22 @@ export default function EditContestPage() {
                         {contestData.name} ({key})
                     </p>
                 </div>
-                <Link
-                    href={`/admin/contests/${key}/participations`}
-                    className="ml-auto px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
-                >
-                    <Users size={18} />
-                    {t('contests.participationsLink')}
-                </Link>
+                <div className="ml-auto flex items-center gap-2">
+                    <Link
+                        href={`/admin/contests/${key}/participations`}
+                        className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                    >
+                        <Users size={18} />
+                        {t('contests.participationsLink')}
+                    </Link>
+                    <Link
+                        href={`/admin/contests/${key}/announcements`}
+                        className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                    >
+                        <Megaphone size={18} />
+                        {t('contests.announcementsLink')}
+                    </Link>
+                </div>
             </div>
 
             {/* Submission Lock Section */}

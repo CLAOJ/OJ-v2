@@ -442,6 +442,14 @@ export interface AdminProblemUpdateRequest {
     clear_suggester_id?: boolean;
 }
 
+export interface ContestAnnouncement {
+    id: number;
+    contest_id: number;
+    title: string;
+    description: string;
+    date: string;
+}
+
 export interface AdminContestProblemRow {
     id: number;
     problem_id: number;
