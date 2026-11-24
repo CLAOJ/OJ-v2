@@ -5,6 +5,7 @@ import (
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // LanguageService provides language management operations.
@@ -107,7 +108,12 @@ func (s *LanguageService) CreateLanguage(req CreateLanguageRequest) (*Language, 
 		IncludeInProblem: req.IncludeInProblem,
 	}
 
-	if err := db.DB.Create(&lang).Error; err != nil {
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&lang).Error; err != nil {
+			return err
+		}
+		return attachToAllProblems(tx, lang.ID, lang.IncludeInProblem)
+	}); err != nil {
 		return nil, err
 	}
 
@@ -172,6 +178,12 @@ func (s *LanguageService) UpdateLanguage(req UpdateLanguageRequest) (*Language, 
 			return nil, err
 		}
 	}
+	// v1 only adds: turning the flag off never detaches the language.
+	if req.IncludeInProblem != nil && *req.IncludeInProblem {
+		if err := attachToAllProblems(db.DB, lang.ID, true); err != nil {
+			return nil, err
+		}
+	}
 
 	result := languageToModel(lang)
 	return &result, nil
@@ -204,6 +216,40 @@ func (s *LanguageService) DeleteLanguage(req DeleteLanguageRequest) error {
 }
 
 // Helper functions
+
+// attachToAllProblems mirrors v1 LanguageAdmin.save_model: a language flagged
+// include_in_problem becomes an allowed language of every problem. Executed in
+// chunks so a large problem table is not one giant insert, and with ON
+// CONFLICT DO NOTHING so re-running it (or re-saving the form) is idempotent.
+// There is no detach counterpart: v1 does not remove the language when the
+// flag is cleared.
+func attachToAllProblems(tx *gorm.DB, languageID uint, include bool) error {
+	if !include || languageID == 0 {
+		return nil
+	}
+	type allowedLanguage struct {
+		ProblemID  uint `gorm:"column:problem_id"`
+		LanguageID uint `gorm:"column:language_id"`
+	}
+	var problemIDs []uint
+	if err := tx.Model(&models.Problem{}).Pluck("id", &problemIDs).Error; err != nil {
+		return err
+	}
+	const batchSize = 500
+	for start := 0; start < len(problemIDs); start += batchSize {
+		end := min(start+batchSize, len(problemIDs))
+		rows := make([]allowedLanguage, 0, end-start)
+		for _, id := range problemIDs[start:end] {
+			rows = append(rows, allowedLanguage{ProblemID: id, LanguageID: languageID})
+		}
+		if err := tx.Table("judge_problem_allowed_languages").
+			Clauses(clause.OnConflict{DoNothing: true}).
+			Create(&rows).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func languageToModel(l models.Language) Language {
 	return Language{

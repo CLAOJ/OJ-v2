@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/service/language"
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +35,8 @@ func AdminLanguageList(c *gin.Context) {
 		CommonName       string  `json:"common_name"`
 		Ace              string  `json:"ace"`
 		Pygments         string  `json:"pygments"`
+		Template         string  `json:"template"`
+		Description      string  `json:"description"`
 		Extension        string  `json:"extension"`
 		FileOnly         bool    `json:"file_only"`
 		FileSizeLimit    int     `json:"file_size_limit"`
@@ -51,6 +54,8 @@ func AdminLanguageList(c *gin.Context) {
 			CommonName:       lang.CommonName,
 			Ace:              lang.Ace,
 			Pygments:         lang.Pygments,
+			Template:         lang.Template,
+			Description:      lang.Description,
 			Extension:        lang.Extension,
 			FileOnly:         lang.FileOnly,
 			FileSizeLimit:    lang.FileSizeLimit,
@@ -187,12 +192,9 @@ type AdminLanguageUpdateRequest struct {
 // AdminLanguageUpdate - PATCH /api/v2/admin/language/:id
 // Update a language
 func AdminLanguageUpdate(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
-	if !ok {
-		return
-	}
-
-	if !user.IsSuperuser {
+	// v1 gates the change form with judge.change_language (HasPerm also lets
+	// superusers through).
+	if !auth.HasPerm(c, "judge.change_language") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
@@ -243,12 +245,7 @@ func AdminLanguageUpdate(c *gin.Context) {
 // AdminLanguageDelete - DELETE /api/v2/admin/language/:id
 // Delete a language
 func AdminLanguageDelete(c *gin.Context) {
-	user, _, ok := resolveUserProfile(c)
-	if !ok {
-		return
-	}
-
-	if !user.IsSuperuser {
+	if !auth.HasPerm(c, "judge.delete_language") {
 		c.JSON(http.StatusForbidden, apiError("admin access required"))
 		return
 	}
