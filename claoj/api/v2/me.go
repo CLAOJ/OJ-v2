@@ -54,15 +54,12 @@ func CurrentUser(c *gin.Context) {
 		return
 	}
 
-	// Staff get their effective Django permission codenames so permission-gated
-	// controls can be shown per user. LoadUserAccess returns only permissions
-	// actually granted to this user (never the whole catalogue, even for a
-	// superuser); superusers are still told apart by is_superuser.
-	perms := []string{}
-	if authUser.IsStaff {
-		perms = append(perms, access.PermList...)
-		sort.Strings(perms)
-	}
+	// Everyone gets their own effective Django permission codenames (direct
+	// plus group grants, never the whole catalogue) so permission-gated public
+	// controls - e.g. the suggest link - work for non-staff holders too.
+	// Superusers are still told apart by is_superuser.
+	perms := append([]string{}, access.PermList...)
+	sort.Strings(perms)
 
 	// An impersonated session keeps the *target's* permissions (that is what
 	// the UI must reflect); the banner only needs to know who is driving it.

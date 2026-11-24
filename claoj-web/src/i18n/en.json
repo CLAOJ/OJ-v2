@@ -232,6 +232,7 @@
       "title": "Suggested problems",
       "subtitle": "Problems suggested by users and still awaiting review.",
       "forbidden": "You do not have permission to view suggested problems.",
+      "error": "Could not load suggested problems. Please try again.",
       "empty": "No suggestions are waiting for review.",
       "suggester": "Suggester",
       "date": "Date"

@@ -18,14 +18,15 @@ import (
 
 type problemListFixture struct {
 	group  models.ProblemGroup
+	group2 models.ProblemGroup
 	ptype  models.ProblemType
+	ptype2 models.ProblemType
 	admin  models.AuthUser
-	editor models.Solution
 }
 
-// setupProblemListDB seeds two public problems (one typed, one with a still
-// unpublished editorial), an accepted suggestion and an unsuggested hidden
-// problem.
+// setupProblemListDB seeds three public problems in one group (published,
+// future-dated and undated editorials), one public problem in a second group,
+// an accepted suggestion and an unsuggested hidden problem.
 func setupProblemListDB(t *testing.T) problemListFixture {
 	t.Helper()
 	old := db.DB
@@ -46,12 +47,16 @@ func setupProblemListDB(t *testing.T) problemListFixture {
 
 	group := models.ProblemGroup{Name: "graphs", FullName: "Graph Theory"}
 	require.NoError(t, db.DB.Create(&group).Error)
+	group2 := models.ProblemGroup{Name: "geom", FullName: "Geometry"}
+	require.NoError(t, db.DB.Create(&group2).Error)
 	ptype := models.ProblemType{Name: "dp", FullName: "Dynamic Programming"}
 	require.NoError(t, db.DB.Create(&ptype).Error)
+	ptype2 := models.ProblemType{Name: "greedy", FullName: "Greedy"}
+	require.NoError(t, db.DB.Create(&ptype2).Error)
 
-	newProblem := func(code string, public bool, suggesterID *uint) models.Problem {
+	newProblem := func(code string, groupID uint, public bool, suggesterID *uint) models.Problem {
 		p := models.Problem{
-			Code: code, Name: code, Description: "d", GroupID: group.ID,
+			Code: code, Name: code, Description: "d", GroupID: groupID,
 			TimeLimit: 1, MemoryLimit: 256, Points: 100, IsPublic: public,
 			SuggesterID: suggesterID,
 		}
@@ -59,18 +64,25 @@ func setupProblemListDB(t *testing.T) problemListFixture {
 		return p
 	}
 
-	typed := newProblem("typed", true, nil)
-	require.NoError(t, db.DB.Model(&typed).Association("Types").Append(&ptype))
-	newProblem("plain", true, nil)
+	// "typed" carries two types and is the only problem with a published
+	// editorial; "plain" publishes tomorrow and "undated" has a NULL
+	// publish_on, which the v1 rule treats as unpublished too.
+	typed := newProblem("typed", group.ID, true, nil)
+	require.NoError(t, db.DB.Model(&typed).Association("Types").Append([]models.ProblemType{ptype, ptype2}))
+	plain := newProblem("plain", group.ID, true, nil)
+	undated := newProblem("undated", group.ID, true, nil)
+	newProblem("geo", group2.ID, true, nil)
 
-	// Publishes now (NULL publish_on = published immediately, like
-	// ProblemSolutionExists); "plain" keeps a future-dated editorial.
-	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.Solution{
-		ProblemID: typed.ID, Content: "", IsPublic: true,
-	}).Error)
+	past := time.Now().Add(-time.Hour)
 	future := time.Now().Add(24 * time.Hour)
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.Solution{
-		ProblemID: 2, Content: "", IsPublic: true, PublishOn: &future,
+		ProblemID: typed.ID, Content: "", IsPublic: true, PublishOn: &past,
+	}).Error)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.Solution{
+		ProblemID: plain.ID, Content: "", IsPublic: true, PublishOn: &future,
+	}).Error)
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.Solution{
+		ProblemID: undated.ID, Content: "", IsPublic: true,
 	}).Error)
 
 	// Admin: superusers hold every permission, so no perm rows are needed.
@@ -84,10 +96,10 @@ func setupProblemListDB(t *testing.T) problemListFixture {
 	require.NoError(t, db.DB.Create(&su).Error)
 	sp := models.Profile{UserID: su.ID, Timezone: "UTC"}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&sp).Error)
-	newProblem("sugg", false, &sp.ID)
-	newProblem("hidden", false, nil)
+	newProblem("sugg", group.ID, false, &sp.ID)
+	newProblem("hidden", group.ID, false, nil)
 
-	return problemListFixture{group: group, ptype: ptype, admin: admin}
+	return problemListFixture{group: group, group2: group2, ptype: ptype, ptype2: ptype2, admin: admin}
 }
 
 func getProblemListJSON(t *testing.T, handler gin.HandlerFunc, target string, userID ...uint) (int, map[string]any) {
@@ -134,16 +146,30 @@ func TestProblemList_TypeFilter(t *testing.T) {
 	// Comma-separated ids are equivalent to repeated params.
 	_, body = getProblemListJSON(t, ProblemList, "/problems?type="+itoa(fx.ptype.ID)+",999")
 	require.Equal(t, []string{"typed"}, codes(t, body))
+
+	// Repeated params over a problem carrying both types: one row, total 1.
+	_, body = getProblemListJSON(t, ProblemList, "/problems?type="+itoa(fx.ptype.ID)+"&type="+itoa(fx.ptype2.ID))
+	require.Equal(t, []string{"typed"}, codes(t, body))
+	require.EqualValues(t, 1, body["total"])
+
+	// An all-invalid type filter narrows to nothing instead of widening.
+	_, body = getProblemListJSON(t, ProblemList, "/problems?type=abc")
+	require.Empty(t, codes(t, body))
+	require.EqualValues(t, 0, body["total"])
 }
 
 func TestProblemList_HasEditorialFilter(t *testing.T) {
 	fx := setupProblemListDB(t)
 
+	// Only the past-dated editorial counts: a future publish_on and a NULL
+	// publish_on are both unpublished.
 	_, body := getProblemListJSON(t, ProblemList, "/problems?has_editorial=1")
 	require.Equal(t, []string{"typed"}, codes(t, body))
+	require.EqualValues(t, 1, body["total"])
 
 	_, body = getProblemListJSON(t, ProblemList, "/problems?has_editorial=0")
-	require.Equal(t, []string{"plain"}, codes(t, body))
+	require.Equal(t, []string{"geo", "plain", "undated"}, codes(t, body))
+	require.EqualValues(t, 3, body["total"])
 
 	// Filters combine, and the total reflects the combination.
 	_, body = getProblemListJSON(t, ProblemList, "/problems?type="+itoa(fx.ptype.ID)+"&has_editorial=0")
@@ -151,12 +177,38 @@ func TestProblemList_HasEditorialFilter(t *testing.T) {
 	require.EqualValues(t, 0, body["total"])
 }
 
+// The editorial tab (exists) and the list filter must apply the same rule.
+func TestProblemSolutionExists_MatchesEditorialFilter(t *testing.T) {
+	setupProblemListDB(t)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/problem/:code/solution/exists", ProblemSolutionExists)
+	exists := func(code string) bool {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/problem/"+code+"/solution/exists", nil))
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body["exists"].(bool)
+	}
+
+	require.True(t, exists("typed"))
+	require.False(t, exists("plain"), "a future publish_on is not published")
+	require.False(t, exists("undated"), "a NULL publish_on is not published (v1 rule)")
+}
+
 func TestProblemList_GroupFilterByID(t *testing.T) {
 	fx := setupProblemListDB(t)
 
 	_, body := getProblemListJSON(t, ProblemList, "/problems?group="+itoa(fx.group.ID))
-	require.ElementsMatch(t, []string{"typed", "plain"}, codes(t, body))
-	require.EqualValues(t, 2, body["total"])
+	require.ElementsMatch(t, []string{"typed", "plain", "undated"}, codes(t, body))
+	require.EqualValues(t, 3, body["total"])
+
+	// A group filter excludes every other group's problems.
+	_, body = getProblemListJSON(t, ProblemList, "/problems?group="+itoa(fx.group2.ID))
+	require.Equal(t, []string{"geo"}, codes(t, body))
+	require.EqualValues(t, 1, body["total"])
 }
 
 func TestSuggestProblemList_PermissionGate(t *testing.T) {
@@ -178,10 +230,15 @@ func TestProblemGroupList_PublicShape(t *testing.T) {
 	code, body := getProblemListJSON(t, ProblemGroupList, "/problem-groups")
 	require.Equal(t, http.StatusOK, code)
 	rows := body["data"].([]any)
-	require.Len(t, rows, 1)
+	require.Len(t, rows, 2)
+	require.Equal(t, map[string]any{
+		"id":        float64(fx.group2.ID),
+		"name":      "geom",
+		"full_name": "Geometry",
+	}, rows[0])
 	require.Equal(t, map[string]any{
 		"id":        float64(fx.group.ID),
 		"name":      "graphs",
 		"full_name": "Graph Theory",
-	}, rows[0])
+	}, rows[1])
 }

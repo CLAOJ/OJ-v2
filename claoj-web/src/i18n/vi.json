@@ -232,6 +232,7 @@
       "title": "Bài tập đề xuất",
       "subtitle": "Các bài do người dùng đề xuất và đang chờ duyệt.",
       "forbidden": "Bạn không có quyền xem danh sách bài đề xuất.",
+      "error": "Không thể tải danh sách bài đề xuất. Vui lòng thử lại.",
       "empty": "Không có đề xuất nào đang chờ duyệt.",
       "suggester": "Người đề xuất",
       "date": "Ngày"

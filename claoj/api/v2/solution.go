@@ -433,20 +433,12 @@ func ProblemSolutionExists(c *gin.Context) {
 		return
 	}
 
-	// Check if solution exists and is public
+	// Same rule as the has_editorial filter in ProblemList (v1
+	// Solution.is_accessible_by): public and already published.
 	var count int64
 	db.DB.Model(&models.Solution{}).
-		Where("problem_id = ? AND is_public = ?", problem.ID, true).
+		Where("problem_id = ? AND "+publicEditorialCondition, problem.ID, time.Now()).
 		Count(&count)
-
-	// Check publish_on for unpublished solutions
-	if count > 0 {
-		var solution models.Solution
-		db.DB.Where("problem_id = ? AND is_public = ?", problem.ID, true).First(&solution)
-		if solution.PublishOn != nil && solution.PublishOn.After(time.Now()) {
-			count = 0
-		}
-	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"exists": count > 0,

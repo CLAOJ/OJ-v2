@@ -76,8 +76,14 @@ func ProblemList(c *gin.Context) {
 	}
 	// A problem matches when it carries any of the selected types. The
 	// subquery keeps one row per problem, so COUNT stays correct.
-	if typeIDs := problemTypeIDs(c); len(typeIDs) > 0 {
-		q = q.Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_types WHERE problemtype_id IN ?)", typeIDs)
+	if typeIDs, requested := problemTypeIDs(c); requested {
+		if len(typeIDs) == 0 {
+			// v1 narrows on an all-invalid type filter; it never widens it
+			// back to every problem.
+			q = q.Where("1 = 0")
+		} else {
+			q = q.Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_types WHERE problemtype_id IN ?)", typeIDs)
+		}
 	}
 	switch c.Query("has_editorial") {
 	case "1", "true":
@@ -172,25 +178,29 @@ func ProblemList(c *gin.Context) {
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
-// hasPublicEditorialSQL matches the editorial visibility rule of
-// ProblemSolutionExists: public and already published (a NULL publish_on is
-// published immediately).
+// publicEditorialCondition is the v1 editorial visibility rule
+// (Solution.is_accessible_by): public and already published. A NULL publish_on
+// is unpublished, so it does not count. Shared with ProblemSolutionExists so
+// the editorial tab and the has_editorial filter always agree.
+const publicEditorialCondition = `is_public = 1 AND publish_on <= ?`
+
 const hasPublicEditorialSQL = `EXISTS (SELECT 1 FROM judge_solution s` +
-	` WHERE s.problem_id = judge_problem.id AND s.is_public = 1` +
-	` AND (s.publish_on IS NULL OR s.publish_on <= ?))`
+	` WHERE s.problem_id = judge_problem.id AND ` + publicEditorialCondition + `)`
 
 // problemTypeIDs reads the `type` filter as repeated params (?type=1&type=2)
-// or as one comma-separated value (?type=1,2). Bad values are ignored.
-func problemTypeIDs(c *gin.Context) []uint {
-	var ids []uint
-	for _, raw := range c.QueryArray("type") {
+// or as one comma-separated value (?type=1,2) and reports whether the filter
+// was sent at all. Bad values are dropped; a filter with no valid id stays
+// requested so the caller can narrow to nothing instead of widening.
+func problemTypeIDs(c *gin.Context) (ids []uint, requested bool) {
+	raws := c.QueryArray("type")
+	for _, raw := range raws {
 		for _, part := range strings.Split(raw, ",") {
 			if id, err := strconv.ParseUint(strings.TrimSpace(part), 10, 64); err == nil {
 				ids = append(ids, uint(id))
 			}
 		}
 	}
-	return ids
+	return ids, len(raws) > 0
 }
 
 // SuggestProblemList - GET /api/v2/problems/suggest
@@ -249,6 +259,8 @@ func SuggestProblemList(c *gin.Context) {
 			items[i].Suggester = p.Suggester.User.Username
 		}
 	}
+	// Per-user and permission-gated: no shared cache may keep it.
+	c.Header("Cache-Control", "private, no-store")
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 

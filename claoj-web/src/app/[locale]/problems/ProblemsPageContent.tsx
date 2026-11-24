@@ -8,18 +8,14 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
 import { buildProblemListParams } from '@/lib/problemFilters';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     Search,
     ChevronUp,
     ChevronDown,
     Flame,
     CheckCircle2,
-    Filter,
-    ArrowRight,
-    Trophy,
     Gamepad2,
     RefreshCw,
     SlidersHorizontal,
@@ -27,7 +23,6 @@ import {
     Lightbulb
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 
 const TRENDING_LIMIT = 5;

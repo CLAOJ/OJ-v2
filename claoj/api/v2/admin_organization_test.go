@@ -318,14 +318,15 @@ func TestCurrentUser_CanOrganizationAdmin(t *testing.T) {
 }
 
 // GET /user/me exposes the user's granted Django permission codenames so
-// permission-gated controls (e.g. submission lock/archive) can be enabled per
-// user. Superusers report is_superuser; their permissions list stays limited to
-// real grants instead of the whole catalogue.
+// permission-gated controls (e.g. submission lock/archive, the suggest link)
+// can be enabled per user - for any authenticated user, not only staff.
+// Superusers report is_superuser; their permissions list stays limited to real
+// grants instead of the whole catalogue.
 func TestCurrentUser_Permissions(t *testing.T) {
 	setupAdminUserCreateDB(t)
 	root, _ := seedAccount(t, "root", true, true)
-	granted, _ := seedAccount(t, "granted", true, false)
-	other, _ := seedAccount(t, "other", true, false)
+	granted, _ := seedAccount(t, "granted", false, false)
+	other, _ := seedAccount(t, "other", false, false)
 	grantOrgAdminPerm(t, granted.ID)
 
 	perms := func(userID uint) []any {
@@ -339,8 +340,9 @@ func TestCurrentUser_Permissions(t *testing.T) {
 		return list
 	}
 
-	require.Equal(t, []any{"judge.organization_admin"}, perms(granted.ID))
-	require.Empty(t, perms(other.ID), "a staff user without the grant must not report it")
+	require.Equal(t, []any{"judge.organization_admin"}, perms(granted.ID),
+		"a non-staff perm holder reports their own grant")
+	require.Empty(t, perms(other.ID), "a user without the grant must not report it")
 	require.Empty(t, perms(root.ID), "superusers get their real grants, not the catalogue")
 }
 

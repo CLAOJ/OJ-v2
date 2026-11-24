@@ -31,6 +31,7 @@ export default function SuggestProblemsContent() {
     });
 
     const forbidden = isAxiosError(error) && error.response?.status === 403;
+    const failed = !!error && !forbidden;
     const rows = data?.data ?? [];
 
     return (
@@ -52,6 +53,10 @@ export default function SuggestProblemsContent() {
                 <div className="p-10 rounded-md bg-card border border-dashed text-center space-y-2">
                     <Lock size={28} className="mx-auto text-muted-foreground/50" />
                     <p className="text-sm font-medium">{t('forbidden')}</p>
+                </div>
+            ) : failed ? (
+                <div role="alert" className="bg-card rounded-md border p-12 text-center text-destructive">
+                    {t('error')}
                 </div>
             ) : (
                 <>
