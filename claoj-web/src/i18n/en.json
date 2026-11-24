@@ -929,7 +929,29 @@
     "about": "About",
     "openForJoining": "Open for joining (anyone can join)",
     "unlistedHide": "Unlisted (hide from public list)",
-    "memberSlots": "Member Slots (0 for unlimited)"
+    "memberSlots": "Member Slots (0 for unlimited)",
+    "submissions": "Submissions",
+    "member": "Member",
+    "rating": "Rating",
+    "solved": "Solved",
+    "points": "Points",
+    "pp": "PP",
+    "role": "Role",
+    "problem": "Problem",
+    "group": "Group",
+    "solvedBy": "Solved",
+    "acRate": "AC rate",
+    "contest": "Contest",
+    "startTime": "Start time",
+    "duration": "Duration",
+    "participants": "Participants",
+    "language": "Language",
+    "date": "Date",
+    "noProblems": "No problems in this organization",
+    "noContests": "No contests in this organization",
+    "noSubmissions": "No submissions yet",
+    "membersOnly": "Members only",
+    "membersOnlyHint": "Join the organization to view its private data."
   },
   "Organizations": {
     "title": "Organizations",
@@ -939,7 +961,10 @@
     "unlisted": "Unlisted",
     "members": "Members",
     "showingCount": "Showing {count} of {total} organizations",
-    "noneFound": "No organizations found"
+    "noneFound": "No organizations found",
+    "pp": "PP",
+    "performancePoints": "Performance points",
+    "yourOrganizations": "Your organizations"
   },
   "Ticket": {
     "title": "Support Tickets",

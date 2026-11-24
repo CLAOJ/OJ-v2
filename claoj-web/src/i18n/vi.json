@@ -929,7 +929,29 @@
     "about": "Giới thiệu",
     "openForJoining": "Mở đăng ký (ai cũng có thể tham gia)",
     "unlistedHide": "Không công khai (ẩn khỏi danh sách)",
-    "memberSlots": "Số suất thành viên (0 là không giới hạn)"
+    "memberSlots": "Số suất thành viên (0 là không giới hạn)",
+    "submissions": "Bài nộp",
+    "member": "Thành viên",
+    "rating": "Rating",
+    "solved": "Đã giải",
+    "points": "Điểm",
+    "pp": "PP",
+    "role": "Vai trò",
+    "problem": "Bài tập",
+    "group": "Nhóm",
+    "solvedBy": "Số người giải",
+    "acRate": "Tỉ lệ AC",
+    "contest": "Kỳ thi",
+    "startTime": "Bắt đầu",
+    "duration": "Thời lượng",
+    "participants": "Số thí sinh",
+    "language": "Ngôn ngữ",
+    "date": "Thời gian",
+    "noProblems": "Tổ chức này chưa có bài tập nào",
+    "noContests": "Tổ chức này chưa có kỳ thi nào",
+    "noSubmissions": "Chưa có bài nộp nào",
+    "membersOnly": "Chỉ thành viên",
+    "membersOnlyHint": "Hãy tham gia tổ chức để xem dữ liệu riêng tư."
   },
   "Organizations": {
     "title": "Tổ chức",
@@ -939,7 +961,10 @@
     "unlisted": "Không công khai",
     "members": "Thành viên",
     "showingCount": "Đang hiển thị {count} trên {total} tổ chức",
-    "noneFound": "Không tìm thấy tổ chức nào"
+    "noneFound": "Không tìm thấy tổ chức nào",
+    "pp": "PP",
+    "performancePoints": "Điểm hiệu suất",
+    "yourOrganizations": "Tổ chức của bạn"
   },
   "Ticket": {
     "title": "Báo cáo hỗ trợ",

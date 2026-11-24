@@ -1002,6 +1002,7 @@ export interface Organization {
     is_unlisted: boolean;
     slots?: number;
     member_count: number;
+    performance_points: number;
 }
 
 export interface OrganizationDetail extends Organization {
@@ -1016,6 +1017,33 @@ export interface OrganizationMember {
     display_name?: string;
     role: string;
     joined_at: string;
+    points: number;
+    problem_count: number;
+    rating: number | null;
+    performance_points: number;
+}
+
+/** Matches GET /organization/:id/problems (the public problem-list row shape). */
+export interface OrganizationProblemRow {
+    code: string;
+    name: string;
+    points: number;
+    partial: boolean;
+    user_count: number;
+    ac_rate: number;
+    group: string;
+    is_solved: boolean;
+}
+
+/** Matches GET /organization/:id/contests (past contests of the organization). */
+export interface OrganizationContestRow {
+    key: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+    is_rated: boolean;
+    format: string;
+    user_count: number;
 }
 
 // ============================================================
