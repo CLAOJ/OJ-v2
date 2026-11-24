@@ -54,6 +54,8 @@ func RequiredMiddleware() gin.HandlerFunc {
 			c.Set("user_id", claims.UserID)
 			c.Set("username", claims.Username)
 			c.Set("is_admin", claims.IsAdmin)
+			c.Set("impersonator_id", claims.ImpersonatorID)
+			c.Set("family_id", claims.FamilyID)
 			c.Next()
 			return
 		}
@@ -110,6 +112,8 @@ func OptionalMiddleware() gin.HandlerFunc {
 					c.Set("user_id", claims.UserID)
 					c.Set("username", claims.Username)
 					c.Set("is_admin", claims.IsAdmin)
+					c.Set("impersonator_id", claims.ImpersonatorID)
+					c.Set("family_id", claims.FamilyID)
 				}
 			} else if len(tokenString) == 64 && isHexString(tokenString) {
 				// Try API token
@@ -156,4 +160,3 @@ func AdminRequiredMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
-

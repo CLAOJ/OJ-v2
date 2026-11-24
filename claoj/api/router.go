@@ -101,6 +101,10 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/user/:id", v2.AdminUserDelete)
 			admin.POST("/admin/user/:id/ban", v2.AdminUserBan)
 			admin.POST("/admin/user/:id/unban", v2.AdminUserUnban)
+			// Impersonation start is superuser-only (checked in the handler);
+			// exit lives in the protected group because an impersonated
+			// account is usually not staff and cannot pass the admin gate.
+			admin.POST("/admin/impersonate/:userId", v2.AdminImpersonateStart)
 			admin.POST("/admin/users", auth.RequirePerm("auth.add_user"), v2.AdminUserCreate)
 			admin.POST("/admin/user/:id/password", auth.RequirePerm("auth.change_user"), v2.AdminUserSetPassword)
 
@@ -417,6 +421,7 @@ func NewRouter() *gin.Engine {
 			protected.POST("/problem/:code/submit", v2.Submit)
 			protected.GET("/user/me", v2.CurrentUser)
 			protected.PATCH("/user/me", v2.UpdateProfile)
+			protected.POST("/admin/impersonate/exit", v2.AdminImpersonateExit)
 
 			// API Token Management
 			protected.GET("/user/api-token", v2.GetAPIToken)

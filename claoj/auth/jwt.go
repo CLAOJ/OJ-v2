@@ -20,6 +20,10 @@ type Claims struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_admin"`
 	FamilyID string `json:"family_id"` // Token family for rotation
+	// ImpersonatorID is the auth_user id of the superuser who started an
+	// impersonation session; 0 for an ordinary session. It is carried on
+	// both tokens so a refresh keeps the session impersonated.
+	ImpersonatorID uint `json:"impersonator_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -36,6 +40,12 @@ func generateFamilyID() string {
 // GenerateTokens creates an Access (15m) and Refresh (7d/30d) token pair
 // When extendedRefresh=true, refresh token expires in 30 days instead of 7 days
 func GenerateTokens(userID uint, username string, isAdmin bool, familyID string, extendedRefresh bool) (accessToken string, refreshToken string, newFamilyID string, err error) {
+	return GenerateTokensAs(userID, username, isAdmin, familyID, extendedRefresh, 0)
+}
+
+// GenerateTokensAs is GenerateTokens with an impersonator claim (0 = normal
+// session). Exit restores the impersonator from this claim.
+func GenerateTokensAs(userID uint, username string, isAdmin bool, familyID string, extendedRefresh bool, impersonatorID uint) (accessToken string, refreshToken string, newFamilyID string, err error) {
 	secret := []byte(config.C.App.JwtSecretKey)
 	if len(secret) == 0 {
 		return "", "", "", errors.New("jwt secret key is not configured")
@@ -49,10 +59,11 @@ func GenerateTokens(userID uint, username string, isAdmin bool, familyID string,
 
 	// 1. Access Token
 	accessClaims := &Claims{
-		UserID:   userID,
-		Username: username,
-		IsAdmin:  isAdmin,
-		FamilyID: familyID,
+		UserID:         userID,
+		Username:       username,
+		IsAdmin:        isAdmin,
+		FamilyID:       familyID,
+		ImpersonatorID: impersonatorID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -71,10 +82,11 @@ func GenerateTokens(userID uint, username string, isAdmin bool, familyID string,
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	refreshClaims := &Claims{
-		UserID:   userID,
-		Username: username,
-		IsAdmin:  isAdmin,
-		FamilyID: familyID,
+		UserID:         userID,
+		Username:       username,
+		IsAdmin:        isAdmin,
+		FamilyID:       familyID,
+		ImpersonatorID: impersonatorID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

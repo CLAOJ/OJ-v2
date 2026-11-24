@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj/auditlog"
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -59,14 +61,17 @@ func Audit() gin.HandlerFunc {
 		// Extract resource info from path
 		resource, resourceID := extractResourceInfo(c.Request.URL.Path)
 
-		// Create audit log entry
-		details, _ := json.Marshal(gin.H{
+		// An impersonated session must not launder the actor's identity: the
+		// entry records the superuser who started it, with the assumed
+		// account kept in details. A DB lookup is acceptable because it only
+		// runs for the (rare, short-lived) impersonation sessions.
+		details := gin.H{
 			"method":       c.Request.Method,
 			"path":         c.Request.URL.Path,
 			"query":        c.Request.URL.RawQuery,
 			"request_body": requestBody,
 			"status_code":  c.Writer.Status(),
-		})
+		}
 
 		entry := auditlog.Entry{
 			UserID:     0,
@@ -76,7 +81,6 @@ func Audit() gin.HandlerFunc {
 			ResourceID: resourceID,
 			IPAddress:  c.ClientIP(),
 			UserAgent:  c.Request.UserAgent(),
-			Details:    string(details),
 			Status:     status,
 			CreatedAt:  time.Now(),
 		}
@@ -90,6 +94,19 @@ func Audit() gin.HandlerFunc {
 				entry.Username = uname
 			}
 		}
+
+		if impersonatorID := c.GetUint("impersonator_id"); impersonatorID != 0 {
+			details["impersonated_id"] = entry.UserID
+			details["impersonated_user"] = entry.Username
+			var impersonator models.AuthUser
+			if err := db.DB.Select("id", "username").First(&impersonator, impersonatorID).Error; err == nil {
+				entry.UserID, entry.Username = impersonator.ID, impersonator.Username
+			}
+			details["impersonator_id"] = impersonatorID
+		}
+
+		rawDetails, _ := json.Marshal(details)
+		entry.Details = string(rawDetails)
 
 		// Save audit log asynchronously (don't block response). Failures are
 		// logged: silently dropping them made a broken audit trail (Redis

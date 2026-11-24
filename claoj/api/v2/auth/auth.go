@@ -303,7 +303,7 @@ func Refresh(c *gin.Context) {
 	}
 
 	// Generate new token pair with same family ID (maintain original remember_me setting via family)
-	accessToken, newRefreshToken, familyID, err := auth.GenerateTokens(claims.UserID, claims.Username, claims.IsAdmin, entry.FamilyID, false)
+	accessToken, newRefreshToken, familyID, err := auth.GenerateTokensAs(claims.UserID, claims.Username, claims.IsAdmin, entry.FamilyID, false, claims.ImpersonatorID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate tokens"})
 		return
