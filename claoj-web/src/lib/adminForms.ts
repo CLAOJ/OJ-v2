@@ -7,6 +7,8 @@ import type {
     AdminContestDetail,
     AdminContestUpdateRequest,
     AdminContestCreateRequest,
+    AdminComment,
+    AdminCommentUpdateRequest,
     ContestProblemInput,
 } from '@/types';
 import type { ProblemFormData } from '@/components/admin/ProblemForm';
@@ -247,4 +249,22 @@ export function contestFormToCreate(data: ContestFormData): AdminContestCreateRe
         time_limit: minutesToSeconds(data.time_limit),
         problem_ids: data.problem_ids ?? [],
     };
+}
+
+/**
+ * PATCH only the fields the admin changed. An unchanged page must not be sent:
+ * a stored v1 page code the backend pattern rejects would otherwise 400 a
+ * body-only edit.
+ */
+export function commentUpdatePayload(
+    current: AdminComment,
+    next: { body: string; hidden: boolean; authorId?: number; page: string; reason: string },
+): AdminCommentUpdateRequest {
+    const data: AdminCommentUpdateRequest = {};
+    if (next.body !== current.body) data.body = next.body;
+    if (next.hidden !== current.hidden) data.hidden = next.hidden;
+    if (next.authorId && next.authorId !== current.author_id) data.author_id = next.authorId;
+    if (next.page !== current.page) data.page = next.page;
+    if (next.reason) data.reason = next.reason;
+    return data;
 }

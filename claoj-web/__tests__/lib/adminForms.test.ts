@@ -7,6 +7,7 @@ import {
     contestToFormData,
     contestFormToUpdate,
     contestFormToCreate,
+    commentUpdatePayload,
 } from '@/lib/adminForms';
 import type { AdminProblemDetail, AdminContestDetail } from '@/types';
 
@@ -315,5 +316,21 @@ describe('adminForms', () => {
     it('an empty scoreboard visibility falls back to the visible code', () => {
         const req = contestFormToCreate({ ...contestToFormData(contest), scoreboard_visibility: undefined });
         expect(req.scoreboard_visibility).toBe('V');
+    });
+
+    it('commentUpdatePayload omits an unchanged page instead of echoing it', () => {
+        const current = {
+            id: 7, author_id: 4, username: 'ada', page: 'p/round#1', body: 'old',
+            score: 0, hidden: false, time: '2026-11-01T00:00:00Z', revisions: 1,
+        };
+        const unchanged = commentUpdatePayload(current, {
+            body: 'new', hidden: false, authorId: 4, page: 'p/round#1', reason: '',
+        });
+        expect(unchanged).toEqual({ body: 'new' });
+
+        const changed = commentUpdatePayload(current, {
+            body: 'new', hidden: true, authorId: 9, page: 'p/round-1.2', reason: 'fix',
+        });
+        expect(changed).toEqual({ body: 'new', hidden: true, author_id: 9, page: 'p/round-1.2', reason: 'fix' });
     });
 });

@@ -31,6 +31,7 @@ import { Link } from '@/navigation';
 import { formatDateTime } from '@/lib/date';
 import { EntityPicker } from '@/components/admin/EntityPicker';
 import { searchUsers } from '@/lib/adminSearch';
+import { commentUpdatePayload } from '@/lib/adminForms';
 
 export default function CommentAdminPage() {
     const t = useTranslations('Admin');
@@ -98,13 +99,13 @@ export default function CommentAdminPage() {
         if (!editingComment) return;
 
         try {
-            await adminCommentApi.update(editingComment.id, {
+            await adminCommentApi.update(editingComment.id, commentUpdatePayload(editingComment, {
                 body: editBody,
                 hidden: editHidden,
-                author_id: editAuthorIds[0],
+                authorId: editAuthorIds[0],
                 page: editPage,
                 reason: editReason,
-            });
+            }));
             toast.success(t('comments.updateSuccess'));
             setIsEditDialogOpen(false);
             loadComments();

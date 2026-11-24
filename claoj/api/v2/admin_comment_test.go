@@ -183,12 +183,13 @@ func TestAdminCommentUpdate_Validation(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, patch(`{"author_id":0}`))
 	require.Equal(t, http.StatusBadRequest, patch(`{"author_id":99999}`), "unknown profile")
 	require.Equal(t, http.StatusBadRequest, patch(`{"page":"  "}`), "empty page")
-	require.Equal(t, http.StatusBadRequest, patch(fmt.Sprintf(`{"page":"%s"}`, strings.Repeat("x", 31))), "page over the column width")
+	require.Equal(t, http.StatusBadRequest, patch(fmt.Sprintf(`{"page":"p/%s"}`, strings.Repeat("x", 29))), "page over the column width")
 	require.Equal(t, http.StatusBadRequest, patch(`{"page":"noseparator"}`), "page without a type separator")
 	require.Equal(t, http.StatusBadRequest, patch(`{"page":"p/not allowed"}`), "page with characters the parser drops")
 	require.Equal(t, http.StatusBadRequest, patch(`{"parent_id":2}`), "reparenting is not supported")
 	require.Equal(t, http.StatusBadRequest, patch(`{"parent_id":null}`), "even an explicit null parent is rejected")
 	require.Equal(t, http.StatusOK, patch(`{"page":"p:legacy_code"}`), "legacy colon codes stay valid")
+	require.Equal(t, http.StatusOK, patch(`{"page":"p/round-1.2"}`), "keys with dots and dashes stay valid")
 	require.Equal(t, http.StatusOK, patch(`{"page":"c/round1"}`), "v2 slash codes stay valid")
 
 	var got models.Comment
@@ -217,6 +218,25 @@ func TestAdminCommentUpdate_HiddenOnlyKeepsRevisions(t *testing.T) {
 	var revisions int64
 	require.NoError(t, db.DB.Model(&models.CommentRevision{}).Where("comment_id = ?", cm.ID).Count(&revisions).Error)
 	require.Zero(t, revisions)
+}
+
+// A stored page the current pattern rejects (legacy junk from v1) must not
+// block a body-only edit: the client omits an unchanged page, and the backend
+// only validates the page the request actually carries.
+func TestAdminCommentUpdate_OddStoredPage(t *testing.T) {
+	setupAdminCommentDB(t)
+	_, root := seedAccount(t, "root", true, true)
+	cm := seedComment(t, root.ID, "p/round#1", "old body", false)
+
+	router := authedRouter(1, http.MethodPatch, "/admin/comment/:id", AdminCommentUpdate)
+	w := doRequest(router, http.MethodPatch, fmt.Sprintf("/admin/comment/%d", cm.ID), `{"body":"new body"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var got models.Comment
+	require.NoError(t, db.DB.First(&got, cm.ID).Error)
+	require.Equal(t, "new body", got.Body)
+	require.Equal(t, "p/round#1", got.Page, "an untouched page stays as stored")
+	require.Equal(t, 2, got.Revisions)
 }
 
 // The public self-edit path must bump revisions too: v1 does

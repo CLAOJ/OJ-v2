@@ -17,7 +17,8 @@ import (
 
 // commentPagePattern accepts both the v1 colon code and the v2 slash prefix,
 // so an admin edit cannot store a page code the lists and links can't parse.
-var commentPagePattern = regexp.MustCompile(`^\w+[:/][A-Za-z0-9_]+$`)
+// Dots and dashes are allowed: real problem/contest keys use them.
+var commentPagePattern = regexp.MustCompile(`^\w+[:/][\w.-]+$`)
 
 // ============================================================
 // ADMIN COMMENT MANAGEMENT API
