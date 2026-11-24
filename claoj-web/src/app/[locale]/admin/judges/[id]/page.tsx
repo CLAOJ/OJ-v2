@@ -313,7 +313,7 @@ export default function AdminJudgeDetailPage() {
                                 type={showKey ? 'text' : 'password'}
                                 value={form.auth_key}
                                 maxLength={100}
-                                disabled={judge.online}
+                                disabled={judge.online || judge.auth_key === undefined}
                                 onChange={e => patch({ auth_key: e.target.value })}
                                 className="w-full h-9 pl-3 pr-9 rounded-md border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:opacity-50"
                             />
@@ -322,6 +322,7 @@ export default function AdminJudgeDetailPage() {
                                 onClick={() => setShowKey(v => !v)}
                                 aria-label={showKey ? t('judgeDetail.hideKey') : t('judgeDetail.showKey')}
                                 className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-muted text-muted-foreground"
+                                hidden={judge.auth_key === undefined}
                             >
                                 {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                             </button>
