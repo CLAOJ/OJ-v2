@@ -24,20 +24,20 @@ var submissionFileDir = filepath.Join("data", "submissions")
 
 // Files are named by the server (<16 hex>.<ext>), so the serve route can
 // require exactly that shape: no slashes, dots or traversal in the name. The
-// extension alternation is built from the whitelist, so a name like
-// "<hex>.html" never reaches the filesystem.
-var submissionFileName = func() *regexp.Regexp {
-	exts := make([]string, 0, len(submissionFileContentTypes))
-	for ext := range submissionFileContentTypes {
-		exts = append(exts, regexp.QuoteMeta(ext))
-	}
-	return regexp.MustCompile(`^[0-9a-f]{16}\.(` + strings.Join(exts, "|") + `)$`)
-}()
+// extension is any short alphanumeric token — uploads validate it against the
+// language's configured extension, and serving pins the Content-Type itself,
+// so the set of servable extensions is not a closed list.
+var submissionFileName = regexp.MustCompile(`^[0-9a-f]{16}\.[a-z0-9]{1,16}$`)
 
-// submissionFileContentTypes is both the extension whitelist and the exact
-// Content-Type each one is served with. User files are always served as an
-// attachment, never inline: serving an uploaded .html/.svg/.js from our own
-// origin would be stored XSS, so those types are simply not accepted.
+// submissionFileExtension is the shape a language-configured extension must
+// have to become part of a stored file name.
+var submissionFileExtension = regexp.MustCompile(`^[a-z0-9]{1,16}$`)
+
+// submissionFileContentTypes pins the Content-Type for known extensions; the
+// extension is part of the name the server generated, never a browser-supplied
+// header. Anything unlisted is served as application/octet-stream. User files
+// are always attachments — serving an uploaded .html/.svg inline from our own
+// origin would be stored XSS — and every response carries nosniff.
 var submissionFileContentTypes = map[string]string{
 	"zip":   "application/zip",
 	"txt":   textPlain,
@@ -74,9 +74,24 @@ var submissionFileContentTypes = map[string]string{
 	"in":    textPlain,
 	"out":   textPlain,
 	"ans":   textPlain,
+	"html":  textPlain,
+	"css":   textPlain,
+	"xml":   textPlain,
+	"svg":   textPlain,
+	"ino":   textPlain,
+	"asm":   textPlain,
+	"s":     textPlain,
 }
 
 const textPlain = "text/plain; charset=utf-8"
+
+// submissionFileServeType is the forced Content-Type for a stored file.
+func submissionFileServeType(ext string) string {
+	if ct, ok := submissionFileContentTypes[ext]; ok {
+		return ct
+	}
+	return "application/octet-stream"
+}
 
 // submissionFileError is a validation failure whose message is safe to show
 // the user (a 400, not a 500).
@@ -91,14 +106,16 @@ func publicSubmissionFilePath(name string) string { return "/api/submission-file
 // saveSubmissionFile validates and stores one uploaded submission file,
 // returning its public path. v1 parity (judge/forms.py:327-338): the extension
 // must match the language's own extension and the size must fit
-// language.file_size_limit (MB).
+// language.file_size_limit (MB). The language configuration is the only
+// extension gate — inventing a second list here would silently reject a
+// legitimately configured .sb3/.ino/.asm upload.
 func saveSubmissionFile(c *gin.Context, file *multipart.FileHeader, lang *models.Language) (string, error) {
 	ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(file.Filename)), ".")
 	want := strings.TrimPrefix(strings.ToLower(lang.Extension), ".")
 	if want == "" || ext != want {
 		return "", submissionFileError(fmt.Sprintf("wrong file type for language %s: expected .%s, got .%s", lang.Name, want, ext))
 	}
-	if _, ok := submissionFileContentTypes[ext]; !ok {
+	if !submissionFileExtension.MatchString(ext) {
 		return "", submissionFileError(fmt.Sprintf("files of type .%s cannot be submitted", ext))
 	}
 	if lang.FileSizeLimit <= 0 {
@@ -129,7 +146,7 @@ func saveSubmissionFile(c *gin.Context, file *multipart.FileHeader, lang *models
 // SubmissionFileServe - GET /api/submission-file/:name
 // Public read-only serving of uploaded submission files. The judge agent
 // downloads through this route; browsers only ever get the file as an
-// attachment.
+// attachment with a Content-Type this server picked.
 func SubmissionFileServe(c *gin.Context) {
 	name := c.Param("name")
 	if !submissionFileName.MatchString(name) {
@@ -137,11 +154,6 @@ func SubmissionFileServe(c *gin.Context) {
 		return
 	}
 	ext := strings.TrimPrefix(filepath.Ext(name), ".")
-	contentType, ok := submissionFileContentTypes[ext]
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-		return
-	}
 
 	path := filepath.Join(submissionFileDir, name)
 	if info, err := os.Stat(path); err != nil || info.IsDir() {
@@ -149,7 +161,7 @@ func SubmissionFileServe(c *gin.Context) {
 		return
 	}
 
-	c.Header("Content-Type", contentType)
+	c.Header("Content-Type", submissionFileServeType(ext))
 	c.Header("Content-Disposition", `attachment; filename="submission.`+ext+`"`)
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Header("X-Content-Type-Options", "nosniff")

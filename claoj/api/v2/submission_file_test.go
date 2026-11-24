@@ -70,16 +70,25 @@ func setupSubmitDB(t *testing.T) submitFixture {
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&fileLang).Error)
 	noLimitLang := models.Language{Key: "BIN", Name: "BIN", Extension: "zip", FileOnly: true, FileSizeLimit: 0}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&noLimitLang).Error)
-	// A language misconfigured with a type we refuse to serve (stored XSS).
+	// Languages whose configured extension is outside the old serving
+	// whitelist: a Scratch project (.sb3) and an HTML-only language. The
+	// upload must still be accepted — the language's extension is the gate.
+	sb3Lang := models.Language{Key: "SB3", Name: "Scratch", Extension: "sb3", FileOnly: true, FileSizeLimit: 1}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&sb3Lang).Error)
 	htmlLang := models.Language{Key: "HTML", Name: "HTML", Extension: "html", FileOnly: true, FileSizeLimit: 1}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&htmlLang).Error)
+	// An extension that cannot be part of a stored name: rejected even though
+	// it matches the language (no punctuation in generated file names).
+	weirdLang := models.Language{Key: "WEIRD", Name: "Weird", Extension: "tar-gz", FileOnly: true, FileSizeLimit: 1}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&weirdLang).Error)
 
 	problem := models.Problem{
 		Code: "FILE1", Name: "File Problem", Description: "d", GroupID: group.ID,
 		TimeLimit: 1, MemoryLimit: 256, Points: 100, IsPublic: true,
 	}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&problem).Error)
-	require.NoError(t, db.DB.Model(&problem).Association("AllowedLangs").Append([]models.Language{textLang, fileLang, noLimitLang, htmlLang}))
+	require.NoError(t, db.DB.Model(&problem).Association("AllowedLangs").Append(
+		[]models.Language{textLang, fileLang, noLimitLang, sb3Lang, htmlLang, weirdLang}))
 
 	// Enqueueing is mocked: these tests assert the stored row and the packet,
 	// not Redis.
@@ -180,7 +189,7 @@ func TestSubmit_FileOnlyLanguageRejectsBadUploads(t *testing.T) {
 		message  string
 	}{
 		{"wrong extension", "ZIP", "answer.rar", []byte("data"), "wrong file type"},
-		{"unsafe extension", "HTML", "answer.html", []byte("data"), "cannot be submitted"},
+		{"extension unfit for a stored name", "WEIRD", "answer.tar-gz", []byte("data"), "cannot be submitted"},
 		{"oversize", "ZIP", "answer.zip", make([]byte, 1<<20+1), "too large"},
 		{"empty", "ZIP", "answer.zip", nil, "empty"},
 		{"limit not configured", "BIN", "answer.zip", []byte("data"), "not enabled"},
@@ -215,11 +224,69 @@ func TestSubmit_LanguageSubmissionModeMismatch(t *testing.T) {
 	require.Contains(t, w.Body.String(), "requires a file submission")
 }
 
+func TestSubmit_ConfiguredExtensionOutsideContentTypeMapStillUploads(t *testing.T) {
+	dir := useTempSubmissionFileDir(t)
+	fx := setupSubmitDB(t)
+
+	// The language's own extension is the gate. These are real file-only
+	// languages (Scratch .sb3, an HTML language) whose extensions were not in
+	// the old closed serving map; rejecting them made the language unusable.
+	for _, tc := range []struct {
+		language string
+		filename string
+		content  []byte
+	}{
+		{"SB3", "game.sb3", []byte("PK\x03\x04scratch")},
+		{"HTML", "answer.html", []byte("<script>alert(1)</script>")},
+	} {
+		t.Run(tc.language, func(t *testing.T) {
+			w := submitFileUpload(t, fx.userID, "FILE1", tc.language, tc.filename, tc.content)
+			id := submissionID(t, w)
+
+			var source models.SubmissionSource
+			require.NoError(t, db.DB.Where("submission_id = ?", id).First(&source).Error)
+			name := strings.TrimPrefix(source.Source, "/api/submission-file/")
+			onDisk, err := os.ReadFile(filepath.Join(dir, name))
+			require.NoError(t, err)
+			require.Equal(t, tc.content, onDisk)
+		})
+	}
+}
+
+func TestSubmit_OversizeBodyIs413(t *testing.T) {
+	dir := useTempSubmissionFileDir(t)
+	fx := setupSubmitDB(t)
+
+	// One byte over the whole-body cap: rejected before the language (and its
+	// own smaller limit) is even resolved.
+	w := submitFileUpload(t, fx.userID, "FILE1", "ZIP", "answer.zip", make([]byte, maxSubmissionUploadBytes+1))
+	require.Equal(t, http.StatusRequestEntityTooLarge, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "too large")
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Empty(t, entries)
+}
+
+func TestSubmit_RemovesFileWhenTheSubmissionTransactionFails(t *testing.T) {
+	dir := useTempSubmissionFileDir(t)
+	setupSubmitDB(t)
+
+	// No judge_profile for this auth user id: the file is stored first, then
+	// the transaction fails, and the deferred cleanup must delete the orphan.
+	w := submitFileUpload(t, 9999, "FILE1", "ZIP", "answer.zip", []byte("PK\x03\x04"))
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "user profile not found")
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Empty(t, entries, "a failed submission must not leave its upload behind")
+}
+
 func TestSubmissionFileServe(t *testing.T) {
 	dir := useTempSubmissionFileDir(t)
 	content := []byte("PK\x03\x04")
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "0123456789abcdef.zip"), content, 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "0123456789abcdef.html"), []byte("<script>"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "0123456789abcdef.html"), []byte("<script>alert(1)</script>"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "0123456789abcdef.sb3"), content, 0o644))
 
 	router := authedRouter(0, http.MethodGet, "/submission-file/:name", SubmissionFileServe)
 	get := func(name string) *httptest.ResponseRecorder {
@@ -235,26 +302,44 @@ func TestSubmissionFileServe(t *testing.T) {
 	require.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
 	require.Equal(t, content, w.Body.Bytes())
 
-	// Whitelist + name shape: anything else is a 404, never a filesystem peek.
+	// A text-ish stored extension is served as text/plain, never as HTML: the
+	// attachment + nosniff pair is what makes that safe.
+	w = get("0123456789abcdef.html")
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, textPlain, w.Header().Get("Content-Type"))
+	require.Contains(t, w.Header().Get("Content-Disposition"), "attachment")
+	require.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
+
+	// Anything else is still an attachment, forced to octet-stream.
+	w = get("0123456789abcdef.sb3")
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "application/octet-stream", w.Header().Get("Content-Type"))
+	require.Contains(t, w.Header().Get("Content-Disposition"), "attachment")
+	require.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
+
+	// Name shape: anything else is a 404, never a filesystem peek.
 	for _, name := range []string{
-		"0123456789abcdef.html", "0123456789abcdef.exe", "abc.zip",
-		"0123456789ABCDEF.zip", "..%2Fsecret.zip", "0123456789abcdef.zip%00",
-		"0123456789abcdef", "0123456789abcdef.svg",
+		"0123456789abcdef.exe", "abc.zip", "0123456789ABCDEF.zip",
+		"..%2Fsecret.zip", "0123456789abcdef.zip%00", "0123456789abcdef",
+		"0123456789abcdef..zip",
 	} {
 		require.Equal(t, http.StatusNotFound, get(name).Code, name)
 	}
-	// Whitelisted but missing.
+	// Valid shape but missing.
 	require.Equal(t, http.StatusNotFound, get("fedcba9876543210.zip").Code)
 }
 
-func TestSubmissionFileNameWhitelist(t *testing.T) {
-	for _, name := range []string{"0123456789abcdef.zip", "0123456789abcdef.py", "0123456789abcdef.in"} {
+func TestSubmissionFileNameShape(t *testing.T) {
+	for _, name := range []string{
+		"0123456789abcdef.zip", "0123456789abcdef.py", "0123456789abcdef.in",
+		"0123456789abcdef.html", "0123456789abcdef.sb3",
+	} {
 		require.True(t, submissionFileName.MatchString(name), name)
 	}
 	for _, name := range []string{
 		"", ".", "..", "../etc/passwd", "/etc/passwd", `..\windows.zip`,
-		"0123456789abcdef.zip/../x", "0123456789abcdef.html", "0123456789abcdef.png",
-		"0123456789abcdef.png\x00",
+		"0123456789abcdef.zip/../x", "0123456789abcdef.", "0123456789abcdef.toolongextensions",
+		"0123456789abcdef.png\x00", "0123456789abcde.zip",
 	} {
 		require.False(t, submissionFileName.MatchString(name), name)
 	}
