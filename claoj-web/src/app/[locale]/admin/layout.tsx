@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import {
     LayoutDashboard,
     Users,
+    MailCheck,
     Globe,
     Server,
     Building2,
@@ -53,6 +54,7 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
         key: 'community',
         items: [
             { href: '/admin/users', key: 'users', icon: Users },
+            { href: '/admin/registrations', key: 'registrations', icon: MailCheck },
             { href: '/admin/groups', key: 'groups', icon: Shield },
             { href: '/admin/organizations', key: 'organizations', icon: Building2 },
             { href: '/admin/tickets', key: 'tickets', icon: Ticket },

@@ -49,6 +49,7 @@ import type {
     AdminLicenseUpdateRequest,
     AdminLicenseDetail,
     AdminUserListResponse,
+    AdminRegistrationListResponse,
     AdminContestListResponse,
     AdminProblemListResponse,
     AdminJudgeListResponse,
@@ -212,6 +213,27 @@ export const adminUserApi = {
 
     exitImpersonation: () =>
         api.post<{ success: boolean; user: { id: number; username: string } }>('/admin/impersonate/exit'),
+};
+
+// ============================================================
+// ADMIN REGISTRATION (account activation) API
+// ============================================================
+
+export const adminRegistrationApi = {
+    list: (page: number = 1, pageSize: number = 50, filters: {
+        search?: string;
+        status?: 'pending' | 'active' | 'all';
+        order?: SortOrder;
+    } = {}) =>
+        api.get<AdminRegistrationListResponse>(`/admin/registrations?${qs({ page, page_size: pageSize, ...filters })}`),
+
+    /** :userId is auth_user.id. Idempotent; no-op when already active. */
+    activate: (userId: number) =>
+        api.post<{ success: boolean; already_active: boolean }>(`/admin/registration/${userId}/activate`),
+
+    /** Superuser only; 400 when the account is already active. */
+    resend: (userId: number) =>
+        api.post<{ success: boolean }>(`/admin/registration/${userId}/resend`),
 };
 
 // ============================================================

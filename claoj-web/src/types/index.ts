@@ -326,6 +326,29 @@ export interface AdminUserGroupRef {
     name: string;
 }
 
+/** v1 django-registration-redux row shown read-only in the registrations admin. */
+export interface AdminRegistrationV1 {
+    /** registration_registrationprofile.id (0 when the row is missing). */
+    id: number;
+    activated: boolean;
+    has_activation_key: boolean;
+    created: string;
+}
+
+/** Row shape of GET /admin/registrations. */
+export interface AdminRegistration {
+    /** v1 registration profile id; this is the id shown in the list. */
+    id: number;
+    /** auth_user.id — what the activate/resend endpoints take. */
+    user_id: number;
+    username: string;
+    email: string;
+    is_active: boolean;
+    date_joined: string;
+    registration: AdminRegistrationV1 | null;
+    has_pending_token: boolean;
+}
+
 /** Row shape of GET /admin/users. */
 export interface AdminUser {
     id: number;
@@ -1574,6 +1597,7 @@ export type AdminLicenseListResponse = AdminListResponse<AdminLicense>;
 export type AdminProblemGroupListResponse = AdminListResponse<AdminProblemGroup>;
 export type AdminProblemTypeListResponse = AdminListResponse<AdminProblemType>;
 export type AdminUserListResponse = AdminListResponse<AdminUser>;
+export type AdminRegistrationListResponse = AdminListResponse<AdminRegistration>;
 export type AdminContestListResponse = AdminListResponse<AdminContest>;
 export type AdminProblemListResponse = AdminListResponse<AdminProblem>;
 export type AdminJudgeListResponse = AdminListResponse<AdminJudge>;
