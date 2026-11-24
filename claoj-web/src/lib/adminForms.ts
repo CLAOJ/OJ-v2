@@ -9,6 +9,9 @@ import type {
     AdminContestCreateRequest,
     AdminComment,
     AdminCommentUpdateRequest,
+    AdminNavigationBarDetail,
+    AdminNavigationBarCreateRequest,
+    AdminNavigationBarUpdateRequest,
     ContestProblemInput,
 } from '@/types';
 import type { ProblemFormData } from '@/components/admin/ProblemForm';
@@ -266,5 +269,23 @@ export function commentUpdatePayload(
     if (next.authorId && next.authorId !== current.author_id) data.author_id = next.authorId;
     if (next.page !== current.page) data.page = next.page;
     if (next.reason) data.reason = next.reason;
+    return data;
+}
+
+/**
+ * PATCH only the fields the admin changed. An unchanged regex must not be
+ * resent: a stored v1 Python-only pattern fails Go's compile check and would
+ * block every other edit.
+ */
+export function navigationBarUpdatePayload(
+    next: AdminNavigationBarCreateRequest,
+    existing: AdminNavigationBarDetail,
+): AdminNavigationBarUpdateRequest {
+    const data: AdminNavigationBarUpdateRequest = {};
+    if (next.label !== existing.label) data.label = next.label;
+    if (next.path !== existing.path) data.path = next.path;
+    if ((next.regex ?? '') !== (existing.regex ?? '')) data.regex = next.regex ?? '';
+    if ((next.parent_id ?? null) !== (existing.parent_id ?? null)) data.parent_id = next.parent_id ?? null;
+    if (next.order !== undefined && next.order !== existing.order) data.order = next.order;
     return data;
 }

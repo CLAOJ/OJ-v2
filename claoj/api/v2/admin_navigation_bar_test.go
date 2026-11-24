@@ -128,7 +128,9 @@ func TestAdminNavigationBarCreate_RejectsInvalidRegex(t *testing.T) {
 	w := doRequest(router, http.MethodPost, "/admin/navigation-bars",
 		`{"key":"bad","label":"Bad","path":"/bad","regex":"("}`)
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
-	require.Contains(t, w.Body.String(), "invalid regex")
+	require.Contains(t, w.Body.String(), "navigation bar regex is invalid")
+	// The compile detail stays in the server log, not the user-facing toast.
+	require.NotContains(t, w.Body.String(), "error parsing regexp")
 
 	var count int64
 	require.NoError(t, db.DB.Model(&models.NavigationBar{}).Count(&count).Error)
@@ -265,9 +267,10 @@ func TestAdminNavigationBarListAndDetail_IncludeRegexAndParent(t *testing.T) {
 
 	var listResp struct {
 		Data []struct {
-			Key    string `json:"key"`
-			Regex  string `json:"regex"`
-			Parent *struct {
+			Key      string `json:"key"`
+			Regex    string `json:"regex"`
+			ParentID *uint  `json:"parent_id"`
+			Parent   *struct {
 				ID    uint   `json:"id"`
 				Label string `json:"label"`
 			} `json:"parent"`
@@ -278,8 +281,11 @@ func TestAdminNavigationBarListAndDetail_IncludeRegexAndParent(t *testing.T) {
 	require.Equal(t, int64(2), listResp.Total)
 	require.Equal(t, "a", listResp.Data[0].Key)
 	require.Equal(t, "^/a", listResp.Data[0].Regex)
+	require.Nil(t, listResp.Data[0].ParentID)
 	require.Nil(t, listResp.Data[0].Parent)
 	require.Equal(t, "b", listResp.Data[1].Key)
+	require.NotNil(t, listResp.Data[1].ParentID, "list must expose parent_id: the admin parent picker excludes descendants from it")
+	require.Equal(t, a.ID, *listResp.Data[1].ParentID)
 	require.NotNil(t, listResp.Data[1].Parent)
 	require.Equal(t, a.ID, listResp.Data[1].Parent.ID)
 	require.Equal(t, "a", listResp.Data[1].Parent.Label)

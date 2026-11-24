@@ -26,7 +26,7 @@ func navigationBarError(c *gin.Context, err error) {
 	case errors.Is(err, navigation.ErrEmptyPath):
 		c.JSON(http.StatusBadRequest, apiUserError("navigation bar path cannot be empty"))
 	case errors.Is(err, navigation.ErrInvalidRegex):
-		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiUserError("navigation bar regex is invalid"))
 	case errors.Is(err, navigation.ErrParentNotFound):
 		c.JSON(http.StatusBadRequest, apiUserError("parent navigation bar not found"))
 	case errors.Is(err, navigation.ErrParentCycle):
@@ -50,14 +50,15 @@ func AdminNavigationBarList(c *gin.Context) {
 	}
 
 	type Item struct {
-		ID     uint   `json:"id"`
-		Key    string `json:"key"`
-		Label  string `json:"label"`
-		Path   string `json:"path"`
-		Regex  string `json:"regex"`
-		Order  int    `json:"order"`
-		Level  int    `json:"level"`
-		Parent *struct {
+		ID       uint   `json:"id"`
+		Key      string `json:"key"`
+		Label    string `json:"label"`
+		Path     string `json:"path"`
+		Regex    string `json:"regex"`
+		ParentID *uint  `json:"parent_id"`
+		Order    int    `json:"order"`
+		Level    int    `json:"level"`
+		Parent   *struct {
 			ID    uint   `json:"id"`
 			Label string `json:"label"`
 		} `json:"parent"`
@@ -66,13 +67,14 @@ func AdminNavigationBarList(c *gin.Context) {
 	items := make([]Item, len(resp.Entries))
 	for i, nb := range resp.Entries {
 		items[i] = Item{
-			ID:    nb.ID,
-			Key:   nb.Key,
-			Label: nb.Label,
-			Path:  nb.Path,
-			Regex: nb.Regex,
-			Order: nb.Order,
-			Level: nb.Level,
+			ID:       nb.ID,
+			Key:      nb.Key,
+			Label:    nb.Label,
+			Path:     nb.Path,
+			Regex:    nb.Regex,
+			ParentID: nb.ParentID,
+			Order:    nb.Order,
+			Level:    nb.Level,
 		}
 		if nb.ParentID != nil {
 			items[i].Parent = &struct {

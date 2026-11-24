@@ -8,8 +8,9 @@ import {
     contestFormToUpdate,
     contestFormToCreate,
     commentUpdatePayload,
+    navigationBarUpdatePayload,
 } from '@/lib/adminForms';
-import type { AdminProblemDetail, AdminContestDetail } from '@/types';
+import type { AdminProblemDetail, AdminContestDetail, AdminNavigationBarDetail } from '@/types';
 
 const problem: AdminProblemDetail = {
     id: 1, code: 'aplusb', name: 'A+B', description: 'd', points: 5, partial: false, is_public: true,
@@ -332,5 +333,31 @@ describe('adminForms', () => {
             body: 'new', hidden: true, authorId: 9, page: 'p/round-1.2', reason: 'fix',
         });
         expect(changed).toEqual({ body: 'new', hidden: true, author_id: 9, page: 'p/round-1.2', reason: 'fix' });
+    });
+
+    it('navigationBarUpdatePayload omits the regex and parent when they did not change', () => {
+        // A v1 pattern Python accepts but Go rejects must not block a label edit.
+        const detail: AdminNavigationBarDetail = {
+            id: 1, key: 'problems', label: 'Problems', path: '/problems',
+            regex: '^/problems/(?P<id>\\d+)$', parent_id: null, order: 1,
+            level: 0, lft: 1, rght: 2, tree_id: 1,
+        };
+        const next = {
+            key: detail.key, label: 'Problems', path: '/problems/1',
+            regex: detail.regex, parent_id: undefined, order: 1,
+        };
+        expect(navigationBarUpdatePayload(next, detail)).toEqual({ path: '/problems/1' });
+    });
+
+    it('navigationBarUpdatePayload sends an edited regex, parent move and reorder', () => {
+        const detail: AdminNavigationBarDetail = {
+            id: 2, key: 'a', label: 'A', path: '/a', regex: '(', parent_id: 1, order: 3,
+            level: 1, lft: 2, rght: 3, tree_id: 1,
+        };
+        const payload = navigationBarUpdatePayload(
+            { key: 'a', label: 'A2', path: '/a', regex: '^/a$', parent_id: undefined, order: 0 },
+            detail,
+        );
+        expect(payload).toEqual({ label: 'A2', regex: '^/a$', parent_id: null, order: 0 });
     });
 });

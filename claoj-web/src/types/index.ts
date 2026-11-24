@@ -1624,7 +1624,7 @@ export interface AdminNavigationBar {
     label: string;
     path: string;
     regex: string;
-    parent_id?: number;
+    parent_id?: number | null;
     order: number;
     level: number;
     parent?: {

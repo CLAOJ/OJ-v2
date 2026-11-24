@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { adminNavigationBarApi } from '@/lib/adminApi';
-import { AdminNavigationBar, AdminNavigationBarCreateRequest, AdminNavigationBarUpdateRequest } from '@/types';
+import { navigationBarUpdatePayload } from '@/lib/adminForms';
+import { AdminNavigationBar, AdminNavigationBarCreateRequest, AdminNavigationBarDetail } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -31,7 +32,7 @@ export default function NavigationBarsAdminPage() {
     const [search, setSearch] = useState('');
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [editingNavBar, setEditingNavBar] = useState<AdminNavigationBar | null>(null);
+    const [editingDetail, setEditingDetail] = useState<AdminNavigationBarDetail | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
     const [formData, setFormData] = useState<AdminNavigationBarCreateRequest>({
@@ -62,6 +63,7 @@ export default function NavigationBarsAdminPage() {
     }, [page]);
 
     const openCreateDialog = () => {
+        setEditingDetail(null);
         setFormData({
             key: '',
             label: '',
@@ -84,7 +86,7 @@ export default function NavigationBarsAdminPage() {
                 parent_id: response.data.parent_id ?? undefined,
                 order: response.data.order,
             });
-            setEditingNavBar(navBar);
+            setEditingDetail(response.data);
             setIsCreateDialogOpen(true);
         } catch (error) {
             toast.error(t('navigationBars.loadDetailFailed'));
@@ -94,8 +96,8 @@ export default function NavigationBarsAdminPage() {
     // A nav bar cannot be moved under itself or one of its descendants.
     const excludedParentIds = (() => {
         const excluded = new Set<number>();
-        if (!editingNavBar) return excluded;
-        excluded.add(editingNavBar.id);
+        if (!editingDetail) return excluded;
+        excluded.add(editingDetail.id);
         let changed = true;
         while (changed) {
             changed = false;
@@ -119,6 +121,10 @@ export default function NavigationBarsAdminPage() {
             return 'invalid';
         }
     })();
+    // A stored v1 pattern that does not compile in JS must stay saveable; only
+    // a pattern the admin just typed is blocked.
+    const regexBlocksSave = regexPreview === 'invalid'
+        && (formData.regex ?? '') !== (editingDetail?.regex ?? '');
 
     const handleCreate = async () => {
         try {
@@ -132,17 +138,10 @@ export default function NavigationBarsAdminPage() {
     };
 
     const handleUpdate = async () => {
-        if (!editingNavBar) return;
+        if (!editingDetail) return;
 
         try {
-            const updateData: AdminNavigationBarUpdateRequest = {
-                label: formData.label,
-                path: formData.path,
-                regex: formData.regex ?? '',
-                parent_id: formData.parent_id ?? null,
-                order: formData.order,
-            };
-            await adminNavigationBarApi.update(editingNavBar.id, updateData);
+            await adminNavigationBarApi.update(editingDetail.id, navigationBarUpdatePayload(formData, editingDetail));
             toast.success(t('navigationBars.updateSuccess'));
             setIsCreateDialogOpen(false);
             loadNavBars();
@@ -302,15 +301,15 @@ export default function NavigationBarsAdminPage() {
             {/* Create/Edit Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
                 setIsCreateDialogOpen(open);
-                if (!open) setEditingNavBar(null);
+                if (!open) setEditingDetail(null);
             }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingNavBar ? t('navigationBars.editDialogTitle') : t('navigationBars.createDialogTitle')}
+                            {editingDetail ? t('navigationBars.editDialogTitle') : t('navigationBars.createDialogTitle')}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingNavBar ? t('navigationBars.editDialogDesc') : t('navigationBars.createDialogDesc')}
+                            {editingDetail ? t('navigationBars.editDialogDesc') : t('navigationBars.createDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -323,7 +322,7 @@ export default function NavigationBarsAdminPage() {
                                     onChange={(e) => setFormData({
                 ...formData, key: e.target.value })}
                                     placeholder={t('navigationBars.keyPlaceholder')}
-                                    disabled={!!editingNavBar}
+                                    disabled={!!editingDetail}
                                 />
                                 <p className="text-xs text-muted-foreground">{t('navigationBars.keyHint')}</p>
                             </div>
@@ -395,6 +394,12 @@ export default function NavigationBarsAdminPage() {
                 ...formData, parent_id: e.target.value ? Number(e.target.value) : undefined })}
                                 >
                                     <option value="">{t('navigationBars.parentNone')}</option>
+                                    {/* The current parent can sit on another page; inject it from the detail so the select is not blank. */}
+                                    {editingDetail?.parent_id != null && !navBars.some((nb) => nb.id === editingDetail.parent_id) && (
+                                        <option value={editingDetail.parent_id}>
+                                            {'\u00A0'.repeat(Math.max(0, editingDetail.level - 1) * 2)}{editingDetail.parent_label}
+                                        </option>
+                                    )}
                                     {/* shortcut: options come from the loaded page (50), upgrade to a full fetch if nav items ever exceed one page */}
                                     {navBars
                                         .filter((nb) => !excludedParentIds.has(nb.id))
@@ -420,12 +425,12 @@ export default function NavigationBarsAdminPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => {
                             setIsCreateDialogOpen(false);
-                            setEditingNavBar(null);
+                            setEditingDetail(null);
                         }}>
                             {t('common.cancel')}
                         </Button>
-                        <Button onClick={editingNavBar ? handleUpdate : handleCreate} disabled={regexPreview === 'invalid'}>
-                            {editingNavBar ? t('common.saveChanges') : t('common.create')}
+                        <Button onClick={editingDetail ? handleUpdate : handleCreate} disabled={regexBlocksSave}>
+                            {editingDetail ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
