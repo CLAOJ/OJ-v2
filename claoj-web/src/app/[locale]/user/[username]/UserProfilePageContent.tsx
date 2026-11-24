@@ -1,12 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import api, { ppBreakdownApi } from '@/lib/api';
-import { UserDetail, SolvedProblem, RatingHistoryEntry, APIResponse, PPBreakdown } from '@/types';
+import { UserDetail, SolvedProblem, RatingHistoryEntry, APIResponse, PPBreakdown, BlogPost, PaginatedList, UserAnalytics } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
-import { use, useState } from 'react';
+import { PaginationBar } from '@/components/ui/PaginationBar';
+import { buildHeatmapWeeks } from '@/lib/heatmap';
+import { use, useMemo, useState } from 'react';
 import {
     User as UserIcon,
     MapPin,
@@ -25,7 +27,8 @@ import {
     CheckCircle2,
     ChevronDown,
     ChevronUp,
-    BarChart3
+    BarChart3,
+    Newspaper
 } from 'lucide-react';
 import { cn, getRankColor, getRankBadgeColor, getRankTitle } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -50,9 +53,12 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
     const { username } = use(params);
     const t = useTranslations('Users');
     const pt = useTranslations('Problems');
-    const [activeTab, setActiveTab] = useState<'solved' | 'rating' | 'about' | 'organizations'>('solved');
+    const locale = useLocale();
+    const [activeTab, setActiveTab] = useState<'solved' | 'rating' | 'about' | 'organizations' | 'blogs'>('solved');
     const [ratingView, setRatingView] = useState<'chart' | 'table'>('chart');
     const [ppBreakdownOpen, setPpBreakdownOpen] = useState(false);
+    const [blogPage, setBlogPage] = useState(1);
+    const BLOG_PAGE_SIZE = 5;
 
     const { data: user, isLoading: userLoading } = useQuery({
         queryKey: ['user', username],
@@ -68,6 +74,26 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
             const res = await api.get<APIResponse<SolvedProblem[]>>(`/user/${username}/solved`);
             return res.data.data;
         }
+    });
+
+    const { data: analytics, isLoading: analyticsLoading } = useQuery({
+        queryKey: ['user', username, 'analytics'],
+        queryFn: async () => {
+            const res = await api.get<UserAnalytics>(`/user/${username}/analytics`);
+            return res.data;
+        },
+        enabled: activeTab === 'about',
+    });
+
+    const { data: blogData, isLoading: blogsLoading } = useQuery({
+        queryKey: ['user', username, 'blogs', blogPage],
+        queryFn: async () => {
+            const res = await api.get<PaginatedList<BlogPost>>('/blogs', {
+                params: { author: username, page: blogPage, page_size: BLOG_PAGE_SIZE },
+            });
+            return res.data;
+        },
+        enabled: activeTab === 'blogs',
     });
 
     const { data: ratingData, isLoading: ratingLoading } = useQuery({
@@ -86,6 +112,20 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
         },
         enabled: ppBreakdownOpen,
     });
+
+    const heatmapWeeks = useMemo(
+        () => buildHeatmapWeeks(analytics?.activity_year ?? []),
+        [analytics]
+    );
+    // Locale-aware weekday initials and day labels; 2023-01-01 was a Sunday.
+    const weekdayLabels = useMemo(() => {
+        const format = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+        return Array.from({ length: 7 }, (_, i) => format.format(new Date(Date.UTC(2023, 0, 1 + i))));
+    }, [locale]);
+    const dayLabel = useMemo(
+        () => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' }),
+        [locale]
+    );
 
     if (userLoading) return (
         <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto p-8 animate-pulse">
@@ -172,6 +212,13 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             <span className="text-xs font-medium text-muted-foreground">{t('ratingRank')}</span>
                             <span className="text-sm font-medium">{user.rating_rank ? `#${user.rating_rank}` : '-'}</span>
                         </div>
+                        <Link
+                            href={`/submissions?user=${user.username}`}
+                            className="flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-primary transition-colors group/sub"
+                        >
+                            {t('viewSubmissions')}
+                            <ArrowUpRight size={16} className="group-hover/sub:text-primary transition-colors" />
+                        </Link>
                     </div>
                 </div>
 
@@ -201,6 +248,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                     {[
                         { id: 'solved', label: t('solvedProblems'), icon: CheckCircle2 },
                         { id: 'rating', label: t('ratingHistory'), icon: TrendingUp },
+                        { id: 'blogs', label: t('blogs'), icon: Newspaper },
                         { id: 'organizations', label: t('organizations'), icon: Shield },
                         { id: 'about', label: t('about'), icon: Info },
                     ].map((tab) => (
@@ -348,25 +396,99 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                         <Badge variant="secondary" className="font-medium">{user.problem_count}</Badge>
                                     </h3>
                                     {solvedLoading ? (
-                                        <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                                            {Array.from({ length: 40 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+                                        <div className="space-y-3">
+                                            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
                                         </div>
                                     ) : solvedData && solvedData.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            {solvedData.map((p) => (
-                                                <Link
-                                                    key={p.code}
-                                                    href={`/problem/${p.code}`}
-                                                    className="px-3 py-1.5 rounded-lg border bg-muted/30 hover:bg-primary/10 hover:border-primary/50 hover:text-primary text-sm font-medium transition-all"
-                                                >
-                                                    {p.code}
-                                                </Link>
-                                            ))}
+                                        <div className="overflow-x-auto custom-scrollbar">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-muted/30 border-b">
+                                                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">{t('problem')}</th>
+                                                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">{t('date')}</th>
+                                                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">{t('language')}</th>
+                                                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">{t('tests')}</th>
+                                                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">{t('points')}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-muted/50">
+                                                    {solvedData.map((p) => (
+                                                        <tr key={p.code} className="hover:bg-muted/5 transition-colors">
+                                                            <td className="px-4 py-3">
+                                                                <Link href={`/problem/${p.code}`} className="text-sm font-medium hover:text-primary transition-colors">
+                                                                    {p.code}
+                                                                </Link>
+                                                                <p className="text-xs text-muted-foreground truncate max-w-[260px]">{p.name}</p>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                                                                {dayjs(p.date).format('MMM D, YYYY')}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{p.language}</td>
+                                                            <td className="px-4 py-3 text-right text-sm text-muted-foreground whitespace-nowrap">
+                                                                {p.case_points} / {p.case_total}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right text-sm font-medium">{p.points.toFixed(2)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     ) : (
                                         <p className="text-center text-muted-foreground italic py-12 border border-dashed rounded-md bg-muted/20">{t('noProblemsSolved')}</p>
                                     )}
                                 </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'blogs' && (
+                            <motion.div
+                                key="blogs"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-6"
+                            >
+                                <div className="bg-card border rounded-md p-4 shadow-sm">
+                                    <h3 className="text-xl font-semibold tracking-tight mb-6 flex items-center gap-2">
+                                        {t('blogs')}
+                                        {typeof blogData?.total === 'number' && (
+                                            <Badge variant="secondary" className="font-medium">{blogData.total}</Badge>
+                                        )}
+                                    </h3>
+                                    {blogsLoading ? (
+                                        <div className="space-y-3">
+                                            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+                                        </div>
+                                    ) : blogData && blogData.data.length > 0 ? (
+                                        <div className="divide-y divide-muted/50">
+                                            {blogData.data.map((post) => (
+                                                <Link
+                                                    key={post.id}
+                                                    href={`/post/${post.id}-${post.slug}`}
+                                                    className="flex items-center justify-between gap-4 py-4 group/post"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-medium truncate group-hover/post:text-primary transition-colors">{post.title}</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            {dayjs(post.publish_on).format('MMM D, YYYY')}
+                                                        </p>
+                                                    </div>
+                                                    <ArrowUpRight size={18} className="text-muted-foreground shrink-0" />
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-center text-muted-foreground italic py-12 border border-dashed rounded-md bg-muted/20">{t('noBlogs')}</p>
+                                    )}
+                                </div>
+                                {blogData && (blogData.total ?? 0) > BLOG_PAGE_SIZE && (
+                                    <PaginationBar
+                                        page={blogPage}
+                                        onPageChange={setBlogPage}
+                                        total={blogData.total}
+                                        pageSize={BLOG_PAGE_SIZE}
+                                    />
+                                )}
                             </motion.div>
                         )}
 
@@ -555,14 +677,86 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="bg-card border rounded-md p-4 shadow-sm prose prose-sm dark:prose-invert max-w-none min-h-[40vh]"
+                                className="space-y-6"
                             >
-                                <h3 className="text-xl font-semibold tracking-tight mb-6">{t('aboutUser', { username: user.username })}</h3>
-                                {user.about ? (
-                                    <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{user.about}</p>
-                                ) : (
-                                    <p className="italic text-muted-foreground/50">{t('noAboutInfo')}</p>
-                                )}
+                                <div className="bg-card border rounded-md p-4 shadow-sm space-y-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <h3 className="text-xl font-semibold tracking-tight">{t('submissionActivity')}</h3>
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                            {t('activitySummary', { count: (analytics?.activity_year ?? []).reduce((sum, d) => sum + d.count, 0) })}
+                                        </span>
+                                    </div>
+                                    {analyticsLoading ? (
+                                        <Skeleton className="h-28 w-full rounded-md" />
+                                    ) : heatmapWeeks.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground italic py-8 text-center border border-dashed rounded-md bg-muted/20">
+                                            {t('noActivity')}
+                                        </p>
+                                    ) : (
+                                        <div className="overflow-x-auto custom-scrollbar">
+                                            <div className="inline-flex gap-2">
+                                                <div className="flex flex-col gap-1 pr-1 text-[10px] font-medium text-muted-foreground">
+                                                    {weekdayLabels.map((label, i) => (
+                                                        <span key={i} className="h-3 leading-3">{label}</span>
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    {heatmapWeeks.map((week, wi) => (
+                                                        <div key={wi} className="flex flex-col gap-1">
+                                                            {week.map((cell, di) => cell === null ? (
+                                                                <div key={di} className="w-3 h-3" />
+                                                            ) : (
+                                                                <div
+                                                                    key={cell.date}
+                                                                    role="img"
+                                                                    aria-label={t('activityDay', {
+                                                                        count: cell.count,
+                                                                        date: dayLabel.format(new Date(`${cell.date}T00:00:00Z`)),
+                                                                    })}
+                                                                    title={dayLabel.format(new Date(`${cell.date}T00:00:00Z`))}
+                                                                    className={cn(
+                                                                        'w-3 h-3 rounded-sm',
+                                                                        cell.level === 0 && 'bg-muted',
+                                                                        cell.level === 1 && 'bg-primary/20',
+                                                                        cell.level === 2 && 'bg-primary/40',
+                                                                        cell.level === 3 && 'bg-primary/60',
+                                                                        cell.level === 4 && 'bg-primary'
+                                                                    )}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-3 text-[10px] font-medium text-muted-foreground">
+                                                <span>{t('less')}</span>
+                                                {[0, 1, 2, 3, 4].map((level) => (
+                                                    <span
+                                                        key={level}
+                                                        className={cn(
+                                                            'w-3 h-3 rounded-sm',
+                                                            level === 0 && 'bg-muted',
+                                                            level === 1 && 'bg-primary/20',
+                                                            level === 2 && 'bg-primary/40',
+                                                            level === 3 && 'bg-primary/60',
+                                                            level === 4 && 'bg-primary'
+                                                        )}
+                                                    />
+                                                ))}
+                                                <span>{t('more')}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-card border rounded-md p-4 shadow-sm prose prose-sm dark:prose-invert max-w-none min-h-[40vh]">
+                                    <h3 className="text-xl font-semibold tracking-tight mb-6">{t('aboutUser', { username: user.username })}</h3>
+                                    {user.about ? (
+                                        <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{user.about}</p>
+                                    ) : (
+                                        <p className="italic text-muted-foreground/50">{t('noAboutInfo')}</p>
+                                    )}
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

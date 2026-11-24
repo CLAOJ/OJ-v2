@@ -636,7 +636,18 @@
     "moreOrganizations": "+{count} more",
     "showingUsers": "Showing {count} users",
     "rankBy": "Rank By",
-    "contributors": "Contributors"
+    "contributors": "Contributors",
+    "blogs": "Blog posts",
+    "noBlogs": "No blog posts yet.",
+    "viewSubmissions": "View submissions",
+    "submissionActivity": "Submission activity",
+    "activitySummary": "{count} submissions in the last year",
+    "activityDay": "{count} submissions on {date}",
+    "noActivity": "No submissions in the last year.",
+    "less": "Less",
+    "more": "More",
+    "language": "Language",
+    "tests": "Tests"
   },
   "Common": {
     "loading": "Loading...",

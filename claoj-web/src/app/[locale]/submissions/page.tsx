@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { APIResponse, Submission, PaginatedList } from '@/types';
 import { Badge } from '@/components/ui/Badge';
@@ -30,9 +31,11 @@ dayjs.extend(relativeTime);
 export default function SubmissionListPage() {
     const t = useTranslations('Submissions');
     const tCommon = useTranslations('Common');
+    const searchParams = useSearchParams();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
-    const [userFilter, setUserFilter] = useState('');
+    // The profile's "View submissions" link deep-links into a prefiltered list.
+    const [userFilter, setUserFilter] = useState(() => searchParams.get('user') ?? '');
     const [problemFilter, setProblemFilter] = useState('');
     const [resultFilter, setResultFilter] = useState('');
     const [langFilter, setLangFilter] = useState('');

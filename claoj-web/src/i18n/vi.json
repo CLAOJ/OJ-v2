@@ -636,7 +636,18 @@
     "moreOrganizations": "+{count} nữa",
     "showingUsers": "Đang hiển thị {count} người dùng",
     "rankBy": "Xếp hạng theo",
-    "contributors": "Người đóng góp"
+    "contributors": "Người đóng góp",
+    "blogs": "Bài viết",
+    "noBlogs": "Chưa có bài viết nào.",
+    "viewSubmissions": "Xem bài nộp",
+    "submissionActivity": "Hoạt động nộp bài",
+    "activitySummary": "{count} bài nộp trong năm qua",
+    "activityDay": "{count} bài nộp vào {date}",
+    "noActivity": "Không có bài nộp nào trong năm qua.",
+    "less": "Ít",
+    "more": "Nhiều",
+    "language": "Ngôn ngữ",
+    "tests": "Test"
   },
   "Common": {
     "loading": "Đang tải...",

@@ -286,7 +286,28 @@ export interface BlogVoteRequest {
 
 export interface SolvedProblem {
     code: string;
+    name: string;
     points: number;
+    date: string;
+    language: string;
+    case_points: number;
+    case_total: number;
+}
+
+/** One day of the profile submission heatmap (dense, oldest first). */
+export interface UserActivityDay {
+    date: string;
+    count: number;
+}
+
+/** GET /user/:username/analytics — only the fields the profile page reads. */
+export interface UserAnalytics {
+    username: string;
+    activity: UserActivityDay[];
+    activity_year: UserActivityDay[];
+    streak_days: number;
+    performance_points: number;
+    contribution_points: number;
 }
 
 export interface RatingHistoryEntry {
