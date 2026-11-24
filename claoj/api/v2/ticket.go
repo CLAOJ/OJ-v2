@@ -99,6 +99,10 @@ type TicketCreateRequest struct {
 	Body          string `json:"body" binding:"required"`
 	ContentTypeID uint   `json:"content_type_id"` // Generic foreign key references
 	ObjectID      uint   `json:"object_id"`
+	// ProblemCode links the ticket to a problem by code. The web form only
+	// knows the code, and content-type ids depend on migration order, so the
+	// server resolves both. Supersedes content_type_id/object_id when set.
+	ProblemCode string `json:"problem_code"`
 }
 
 // TicketCreate - POST /api/v2/tickets
@@ -115,6 +119,22 @@ func TicketCreate(c *gin.Context) {
 		return
 	}
 
+	contentTypeID, objectID := req.ContentTypeID, req.ObjectID
+	if req.ProblemCode != "" {
+		var problem models.Problem
+		if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
+			Where("code = ?", req.ProblemCode).First(&problem).Error; err != nil || !auth.CanViewProblem(c, &problem) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "problem not found"})
+			return
+		}
+		ctID, known := ticketContentTypeID("problem")
+		if !known {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "problem tickets are unavailable"})
+			return
+		}
+		contentTypeID, objectID = ctID, problem.ID
+	}
+
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 
@@ -122,8 +142,8 @@ func TicketCreate(c *gin.Context) {
 			Title:          sanitization.SanitizeTitle(req.Title),
 			UserID:         profile.ID,
 			Time:           now,
-			ContentTypeID:  req.ContentTypeID,
-			ObjectID:       req.ObjectID,
+			ContentTypeID:  contentTypeID,
+			ObjectID:       objectID,
 			IsContributive: false,
 			IsOpen:         true,
 		}

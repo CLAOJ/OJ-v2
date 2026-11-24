@@ -349,6 +349,39 @@ func TestAdminTicketMessageUpdateDelete(t *testing.T) {
 	require.Zero(t, n)
 }
 
+func TestTicketCreateWithProblemCodeLinksProblem(t *testing.T) {
+	f := setupAdminTickets(t)
+	p := f.problem(t, "p1", "Two Sum")
+	require.NoError(t, db.DB.Model(&p).Update("is_public", true).Error)
+	router := authedRouter(f.plain.ID, http.MethodPost, "/tickets", TicketCreate)
+
+	// The web form only knows the problem code; the server resolves the
+	// django_content_type id (which depends on migration order) and the id.
+	w := doRequest(router, http.MethodPost, "/tickets", `{"title":"Bug report","body":"The sample is wrong.","problem_code":"p1"}`)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var tk models.Ticket
+	require.NoError(t, db.DB.Order("id DESC").First(&tk).Error)
+	require.Equal(t, f.problemCT.ID, tk.ContentTypeID)
+	require.Equal(t, p.ID, tk.ObjectID)
+	require.Equal(t, f.plainProfile.ID, tk.UserID)
+
+	// An unknown code is rejected (no silent unlinked ticket) and creates nothing.
+	var before int64
+	require.NoError(t, db.DB.Model(&models.Ticket{}).Count(&before).Error)
+	require.Equal(t, http.StatusBadRequest, doRequest(router, http.MethodPost, "/tickets", `{"title":"Bug report","body":"x","problem_code":"nope"}`).Code)
+	var after int64
+	require.NoError(t, db.DB.Model(&models.Ticket{}).Count(&after).Error)
+	require.Equal(t, before, after)
+
+	// Omitting problem_code keeps the old unlinked behaviour.
+	require.Equal(t, http.StatusCreated, doRequest(router, http.MethodPost, "/tickets", `{"title":"General","body":"anything"}`).Code)
+	var unlinked models.Ticket
+	require.NoError(t, db.DB.Order("id DESC").First(&unlinked).Error)
+	require.Zero(t, unlinked.ContentTypeID)
+	require.Zero(t, unlinked.ObjectID)
+}
+
 func TestAdminTicketListFilteredTotal(t *testing.T) {
 	f := setupAdminTickets(t)
 	seed := func(title string, open bool) models.Ticket {
