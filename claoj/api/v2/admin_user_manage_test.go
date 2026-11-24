@@ -276,6 +276,82 @@ func TestAdminUserUpdate_StaffEditingPrivilegedTargetForbidden(t *testing.T) {
 	require.Equal(t, "Rooty", got.FirstName)
 }
 
+func TestAdminUserBanUnbanDelete_StaffTargetGate(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	staff, staffProfile := seedAccount(t, "mod", true, false)
+	root, rootProfile := seedAccount(t, "root", true, true)
+	_, root2Profile := seedAccount(t, "root2", true, true)
+	plain, plainProfile := seedAccount(t, "bob", false, false)
+
+	loadProfile := func(id uint) models.Profile {
+		var p models.Profile
+		require.NoError(t, db.DB.First(&p, id).Error)
+		return p
+	}
+	loadUser := func(id uint) models.AuthUser {
+		var u models.AuthUser
+		require.NoError(t, db.DB.First(&u, id).Error)
+		return u
+	}
+
+	staffBan := authedRouter(staff.ID, http.MethodPost, "/admin/user/:id/ban", AdminUserBan)
+	staffUnban := authedRouter(staff.ID, http.MethodPost, "/admin/user/:id/unban", AdminUserUnban)
+	staffDelete := authedRouter(staff.ID, http.MethodDelete, "/admin/user/:id", AdminUserDelete)
+
+	// Staff may not touch a superuser: 403 and the DB is unchanged.
+	w := doRequest(staffBan, http.MethodPost, profileURL(rootProfile, "/ban"), `{"reason":"spam"}`)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	p := loadProfile(rootProfile.ID)
+	require.Nil(t, p.BanReason)
+	require.False(t, p.IsUnlisted)
+	require.False(t, p.Mute)
+
+	require.Equal(t, http.StatusForbidden,
+		doRequest(staffUnban, http.MethodPost, profileURL(rootProfile, "/unban"), "").Code)
+	require.Equal(t, http.StatusForbidden,
+		doRequest(staffDelete, http.MethodDelete, profileURL(rootProfile, ""), "").Code)
+	require.True(t, loadUser(root.ID).IsActive)
+
+	// Staff may not ban or delete themselves.
+	require.Equal(t, http.StatusBadRequest,
+		doRequest(staffBan, http.MethodPost, profileURL(staffProfile, "/ban"), `{"reason":"spam"}`).Code)
+	require.Equal(t, http.StatusBadRequest,
+		doRequest(staffDelete, http.MethodDelete, profileURL(staffProfile, ""), "").Code)
+
+	// Staff can still ban/unban/delete a regular user.
+	w = doRequest(staffBan, http.MethodPost, profileURL(plainProfile, "/ban"), `{"reason":"spam"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NotNil(t, loadProfile(plainProfile.ID).BanReason)
+
+	w = doRequest(staffUnban, http.MethodPost, profileURL(plainProfile, "/unban"), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Nil(t, loadProfile(plainProfile.ID).BanReason)
+
+	w = doRequest(staffDelete, http.MethodDelete, profileURL(plainProfile, ""), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.False(t, loadUser(plain.ID).IsActive)
+
+	// A superuser can ban/unban another superuser, but never ban or delete
+	// itself.
+	rootBan := authedRouter(root.ID, http.MethodPost, "/admin/user/:id/ban", AdminUserBan)
+	rootUnban := authedRouter(root.ID, http.MethodPost, "/admin/user/:id/unban", AdminUserUnban)
+	rootDelete := authedRouter(root.ID, http.MethodDelete, "/admin/user/:id", AdminUserDelete)
+
+	w = doRequest(rootBan, http.MethodPost, profileURL(root2Profile, "/ban"), `{"reason":"x"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NotNil(t, loadProfile(root2Profile.ID).BanReason)
+
+	w = doRequest(rootUnban, http.MethodPost, profileURL(root2Profile, "/unban"), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Nil(t, loadProfile(root2Profile.ID).BanReason)
+
+	require.Equal(t, http.StatusBadRequest,
+		doRequest(rootBan, http.MethodPost, profileURL(rootProfile, "/ban"), `{"reason":"x"}`).Code)
+	require.Equal(t, http.StatusBadRequest,
+		doRequest(rootDelete, http.MethodDelete, profileURL(rootProfile, ""), "").Code)
+	require.True(t, loadUser(root.ID).IsActive)
+}
+
 func TestAdminUserReplaceGroups(t *testing.T) {
 	setupAdminUserCreateDB(t)
 	root, _ := seedAccount(t, "root", true, true)

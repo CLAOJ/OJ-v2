@@ -380,14 +380,8 @@ func AdminUserUpdate(c *gin.Context) {
 		}
 	}
 
-	// Changing the email of a staff/superuser account would let a non-superuser
-	// take it over through the password-reset flow, so it is superuser-only.
-	if input.Email != nil && !callerIsSuperuser {
-		if target.User.IsStaff || target.User.IsSuperuser {
-			c.JSON(http.StatusForbidden, apiUserError("superuser access required to change the email of a staff account"))
-			return
-		}
-	}
+	// Changing the email of a staff/superuser account is covered by the
+	// takeover gate above; self-service email changes need no elevation.
 
 	// is_staff / is_superuser changes are superuser-only; the write itself
 	// lands in auth_user (a different primary key than judge_profile.id,
@@ -458,12 +452,43 @@ func AdminUserUpdate(c *gin.Context) {
 	})
 }
 
+// authorizeAccountAction loads the judge_profile behind :id and applies the
+// staff/superuser takeover rule shared by ban, unban and delete: a
+// non-superuser may not act on a different staff or superuser account.
+// Responses are written on failure.
+func authorizeAccountAction(c *gin.Context, profileID uint) (models.Profile, bool) {
+	var target models.Profile
+	if err := db.DB.Preload("User").First(&target, profileID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("user not found"))
+			return target, false
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return target, false
+	}
+	if target.UserID != c.GetUint("user_id") && !auth.GetAccess(c).IsSuperuser &&
+		(target.User.IsStaff || target.User.IsSuperuser) {
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required to manage a staff account"))
+		return target, false
+	}
+	return target, true
+}
+
 // AdminUserDelete - DELETE /api/v2/admin/user/:id
 func AdminUserDelete(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		return
+	}
+
+	target, ok := authorizeAccountAction(c, uint(userID))
+	if !ok {
+		return
+	}
+	if target.UserID == c.GetUint("user_id") {
+		c.JSON(http.StatusBadRequest, apiUserError("you cannot delete your own account"))
 		return
 	}
 
@@ -500,6 +525,15 @@ func AdminUserBan(c *gin.Context) {
 		Day int `json:"day"`
 	}
 
+	target, ok := authorizeAccountAction(c, uint(userID))
+	if !ok {
+		return
+	}
+	if target.UserID == c.GetUint("user_id") {
+		c.JSON(http.StatusBadRequest, apiUserError("you cannot ban your own account"))
+		return
+	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
@@ -529,6 +563,10 @@ func AdminUserUnban(c *gin.Context) {
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		return
+	}
+
+	if _, ok := authorizeAccountAction(c, uint(userID)); !ok {
 		return
 	}
 
