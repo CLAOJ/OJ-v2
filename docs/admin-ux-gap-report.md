@@ -135,7 +135,7 @@ Same gaps as problems: no bulk actions, no sorting, no pagination/total UI, icon
 
 **Groups.** Permission editor is *better* than v1 (grouped checkboxes vs flat 291-select). But **membership can't be managed anywhere** — v1 does it via the user form, which v2 lacks. → API+FE (m2m tables mapped).
 
-**Organizations.** Missing: logo override, max size, creation date, administrators M2M, member management (count is read-only), Recalculate scores action, View-on-site. Create modal (Name/Slug/Short Name) is poorer than edit (adds About/Open/Unlisted) — create→edit inconsistency. **Security:** v1 gates org creation behind TOTP 2FA; v2 doesn't. → API+FE (model mapped) + 2FA gate.
+**Organizations.** Missing: logo override, max size, creation date, administrators M2M, member management (count is read-only), Recalculate scores action, View-on-site. Create modal (Name/Slug/Short Name) is poorer than edit (adds About/Open/Unlisted) — create→edit inconsistency. **Security:** v1 has no org-specific 2FA gate (only the global middleware), so v2 needs none. → API+FE (model mapped).
 
 **Blog posts.** Missing: Authors + Organization fields (Authors column shows "-" for all 68 posts), markdown image upload, status filter. Otherwise good parity + quick Show/Sticky toggles. → API+FE (`BlogPost` in `models/interface.go`).
 
@@ -233,7 +233,7 @@ Severity: **H** = core function/info missing or wrong, **M** = useful feature we
 6. **Modals instead of pages:** most v2 create/edit forms are modals over the list — no URL per record, no browser history, not deep-linkable (v1 has dedicated add/change pages). → FE: route-based forms or at least URL-synced modals.
 7. **Weak pagination:** Prev/Next only; users = 5,694 rows at 50/page with no page numbers/jump. → FE (API already returns totals).
 8. **Accessibility:** row action icons on users/blog/comments/taxonomy have no aria-label/title. → FE.
-9. **2FA gate missing** on organization creation (v1 requires TOTP). → FE+API.
+9. **2FA gate:** none needed — v1 has no org-specific gate (global middleware only).
 
 ---
 
@@ -274,7 +274,7 @@ Files: `claoj-web/src/app/[locale]/admin/{problems,contests}/**`, admin shell co
 
 ### Phase 4 — Remaining admin sections (prioritized from §3)
 1. **Users + Groups (L):** user edit (identity, staff/superuser, groups, permissions) + profile tab (organization, rank, mute, notes, display override, 2FA/WebAuthn admin); group member editor; user list filters + page numbers. Closes the "can't make someone staff / add to group / set org" dead ends.
-2. **Organizations (M):** admins M2M, logo, max size, creation date, member management, recalculate scores; unify create/edit fields; restore 2FA gate on create.
+2. **Organizations (M):** admins M2M, logo, max size, creation date, member management, recalculate scores; unify create/edit fields (no 2FA gate: v1 has none beyond the global middleware).
 3. **Blog posts (S–M):** authors + organization fields, fix Authors column, image upload.
 4. **Tickets (M):** show/edit linked item, per-message edit/remove, editable title/creator/time.
 5. **Taxonomy / Tags (S–M):** included-problems/contests M2M, taxonomy search.
@@ -285,6 +285,11 @@ Files: `claoj-web/src/app/[locale]/admin/{problems,contests}/**`, admin shell co
 10. **Judges (S):** tier field, name/auth-key edit, paginate assigned problems.
 11. **Navbar / Languages (S):** parent + highlight regex; runtime info override; decide MB-vs-bytes unit (check judge consumer).
 12. **Flat pages / Redirects (S–M):** admin CRUD for static content and redirect rules.
+
+### Phase 4b known limits (accepted, not implemented)
+- Hiding a comment does not cascade to its replies; v1's bulk actions don't either.
+- An organization's `access_code` stays outside the org field gate.
+- No media cleanup / ephemeral-volume handling.
 
 ### Phase 5 — Normal user view gaps (prioritized from §4)
 1. **Contest content (M):** render descriptions, announcements UI (pairs with Phase 2 announcement admin), fix dead "View all past contests" + paginate past contests, live countdowns, deep-linkable tabs.
