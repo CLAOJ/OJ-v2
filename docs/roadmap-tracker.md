@@ -19,6 +19,8 @@ Live v2: https://beta.claoj.edu.vn · Live v1: https://claoj.edu.vn · Deploy: p
 - Comment hide does not cascade to replies (v1 bulk actions do not either).
 - `access_code` on organizations is outside the org field gate.
 - Markdown images live on the v2 data volume; no cleanup/retention.
+- Problem statement PDF: v1 renders one for every problem with wkhtmltopdf. v2 has no HTML→PDF engine (no new deps allowed), so a problem without an uploaded PDF gets a print-optimized view (`/problem/<code>/print`) and a "Download PDF" button that opens it with the browser's print dialog. Uploaded-PDF problems keep the existing viewer.
+- File-only submissions are stored under `data/submissions/<16hex>.<ext>` and served by the public `/api/submission-file/:name` route (server-chosen names, extension whitelist without browser-renderable types, always `Content-Disposition: attachment`). `language.file_size_limit = 0` means uploads are disabled (v1 parity), and the body is hard-capped at 32 MiB.
 - Latent GORM `belongsTo` relation shape on Submission/Rating/Participation models (untouched; fixed only on Ticket).
 - Contest/problem clone flows still drop some new settings.
 - Phase 4c: judge tier/capabilities are informational (v2 queue has no tier routing); impersonated refresh family lives 2 h; exit restores a standard 7-day actor family (remember-me not preserved); registrations resend has no rate limit; flat-page `template_name`/`enable_comments` are mapped but not editable; `/api/redirects-map` is a public path-only dump; nav parent picker offers only the loaded page.
