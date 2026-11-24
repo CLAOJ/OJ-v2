@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import Markdown from '@/components/common/Markdown';
 import api from '@/lib/api';
 import { normalizeFlatPagePath } from '@/lib/flatpage';
@@ -48,9 +49,12 @@ export async function generateMetadata({
 }: {
     params: Promise<{ locale: string; slug: string[] }>;
 }): Promise<Metadata> {
-    const { slug } = await params;
+    const { locale, slug } = await params;
     const page = await getFlatPage(normalizeFlatPagePath(slug));
-    if (!page) return { title: 'Page not found' };
+    if (!page) {
+        const t = await getTranslations({ locale, namespace: 'Common' });
+        return { title: t('pageNotFound') };
+    }
     return {
         title: page.title,
         description: plainText(page.content).slice(0, 160),

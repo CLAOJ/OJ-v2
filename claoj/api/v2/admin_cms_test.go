@@ -80,8 +80,10 @@ func TestAdminFlatPageCRUD(t *testing.T) {
 	w = doRequest(listRouter, http.MethodGet, "/admin/flat-pages?search=about", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	var list struct {
-		Data  []struct{ ID uint `json:"id"` } `json:"data"`
-		Total int64                          `json:"total"`
+		Data []struct {
+			ID uint `json:"id"`
+		} `json:"data"`
+		Total int64 `json:"total"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &list))
 	require.Equal(t, int64(1), list.Total)
@@ -128,6 +130,14 @@ func TestAdminFlatPageValidationAndDuplicates(t *testing.T) {
 	w = doRequest(createRouter, http.MethodPost, "/admin/flat-pages", `{"url":"about","title":"Bad"}`)
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 
+	// A protocol-relative url is not a site path.
+	w = doRequest(createRouter, http.MethodPost, "/admin/flat-pages", `{"url":"//evil.com/","title":"Bad"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	// A path without the trailing slash is rejected.
+	w = doRequest(createRouter, http.MethodPost, "/admin/flat-pages", `{"url":"/noslash","title":"Bad"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
 	// The same url for a different site is not a conflict here.
 	seedFlatPage(t, "/other/", "Other", "", 2, false)
 	w = doRequest(createRouter, http.MethodPost, "/admin/flat-pages", `{"url":"/other/","title":"Clash"}`)
@@ -149,6 +159,9 @@ func TestAdminFlatPageUpdateGuards(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	w = doRequest(updateRouter, http.MethodPatch, "/admin/flat-page/1", `{"url":"relative"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	w = doRequest(updateRouter, http.MethodPatch, "/admin/flat-page/1", `{"url":"/no-slash"}`)
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 }
 
@@ -200,6 +213,12 @@ func TestAdminRedirectCRUDAndValidation(t *testing.T) {
 	w = doRequest(createRouter, http.MethodPost, "/admin/redirects", `{"old_path":"/loop/","new_path":"/loop/"}`)
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 
+	// Protocol-relative values are not paths: v1 would emit them as Location.
+	w = doRequest(createRouter, http.MethodPost, "/admin/redirects", `{"old_path":"//evil.com/","new_path":"/new/"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	w = doRequest(createRouter, http.MethodPost, "/admin/redirects", `{"old_path":"/pr/","new_path":"//evil.com"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
 	// Absolute URL targets are allowed.
 	w = doRequest(createRouter, http.MethodPost, "/admin/redirects", `{"old_path":"/ext/","new_path":"https://example.com/x"}`)
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
@@ -223,6 +242,8 @@ func TestFlatPageLookup(t *testing.T) {
 	setupCMSDB(t)
 	seedFlatPage(t, "/about/", "About", "# Hi", models.CMSSiteID, false)
 	seedFlatPage(t, "/secret/", "Secret", "hidden", models.CMSSiteID, true)
+	// A legacy row without the trailing slash still resolves for "/legacy/".
+	seedFlatPage(t, "/legacy", "Legacy", "old", models.CMSSiteID, false)
 	// A page on another site must not be served.
 	seedFlatPage(t, "/elsewhere/", "Elsewhere", "", 2, false)
 
@@ -239,6 +260,10 @@ func TestFlatPageLookup(t *testing.T) {
 	w = doRequest(router, http.MethodGet, "/page?url=/about", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	w = doRequest(router, http.MethodGet, "/page?url=about/", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// A legacy row stored without the trailing slash resolves from "/legacy/".
+	w = doRequest(router, http.MethodGet, "/page?url=/legacy/", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	w = doRequest(router, http.MethodGet, "/page?url=/missing/", "")

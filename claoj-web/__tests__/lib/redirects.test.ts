@@ -11,6 +11,23 @@ describe('buildRedirectMap', () => {
         expect(map.size).toBe(1);
         expect(map.get('/old/')).toBe('/new/');
     });
+
+    it('collapses a chain to its final target', () => {
+        const map = buildRedirectMap([
+            { old_path: '/a/', new_path: '/b/' },
+            { old_path: '/b/', new_path: '/c/' },
+        ]);
+        expect(map.get('/a/')).toBe('/c/');
+        expect(map.get('/b/')).toBe('/c/');
+    });
+
+    it('drops entries whose chain loops', () => {
+        const map = buildRedirectMap([
+            { old_path: '/a/', new_path: '/b/' },
+            { old_path: '/b/', new_path: '/a/' },
+        ]);
+        expect(map.size).toBe(0);
+    });
 });
 
 describe('lookupRedirect', () => {
@@ -40,12 +57,13 @@ describe('pickRedirectTarget', () => {
         expect(pickRedirectTarget(map, '/a/')).toBeNull();
     });
 
-    it('refuses a chain (target is itself an old_path)', () => {
+    it('resolves a chain to its final target in one hop', () => {
         const map = buildRedirectMap([
             { old_path: '/a/', new_path: '/b/' },
             { old_path: '/b/', new_path: '/c/' },
         ]);
-        expect(pickRedirectTarget(map, '/a/')).toBeNull();
+        expect(pickRedirectTarget(map, '/a/')).toBe('/c/');
+        expect(pickRedirectTarget(map, '/b/')).toBe('/c/');
     });
 
     it('refuses a two-entry cycle', () => {
@@ -53,8 +71,9 @@ describe('pickRedirectTarget', () => {
             { old_path: '/a/', new_path: '/b' },
             { old_path: '/b/', new_path: '/a/' },
         ]);
-        // "/b" is not a key, but its append-slash form "/b/" is -> chain.
+        // "/b" is not a key, but its append-slash form "/b/" is -> cycle.
         expect(pickRedirectTarget(map, '/a/')).toBeNull();
+        expect(pickRedirectTarget(map, '/b/')).toBeNull();
     });
 
     it('allows an absolute http(s) target untouched', () => {

@@ -11,6 +11,10 @@ const REDIRECTS_TTL_MS = 60_000;
 const FAILED_FETCH_TTL_MS = 15_000;
 
 let cached: { map: Map<string, string>; expires: number } | null = null;
+// One refresh in flight per isolate: concurrent requests share it instead of
+// each hitting the backend. shortcut: the URL is derived from the first
+// request's origin while NEXT_PUBLIC_API_URL is unset, fine for one origin.
+let pending: Promise<Map<string, string> | null> | null = null;
 
 // Same base URL rule as src/lib/api.ts: NEXT_PUBLIC_API_URL when configured,
 // otherwise /api on the public origin (nginx forwards it to the backend).
@@ -19,29 +23,42 @@ function redirectsMapURL(request: NextRequest): string {
     return `${base}/redirects-map`;
 }
 
-async function loadRedirects(request: NextRequest): Promise<Map<string, string>> {
-    if (cached && cached.expires > Date.now()) return cached.map;
-
-    let map = new Map<string, string>();
+/** Fetches and builds the map; null means "no fresh map" (network or status). */
+async function fetchRedirectsMap(url: string): Promise<Map<string, string> | null> {
     try {
-        const res = await fetch(redirectsMapURL(request), {
+        const res = await fetch(url, {
             headers: { Accept: 'application/json' },
             signal: AbortSignal.timeout(1500),
             cache: 'no-store',
         });
-        if (res.ok) {
-            const body = (await res.json()) as { data?: RedirectPair[] };
-            map = buildRedirectMap(body.data ?? []);
-        }
+        if (!res.ok) return null;
+        const body = (await res.json()) as { data?: RedirectPair[] };
+        return buildRedirectMap(body.data ?? []);
     } catch {
-        // Backend unreachable: fail open (no redirect) instead of failing the
-        // request. Retried after FAILED_FETCH_TTL_MS rather than every request.
-        cached = { map, expires: Date.now() + FAILED_FETCH_TTL_MS };
+        return null;
+    }
+}
+
+async function loadRedirects(request: NextRequest): Promise<Map<string, string>> {
+    if (cached && cached.expires > Date.now()) return cached.map;
+
+    if (!pending) {
+        pending = fetchRedirectsMap(redirectsMapURL(request)).finally(() => {
+            pending = null;
+        });
+    }
+    const map = await pending;
+
+    if (map) {
+        cached = { map, expires: Date.now() + REDIRECTS_TTL_MS };
         return map;
     }
 
-    cached = { map, expires: Date.now() + REDIRECTS_TTL_MS };
-    return map;
+    // Backend unreachable or answered non-2xx: keep serving the last good map
+    // (stale beats no redirects) and retry sooner. Without one, fail open.
+    const fallback = cached?.map ?? new Map<string, string>();
+    cached = { map: fallback, expires: Date.now() + FAILED_FETCH_TTL_MS };
+    return fallback;
 }
 
 // Path redirects come first: v1's RedirectFallbackMiddleware matched them

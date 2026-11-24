@@ -683,6 +683,7 @@
     "errorDescription": "An error occurred while processing your request. Please try again.",
     "tryAgain": "Try again",
     "goHome": "Go home",
+    "pageNotFound": "Page not found",
     "wsConnected": "Connected",
     "wsConnecting": "Connecting...",
     "wsError": "Connection Error",

@@ -22,7 +22,18 @@ import (
 // Rows are always scoped to models.CMSSiteID (single-site deployment).
 
 // validCMSPath reports whether p is an absolute site path ("/about/").
-func validCMSPath(p string) bool { return strings.HasPrefix(p, "/") }
+// "//evil.com" is a protocol-relative URL, not a path: v1's
+// RedirectFallbackMiddleware reads the same django_redirect rows and would emit
+// it directly as a Location header (an open redirect).
+func validCMSPath(p string) bool {
+	return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//")
+}
+
+// validFlatPageURL is validCMSPath plus the trailing slash Django's flatpages
+// admin documents. Rows stored without one still resolve (flatPageCandidates).
+func validFlatPageURL(p string) bool {
+	return validCMSPath(p) && strings.HasSuffix(p, "/")
+}
 
 // validRedirectTarget accepts a site path or an absolute http(s) URL, which is
 // what Django's redirects app allows as new_path.
@@ -84,7 +95,9 @@ func AdminFlatPageList(c *gin.Context) {
 	}
 
 	var pages []models.FlatPage
-	if err := query().Order("url ASC").
+	// The list only shows id/url/title/flag; content is longtext per row.
+	if err := query().Select("id", "url", "title", "registration_required").
+		Order("url ASC").
 		Offset((page - 1) * pageSize).Limit(pageSize).Find(&pages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
@@ -143,8 +156,8 @@ func AdminFlatPageCreate(c *gin.Context) {
 		return
 	}
 	req.URL = strings.TrimSpace(req.URL)
-	if !validCMSPath(req.URL) {
-		c.JSON(http.StatusBadRequest, apiUserError("url must start with /"))
+	if !validFlatPageURL(req.URL) {
+		c.JSON(http.StatusBadRequest, apiUserError("url must start with / and end with /"))
 		return
 	}
 
@@ -210,8 +223,8 @@ func AdminFlatPageUpdate(c *gin.Context) {
 
 	if req.URL != nil {
 		url := strings.TrimSpace(*req.URL)
-		if !validCMSPath(url) {
-			c.JSON(http.StatusBadRequest, apiUserError("url must start with /"))
+		if !validFlatPageURL(url) {
+			c.JSON(http.StatusBadRequest, apiUserError("url must start with / and end with /"))
 			return
 		}
 		if url != page.URL {
@@ -469,7 +482,9 @@ func AdminRedirectDelete(c *gin.Context) {
 // ============================================================
 
 // flatPageCandidates normalizes a requested path the way Django's flatpage view
-// does: a leading slash is added, and APPEND_SLASH lets "/about" match "/about/".
+// does: a leading slash is added, and both the exact path and its
+// trailing-slash variant are tried, so a legacy row stored as "/about" still
+// resolves for "/about/" and vice versa.
 func flatPageCandidates(raw string) []string {
 	u := strings.TrimSpace(raw)
 	if u == "" {
@@ -478,8 +493,11 @@ func flatPageCandidates(raw string) []string {
 	if !validCMSPath(u) {
 		u = "/" + u
 	}
-	if strings.HasSuffix(u, "/") {
+	if u == "/" {
 		return []string{u}
+	}
+	if strings.HasSuffix(u, "/") {
+		return []string{u, strings.TrimSuffix(u, "/")}
 	}
 	return []string{u, u + "/"}
 }

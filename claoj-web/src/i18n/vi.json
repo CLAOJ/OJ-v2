@@ -683,6 +683,7 @@
     "errorDescription": "Đã xảy ra lỗi khi xử lý yêu cầu của bạn. Vui lòng thử lại.",
     "tryAgain": "Thử lại",
     "goHome": "Về trang chủ",
+    "pageNotFound": "Không tìm thấy trang",
     "wsConnected": "Đã kết nối",
     "wsConnecting": "Đang kết nối...",
     "wsError": "Lỗi kết nối",

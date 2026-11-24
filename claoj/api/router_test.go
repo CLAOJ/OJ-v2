@@ -70,6 +70,12 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 		{http.MethodDelete, "/api/admin/ticket/1/message/1", ""},
 		{http.MethodPost, "/api/admin/registration/1/activate", ""},
 		{http.MethodPost, "/api/admin/registration/1/resend", ""},
+		{http.MethodPost, "/api/admin/flat-pages", `{"url":"/a/","title":"A"}`},
+		{http.MethodPatch, "/api/admin/flat-page/1", `{"title":"x"}`},
+		{http.MethodDelete, "/api/admin/flat-page/1", ""},
+		{http.MethodPost, "/api/admin/redirects", `{"old_path":"/a/","new_path":"/b/"}`},
+		{http.MethodPatch, "/api/admin/redirect/1", `{"new_path":"/b/"}`},
+		{http.MethodDelete, "/api/admin/redirect/1", ""},
 	}
 	for _, rt := range routes {
 		t.Run(rt.method+" "+rt.path, func(t *testing.T) {
@@ -95,12 +101,12 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 	router.ServeHTTP(anonW, anon)
 	require.Equal(t, http.StatusUnauthorized, anonW.Code, anonW.Body.String())
 
-	// The registration mutations are gated the same way: anonymous is stopped
-	// before the handler, staff reaches it and gets the superuser check.
-	for _, path := range []string{"/api/admin/registration/1/activate", "/api/admin/registration/1/resend"} {
-		anon = httptest.NewRequest(http.MethodPost, path, nil)
-		anonW = httptest.NewRecorder()
-		router.ServeHTTP(anonW, anon)
-		require.Equal(t, http.StatusUnauthorized, anonW.Code, path+" "+anonW.Body.String())
+	// Anonymous callers are stopped by AdminRequiredMiddleware before the
+	// handler runs; the same routes also cover the codename-gated CMS writes.
+	for _, rt := range routes {
+		anon := httptest.NewRequest(rt.method, rt.path, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, anon)
+		require.Equal(t, http.StatusUnauthorized, w.Code, rt.method+" "+rt.path+" "+w.Body.String())
 	}
 }
