@@ -1176,6 +1176,7 @@
     "permissions": "Quyền hạn",
     "addMember": "Thêm thành viên",
     "removeMember": "Xóa",
+    "membersApplyImmediately": "Thay đổi thành viên được áp dụng ngay.",
     "deleteGroup": "Xóa nhóm",
     "confirmDelete": "Xóa nhóm \"{name}\"? Thành viên sẽ mất các quyền của nhóm.",
     "saved": "Đã lưu nhóm",

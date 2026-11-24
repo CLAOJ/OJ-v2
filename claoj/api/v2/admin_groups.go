@@ -290,6 +290,138 @@ func AdminUserRemoveGroup(c *gin.Context) {
 	}
 
 	if err := getGroupService().RemoveUserFromGroup(authUserID, groupID); err != nil {
+		if errors.Is(err, group.ErrGroupNotFound) {
+			c.JSON(http.StatusNotFound, apiError("group not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// AdminGroupMembers - GET /api/admin/group/:id/members
+//
+// Paginated member list (search by username or email). Readable by any
+// staff member; membership mutations stay superuser-only.
+func AdminGroupMembers(c *gin.Context) {
+	var groupID uint
+	if err := parseUint(c.Param("id"), &groupID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		return
+	}
+	page, pageSize := parsePagination(c)
+
+	resp, err := getGroupService().ListMembers(group.ListMembersRequest{
+		GroupID:  groupID,
+		Page:     page,
+		PageSize: pageSize,
+		Search:   c.Query("search"),
+	})
+	if err != nil {
+		if errors.Is(err, group.ErrGroupNotFound) {
+			c.JSON(http.StatusNotFound, apiError("group not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type Item struct {
+		ID       uint    `json:"id"`
+		Username string  `json:"username"`
+		Email    string  `json:"email"`
+		IsActive bool    `json:"is_active"`
+		Points   float64 `json:"points"`
+	}
+	items := make([]Item, len(resp.Members))
+	for i, m := range resp.Members {
+		items[i] = Item{ID: m.ID, Username: m.Username, Email: m.Email, IsActive: m.IsActive, Points: m.Points}
+	}
+
+	out := PaginationResponseWithPage(items, resp.Total, resp.Page, resp.PageSize)
+	out["group_id"] = resp.GroupID
+	out["group_name"] = resp.GroupName
+	c.JSON(http.StatusOK, out)
+}
+
+// AdminGroupAddMember - POST /api/admin/group/:id/members
+//
+// Body: {"user_id": <judge_profile.id>}. Additive rather than a PUT replace:
+// replacing the set would delete and recreate every membership row, which is
+// racy for large groups and wipes members added concurrently.
+func AdminGroupAddMember(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
+	var groupID uint
+	if err := parseUint(c.Param("id"), &groupID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		return
+	}
+
+	var input struct {
+		UserID uint `json:"user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	authUserID, ok := resolveAuthUserID(c, input.UserID)
+	if !ok {
+		return
+	}
+
+	if err := getGroupService().AddUserToGroup(authUserID, groupID); err != nil {
+		if errors.Is(err, group.ErrGroupNotFound) {
+			c.JSON(http.StatusNotFound, apiError("group not found"))
+			return
+		}
+		if errors.Is(err, group.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, apiError("user not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// AdminGroupRemoveMember - DELETE /api/admin/group/:id/members/:userId
+//
+// :userId is a judge_profile.id, like AdminGroupAddMember's body.
+func AdminGroupRemoveMember(c *gin.Context) {
+	if !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		return
+	}
+
+	var groupID uint
+	if err := parseUint(c.Param("id"), &groupID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		return
+	}
+	var profileID uint
+	if err := parseUint(c.Param("userId"), &profileID); err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		return
+	}
+
+	authUserID, ok := resolveAuthUserID(c, profileID)
+	if !ok {
+		return
+	}
+
+	if err := getGroupService().RemoveUserFromGroup(authUserID, groupID); err != nil {
+		if errors.Is(err, group.ErrGroupNotFound) {
+			c.JSON(http.StatusNotFound, apiError("group not found"))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}

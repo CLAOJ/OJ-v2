@@ -89,6 +89,65 @@ func (s *GroupService) GetGroup(id uint) (*GroupDetail, error) {
 	}, nil
 }
 
+// ListMembers returns one page of a group's members, joined with
+// judge_profile for points. Search matches username or email. Rows carry
+// judge_profile.id, matching the id space of GroupDetail.Users and the
+// /admin/user/:id routes.
+func (s *GroupService) ListMembers(req ListMembersRequest) (*ListMembersResponse, error) {
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 20
+	}
+	if req.PageSize > 100 {
+		req.PageSize = 100
+	}
+
+	var g models.AuthGroup
+	if err := db.DB.First(&g, req.GroupID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGroupNotFound
+		}
+		return nil, err
+	}
+
+	query := db.DB.Table("judge_profile").
+		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+		Joins("JOIN auth_user_groups ON auth_user_groups.user_id = auth_user.id").
+		Where("auth_user_groups.group_id = ?", req.GroupID)
+
+	if req.Search != "" {
+		searchPattern := "%" + req.Search + "%"
+		query = query.Where("auth_user.username LIKE ? OR auth_user.email LIKE ?", searchPattern, searchPattern)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	members := []GroupMember{}
+	if err := query.
+		Select("judge_profile.id AS id, auth_user.username AS username, auth_user.email AS email, " +
+			"auth_user.is_active AS is_active, judge_profile.points AS points").
+		Order("auth_user.username ASC, judge_profile.id ASC").
+		Offset((req.Page - 1) * req.PageSize).
+		Limit(req.PageSize).
+		Scan(&members).Error; err != nil {
+		return nil, err
+	}
+
+	return &ListMembersResponse{
+		GroupID:   g.ID,
+		GroupName: g.Name,
+		Members:   members,
+		Total:     total,
+		Page:      req.Page,
+		PageSize:  req.PageSize,
+	}, nil
+}
+
 // CreateGroup creates a new Django group with the given permission set.
 func (s *GroupService) CreateGroup(name string, permissionIDs []uint) (*GroupSummary, error) {
 	if name == "" {
@@ -255,8 +314,16 @@ func (s *GroupService) AddUserToGroup(userID, groupID uint) error {
 
 // RemoveUserFromGroup removes a user from a Django group by deleting the
 // auth_user_groups row. Idempotent: removing a non-member is a no-op
-// success.
+// success, but an unknown group is reported so group-scoped callers can 404.
 func (s *GroupService) RemoveUserFromGroup(userID, groupID uint) error {
+	var g models.AuthGroup
+	if err := db.DB.Select("id").First(&g, groupID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrGroupNotFound
+		}
+		return err
+	}
+
 	if err := db.DB.Where("user_id = ? AND group_id = ?", userID, groupID).
 		Delete(&models.AuthUserGroup{}).Error; err != nil {
 		return err

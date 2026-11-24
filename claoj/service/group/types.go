@@ -25,6 +25,37 @@ type GroupDetail struct {
 	Users         []GroupUser
 }
 
+// GroupMember is one row of the paginated group member list.
+type GroupMember struct {
+	// ID is judge_profile.id -- the same id space as GroupUser.ID and the
+	// /admin/user/:id route family.
+	ID       uint
+	Username string
+	Email    string
+	IsActive bool
+	Points   float64
+}
+
+// ListMembersRequest selects a page of a group's members.
+type ListMembersRequest struct {
+	GroupID  uint
+	Page     int
+	PageSize int
+	// Search, when non-empty, filters to members whose username or email
+	// contains the term (case-insensitive substring match).
+	Search string
+}
+
+// ListMembersResponse is one page of a group's members.
+type ListMembersResponse struct {
+	GroupID   uint
+	GroupName string
+	Members   []GroupMember
+	Total     int64
+	Page      int
+	PageSize  int
+}
+
 // PermissionInfo describes a single Django permission (auth_permission row),
 // including its full wire identity "{app_label}.{codename}".
 type PermissionInfo struct {

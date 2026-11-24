@@ -968,6 +968,22 @@ export interface GroupDetail {
     users: { id: number; username: string }[];
 }
 
+export interface GroupMember {
+    id: number;
+    username: string;
+    email: string;
+    is_active: boolean;
+    points: number;
+}
+
+export interface GroupMembersResponse extends AdminListResponse<GroupMember> {
+    group_id: number;
+    group_name: string;
+    page: number;
+    page_size: number;
+    has_more: boolean;
+}
+
 // ============================================================
 // PROBLEM DATA MANAGEMENT TYPES
 // ============================================================

@@ -1176,6 +1176,7 @@
     "permissions": "Permissions",
     "addMember": "Add member",
     "removeMember": "Remove",
+    "membersApplyImmediately": "Membership changes apply immediately.",
     "deleteGroup": "Delete group",
     "confirmDelete": "Delete group \"{name}\"? Members lose its permissions.",
     "saved": "Group saved",

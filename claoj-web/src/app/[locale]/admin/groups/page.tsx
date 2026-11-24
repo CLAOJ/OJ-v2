@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { adminGroupsApi, GroupCreateRequest, GroupUpdateRequest } from '@/lib/adminApi';
-import api from '@/lib/api';
-import { Group, GroupDetail, PermissionInfo, AdminUser } from '@/types';
+import { searchUsers } from '@/lib/adminSearch';
+import { Group, GroupDetail, PermissionInfo } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -43,8 +43,6 @@ export default function AdminGroupsPage() {
     const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
-    const [memberSearch, setMemberSearch] = useState('');
-    const debouncedMemberSearch = useDebounce(memberSearch, 300);
 
     const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useQuery({
         queryKey: ['admin-groups'],
@@ -110,45 +108,6 @@ export default function AdminGroupsPage() {
         },
         onError: () => toast.error(t('saveFailed')),
     });
-
-    const addMemberMutation = useMutation({
-        mutationFn: ({ profileId, groupId }: { profileId: number; groupId: number }) =>
-            adminGroupsApi.addUser(profileId, groupId),
-        onSuccess: (_res, variables) => {
-            invalidateGroups();
-            invalidateDetail(variables.groupId);
-            setMemberSearch('');
-        },
-        onError: () => toast.error(t('addMemberFailed')),
-    });
-
-    const removeMemberMutation = useMutation({
-        mutationFn: ({ profileId, groupId }: { profileId: number; groupId: number }) =>
-            adminGroupsApi.removeUser(profileId, groupId),
-        onSuccess: (_res, variables) => {
-            invalidateGroups();
-            invalidateDetail(variables.groupId);
-        },
-        onError: () => toast.error(t('removeMemberFailed')),
-    });
-
-    const { data: userSearchResults, isFetching: userSearchLoading } = useQuery({
-        queryKey: ['admin-user-search-for-group', debouncedMemberSearch],
-        queryFn: async () => {
-            const res = await api.get<{ data: AdminUser[] }>(
-                `/admin/users?page=1&page_size=10&search=${encodeURIComponent(debouncedMemberSearch)}`
-            );
-            return res.data.data;
-        },
-        enabled: debouncedMemberSearch.trim().length >= 2 && selectedGroupId !== null,
-    });
-
-    const existingMemberIds = useMemo(
-        () => new Set((selectedGroup?.users || []).map((u) => u.id)),
-        [selectedGroup]
-    );
-
-    const availableSearchResults = (userSearchResults || []).filter((u) => !existingMemberIds.has(u.id));
 
     const handleTogglePermission = (permissionId: number) => {
         if (!selectedGroup) return;
@@ -271,75 +230,22 @@ export default function AdminGroupsPage() {
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* Members */}
+                                {/* Members (managed in the edit modal) */}
                                 <div>
                                     <h3 className="font-semibold mb-4 flex items-center gap-2">
                                         <Users size={18} />
                                         {t('members')} ({selectedGroup.users.length})
                                     </h3>
 
-                                    <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                                    <div className="space-y-2 max-h-72 overflow-y-auto">
                                         {selectedGroup.users.length === 0 ? (
                                             <p className="text-sm text-muted-foreground">{t('noMembers')}</p>
                                         ) : (
                                             selectedGroup.users.map((member) => (
-                                                <div
-                                                    key={member.id}
-                                                    className="flex items-center justify-between p-3 rounded-xl border"
-                                                >
-                                                    <span className="text-sm font-medium">{member.username}</span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive"
-                                                        disabled={removeMemberMutation.isPending}
-                                                        onClick={() =>
-                                                            removeMemberMutation.mutate({
-                                                                profileId: member.id,
-                                                                groupId: selectedGroup.id,
-                                                            })
-                                                        }
-                                                    >
-                                                        {t('removeMember')}
-                                                    </Button>
+                                                <div key={member.id} className="p-3 rounded-xl border text-sm font-medium">
+                                                    {member.username}
                                                 </div>
                                             ))
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="add-member-search">{t('addMember')}</Label>
-                                        <Input
-                                            id="add-member-search"
-                                            value={memberSearch}
-                                            onChange={(e) => setMemberSearch(e.target.value)}
-                                            placeholder={t('searchUsersPlaceholder')}
-                                        />
-                                        {debouncedMemberSearch.trim().length >= 2 && (
-                                            <div className="border rounded-xl divide-y max-h-48 overflow-y-auto">
-                                                {userSearchLoading ? (
-                                                    <div className="p-3 text-sm text-muted-foreground">{t('loading')}</div>
-                                                ) : availableSearchResults.length === 0 ? (
-                                                    <div className="p-3 text-sm text-muted-foreground">{t('noUsersFound')}</div>
-                                                ) : (
-                                                    availableSearchResults.map((u) => (
-                                                        <button
-                                                            key={u.id}
-                                                            onClick={() =>
-                                                                addMemberMutation.mutate({
-                                                                    profileId: u.id,
-                                                                    groupId: selectedGroup.id,
-                                                                })
-                                                            }
-                                                            disabled={addMemberMutation.isPending}
-                                                            className="w-full flex items-center justify-between p-3 text-sm hover:bg-muted/50 transition-colors text-left"
-                                                        >
-                                                            <span>{u.username}</span>
-                                                            <UserPlus size={14} className="text-primary" />
-                                                        </button>
-                                                    ))
-                                                )}
-                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -506,6 +412,13 @@ function GroupFormModal({ mode, group, permissionsByAppModel, isSaving, onClose,
                         />
                     </div>
 
+                    {mode === 'edit' && group && (
+                        <div className="space-y-2">
+                            <Label className="block">{t('members')}</Label>
+                            <GroupMembersEditor groupId={group.id} t={t} />
+                        </div>
+                    )}
+
                     <div>
                         <Label className="mb-2 block">{t('permissions')}</Label>
                         <PermissionPicker
@@ -527,5 +440,123 @@ function GroupFormModal({ mode, group, permissionsByAppModel, isSaving, onClose,
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+interface GroupMembersEditorProps {
+    groupId: number;
+    t: Translate;
+}
+
+/**
+ * Immediate add/remove member editor for an existing group. Membership
+ * changes hit the group-scoped endpoints and invalidate the group queries so
+ * the card counts and the detail panel stay accurate.
+ *
+ * shortcut: the member list is capped at one page (100); larger groups need
+ * paging or infinite scroll, which the endpoint already supports.
+ */
+function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
+    const queryClient = useQueryClient();
+    const [term, setTerm] = useState('');
+    const debouncedTerm = useDebounce(term.trim(), 300);
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['admin-group-members', groupId, debouncedTerm],
+        queryFn: async () => (await adminGroupsApi.members(groupId, 1, 100, debouncedTerm)).data,
+    });
+    const members = data?.data || [];
+    const total = data?.total ?? members.length;
+
+    const invalidate = () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-group-members', groupId] });
+        queryClient.invalidateQueries({ queryKey: ['admin-groups'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-group', groupId] });
+    };
+
+    const addMutation = useMutation({
+        mutationFn: (profileId: number) => adminGroupsApi.addMember(groupId, profileId),
+        onSuccess: () => {
+            setTerm('');
+            invalidate();
+        },
+        onError: () => toast.error(t('addMemberFailed')),
+    });
+
+    const removeMutation = useMutation({
+        mutationFn: (profileId: number) => adminGroupsApi.removeMember(groupId, profileId),
+        onSuccess: invalidate,
+        onError: () => toast.error(t('removeMemberFailed')),
+    });
+
+    const { data: candidates = [], isFetching: searching } = useQuery({
+        queryKey: ['admin-user-search-for-group', groupId, debouncedTerm],
+        queryFn: () => searchUsers(debouncedTerm),
+        enabled: debouncedTerm.length >= 2,
+    });
+    const memberIds = new Set(members.map((m) => m.id));
+    const addable = candidates.filter((c) => !memberIds.has(c.id));
+
+    return (
+        <div className="space-y-2">
+            <Input
+                id="group-member-search"
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder={t('searchUsersPlaceholder')}
+            />
+
+            {debouncedTerm.length >= 2 && (
+                <div className="border rounded-xl divide-y max-h-40 overflow-y-auto">
+                    {searching ? (
+                        <div className="p-3 text-sm text-muted-foreground">{t('loading')}</div>
+                    ) : addable.length === 0 ? (
+                        <div className="p-3 text-sm text-muted-foreground">{t('noUsersFound')}</div>
+                    ) : (
+                        addable.map((u) => (
+                            <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => addMutation.mutate(u.id)}
+                                disabled={addMutation.isPending}
+                                className="w-full flex items-center justify-between p-3 text-sm hover:bg-muted/50 transition-colors text-left"
+                            >
+                                <span>{u.label}</span>
+                                <UserPlus size={14} className="text-primary" />
+                            </button>
+                        ))
+                    )}
+                </div>
+            )}
+
+            <div className="border rounded-xl divide-y max-h-56 overflow-y-auto">
+                {isLoading ? (
+                    <div className="p-3 text-sm text-muted-foreground">{t('loading')}</div>
+                ) : members.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">{t('noMembers')}</div>
+                ) : (
+                    members.map((m) => (
+                        <div key={m.id} className="flex items-center justify-between gap-3 p-3">
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{m.username}</p>
+                                <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                disabled={removeMutation.isPending}
+                                onClick={() => removeMutation.mutate(m.id)}
+                            >
+                                {t('removeMember')}
+                            </Button>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">{t('memberCount', { count: total })}</p>
+            <p className="text-xs text-muted-foreground">{t('membersApplyImmediately')}</p>
+        </div>
     );
 }

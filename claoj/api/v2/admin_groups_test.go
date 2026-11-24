@@ -112,6 +112,8 @@ func TestAdminGroupMutations_StaffNotSuperuser_Forbidden(t *testing.T) {
 		{"AdminGroupDelete", http.MethodDelete, "/admin/group/:id", "/admin/group/1", AdminGroupDelete},
 		{"AdminUserAddGroup", http.MethodPost, "/admin/user/:id/groups", "/admin/user/1/groups", AdminUserAddGroup},
 		{"AdminUserRemoveGroup", http.MethodDelete, "/admin/user/:id/groups/:groupId", "/admin/user/1/groups/1", AdminUserRemoveGroup},
+		{"AdminGroupAddMember", http.MethodPost, "/admin/group/:id/members", "/admin/group/1/members", AdminGroupAddMember},
+		{"AdminGroupRemoveMember", http.MethodDelete, "/admin/group/:id/members/:userId", "/admin/group/1/members/1", AdminGroupRemoveMember},
 	}
 
 	for _, tc := range cases {

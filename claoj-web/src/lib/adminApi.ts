@@ -17,6 +17,7 @@ import type {
     AdminSubmission,
     Group,
     GroupDetail,
+    GroupMembersResponse,
     PermissionInfo,
     ProblemData,
     ProblemDataFile,
@@ -497,11 +498,16 @@ export const adminGroupsApi = {
     permissions: () =>
         api.get<{ data: PermissionInfo[] }>('/admin/permissions'),
 
-    addUser: (profileId: number, groupId: number) =>
-        api.post<void>(`/admin/user/${profileId}/groups`, { group_id: groupId }),
+    members: (id: number, page: number = 1, pageSize: number = 100, search: string = '') =>
+        api.get<GroupMembersResponse>(
+            `/admin/group/${id}/members?${qs({ page, page_size: pageSize, search })}`
+        ),
 
-    removeUser: (profileId: number, groupId: number) =>
-        api.delete<void>(`/admin/user/${profileId}/groups/${groupId}`),
+    addMember: (groupId: number, profileId: number) =>
+        api.post<void>(`/admin/group/${groupId}/members`, { user_id: profileId }),
+
+    removeMember: (groupId: number, profileId: number) =>
+        api.delete<void>(`/admin/group/${groupId}/members/${profileId}`),
 };
 
 // ============================================================
