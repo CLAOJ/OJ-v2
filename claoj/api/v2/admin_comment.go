@@ -1,8 +1,10 @@
 package v2
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,6 +14,10 @@ import (
 	"github.com/CLAOJ/claoj/service/comment"
 	"github.com/gin-gonic/gin"
 )
+
+// commentPagePattern accepts both the v1 colon code and the v2 slash prefix,
+// so an admin edit cannot store a page code the lists and links can't parse.
+var commentPagePattern = regexp.MustCompile(`^\w+[:/][A-Za-z0-9_]+$`)
 
 // ============================================================
 // ADMIN COMMENT MANAGEMENT API
@@ -43,14 +49,17 @@ func AdminCommentList(c *gin.Context) {
 		}
 	}
 
-	// Same page prefixes as the public comment list (GET /comments?page_type=).
+	// Two page-code formats coexist: v2 writes slash prefixes (p/, e/, blog/,
+	// c/), v1 wrote colon codes (p:, s:, c:, b:). Each type matches both.
 	switch pageType {
 	case "problem":
-		query = query.Where("judge_comment.page LIKE ?", "p/%")
+		query = query.Where("judge_comment.page LIKE ? OR judge_comment.page LIKE ?", "p/%", "p:%")
 	case "editorial":
-		query = query.Where("judge_comment.page LIKE ?", "e/%")
+		query = query.Where("judge_comment.page LIKE ? OR judge_comment.page LIKE ?", "e/%", "s:%")
+	case "contest":
+		query = query.Where("judge_comment.page LIKE ? OR judge_comment.page LIKE ?", "c/%", "c:%")
 	case "blog":
-		query = query.Where("judge_comment.page LIKE ?", "blog/%")
+		query = query.Where("judge_comment.page LIKE ? OR judge_comment.page LIKE ?", "blog/%", "b:%")
 	}
 
 	// Get total count
@@ -130,18 +139,20 @@ func AdminCommentUpdate(c *gin.Context) {
 	}
 
 	var req struct {
-		Body     *string `json:"body,omitempty"`
-		Hidden   *bool   `json:"hidden,omitempty"`
-		AuthorID *uint   `json:"author_id,omitempty"`
-		Page     *string `json:"page,omitempty"`
-		ParentID *uint   `json:"parent_id,omitempty"`
-		Reason   string  `json:"reason,omitempty"`
+		Body     *string         `json:"body,omitempty"`
+		Hidden   *bool           `json:"hidden,omitempty"`
+		AuthorID *uint           `json:"author_id,omitempty"`
+		Page     *string         `json:"page,omitempty"`
+		ParentID json.RawMessage `json:"parent_id,omitempty"`
+		Reason   string          `json:"reason,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
 
+	// RawMessage is non-nil whenever the key is present, including null, so an
+	// explicit parent update (even to null) is an error rather than a no-op.
 	if req.ParentID != nil {
 		c.JSON(http.StatusBadRequest, apiUserError("reparenting a comment is not supported"))
 		return
@@ -165,7 +176,7 @@ func AdminCommentUpdate(c *gin.Context) {
 
 	if req.Page != nil {
 		page := strings.TrimSpace(*req.Page)
-		if page == "" || len(page) > 30 {
+		if page == "" || len(page) > 30 || !commentPagePattern.MatchString(page) {
 			c.JSON(http.StatusBadRequest, apiUserError("invalid page code"))
 			return
 		}

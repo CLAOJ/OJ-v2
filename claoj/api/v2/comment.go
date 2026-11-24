@@ -362,9 +362,13 @@ func CommentUpdate(c *gin.Context) {
 	}
 	db.DB.Create(&revision)
 
-	// Update comment
-	comment.Body = sanitization.SanitizeComment(req.Body)
-	if err := db.DB.Save(&comment).Error; err != nil {
+	// Update comment. v1 increments judge_comment.revisions on author edits
+	// (judge/views/comment.py:159); the counter is bumped in the same statement
+	// so concurrent edits don't lose a revision.
+	if err := db.DB.Model(&comment).Updates(map[string]any{
+		"body":      sanitization.SanitizeComment(req.Body),
+		"revisions": gorm.Expr("revisions + 1"),
+	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update comment"})
 		return
 	}

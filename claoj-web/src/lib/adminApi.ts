@@ -608,7 +608,7 @@ export const adminCommentApi = {
     list: (page: number = 1, pageSize: number = 50, filters?: {
         search?: string;
         hidden?: 'true' | 'false';
-        page_type?: 'problem' | 'editorial' | 'blog';
+        page_type?: 'problem' | 'editorial' | 'contest' | 'blog';
     }) => {
         const params = new URLSearchParams({
             page: page.toString(),

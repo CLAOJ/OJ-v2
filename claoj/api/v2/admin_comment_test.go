@@ -74,33 +74,44 @@ func TestAdminCommentList_PageTypeFilter(t *testing.T) {
 	setupAdminCommentDB(t)
 	_, root := seedAccount(t, "root", true, true)
 
+	// v2 slash prefixes and the legacy v1 colon codes must land in the same type.
 	seedComment(t, root.ID, "p/aplusb", "on a problem", false)
+	seedComment(t, root.ID, "p:legacy", "on a legacy problem", false)
 	seedComment(t, root.ID, "e/aplusb", "on an editorial", false)
+	seedComment(t, root.ID, "s:legacy", "on a legacy solution", false)
+	seedComment(t, root.ID, "c/round1", "on a contest", false)
+	seedComment(t, root.ID, "c:round1", "on a legacy contest", false)
 	seedComment(t, root.ID, "blog/12", "on a blog post", false)
-	seedComment(t, root.ID, "s/aplusb", "on a solution", false)
+	seedComment(t, root.ID, "b:34", "on a legacy blog post", false)
+
+	pages := func(query string) []string {
+		t.Helper()
+		var out []string
+		for _, row := range listAdminComments(t, query).Data {
+			out = append(out, row["page"].(string))
+		}
+		return out
+	}
 
 	t.Run("problem", func(t *testing.T) {
-		body := listAdminComments(t, "?page_type=problem")
-		require.Equal(t, int64(1), body.Total)
-		require.Equal(t, "p/aplusb", body.Data[0]["page"])
+		require.ElementsMatch(t, []string{"p/aplusb", "p:legacy"}, pages("?page_type=problem"))
 	})
 	t.Run("editorial", func(t *testing.T) {
-		body := listAdminComments(t, "?page_type=editorial")
-		require.Equal(t, int64(1), body.Total)
-		require.Equal(t, "e/aplusb", body.Data[0]["page"])
+		require.ElementsMatch(t, []string{"e/aplusb", "s:legacy"}, pages("?page_type=editorial"))
+	})
+	t.Run("contest", func(t *testing.T) {
+		require.ElementsMatch(t, []string{"c/round1", "c:round1"}, pages("?page_type=contest"))
 	})
 	t.Run("blog", func(t *testing.T) {
-		body := listAdminComments(t, "?page_type=blog")
-		require.Equal(t, int64(1), body.Total)
-		require.Equal(t, "blog/12", body.Data[0]["page"])
+		require.ElementsMatch(t, []string{"blog/12", "b:34"}, pages("?page_type=blog"))
 	})
 	t.Run("unknown value is ignored", func(t *testing.T) {
-		require.Equal(t, int64(4), listAdminComments(t, "?page_type=maybe").Total)
+		require.Equal(t, int64(8), listAdminComments(t, "?page_type=maybe").Total)
 	})
 	t.Run("combines with hidden filter", func(t *testing.T) {
 		seedComment(t, root.ID, "p/hidden", "hidden problem comment", true)
 		body := listAdminComments(t, "?page_type=problem&hidden=false")
-		require.Equal(t, int64(1), body.Total)
+		require.Equal(t, int64(2), body.Total)
 		body = listAdminComments(t, "?page_type=problem&hidden=true")
 		require.Equal(t, int64(1), body.Total)
 	})
@@ -108,11 +119,20 @@ func TestAdminCommentList_PageTypeFilter(t *testing.T) {
 
 func TestAdminCommentList_Revisions(t *testing.T) {
 	setupAdminCommentDB(t)
-	_, root := seedAccount(t, "root", true, true)
-	seedComment(t, root.ID, "p/aplusb", "hello", false)
+	seedAccount(t, "root", true, true)
+	// Burn an auth_user id so the commenter's profile id and auth id diverge:
+	// the list must return judge_profile.id, not the auth user id.
+	require.NoError(t, db.DB.Create(&models.AuthUser{
+		Username: "gap", Email: "gap@example.com", Password: "x", IsActive: true,
+	}).Error)
+	adaUser, ada := seedAccount(t, "ada", false, false)
+	require.NotEqual(t, adaUser.ID, ada.ID)
+	seedComment(t, ada.ID, "p/aplusb", "hello", false)
 
 	body := listAdminComments(t, "")
 	require.Equal(t, float64(1), body.Data[0]["revisions"])
+	require.Equal(t, float64(ada.ID), body.Data[0]["author_id"], "author_id is a profile id")
+	require.Equal(t, "ada", body.Data[0]["username"])
 }
 
 func TestAdminCommentUpdate_Metadata(t *testing.T) {
@@ -164,12 +184,56 @@ func TestAdminCommentUpdate_Validation(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, patch(`{"author_id":99999}`), "unknown profile")
 	require.Equal(t, http.StatusBadRequest, patch(`{"page":"  "}`), "empty page")
 	require.Equal(t, http.StatusBadRequest, patch(fmt.Sprintf(`{"page":"%s"}`, strings.Repeat("x", 31))), "page over the column width")
+	require.Equal(t, http.StatusBadRequest, patch(`{"page":"noseparator"}`), "page without a type separator")
+	require.Equal(t, http.StatusBadRequest, patch(`{"page":"p/not allowed"}`), "page with characters the parser drops")
 	require.Equal(t, http.StatusBadRequest, patch(`{"parent_id":2}`), "reparenting is not supported")
+	require.Equal(t, http.StatusBadRequest, patch(`{"parent_id":null}`), "even an explicit null parent is rejected")
+	require.Equal(t, http.StatusOK, patch(`{"page":"p:legacy_code"}`), "legacy colon codes stay valid")
+	require.Equal(t, http.StatusOK, patch(`{"page":"c/round1"}`), "v2 slash codes stay valid")
 
 	var got models.Comment
 	require.NoError(t, db.DB.First(&got, cm.ID).Error)
-	require.Equal(t, "p/aplusb", got.Page)
+	require.Equal(t, "c/round1", got.Page, "only the last accepted page edit stuck")
 	require.Equal(t, root.ID, got.AuthorID)
+	require.Equal(t, 1, got.Revisions, "page-only patches don't bump revisions")
+}
+
+// A hidden-only admin patch is not a content edit, so the revision counter and
+// the revision table must be untouched.
+func TestAdminCommentUpdate_HiddenOnlyKeepsRevisions(t *testing.T) {
+	setupAdminCommentDB(t)
+	_, root := seedAccount(t, "root", true, true)
+	cm := seedComment(t, root.ID, "p/aplusb", "body", false)
+
+	router := authedRouter(1, http.MethodPatch, "/admin/comment/:id", AdminCommentUpdate)
+	w := doRequest(router, http.MethodPatch, fmt.Sprintf("/admin/comment/%d", cm.ID), `{"hidden":true}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var got models.Comment
+	require.NoError(t, db.DB.First(&got, cm.ID).Error)
+	require.True(t, got.Hidden)
+	require.Equal(t, 1, got.Revisions)
+
+	var revisions int64
+	require.NoError(t, db.DB.Model(&models.CommentRevision{}).Where("comment_id = ?", cm.ID).Count(&revisions).Error)
+	require.Zero(t, revisions)
+}
+
+// The public self-edit path must bump revisions too: v1 does
+// (judge/views/comment.py:159) and the admin list surfaces that counter.
+func TestCommentUpdate_BumpsRevisions(t *testing.T) {
+	setupAdminCommentDB(t)
+	_, root := seedAccount(t, "root", false, false)
+	cm := seedComment(t, root.ID, "p/aplusb", "old body", false)
+
+	router := authedRouter(root.UserID, http.MethodPatch, "/comment/:id", CommentUpdate)
+	w := doRequest(router, http.MethodPatch, fmt.Sprintf("/comment/%d", cm.ID), `{"body":"new body"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var got models.Comment
+	require.NoError(t, db.DB.First(&got, cm.ID).Error)
+	require.Equal(t, "new body", got.Body)
+	require.Equal(t, 2, got.Revisions, "author edit increments the counter")
 }
 
 // The admin audit middleware is what records the bulk action; mounting it here
@@ -244,4 +308,9 @@ func TestAdminCommentBulkHide_RowsAndAudit(t *testing.T) {
 	require.Equal(t, root.ID, entry.UserID)
 	require.Equal(t, "success", entry.Status)
 	require.Contains(t, entry.Details, fmt.Sprintf("%d", a.ID))
+
+	// Unknown ids are counted, not failed: MySQL reports changed rows.
+	w = post(`{"ids":[99999],"hidden":true}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.JSONEq(t, `{"updated":0,"hidden":true}`, w.Body.String())
 }

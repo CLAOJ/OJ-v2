@@ -49,7 +49,7 @@ export default function CommentAdminPage() {
     const [editPage, setEditPage] = useState('');
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-    const [pageTypeFilter, setPageTypeFilter] = useState<'all' | 'problem' | 'editorial' | 'blog'>('all');
+    const [pageTypeFilter, setPageTypeFilter] = useState<'all' | 'problem' | 'editorial' | 'contest' | 'blog'>('all');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     // null = bulk confirmation closed; true = hide, false = unhide.
     const [bulkHidden, setBulkHidden] = useState<boolean | null>(null);
@@ -59,7 +59,7 @@ export default function CommentAdminPage() {
         setLoading(true);
         setSelectedIds([]);
         try {
-            const filters: { search?: string; hidden?: 'true' | 'false'; page_type?: 'problem' | 'editorial' | 'blog' } = {};
+            const filters: { search?: string; hidden?: 'true' | 'false'; page_type?: 'problem' | 'editorial' | 'contest' | 'blog' } = {};
             if (search) filters.search = search;
             if (hiddenFilter !== 'all') filters.hidden = hiddenFilter;
             if (pageTypeFilter !== 'all') filters.page_type = pageTypeFilter;
@@ -129,8 +129,10 @@ export default function CommentAdminPage() {
         if (bulkHidden === null) return;
         const ids = [...selectedIds];
         try {
-            await adminCommentApi.bulkHide(ids, bulkHidden);
-            toast.success(t('comments.bulkSuccess', { count: ids.length }));
+            const response = await adminCommentApi.bulkHide(ids, bulkHidden);
+            // The server reports changed rows, so re-hiding an already hidden
+            // comment counts 0; show what actually changed.
+            toast.success(t('comments.bulkSuccess', { count: response.data.updated }));
             setBulkHidden(null);
             loadComments();
         } catch (error) {
@@ -197,6 +199,7 @@ export default function CommentAdminPage() {
                     <option value="all">{t('comments.allTypesOption')}</option>
                     <option value="problem">{t('comments.problemCommentsOption')}</option>
                     <option value="editorial">{t('comments.editorialCommentsOption')}</option>
+                    <option value="contest">{t('comments.contestCommentsOption')}</option>
                     <option value="blog">{t('comments.blogCommentsOption')}</option>
                 </select>
                 <select
