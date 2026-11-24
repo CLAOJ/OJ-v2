@@ -88,11 +88,11 @@ function CreateTicketForm() {
                 body: data.body,
                 problem_code: data.problem_code || undefined,
             };
-            const res = await api.post('/tickets', payload);
+            const res = await api.post<{ message: string; id: number }>('/tickets', payload);
             return res.data;
         },
         onSuccess: (data) => {
-            router.push(`/ticket/${data.data?.id || data.id}`);
+            router.push(`/ticket/${data.id}`);
         }
     });
 
