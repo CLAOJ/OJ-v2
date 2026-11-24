@@ -1330,6 +1330,7 @@
         "lastNameLabel": "Last name",
         "selfGuardHint": "You cannot deactivate or demote your own account, so these controls are locked.",
         "superuserGuardHint": "Only a superuser can change account status or staff roles.",
+        "readOnlyNotice": "Only a superuser can edit this account. Fields are read-only.",
         "groupsLabel": "Groups",
         "noGroups": "No groups exist yet.",
         "permissionsLabel": "Direct permissions ({count})",

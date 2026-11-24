@@ -1330,6 +1330,7 @@
         "lastNameLabel": "Họ",
         "selfGuardHint": "Bạn không thể tự vô hiệu hóa hoặc tự hạ quyền, nên các điều khiển này bị khóa.",
         "superuserGuardHint": "Chỉ quản trị viên tối cao mới có thể đổi trạng thái tài khoản hoặc vai trò quản trị.",
+        "readOnlyNotice": "Chỉ quản trị viên tối cao mới có thể sửa tài khoản này. Các trường ở chế độ chỉ đọc.",
         "groupsLabel": "Nhóm",
         "noGroups": "Chưa có nhóm nào.",
         "permissionsLabel": "Quyền trực tiếp ({count})",

@@ -12,11 +12,11 @@ import {
 } from '@/lib/adminApi';
 import {
     userDetailToForm,
-    formToPatch,
     userFlagGuard,
     visibleUserEditorTabs,
     filterPermissions,
-    sameIds,
+    isReadOnlyTarget,
+    buildUserSavePlan,
     type UserEditorForm,
     type UserEditorTab,
 } from '@/lib/adminUser';
@@ -81,6 +81,7 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
 
     const isSelf = !!viewer.username && viewer.username === detail.username;
     const guard = userFlagGuard(isSelf, viewer.isSuperuser);
+    const readOnly = isReadOnlyTarget(detail, viewer);
     const tabs = visibleUserEditorTabs(viewer.isSuperuser);
     const activeTab = tabs.includes(tab) ? tab : 'identity';
 
@@ -101,16 +102,12 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
 
     const saveMutation = useMutation({
         mutationFn: async () => {
-            if (activeTab === 'access') {
-                if (!sameIds(groupIds, detail.group_ids)) {
-                    await adminUserApi.replaceGroups(detail.id, groupIds);
-                }
-                if (!sameIds(permissionIds, detail.permission_ids)) {
-                    await adminUserApi.replacePermissions(detail.id, permissionIds);
-                }
-                return;
-            }
-            await adminUserApi.update(detail.id, formToPatch(form, guard));
+            const plan = buildUserSavePlan(detail, form, guard, groupIds, permissionIds);
+            await Promise.all([
+                plan.patch ? adminUserApi.update(detail.id, plan.patch) : Promise.resolve(),
+                plan.groupIds ? adminUserApi.replaceGroups(detail.id, plan.groupIds) : Promise.resolve(),
+                plan.permissionIds ? adminUserApi.replacePermissions(detail.id, plan.permissionIds) : Promise.resolve(),
+            ]);
         },
         onSuccess: () => {
             toast.success(t('users.editor.saved'));
@@ -118,7 +115,12 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
             queryClient.invalidateQueries({ queryKey: ['admin-user-detail', detail.id] });
             onClose();
         },
-        onError: (error) => toast.error(adminErrorMessage(error, t('users.saveError'))),
+        onError: (error) => {
+            // A parallel write may have landed; refresh the detail either way.
+            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-user-detail', detail.id] });
+            toast.error(adminErrorMessage(error, t('users.saveError')));
+        },
     });
 
     const securityMutation = useMutation({
@@ -150,8 +152,10 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                 {tabLabels.map(item => (
                     <button
                         key={item.id}
+                        id={`user-tab-${item.id}`}
                         role="tab"
                         aria-selected={activeTab === item.id}
+                        aria-controls={`user-panel-${item.id}`}
                         onClick={() => setTab(item.id)}
                         className={cn(
                             '-mb-px border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors',
@@ -165,265 +169,273 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                 ))}
             </div>
 
+            {readOnly && (
+                <p role="status" className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+                    {t('users.editor.readOnlyNotice')}
+                </p>
+            )}
+
             <DialogContent className="min-h-[20rem]">
-                {activeTab === 'identity' && (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Field id="user-username" label={t('users.usernameLabel')}>
-                                <Input
-                                    id="user-username"
-                                    value={form.username}
-                                    onChange={(e) => setForm({ ...form, username: e.target.value })}
-                                />
-                            </Field>
-                            <Field id="user-email" label={t('users.emailLabel')}>
-                                <Input
-                                    id="user-email"
-                                    type="email"
-                                    value={form.email}
-                                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                />
-                            </Field>
-                            <Field id="user-first-name" label={t('users.editor.firstNameLabel')}>
-                                <Input
-                                    id="user-first-name"
-                                    value={form.first_name}
-                                    onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                                />
-                            </Field>
-                            <Field id="user-last-name" label={t('users.editor.lastNameLabel')}>
-                                <Input
-                                    id="user-last-name"
-                                    value={form.last_name}
-                                    onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                                />
-                            </Field>
-                        </div>
+                <fieldset disabled={readOnly} className="min-w-0">
+                    {activeTab === 'identity' && (
+                        <div role="tabpanel" id="user-panel-identity" aria-labelledby="user-tab-identity" className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field id="user-username" label={t('users.usernameLabel')}>
+                                    <Input
+                                        id="user-username"
+                                        value={form.username}
+                                        onChange={(e) => setForm({ ...form, username: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-email" label={t('users.emailLabel')}>
+                                    <Input
+                                        id="user-email"
+                                        type="email"
+                                        value={form.email}
+                                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-first-name" label={t('users.editor.firstNameLabel')}>
+                                    <Input
+                                        id="user-first-name"
+                                        value={form.first_name}
+                                        onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-last-name" label={t('users.editor.lastNameLabel')}>
+                                    <Input
+                                        id="user-last-name"
+                                        value={form.last_name}
+                                        onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                                    />
+                                </Field>
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <FlagSwitch
-                                id="user-active"
-                                label={t('users.activeLabel')}
-                                checked={form.is_active}
-                                disabled={!guard.is_active}
-                                onChange={(v) => setForm({ ...form, is_active: v })}
-                            />
-                            <FlagSwitch
-                                id="user-staff"
-                                label={t('users.staff')}
-                                checked={form.is_staff}
-                                disabled={!guard.is_staff}
-                                onChange={(v) => setForm({ ...form, is_staff: v })}
-                            />
-                            <FlagSwitch
-                                id="user-superuser"
-                                label={t('users.superuser')}
-                                checked={form.is_superuser}
-                                disabled={!guard.is_superuser}
-                                onChange={(v) => setForm({ ...form, is_superuser: v })}
-                            />
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <FlagSwitch
+                                    id="user-active"
+                                    label={t('users.activeLabel')}
+                                    checked={form.is_active}
+                                    disabled={!guard.is_active}
+                                    onChange={(v) => setForm({ ...form, is_active: v })}
+                                />
+                                <FlagSwitch
+                                    id="user-staff"
+                                    label={t('users.staff')}
+                                    checked={form.is_staff}
+                                    disabled={!guard.is_staff}
+                                    onChange={(v) => setForm({ ...form, is_staff: v })}
+                                />
+                                <FlagSwitch
+                                    id="user-superuser"
+                                    label={t('users.superuser')}
+                                    checked={form.is_superuser}
+                                    disabled={!guard.is_superuser}
+                                    onChange={(v) => setForm({ ...form, is_superuser: v })}
+                                />
+                            </div>
+                            {!readOnly && guard.hint === 'self' && (
+                                <p className="text-xs text-muted-foreground">{t('users.editor.selfGuardHint')}</p>
+                            )}
+                            {!readOnly && guard.hint === 'superuser' && (
+                                <p className="text-xs text-muted-foreground">{t('users.editor.superuserGuardHint')}</p>
+                            )}
                         </div>
-                        {guard.hint === 'self' && (
-                            <p className="text-xs text-muted-foreground">{t('users.editor.selfGuardHint')}</p>
-                        )}
-                        {guard.hint === 'superuser' && (
-                            <p className="text-xs text-muted-foreground">{t('users.editor.superuserGuardHint')}</p>
-                        )}
-                    </div>
-                )}
+                    )}
 
-                {activeTab === 'access' && (
-                    <div className="space-y-6">
-                        <section className="space-y-2">
-                            <h3 className="text-sm font-semibold">{t('users.editor.groupsLabel')}</h3>
-                            {groups.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">{t('users.editor.noGroups')}</p>
-                            ) : (
+                    {activeTab === 'access' && (
+                        <div role="tabpanel" id="user-panel-access" aria-labelledby="user-tab-access" className="space-y-6">
+                            <section className="space-y-2">
+                                <h3 className="text-sm font-semibold">{t('users.editor.groupsLabel')}</h3>
+                                {groups.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">{t('users.editor.noGroups')}</p>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+                                        {groups.map(group => (
+                                            <label
+                                                key={group.id}
+                                                className={cn(
+                                                    'flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer transition-colors',
+                                                    groupIds.includes(group.id) ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/30'
+                                                )}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded w-4 h-4"
+                                                    checked={groupIds.includes(group.id)}
+                                                    onChange={() => toggleGroup(group.id)}
+                                                />
+                                                <span>{group.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+
+                            <section className="space-y-2">
+                                <h3 className="text-sm font-semibold">
+                                    {t('users.editor.permissionsLabel', { count: permissionIds.length })}
+                                </h3>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                                    <Input
+                                        aria-label={t('users.editor.permissionSearchPlaceholder')}
+                                        placeholder={t('users.editor.permissionSearchPlaceholder')}
+                                        className="pl-9"
+                                        value={permissionSearch}
+                                        onChange={(e) => setPermissionSearch(e.target.value)}
+                                    />
+                                </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
-                                    {groups.map(group => (
+                                    {filterPermissions(permissions, permissionSearch).map(perm => (
                                         <label
-                                            key={group.id}
+                                            key={perm.id}
                                             className={cn(
                                                 'flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer transition-colors',
-                                                groupIds.includes(group.id) ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/30'
+                                                permissionIds.includes(perm.id) ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/30'
                                             )}
                                         >
                                             <input
                                                 type="checkbox"
                                                 className="rounded w-4 h-4"
-                                                checked={groupIds.includes(group.id)}
-                                                onChange={() => toggleGroup(group.id)}
+                                                checked={permissionIds.includes(perm.id)}
+                                                onChange={() => togglePermission(perm.id)}
                                             />
-                                            <span>{group.name}</span>
+                                            <span className="truncate" title={perm.codename}>{perm.name}</span>
+                                            <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{perm.app_label}</span>
                                         </label>
                                     ))}
                                 </div>
-                            )}
-                        </section>
+                            </section>
+                        </div>
+                    )}
 
-                        <section className="space-y-2">
-                            <h3 className="text-sm font-semibold">
-                                {t('users.editor.permissionsLabel', { count: permissionIds.length })}
-                            </h3>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                                <Input
-                                    aria-label={t('users.editor.permissionSearchPlaceholder')}
-                                    placeholder={t('users.editor.permissionSearchPlaceholder')}
-                                    className="pl-9"
-                                    value={permissionSearch}
-                                    onChange={(e) => setPermissionSearch(e.target.value)}
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
-                                {filterPermissions(permissions, permissionSearch).map(perm => (
-                                    <label
-                                        key={perm.id}
-                                        className={cn(
-                                            'flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer transition-colors',
-                                            permissionIds.includes(perm.id) ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/30'
-                                        )}
+                    {activeTab === 'profile' && (
+                        <div role="tabpanel" id="user-panel-profile" aria-labelledby="user-tab-profile" className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field id="user-display-name" label={t('users.editor.displayNameLabel')}>
+                                    <Input
+                                        id="user-display-name"
+                                        value={form.username_display_override}
+                                        onChange={(e) => setForm({ ...form, username_display_override: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-timezone" label={t('users.editor.timezoneLabel')}>
+                                    <Input
+                                        id="user-timezone"
+                                        placeholder={t('users.editor.timezonePlaceholder')}
+                                        value={form.timezone}
+                                        onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-language" label={t('users.editor.languageLabel')}>
+                                    <Select
+                                        id="user-language"
+                                        value={form.language_id || ''}
+                                        onChange={(e) => setForm({ ...form, language_id: Number(e.target.value) || 0 })}
                                     >
-                                        <input
-                                            type="checkbox"
-                                            className="rounded w-4 h-4"
-                                            checked={permissionIds.includes(perm.id)}
-                                            onChange={() => togglePermission(perm.id)}
-                                        />
-                                        <span className="truncate" title={perm.codename}>{perm.name}</span>
-                                        <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{perm.app_label}</span>
-                                    </label>
-                                ))}
+                                        <option value="">{t('users.editor.languageUnset')}</option>
+                                        {languages.map(lang => (
+                                            <option key={lang.id} value={lang.id}>{lang.name}</option>
+                                        ))}
+                                    </Select>
+                                </Field>
+                                <Field id="user-display-rank" label={t('users.editor.displayRankLabel')}>
+                                    <Input
+                                        id="user-display-rank"
+                                        value={form.display_rank}
+                                        onChange={(e) => setForm({ ...form, display_rank: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-ace-theme" label={t('users.editor.aceThemeLabel')}>
+                                    <Input
+                                        id="user-ace-theme"
+                                        value={form.ace_theme}
+                                        onChange={(e) => setForm({ ...form, ace_theme: e.target.value })}
+                                    />
+                                </Field>
+                                <Field id="user-site-theme" label={t('users.editor.siteThemeLabel')}>
+                                    <Input
+                                        id="user-site-theme"
+                                        value={form.site_theme}
+                                        onChange={(e) => setForm({ ...form, site_theme: e.target.value })}
+                                    />
+                                </Field>
                             </div>
-                        </section>
-                    </div>
-                )}
 
-                {activeTab === 'profile' && (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Field id="user-display-name" label={t('users.editor.displayNameLabel')}>
-                                <Input
-                                    id="user-display-name"
-                                    value={form.username_display_override}
-                                    onChange={(e) => setForm({ ...form, username_display_override: e.target.value })}
+                            <Field id="user-about" label={t('users.editor.aboutLabel')}>
+                                <Textarea
+                                    id="user-about"
+                                    rows={3}
+                                    value={form.about}
+                                    onChange={(e) => setForm({ ...form, about: e.target.value })}
                                 />
                             </Field>
-                            <Field id="user-timezone" label={t('users.editor.timezoneLabel')}>
-                                <Input
-                                    id="user-timezone"
-                                    placeholder={t('users.editor.timezonePlaceholder')}
-                                    value={form.timezone}
-                                    onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                            <Field id="user-notes" label={t('users.editor.notesLabel')}>
+                                <Textarea
+                                    id="user-notes"
+                                    rows={2}
+                                    value={form.notes}
+                                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
                                 />
                             </Field>
-                            <Field id="user-language" label={t('users.editor.languageLabel')}>
-                                <Select
-                                    id="user-language"
-                                    value={form.language_id || ''}
-                                    onChange={(e) => setForm({ ...form, language_id: Number(e.target.value) || 0 })}
-                                >
-                                    <option value="">{t('users.editor.languageUnset')}</option>
-                                    {languages.map(lang => (
-                                        <option key={lang.id} value={lang.id}>{lang.name}</option>
-                                    ))}
-                                </Select>
-                            </Field>
-                            <Field id="user-display-rank" label={t('users.editor.displayRankLabel')}>
-                                <Input
-                                    id="user-display-rank"
-                                    value={form.display_rank}
-                                    onChange={(e) => setForm({ ...form, display_rank: e.target.value })}
+                            <Field id="user-user-script" label={t('users.editor.userScriptLabel')}>
+                                <Textarea
+                                    id="user-user-script"
+                                    rows={3}
+                                    value={form.user_script}
+                                    onChange={(e) => setForm({ ...form, user_script: e.target.value })}
                                 />
                             </Field>
-                            <Field id="user-ace-theme" label={t('users.editor.aceThemeLabel')}>
+                            <Field id="user-ban-reason" label={t('users.banReasonLabel')}>
                                 <Input
-                                    id="user-ace-theme"
-                                    value={form.ace_theme}
-                                    onChange={(e) => setForm({ ...form, ace_theme: e.target.value })}
+                                    id="user-ban-reason"
+                                    value={form.ban_reason}
+                                    onChange={(e) => setForm({ ...form, ban_reason: e.target.value })}
                                 />
                             </Field>
-                            <Field id="user-site-theme" label={t('users.editor.siteThemeLabel')}>
-                                <Input
-                                    id="user-site-theme"
-                                    value={form.site_theme}
-                                    onChange={(e) => setForm({ ...form, site_theme: e.target.value })}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <FlagSwitch
+                                    id="user-mute"
+                                    label={t('users.editor.muteLabel')}
+                                    checked={form.mute}
+                                    onChange={(v) => setForm({ ...form, mute: v })}
                                 />
-                            </Field>
+                                <FlagSwitch
+                                    id="user-unlisted"
+                                    label={t('users.hidden')}
+                                    checked={form.is_unlisted}
+                                    onChange={(v) => setForm({ ...form, is_unlisted: v })}
+                                />
+                            </div>
                         </div>
+                    )}
 
-                        <Field id="user-about" label={t('users.editor.aboutLabel')}>
-                            <Textarea
-                                id="user-about"
-                                rows={3}
-                                value={form.about}
-                                onChange={(e) => setForm({ ...form, about: e.target.value })}
+                    {activeTab === 'security' && (
+                        <div role="tabpanel" id="user-panel-security" aria-labelledby="user-tab-security" className="space-y-4">
+                            <SecurityRow
+                                title={t('users.editor.totpLabel')}
+                                enabled={detail.is_totp_enabled}
+                                enabledText={t('users.editor.enabled')}
+                                disabledText={t('users.editor.disabled')}
+                                actionLabel={t('users.editor.disable2fa')}
+                                busy={securityMutation.isPending}
+                                onDisable={() => securityMutation.mutate({ totp_enabled: false })}
                             />
-                        </Field>
-                        <Field id="user-notes" label={t('users.editor.notesLabel')}>
-                            <Textarea
-                                id="user-notes"
-                                rows={2}
-                                value={form.notes}
-                                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                            <SecurityRow
+                                title={t('users.editor.webauthnLabel', { count: detail.webauthn_credential_count })}
+                                enabled={detail.is_webauthn_enabled}
+                                enabledText={t('users.editor.enabled')}
+                                disabledText={t('users.editor.disabled')}
+                                actionLabel={t('users.editor.disable2fa')}
+                                busy={securityMutation.isPending}
+                                onDisable={() => securityMutation.mutate({ webauthn_enabled: false })}
                             />
-                        </Field>
-                        <Field id="user-user-script" label={t('users.editor.userScriptLabel')}>
-                            <Textarea
-                                id="user-user-script"
-                                rows={3}
-                                value={form.user_script}
-                                onChange={(e) => setForm({ ...form, user_script: e.target.value })}
-                            />
-                        </Field>
-                        <Field id="user-ban-reason" label={t('users.banReasonLabel')}>
-                            <Input
-                                id="user-ban-reason"
-                                value={form.ban_reason}
-                                onChange={(e) => setForm({ ...form, ban_reason: e.target.value })}
-                            />
-                        </Field>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <FlagSwitch
-                                id="user-mute"
-                                label={t('users.editor.muteLabel')}
-                                checked={form.mute}
-                                onChange={(v) => setForm({ ...form, mute: v })}
-                            />
-                            <FlagSwitch
-                                id="user-unlisted"
-                                label={t('users.hidden')}
-                                checked={form.is_unlisted}
-                                onChange={(v) => setForm({ ...form, is_unlisted: v })}
-                            />
+                            <p className="text-xs text-muted-foreground">{t('users.editor.securityHint')}</p>
                         </div>
-                    </div>
-                )}
-
-                {activeTab === 'security' && (
-                    <div className="space-y-4">
-                        <SecurityRow
-                            title={t('users.editor.totpLabel')}
-                            enabled={detail.is_totp_enabled}
-                            enabledText={t('users.editor.enabled')}
-                            disabledText={t('users.editor.disabled')}
-                            actionLabel={t('users.editor.disable2fa')}
-                            busy={securityMutation.isPending}
-                            onDisable={() => securityMutation.mutate({ totp_enabled: false })}
-                        />
-                        <SecurityRow
-                            title={t('users.editor.webauthnLabel', { count: detail.webauthn_credential_count })}
-                            enabled={detail.is_webauthn_enabled}
-                            enabledText={t('users.editor.enabled')}
-                            disabledText={t('users.editor.disabled')}
-                            actionLabel={t('users.editor.disable2fa')}
-                            busy={securityMutation.isPending}
-                            onDisable={() => securityMutation.mutate({ webauthn_enabled: false })}
-                        />
-                        <p className="text-xs text-muted-foreground">{t('users.editor.securityHint')}</p>
-                    </div>
-                )}
+                    )}
+                </fieldset>
             </DialogContent>
 
             <DialogFooter>
@@ -431,7 +443,11 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                     {activeTab === 'security' ? t('common.close') : t('common.cancel')}
                 </Button>
                 {activeTab !== 'security' && (
-                    <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>
+                    <Button
+                        onClick={() => saveMutation.mutate()}
+                        loading={saveMutation.isPending}
+                        disabled={readOnly}
+                    >
                         {t('common.saveChanges')}
                     </Button>
                 )}

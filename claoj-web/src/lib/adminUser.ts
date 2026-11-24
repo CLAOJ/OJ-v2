@@ -59,22 +59,22 @@ export function userDetailToForm(d: AdminUserDetail): UserEditorForm {
     return {
         username: d.username,
         email: d.email,
-        first_name: d.first_name,
-        last_name: d.last_name,
+        first_name: d.first_name ?? '',
+        last_name: d.last_name ?? '',
         is_active: d.is_active,
         is_staff: d.is_staff,
         is_superuser: d.is_superuser,
-        username_display_override: d.username_display_override,
-        about: d.about,
-        notes: d.notes,
-        user_script: d.user_script,
-        timezone: d.timezone,
+        username_display_override: d.username_display_override ?? '',
+        about: d.about ?? '',
+        notes: d.notes ?? '',
+        user_script: d.user_script ?? '',
+        timezone: d.timezone ?? '',
         language_id: d.language_id ?? 0,
-        ace_theme: d.ace_theme,
-        site_theme: d.site_theme,
+        ace_theme: d.ace_theme ?? '',
+        site_theme: d.site_theme ?? '',
         mute: d.mute,
         is_unlisted: d.is_unlisted,
-        display_rank: d.display_rank,
+        display_rank: d.display_rank ?? '',
         ban_reason: d.ban_reason ?? '',
     };
 }
@@ -122,9 +122,49 @@ export function filterPermissions<T extends { codename: string; name: string; ap
     );
 }
 
-/** Order-insensitive id-list comparison, for "is this tab dirty?". */
+/** Order-insensitive id-list comparison. */
 export function sameIds(a: number[], b: number[]): boolean {
     if (a.length !== b.length) return false;
     const set = new Set(a);
     return b.every(id => set.has(id));
+}
+
+/**
+ * Backend rule mirrored in the editor: a non-superuser may not edit another
+ * staff/superuser account at all (identity edits are a takeover primitive).
+ */
+export function isReadOnlyTarget(
+    target: { username: string; is_staff: boolean; is_superuser: boolean },
+    viewer: { username?: string; isSuperuser: boolean }
+): boolean {
+    if (viewer.isSuperuser) return false;
+    if (viewer.username && viewer.username === target.username) return false;
+    return target.is_staff || target.is_superuser;
+}
+
+export interface UserSavePlan {
+    /** Null when the identity/profile form matches the loaded detail. */
+    patch: AdminUserUpdateRequest | null;
+    /** Null when the group membership is unchanged. */
+    groupIds: number[] | null;
+    /** Null when the direct permissions are unchanged. */
+    permissionIds: number[] | null;
+}
+
+/** One Save covers every tab: include each part only when it changed. */
+export function buildUserSavePlan(
+    detail: AdminUserDetail,
+    form: UserEditorForm,
+    guard: UserFlagGuard,
+    groupIds: number[],
+    permissionIds: number[]
+): UserSavePlan {
+    const initial = userDetailToForm(detail);
+    const formChanged = (Object.keys(initial) as (keyof UserEditorForm)[])
+        .some(key => initial[key] !== form[key]);
+    return {
+        patch: formChanged ? formToPatch(form, guard) : null,
+        groupIds: sameIds(groupIds, detail.group_ids) ? null : groupIds,
+        permissionIds: sameIds(permissionIds, detail.permission_ids) ? null : permissionIds,
+    };
 }

@@ -6,6 +6,8 @@ import {
     formToPatch,
     filterPermissions,
     sameIds,
+    isReadOnlyTarget,
+    buildUserSavePlan,
 } from '@/lib/adminUser';
 
 const detail: AdminUserDetail = {
@@ -97,6 +99,27 @@ describe('userDetailToForm', () => {
         expect(form.username).toBe('alice');
         expect(form.mute).toBe(false);
     });
+
+    it('coalesces nullable text fields so textareas never receive null', () => {
+        const form = userDetailToForm({
+            ...detail,
+            first_name: null as unknown as string,
+            last_name: null as unknown as string,
+            about: null as unknown as string,
+            notes: null as unknown as string,
+            user_script: null as unknown as string,
+            username_display_override: null as unknown as string,
+            timezone: null as unknown as string,
+            ace_theme: null as unknown as string,
+            site_theme: null as unknown as string,
+            display_rank: null as unknown as string,
+        });
+        for (const value of Object.values(form)) {
+            if (typeof value === 'string') expect(value).not.toBeNull();
+        }
+        expect(form.about).toBe('');
+        expect(form.notes).toBe('');
+    });
 });
 
 describe('formToPatch', () => {
@@ -156,5 +179,71 @@ describe('sameIds', () => {
         expect(sameIds([1, 2], [2, 1])).toBe(true);
         expect(sameIds([1, 2], [1])).toBe(false);
         expect(sameIds([1, 2], [1, 3])).toBe(false);
+    });
+});
+
+describe('buildUserSavePlan', () => {
+    const guard = userFlagGuard(false, true);
+
+    it('sends the PATCH and both PUTs when every tab changed', () => {
+        const plan = buildUserSavePlan(
+            detail,
+            { ...userDetailToForm(detail), first_name: 'Alicia' },
+            guard,
+            [1, 2],
+            [9]
+        );
+        expect(plan.patch).toMatchObject({ first_name: 'Alicia' });
+        expect(plan.groupIds).toEqual([1, 2]);
+        expect(plan.permissionIds).toEqual([9]);
+    });
+
+    it('skips the PATCH when only groups/permissions changed', () => {
+        const plan = buildUserSavePlan(detail, userDetailToForm(detail), guard, [1], [9]);
+        expect(plan.patch).toBeNull();
+        expect(plan.groupIds).toEqual([1]);
+        expect(plan.permissionIds).toEqual([9]);
+    });
+
+    it('skips the PUTs when only identity/profile changed', () => {
+        const plan = buildUserSavePlan(
+            detail,
+            { ...userDetailToForm(detail), about: 'new bio' },
+            guard,
+            [...detail.group_ids],
+            [...detail.permission_ids]
+        );
+        expect(plan.patch).toMatchObject({ about: 'new bio' });
+        expect(plan.groupIds).toBeNull();
+        expect(plan.permissionIds).toBeNull();
+    });
+
+    it('returns an empty plan when nothing changed', () => {
+        const plan = buildUserSavePlan(
+            detail,
+            userDetailToForm(detail),
+            guard,
+            [...detail.group_ids],
+            [...detail.permission_ids]
+        );
+        expect(plan).toEqual({ patch: null, groupIds: null, permissionIds: null });
+    });
+});
+
+describe('isReadOnlyTarget', () => {
+    const staffTarget = { username: 'mod', is_staff: true, is_superuser: false };
+
+    it('locks another staff/superuser account for a non-superuser', () => {
+        expect(isReadOnlyTarget(staffTarget, { username: 'alice', isSuperuser: false })).toBe(true);
+        expect(isReadOnlyTarget({ ...staffTarget, is_staff: false, is_superuser: true }, { isSuperuser: false })).toBe(true);
+    });
+
+    it('allows a non-superuser to edit a regular account or their own', () => {
+        expect(isReadOnlyTarget({ username: 'bob', is_staff: false, is_superuser: false }, { username: 'alice', isSuperuser: false })).toBe(false);
+        expect(isReadOnlyTarget(staffTarget, { username: 'mod', isSuperuser: false })).toBe(false);
+    });
+
+    it('never locks anything for a superuser', () => {
+        expect(isReadOnlyTarget(staffTarget, { username: 'root', isSuperuser: true })).toBe(false);
     });
 });
