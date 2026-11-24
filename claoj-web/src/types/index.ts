@@ -96,6 +96,10 @@ export interface User {
     is_superuser?: boolean;
     /** Effective Django permission codenames; staff only (GET /user/me). */
     permissions?: string[];
+    /** True while a superuser is viewing the site as this account (GET /user/me). */
+    is_impersonating?: boolean;
+    /** Username of the superuser driving the impersonation, if any. */
+    impersonator_username?: string;
     rating?: number | null;
     performance_points?: number;
 }

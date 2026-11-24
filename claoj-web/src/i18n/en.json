@@ -1324,6 +1324,10 @@
       "newPasswordLabel": "New password",
       "setPasswordSubmit": "Set password",
       "saveError": "Could not save. Please try again.",
+      "loginAsButton": "Login as",
+      "loginAsTitle": "Login as {username}?",
+      "loginAsWarning": "You will browse the site as this account until you exit impersonation. Your own session is kept; every admin action is still recorded under your account.",
+      "loginAsError": "Could not start impersonation.",
       "editor": {
         "title": "Edit user: {username}",
         "tabIdentity": "Identity",
@@ -1359,6 +1363,12 @@
         "securityHint": "Enabling 2FA must go through the user's own setup flow; admins can only disable it.",
         "saved": "User updated."
       }
+    },
+    "impersonation": {
+      "viewingAs": "Viewing as {username}",
+      "startedBy": "started by {username}",
+      "exit": "Exit impersonation",
+      "exitError": "Could not exit impersonation."
     },
     "contests": {
       "title": "Contests",

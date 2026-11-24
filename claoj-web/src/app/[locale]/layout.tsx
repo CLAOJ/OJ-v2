@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import Navbar from "@/components/layout/Navbar";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import Footer from "@/components/layout/Footer";
 import { DEFAULT_SEO, SITE_URL, generateWebSiteJsonLd, generateOrganizationJsonLd } from '@/lib/seo';
 import JsonLd from '@/components/seo/JsonLd';
@@ -119,6 +120,7 @@ export default async function RootLayout({
               <AuthProvider>
                 <WebSocketProvider>
                   <Navbar />
+                  <ImpersonationBanner />
                   <main className="flex-grow container mx-auto px-4 py-8">
                     {children}
                   </main>

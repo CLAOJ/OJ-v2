@@ -1324,6 +1324,10 @@
       "newPasswordLabel": "Mật khẩu mới",
       "setPasswordSubmit": "Đặt mật khẩu",
       "saveError": "Không thể lưu. Vui lòng thử lại.",
+      "loginAsButton": "Đăng nhập với tư cách",
+      "loginAsTitle": "Đăng nhập với tư cách {username}?",
+      "loginAsWarning": "Bạn sẽ duyệt trang với tư cách tài khoản này cho đến khi thoát mạo danh. Phiên của bạn vẫn được giữ; mọi thao tác quản trị vẫn được ghi nhận dưới tài khoản của bạn.",
+      "loginAsError": "Không thể bắt đầu mạo danh.",
       "editor": {
         "title": "Sửa người dùng: {username}",
         "tabIdentity": "Thông tin",
@@ -1359,6 +1363,12 @@
         "securityHint": "Chỉ người dùng có thể tự bật 2FA qua quy trình thiết lập của họ; quản trị viên chỉ có thể tắt.",
         "saved": "Đã cập nhật người dùng."
       }
+    },
+    "impersonation": {
+      "viewingAs": "Đang xem với tư cách {username}",
+      "startedBy": "do {username} bắt đầu",
+      "exit": "Thoát mạo danh",
+      "exitError": "Không thể thoát mạo danh."
     },
     "contests": {
       "title": "Kỳ thi",

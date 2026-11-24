@@ -205,6 +205,13 @@ export const adminUserApi = {
 
     unban: (id: number) =>
         api.post(`/admin/user/${id}/unban`),
+
+    /** Superuser only: open an impersonated session as judge_profile id. */
+    impersonate: (id: number) =>
+        api.post<{ success: boolean; user: { id: number; username: string } }>(`/admin/impersonate/${id}`),
+
+    exitImpersonation: () =>
+        api.post<{ success: boolean; user: { id: number; username: string } }>('/admin/impersonate/exit'),
 };
 
 // ============================================================
