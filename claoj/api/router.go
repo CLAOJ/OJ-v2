@@ -304,6 +304,19 @@ func NewRouter() *gin.Engine {
 		admin.PATCH("/admin/navigation-bar/:id", v2.AdminNavigationBarUpdate)
 		admin.DELETE("/admin/navigation-bar/:id", v2.AdminNavigationBarDelete)
 
+		// Flat pages + redirects (Django contrib tables, single site). Reads are
+		// staff-level; writes use the same codenames v1's Django admin checks.
+		admin.GET("/admin/flat-pages", v2.AdminFlatPageList)
+		admin.GET("/admin/flat-page/:id", v2.AdminFlatPageDetail)
+		admin.POST("/admin/flat-pages", auth.RequirePerm("flatpages.change_flatpage"), v2.AdminFlatPageCreate)
+		admin.PATCH("/admin/flat-page/:id", auth.RequirePerm("flatpages.change_flatpage"), v2.AdminFlatPageUpdate)
+		admin.DELETE("/admin/flat-page/:id", auth.RequirePerm("flatpages.change_flatpage"), v2.AdminFlatPageDelete)
+		admin.GET("/admin/redirects", v2.AdminRedirectList)
+		admin.GET("/admin/redirect/:id", v2.AdminRedirectDetail)
+		admin.POST("/admin/redirects", auth.RequirePerm("redirects.change_redirect"), v2.AdminRedirectCreate)
+		admin.PATCH("/admin/redirect/:id", auth.RequirePerm("redirects.change_redirect"), v2.AdminRedirectUpdate)
+		admin.DELETE("/admin/redirect/:id", auth.RequirePerm("redirects.change_redirect"), v2.AdminRedirectDelete)
+
 		// Misc Configs
 		admin.GET("/admin/misc-configs", v2.AdminMiscConfigList)
 		admin.GET("/admin/misc-config/:id", v2.AdminMiscConfigDetail)
@@ -389,6 +402,11 @@ func NewRouter() *gin.Engine {
 
 		// Uploaded markdown images (blog posts, license text)
 		apiv2.GET("/media/:name", v2.MarkdownMediaServe)
+
+		// Flat pages + redirects (v1 contrib tables). /page feeds the web
+		// catch-all route, /redirects-map feeds the web proxy's path redirects.
+		apiv2.GET("/page", v2.FlatPageLookup)
+		apiv2.GET("/redirects-map", v2.RedirectMap)
 
 		// Sitemap (public)
 		apiv2.GET("/sitemap.xml", v2.SitemapIndex)
