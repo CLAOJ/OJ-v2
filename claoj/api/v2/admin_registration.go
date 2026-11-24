@@ -25,10 +25,9 @@ import (
 
 // adminRegistrationV1 is the read-only v1 registration row state.
 type adminRegistrationV1 struct {
-	ID               uint      `json:"id"`
-	Activated        bool      `json:"activated"`
-	HasActivationKey bool      `json:"has_activation_key"`
-	Created          time.Time `json:"created"`
+	ID               uint `json:"id"`
+	Activated        bool `json:"activated"`
+	HasActivationKey bool `json:"has_activation_key"`
 }
 
 // AdminRegistrationList - GET /api/v2/admin/registrations
@@ -55,7 +54,7 @@ func AdminRegistrationList(c *gin.Context) {
 		Select(`auth_user.id AS user_id, auth_user.username, auth_user.email,
 			auth_user.is_active, auth_user.date_joined,
 			rp.id AS profile_id, rp.activated AS v1_activated,
-			rp.activation_key AS v1_key, rp.created AS v1_created`).
+			rp.activation_key AS v1_key`).
 		Joins("LEFT JOIN registration_registrationprofile rp ON rp.user_id = auth_user.id")
 
 	if status == "pending" {
@@ -64,8 +63,8 @@ func AdminRegistrationList(c *gin.Context) {
 		query = query.Where("auth_user.is_active = ?", true)
 	}
 	if search := c.Query("search"); search != "" {
-		pattern := "%" + search + "%"
-		query = query.Where("auth_user.username LIKE ? OR auth_user.email LIKE ?", pattern, pattern)
+		pattern := db.ContainsPattern(search)
+		query = query.Where("auth_user.username LIKE ? ESCAPE '!' OR auth_user.email LIKE ? ESCAPE '!'", pattern, pattern)
 	}
 
 	var total int64
@@ -75,15 +74,14 @@ func AdminRegistrationList(c *gin.Context) {
 	}
 
 	var rows []struct {
-		UserID      uint       `gorm:"column:user_id"`
-		Username    string     `gorm:"column:username"`
-		Email       string     `gorm:"column:email"`
-		IsActive    bool       `gorm:"column:is_active"`
-		DateJoined  time.Time  `gorm:"column:date_joined"`
-		ProfileID   *uint      `gorm:"column:profile_id"`
-		V1Activated *bool      `gorm:"column:v1_activated"`
-		V1Key       *string    `gorm:"column:v1_key"`
-		V1Created   *time.Time `gorm:"column:v1_created"`
+		UserID      uint      `gorm:"column:user_id"`
+		Username    string    `gorm:"column:username"`
+		Email       string    `gorm:"column:email"`
+		IsActive    bool      `gorm:"column:is_active"`
+		DateJoined  time.Time `gorm:"column:date_joined"`
+		ProfileID   *uint     `gorm:"column:profile_id"`
+		V1Activated *bool     `gorm:"column:v1_activated"`
+		V1Key       *string   `gorm:"column:v1_key"`
 	}
 	if err := query.
 		Order("auth_user.date_joined " + order + ", auth_user.id " + order).
@@ -105,9 +103,6 @@ func AdminRegistrationList(c *gin.Context) {
 			if r.V1Key != nil {
 				registration.HasActivationKey = *r.V1Key != ""
 			}
-			if r.V1Created != nil {
-				registration.Created = *r.V1Created
-			}
 		}
 
 		hasToken := false
@@ -121,12 +116,7 @@ func AdminRegistrationList(c *gin.Context) {
 			}
 		}
 
-		id := uint(0)
-		if r.ProfileID != nil {
-			id = *r.ProfileID
-		}
 		items[i] = gin.H{
-			"id":                id,
 			"user_id":           r.UserID,
 			"username":          r.Username,
 			"email":             r.Email,
@@ -190,9 +180,11 @@ func AdminRegistrationActivate(c *gin.Context) {
 			Update("is_active", true).Error; err != nil {
 			return err
 		}
+		// v1 activation blanks the key: the account can log in, so the
+		// activation link must stop working.
 		return tx.Model(&models.RegistrationProfile{}).
 			Where("user_id = ?", target.ID).
-			Update("activated", true).Error
+			Updates(map[string]any{"activated": true, "activation_key": ""}).Error
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError("failed to activate account"))

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { adminRegistrationApi, adminErrorMessage } from '@/lib/adminApi';
 import { toggleSort, type SortOrder } from '@/lib/listSort';
@@ -11,7 +12,6 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { AdminRegistration } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Alert } from '@/components/ui/Alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { PaginationBar } from '@/components/ui/PaginationBar';
@@ -35,7 +35,6 @@ export default function AdminRegistrationsPage() {
 
     const [target, setTarget] = useState<AdminRegistration | null>(null);
     const [action, setAction] = useState<ActionKind>('activate');
-    const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
     const isSuperuser = !!viewer?.is_admin;
 
@@ -47,7 +46,8 @@ export default function AdminRegistrationsPage() {
 
     const finish = (kind: 'success' | 'error', text: string) => {
         setTarget(null);
-        setNotice({ kind, text });
+        if (kind === 'success') toast.success(text);
+        else toast.error(text);
     };
 
     const activateMutation = useMutation({
@@ -75,7 +75,6 @@ export default function AdminRegistrationsPage() {
     const openAction = (kind: ActionKind, row: AdminRegistration) => {
         activateMutation.reset();
         resendMutation.reset();
-        setNotice(null);
         setAction(kind);
         setTarget(row);
     };
@@ -139,10 +138,6 @@ export default function AdminRegistrationsPage() {
                     <span className="text-xs text-muted-foreground">{t('registrations.superuserOnly')}</span>
                 )}
             </div>
-
-            {notice && (
-                <Alert variant={notice.kind === 'success' ? 'success' : 'destructive'}>{notice.text}</Alert>
-            )}
 
             {isLoading ? (
                 <div className="space-y-4">

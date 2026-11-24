@@ -20,7 +20,9 @@ import (
 func setupRegistrationDB(t *testing.T) *[]struct{ To, Username, Link string } {
 	t.Helper()
 	setupAdminUserCreateDB(t)
+	oldTokens := authHandlers.OneTimeTokens
 	authHandlers.OneTimeTokens = tokenstore.NewMemoryOneTime()
+	t.Cleanup(func() { authHandlers.OneTimeTokens = oldTokens })
 
 	var calls []struct{ To, Username, Link string }
 	old := sendVerificationEmail
@@ -66,12 +68,12 @@ func TestAdminRegistrationList_FiltersSearchAndState(t *testing.T) {
 	pending2, _ := seedInactiveAccount(t, "pending2", time.Now().Add(-time.Hour))
 
 	require.NoError(t, db.DB.Create(&models.RegistrationProfile{
-		UserID: active.ID, ActivationKey: "active-key", Activated: true, Created: time.Now(),
+		UserID: active.ID, ActivationKey: "active-key", Activated: true,
 	}).Error)
 	var activeReg models.RegistrationProfile
 	require.NoError(t, db.DB.Where("user_id = ?", active.ID).First(&activeReg).Error)
 	require.NoError(t, db.DB.Create(&models.RegistrationProfile{
-		UserID: pending.ID, ActivationKey: "pending-key", Activated: false, Created: time.Now(),
+		UserID: pending.ID, ActivationKey: "pending-key", Activated: false,
 	}).Error)
 
 	var pendingReg models.RegistrationProfile
@@ -90,9 +92,10 @@ func TestAdminRegistrationList_FiltersSearchAndState(t *testing.T) {
 	p1 := registrationItem(t, body, "pending1")
 	require.Equal(t, false, p1["is_active"])
 	require.Equal(t, float64(pending.ID), p1["user_id"], "user_id is the auth_user id used by the actions")
-	require.Equal(t, float64(pendingReg.ID), p1["id"], "id is the v1 registration profile id")
+	require.NotContains(t, p1, "id", "the v1 profile id is only exposed under registration")
 	require.Equal(t, false, p1["has_pending_token"])
 	reg := p1["registration"].(map[string]any)
+	require.Equal(t, float64(pendingReg.ID), reg["id"])
 	require.Equal(t, false, reg["activated"])
 	require.Equal(t, true, reg["has_activation_key"], "the key itself is never serialized")
 
@@ -104,12 +107,17 @@ func TestAdminRegistrationList_FiltersSearchAndState(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	body = detailBody(t, w.Body)
 	require.Equal(t, float64(2), body["total"], "root and verified are active")
-	require.Equal(t, float64(activeReg.ID), registrationItem(t, body, "verified")["id"])
+	require.Equal(t, float64(activeReg.ID), registrationItem(t, body, "verified")["registration"].(map[string]any)["id"])
 	require.Equal(t, true, registrationItem(t, body, "verified")["registration"].(map[string]any)["activated"])
 
 	w = doRequest(router, http.MethodGet, "/admin/registrations?search=pending1", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	require.Equal(t, float64(1), detailBody(t, w.Body)["total"])
+
+	// LIKE wildcards in the search term are escaped, not interpreted.
+	w = doRequest(router, http.MethodGet, "/admin/registrations?search=%25", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Equal(t, float64(0), detailBody(t, w.Body)["total"])
 
 	w = doRequest(router, http.MethodGet, "/admin/registrations?status=nope", "")
 	require.Equal(t, http.StatusBadRequest, w.Code)
@@ -146,6 +154,7 @@ func TestAdminRegistrationActivate_IdempotentAndRevokesTokens(t *testing.T) {
 	var reg models.RegistrationProfile
 	require.NoError(t, db.DB.Where("user_id = ?", target.ID).First(&reg).Error)
 	require.True(t, reg.Activated)
+	require.Equal(t, "", reg.ActivationKey, "v1 activation blanks the key so the link stops working")
 
 	has, err := authHandlers.OneTimeTokens.HasOutstanding(tokenstore.KindEmailVerify, target.ID)
 	require.NoError(t, err)
@@ -157,6 +166,39 @@ func TestAdminRegistrationActivate_IdempotentAndRevokesTokens(t *testing.T) {
 
 	w = doRequest(router, http.MethodPost, "/admin/registration/999999/activate", "")
 	require.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// Most accounts come from v2 registration and have no v1 row at all; activate
+// must still work (the v1 update simply matches no rows).
+func TestAdminRegistrationActivate_WithoutV1Row(t *testing.T) {
+	setupRegistrationDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	target, _ := seedInactiveAccount(t, "waiting", time.Now())
+
+	router := authedRouter(root.ID, http.MethodPost, "/admin/registration/:userId/activate", AdminRegistrationActivate)
+	w := doRequest(router, http.MethodPost, "/admin/registration/"+strconv.Itoa(int(target.ID))+"/activate", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var u models.AuthUser
+	require.NoError(t, db.DB.First(&u, target.ID).Error)
+	require.True(t, u.IsActive)
+}
+
+// If the v1 write fails the auth_user update must roll back: a half-applied
+// activation would leave the account active with a live-looking v1 row.
+func TestAdminRegistrationActivate_RollsBackOnV1Failure(t *testing.T) {
+	setupRegistrationDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	target, _ := seedInactiveAccount(t, "waiting", time.Now())
+	require.NoError(t, db.DB.Migrator().DropTable(&models.RegistrationProfile{}))
+
+	router := authedRouter(root.ID, http.MethodPost, "/admin/registration/:userId/activate", AdminRegistrationActivate)
+	w := doRequest(router, http.MethodPost, "/admin/registration/"+strconv.Itoa(int(target.ID))+"/activate", "")
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	var u models.AuthUser
+	require.NoError(t, db.DB.First(&u, target.ID).Error)
+	require.False(t, u.IsActive, "a failed v1 write must roll the activation back")
 }
 
 func TestAdminRegistrationMutations_SuperuserOnly(t *testing.T) {

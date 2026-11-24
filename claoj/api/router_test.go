@@ -68,6 +68,8 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 		{http.MethodPatch, "/api/admin/ticket/1", `{"title":"x"}`},
 		{http.MethodPatch, "/api/admin/ticket/1/message/1", `{"body":"x"}`},
 		{http.MethodDelete, "/api/admin/ticket/1/message/1", ""},
+		{http.MethodPost, "/api/admin/registration/1/activate", ""},
+		{http.MethodPost, "/api/admin/registration/1/resend", ""},
 	}
 	for _, rt := range routes {
 		t.Run(rt.method+" "+rt.path, func(t *testing.T) {
@@ -92,4 +94,13 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 	anonW := httptest.NewRecorder()
 	router.ServeHTTP(anonW, anon)
 	require.Equal(t, http.StatusUnauthorized, anonW.Code, anonW.Body.String())
+
+	// The registration mutations are gated the same way: anonymous is stopped
+	// before the handler, staff reaches it and gets the superuser check.
+	for _, path := range []string{"/api/admin/registration/1/activate", "/api/admin/registration/1/resend"} {
+		anon = httptest.NewRequest(http.MethodPost, path, nil)
+		anonW = httptest.NewRecorder()
+		router.ServeHTTP(anonW, anon)
+		require.Equal(t, http.StatusUnauthorized, anonW.Code, path+" "+anonW.Body.String())
+	}
 }

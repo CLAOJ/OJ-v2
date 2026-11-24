@@ -328,17 +328,14 @@ export interface AdminUserGroupRef {
 
 /** v1 django-registration-redux row shown read-only in the registrations admin. */
 export interface AdminRegistrationV1 {
-    /** registration_registrationprofile.id (0 when the row is missing). */
+    /** registration_registrationprofile.id. */
     id: number;
     activated: boolean;
     has_activation_key: boolean;
-    created: string;
 }
 
 /** Row shape of GET /admin/registrations. */
 export interface AdminRegistration {
-    /** v1 registration profile id; this is the id shown in the list. */
-    id: number;
     /** auth_user.id — what the activate/resend endpoints take. */
     user_id: number;
     username: string;
