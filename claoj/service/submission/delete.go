@@ -49,23 +49,87 @@ func (s *SubmissionService) Delete(req DeleteRequest) error {
 		Where("submission_id = ?", sub.ID).First(&cSub).Error == nil
 
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("submission_id = ?", sub.ID).Delete(&models.SubmissionTestCase{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("submission_id = ?", sub.ID).Delete(&models.SubmissionSource{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("submission_id = ?", sub.ID).Delete(&models.ContestSubmission{}).Error; err != nil {
-			return err
-		}
-		return tx.Delete(&sub).Error
+		return deleteSubmissionRows(tx, &sub)
 	})
 	if err != nil {
 		return err
 	}
 
-	// The submission is gone; a failed recalculation is logged, not returned,
-	// because retrying the delete could not fix it.
+	recalculateAfterDelete(&sub, &cSub, inContest)
+	return nil
+}
+
+// BulkDeleteRequest holds the parameters for deleting several submissions.
+type BulkDeleteRequest struct {
+	SubmissionIDs []uint
+}
+
+// BulkDelete removes the given submissions in one transaction. Unknown ids are
+// ignored; any submission still being judged aborts the whole batch. Points
+// are recalculated after the commit, once per affected submission.
+func (s *SubmissionService) BulkDelete(req BulkDeleteRequest) (int, error) {
+	if len(req.SubmissionIDs) == 0 {
+		return 0, nil
+	}
+	var subs []models.Submission
+	if err := db.DB.Where("id IN ?", req.SubmissionIDs).Find(&subs).Error; err != nil {
+		return 0, err
+	}
+	for _, sub := range subs {
+		switch sub.Status {
+		case "QU", "P", "G":
+			return 0, ErrSubmissionInProgress
+		}
+	}
+
+	type contestLink struct {
+		cSub models.ContestSubmission
+		ok   bool
+	}
+	links := make(map[uint]contestLink, len(subs))
+	for _, sub := range subs {
+		var cSub models.ContestSubmission
+		ok := db.DB.Preload("Participation.Contest").
+			Where("submission_id = ?", sub.ID).First(&cSub).Error == nil
+		links[sub.ID] = contestLink{cSub: cSub, ok: ok}
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		for i := range subs {
+			if err := deleteSubmissionRows(tx, &subs[i]); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+
+	for i := range subs {
+		link := links[subs[i].ID]
+		recalculateAfterDelete(&subs[i], &link.cSub, link.ok)
+	}
+	return len(subs), nil
+}
+
+// deleteSubmissionRows removes the rows Django's cascade removes for one
+// submission. The caller owns the transaction.
+func deleteSubmissionRows(tx *gorm.DB, sub *models.Submission) error {
+	if err := tx.Where("submission_id = ?", sub.ID).Delete(&models.SubmissionTestCase{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("submission_id = ?", sub.ID).Delete(&models.SubmissionSource{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("submission_id = ?", sub.ID).Delete(&models.ContestSubmission{}).Error; err != nil {
+		return err
+	}
+	return tx.Delete(sub).Error
+}
+
+// recalculateAfterDelete refreshes the points the deleted submission fed. A
+// failure is logged, not returned: retrying the delete could not fix it.
+func recalculateAfterDelete(sub *models.Submission, cSub *models.ContestSubmission, inContest bool) {
 	if err := scoring.CalculateProfilePoints(db.DB, sub.UserID); err != nil {
 		log.Printf("submission: delete %d: recalculate points for profile %d: %v", sub.ID, sub.UserID, err)
 	}
@@ -83,5 +147,4 @@ func (s *SubmissionService) Delete(req DeleteRequest) error {
 			log.Printf("submission: delete %d: recompute participation %d: %v", sub.ID, cSub.ParticipationID, err)
 		}
 	}
-	return nil
 }

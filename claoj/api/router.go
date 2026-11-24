@@ -213,9 +213,12 @@ func NewRouter() *gin.Engine {
 
 			// Submissions
 			admin.GET("/admin/submissions", v2.AdminSubmissionList)
+			admin.GET("/admin/submission/:id", v2.AdminSubmissionDetail)
+			admin.PATCH("/admin/submission/:id", auth.RequirePerm("judge.change_submission"), v2.AdminSubmissionUpdate)
 			admin.POST("/admin/submission/:id/rejudge", v2.AdminSubmissionRejudge)
 			admin.POST("/admin/submission/:id/abort", v2.AdminSubmissionAbort)
 			admin.DELETE("/admin/submission/:id", auth.RequirePerm("judge.delete_submission"), v2.AdminSubmissionDelete)
+			admin.POST("/admin/submissions/bulk-delete", auth.RequirePerm("judge.delete_submission"), v2.AdminSubmissionBulkDelete)
 			admin.POST("/admin/submissions/batch-rejudge", v2.AdminSubmissionBatchRejudge)
 			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
