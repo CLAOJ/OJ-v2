@@ -14,6 +14,7 @@ import {
 } from '@/lib/adminSubmission';
 import { formatMemoryMb } from '@/lib/submissionDetail';
 import { formatDate } from '@/lib/date';
+import { hasPerm } from '@/lib/permissions';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from 'sonner';
@@ -38,10 +39,12 @@ export default function AdminSubmissionDetailPage() {
     const id = Number(params.id);
     const queryClient = useQueryClient();
     const { user } = useAuth();
-    // Lock/archive are gated by their own Django permissions; superusers hold
-    // all of them. The backend enforces the same check.
-    const canLock = !!user && (!!user.is_superuser || (user.permissions ?? []).includes('judge.lock_submission'));
-    const canArchive = !!user && (!!user.is_superuser || (user.permissions ?? []).includes('judge.archive_submission'));
+    // Every edit below is gated by judge.change_submission; lock/archive keep
+    // their own Django permissions. Superusers hold all of them. The backend
+    // enforces the same checks.
+    const canEdit = hasPerm(user, 'judge.change_submission');
+    const canLock = hasPerm(user, 'judge.lock_submission');
+    const canArchive = hasPerm(user, 'judge.archive_submission');
 
     const { data: sub, isLoading } = useQuery({
         queryKey: ['admin-submission', id],
@@ -54,9 +57,14 @@ export default function AdminSubmissionDetailPage() {
     });
 
     const [values, setValues] = useState<SubmissionEditValues | null>(null);
-    // Seed the form once the first response arrives; later refetches keep the
-    // user's edits instead of overwriting them.
-    if (sub && values === null) setValues(toSubmissionEditValues(sub));
+    // Seed the form once the first response arrives and re-seed when the route
+    // id changes; later refetches keep the user's edits instead of
+    // overwriting them.
+    const [seededId, setSeededId] = useState<number | null>(null);
+    if (sub && seededId !== id) {
+        setSeededId(id);
+        setValues(toSubmissionEditValues(sub));
+    }
 
     const updateMutation = useMutation({
         mutationFn: (payload: Record<string, unknown>) => adminSubmissionApi.update(id, payload),
@@ -211,7 +219,7 @@ export default function AdminSubmissionDetailPage() {
                     <Link href={`/submission/${sub.id}`} className="inline-flex items-center gap-2 text-sm text-accent hover:underline">
                         <ExternalLink size={14} /> {t('submissionDetail.viewPublic')}
                     </Link>
-                    <Link href="/admin/audit-logs" className="inline-flex items-center gap-2 text-sm text-accent hover:underline">
+                    <Link href="/admin/audit-logs?resource=Submission" className="inline-flex items-center gap-2 text-sm text-accent hover:underline">
                         <History size={14} /> {t('submissionDetail.viewAudit')}
                     </Link>
                 </div>
@@ -221,6 +229,9 @@ export default function AdminSubmissionDetailPage() {
             <div className="bg-card rounded-md border p-6 space-y-4">
                 <h2 className="font-semibold text-lg">{t('submissionDetail.editTitle')}</h2>
 
+                {!canEdit ? (
+                    <p className="text-sm text-muted-foreground">{t('submissionDetail.editHint')}</p>
+                ) : (<>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                         {t('submissionDetail.language')}
@@ -330,6 +341,7 @@ export default function AdminSubmissionDetailPage() {
                         {updateMutation.isPending ? t('common.saving') : t('common.saveChanges')}
                     </button>
                 </div>
+                </>)}
             </div>
 
             {/* Test cases */}

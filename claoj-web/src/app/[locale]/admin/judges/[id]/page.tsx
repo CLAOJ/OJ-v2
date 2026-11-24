@@ -51,6 +51,14 @@ export default function AdminJudgeDetailPage() {
         problem_ids: number[];
         runtime_ids: number[];
     } | null>(null);
+    // Re-seed when the route id changes (the component is not remounted on a
+    // client-side param change): dropping the draft makes the fields track
+    // the newly loaded judge again.
+    const [draftId, setDraftId] = useState(id);
+    if (draftId !== id) {
+        setDraftId(id);
+        setDraft(null);
+    }
     const [showKey, setShowKey] = useState(false);
 
     const form = draft ?? {

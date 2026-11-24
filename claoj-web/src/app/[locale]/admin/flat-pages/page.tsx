@@ -32,6 +32,8 @@ import { Label } from '@/components/ui/Label';
 import { Switch } from '@/components/ui/Switch';
 import { Textarea } from '@/components/ui/Textarea';
 import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 
@@ -44,6 +46,9 @@ const emptyForm: AdminFlatPageCreateRequest = {
 
 export default function FlatPagesAdminPage() {
     const t = useTranslations('Admin');
+    const { user } = useAuth();
+    // Mirrors the API's flatpages.change_flatpage gate on create/update/delete.
+    const canWrite = hasPerm(user, 'flatpages.change_flatpage');
     const [pages, setPages] = useState<AdminFlatPage[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -147,11 +152,14 @@ export default function FlatPagesAdminPage() {
                     <h1 className="text-3xl font-bold">{t('flatPages.title')}</h1>
                     <p className="text-muted-foreground mt-1">{t('flatPages.subtitle')}</p>
                 </div>
-                <Button onClick={openCreateDialog}>
+                <Button onClick={openCreateDialog} disabled={!canWrite}>
                     <Plus className="h-4 w-4 mr-2" />
                     {t('flatPages.addButton')}
                 </Button>
             </div>
+            {!canWrite && (
+                <p className="text-xs text-muted-foreground">{t('flatPages.writeHint')}</p>
+            )}
 
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -200,17 +208,21 @@ export default function FlatPagesAdminPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(flatPage)}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setDeleteConfirmId(flatPage.id)}
-                                                className="text-destructive hover:text-destructive"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            {canWrite && (
+                                                <>
+                                                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(flatPage)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setDeleteConfirmId(flatPage.id)}
+                                                        className="text-destructive hover:text-destructive"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>

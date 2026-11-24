@@ -19,11 +19,16 @@ import {
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Link as LinkIcon, Layers } from 'lucide-react';
 
 export default function NavigationBarsAdminPage() {
     const t = useTranslations('Admin');
+    const { user } = useAuth();
+    // Mirrors the API's judge.change_navigationbar gate on writes.
+    const canWrite = hasPerm(user, 'judge.change_navigationbar');
     const [navBars, setNavBars] = useState<AdminNavigationBar[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -175,11 +180,14 @@ export default function NavigationBarsAdminPage() {
                         {t('navigationBars.subtitle')}
                     </p>
                 </div>
-                <Button onClick={openCreateDialog}>
+                <Button onClick={openCreateDialog} disabled={!canWrite}>
                     <Plus className="h-4 w-4 mr-2" />
                     {t('navigationBars.addButton')}
                 </Button>
             </div>
+            {!canWrite && (
+                <p className="text-xs text-muted-foreground">{t('navigationBars.writeHint')}</p>
+            )}
 
             {/* Search */}
             <div className="relative">
@@ -245,25 +253,29 @@ export default function NavigationBarsAdminPage() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => openEditDialog(navBar)}
-                                                title={t('common.edit')}
-                                                aria-label={t('common.edit')}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setDeleteConfirmId(navBar.id)}
-                                                className="text-destructive hover:text-destructive"
-                                                title={t('common.delete')}
-                                                aria-label={t('common.delete')}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            {canWrite && (
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openEditDialog(navBar)}
+                                                        title={t('common.edit')}
+                                                        aria-label={t('common.edit')}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setDeleteConfirmId(navBar.id)}
+                                                        className="text-destructive hover:text-destructive"
+                                                        title={t('common.delete')}
+                                                        aria-label={t('common.delete')}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

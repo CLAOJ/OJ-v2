@@ -27,11 +27,19 @@ import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
 import { Switch } from '@/components/ui/Switch';
 import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 
 export default function LanguageAdminPage() {
     const t = useTranslations('Admin');
+    const { user } = useAuth();
+    // Mirrors the API: create is superuser-only, delete needs
+    // judge.delete_language, update needs judge.change_language.
+    const canCreate = !!user?.is_superuser;
+    const canEdit = hasPerm(user, 'judge.change_language');
+    const canDelete = hasPerm(user, 'judge.delete_language');
     const [languages, setLanguages] = useState<AdminLanguage[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -328,11 +336,14 @@ export default function LanguageAdminPage() {
                         {t('languages.subtitle')}
                     </p>
                 </div>
-                <Button onClick={openCreateDialog}>
+                <Button onClick={openCreateDialog} disabled={!canCreate}>
                     <Plus className="h-4 w-4 mr-2" />
                     {t('languages.addButton')}
                 </Button>
             </div>
+            {!canCreate && (
+                <p className="text-xs text-muted-foreground">{t('languages.createHint')}</p>
+            )}
 
             {/* Search */}
             <div className="relative">
@@ -400,25 +411,29 @@ export default function LanguageAdminPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => openEditDialog(lang)}
-                                                title={t('common.edit')}
-                                                aria-label={t('common.edit')}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setDeleteConfirmId(lang.id)}
-                                                className="text-destructive hover:text-destructive"
-                                                title={t('common.delete')}
-                                                aria-label={t('common.delete')}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openEditDialog(lang)}
+                                                    title={t('common.edit')}
+                                                    aria-label={t('common.edit')}
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setDeleteConfirmId(lang.id)}
+                                                    className="text-destructive hover:text-destructive"
+                                                    title={t('common.delete')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
