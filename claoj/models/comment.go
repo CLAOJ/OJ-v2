@@ -12,6 +12,9 @@ type Comment struct {
 	Body     string    `gorm:"column:body;type:longtext;not null"`
 	Hidden   bool      `gorm:"column:hidden;not null;default:0"`
 	ParentID *uint     `gorm:"column:parent_id;index"`
+	// Revisions is the content revision counter kept by v1's admin/comment
+	// edit views (judge_comment.revisions); v2's revision table is separate.
+	Revisions int `gorm:"column:revisions;not null;default:1"`
 
 	// MPTT tree fields (managed by django-mptt)
 	Lft    int `gorm:"column:lft;not null;index"`

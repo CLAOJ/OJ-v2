@@ -65,10 +65,20 @@ func (s *CommentService) UpdateComment(req UpdateCommentRequest) (*Comment, erro
 		}
 		// Sanitize and update body
 		comment.Body = sanitization.SanitizeComment(*req.Body)
+		// v1 increments the counter on every content edit (judge_comment.revisions).
+		comment.Revisions++
 	}
 
 	if req.Hidden != nil {
 		comment.Hidden = *req.Hidden
+	}
+
+	if req.AuthorID != nil {
+		comment.AuthorID = *req.AuthorID
+	}
+
+	if req.Page != nil {
+		comment.Page = *req.Page
 	}
 
 	if err := db.DB.Save(&comment).Error; err != nil {
@@ -164,14 +174,15 @@ func (s *CommentService) GetCommentRevisions(commentID uint) ([]CommentRevision,
 
 func commentToModel(c models.Comment) Comment {
 	return Comment{
-		ID:       c.ID,
-		AuthorID: c.AuthorID,
-		Time:     c.Time,
-		Page:     c.Page,
-		Score:    c.Score,
-		Body:     c.Body,
-		Hidden:   c.Hidden,
-		ParentID: c.ParentID,
+		ID:        c.ID,
+		AuthorID:  c.AuthorID,
+		Time:      c.Time,
+		Page:      c.Page,
+		Score:     c.Score,
+		Body:      c.Body,
+		Hidden:    c.Hidden,
+		ParentID:  c.ParentID,
+		Revisions: c.Revisions,
 	}
 }
 

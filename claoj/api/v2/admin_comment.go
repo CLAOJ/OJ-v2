@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -22,6 +23,7 @@ func AdminCommentList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	search := c.Query("search")
 	hidden := c.Query("hidden") // "true", "false", or empty for all
+	pageType := c.Query("page_type")
 
 	query := db.DB.Model(&models.Comment{}).
 		Preload("Author.User").
@@ -39,6 +41,16 @@ func AdminCommentList(c *gin.Context) {
 		} else if hidden == "false" {
 			query = query.Where("judge_comment.hidden = ?", false)
 		}
+	}
+
+	// Same page prefixes as the public comment list (GET /comments?page_type=).
+	switch pageType {
+	case "problem":
+		query = query.Where("judge_comment.page LIKE ?", "p/%")
+	case "editorial":
+		query = query.Where("judge_comment.page LIKE ?", "e/%")
+	case "blog":
+		query = query.Where("judge_comment.page LIKE ?", "blog/%")
 	}
 
 	// Get total count
@@ -69,6 +81,7 @@ func AdminCommentList(c *gin.Context) {
 		Hidden    bool      `json:"hidden"`
 		Time      time.Time `json:"time"`
 		ParentID  *uint     `json:"parent_id,omitempty"`
+		Revisions int       `json:"revisions"`
 	}
 
 	items := make([]CommentItem, len(comments))
@@ -78,15 +91,16 @@ func AdminCommentList(c *gin.Context) {
 			username = cm.Author.User.Username
 		}
 		items[i] = CommentItem{
-			ID:       cm.ID,
-			AuthorID: cm.AuthorID,
-			Username: username,
-			Page:     cm.Page,
-			Body:     cm.Body,
-			Score:    cm.Score,
-			Hidden:   cm.Hidden,
-			Time:     cm.Time,
-			ParentID: cm.ParentID,
+			ID:        cm.ID,
+			AuthorID:  cm.AuthorID,
+			Username:  username,
+			Page:      cm.Page,
+			Body:      cm.Body,
+			Score:     cm.Score,
+			Hidden:    cm.Hidden,
+			Time:      cm.Time,
+			ParentID:  cm.ParentID,
+			Revisions: cm.Revisions,
 		}
 	}
 
@@ -94,7 +108,9 @@ func AdminCommentList(c *gin.Context) {
 }
 
 // AdminCommentUpdate - PATCH /api/v2/admin/comment/:id
-// Admin update comment (body, hidden status)
+// Admin update comment (body, hidden status, author, page). time/score and
+// parent stay read-only: parent is an MPTT tree edge and v2 has no safe
+// reparent helper, so a parent_id in the body is rejected rather than applied.
 func AdminCommentUpdate(c *gin.Context) {
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
@@ -114,19 +130,54 @@ func AdminCommentUpdate(c *gin.Context) {
 	}
 
 	var req struct {
-		Body   *string `json:"body,omitempty"`
-		Hidden *bool   `json:"hidden,omitempty"`
-		Reason string  `json:"reason,omitempty"`
+		Body     *string `json:"body,omitempty"`
+		Hidden   *bool   `json:"hidden,omitempty"`
+		AuthorID *uint   `json:"author_id,omitempty"`
+		Page     *string `json:"page,omitempty"`
+		ParentID *uint   `json:"parent_id,omitempty"`
+		Reason   string  `json:"reason,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
 
+	if req.ParentID != nil {
+		c.JSON(http.StatusBadRequest, apiUserError("reparenting a comment is not supported"))
+		return
+	}
+
+	if req.AuthorID != nil {
+		if *req.AuthorID == 0 {
+			c.JSON(http.StatusBadRequest, apiUserError("invalid author id"))
+			return
+		}
+		var authors int64
+		if err := db.DB.Model(&models.Profile{}).Where("id = ?", *req.AuthorID).Count(&authors).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		if authors == 0 {
+			c.JSON(http.StatusBadRequest, apiUserError("author not found"))
+			return
+		}
+	}
+
+	if req.Page != nil {
+		page := strings.TrimSpace(*req.Page)
+		if page == "" || len(page) > 30 {
+			c.JSON(http.StatusBadRequest, apiUserError("invalid page code"))
+			return
+		}
+		req.Page = &page
+	}
+
 	_, err := getCommentService().UpdateComment(comment.UpdateCommentRequest{
 		CommentID: commentID,
 		Body:      req.Body,
 		Hidden:    req.Hidden,
+		AuthorID:  req.AuthorID,
+		Page:      req.Page,
 		Reason:    req.Reason,
 		EditorID:  profile.ID,
 	})
@@ -177,5 +228,59 @@ func AdminCommentDelete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "comment deleted",
+	})
+}
+
+// AdminCommentBulkHide - POST /api/v2/admin/comments/bulk-hide
+// Hide or unhide up to 500 comments at once. The admin audit middleware
+// records the request (path + ids) like the single-comment hide/edit.
+func AdminCommentBulkHide(c *gin.Context) {
+	_, _, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	if !auth.HasPerm(c, "judge.change_comment") {
+		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		return
+	}
+
+	var req struct {
+		IDs    []uint `json:"ids"`
+		Hidden *bool  `json:"hidden"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, apiUserError("ids cannot be empty"))
+		return
+	}
+	if len(req.IDs) > 500 {
+		c.JSON(http.StatusBadRequest, apiUserError("at most 500 comments per request"))
+		return
+	}
+	for _, id := range req.IDs {
+		if id == 0 {
+			c.JSON(http.StatusBadRequest, apiUserError("invalid comment id"))
+			return
+		}
+	}
+	if req.Hidden == nil {
+		c.JSON(http.StatusBadRequest, apiUserError("hidden is required"))
+		return
+	}
+
+	res := db.DB.Model(&models.Comment{}).Where("id IN ?", req.IDs).Update("hidden", *req.Hidden)
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, apiError(res.Error.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"updated": res.RowsAffected,
+		"hidden":  *req.Hidden,
 	})
 }

@@ -225,6 +225,7 @@ func NewRouter() *gin.Engine {
 
 			// Comments Admin
 			admin.GET("/admin/comments", v2.AdminCommentList)
+			admin.POST("/admin/comments/bulk-hide", v2.AdminCommentBulkHide)
 			admin.PATCH("/admin/comment/:id", v2.AdminCommentUpdate)
 			admin.DELETE("/admin/comment/:id", v2.AdminCommentDelete)
 
