@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auditlog"
@@ -74,11 +75,17 @@ func TestAdminImpersonate_StartIssuesTargetTokensWithActorClaim(t *testing.T) {
 	refresh, err := auth.VerifyToken(cookieValue(t, w, "refresh_token"), "refresh")
 	require.NoError(t, err)
 	require.Equal(t, root.ID, refresh.ImpersonatorID, "refresh token must carry the claim too")
+	// Impersonated sessions get a short refresh TTL: the exit window is
+	// exactly this long, so it must not be the usual 7 days.
+	require.WithinDuration(t, time.Now().Add(auth.ImpersonationRefreshTTL),
+		refresh.ExpiresAt.Time, time.Minute)
 
 	entry, found, err := authHandlers.RefreshStore.Get(cookieValue(t, w, "refresh_token"))
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, target.ID, entry.UserID)
+	require.WithinDuration(t, time.Now().Add(auth.ImpersonationRefreshTTL),
+		entry.ExpiresAt, time.Minute)
 
 	// The actor's own session must not be revoked by starting one.
 	require.NotEqual(t, root.ID, entry.UserID)
@@ -110,6 +117,79 @@ func TestAdminImpersonate_ExitRestoresActorAndRevokesFamily(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.True(t, entry.Revoked, "the impersonated family must be revoked on exit")
+}
+
+// A deactivated actor must not get their session back on exit — and, more
+// importantly, the impersonated family must already be revoked when the 403
+// goes out, so the target session cannot outlive the refusal.
+func TestAdminImpersonate_ExitAfterActorDeactivated_RevokesAndForbids(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	store := useRefreshStore(t)
+	root, _ := seedAccount(t, "root", true, true)
+	target, targetProfile := seedAccount(t, "bob", false, false)
+
+	w := startImpersonation(t, root.ID, targetProfile.ID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	impersonatedRefresh := cookieValue(t, w, "refresh_token")
+	claims, err := auth.VerifyToken(impersonatedRefresh, "refresh")
+	require.NoError(t, err)
+
+	require.NoError(t, db.DB.Model(&models.AuthUser{}).Where("id = ?", root.ID).Update("is_active", false).Error)
+
+	exitRouter := impersonatingRouter(target.ID, root.ID, claims.FamilyID, http.MethodPost, "/admin/impersonate/exit", AdminImpersonateExit)
+	we := doRequest(exitRouter, http.MethodPost, "/admin/impersonate/exit", "")
+	require.Equal(t, http.StatusForbidden, we.Code, we.Body.String())
+
+	entry, found, err := store.Get(impersonatedRefresh)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.True(t, entry.Revoked, "family must be revoked even when the exit is refused")
+}
+
+func TestAdminImpersonate_ExitAfterActorDemoted_RevokesAndForbids(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	store := useRefreshStore(t)
+	root, _ := seedAccount(t, "root", true, true)
+	target, targetProfile := seedAccount(t, "bob", false, false)
+
+	w := startImpersonation(t, root.ID, targetProfile.ID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	impersonatedRefresh := cookieValue(t, w, "refresh_token")
+	claims, err := auth.VerifyToken(impersonatedRefresh, "refresh")
+	require.NoError(t, err)
+
+	require.NoError(t, db.DB.Model(&models.AuthUser{}).Where("id = ?", root.ID).Update("is_superuser", false).Error)
+
+	exitRouter := impersonatingRouter(target.ID, root.ID, claims.FamilyID, http.MethodPost, "/admin/impersonate/exit", AdminImpersonateExit)
+	we := doRequest(exitRouter, http.MethodPost, "/admin/impersonate/exit", "")
+	require.Equal(t, http.StatusForbidden, we.Code, we.Body.String())
+
+	entry, found, err := store.Get(impersonatedRefresh)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.True(t, entry.Revoked, "family must be revoked even when the exit is refused")
+}
+
+func TestAdminImpersonate_StartRejectsInactiveActor(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	useRefreshStore(t)
+	root, _ := seedAccount(t, "root", true, true)
+	_, targetProfile := seedAccount(t, "bob", false, false)
+
+	require.NoError(t, db.DB.Model(&models.AuthUser{}).Where("id = ?", root.ID).Update("is_active", false).Error)
+
+	w := startImpersonation(t, root.ID, targetProfile.ID)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+}
+
+func TestAdminImpersonate_ExitWithoutImpersonation_Rejects(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	useRefreshStore(t)
+	target, _ := seedAccount(t, "bob", false, false)
+
+	exitRouter := impersonatingRouter(target.ID, 0, "", http.MethodPost, "/admin/impersonate/exit", AdminImpersonateExit)
+	we := doRequest(exitRouter, http.MethodPost, "/admin/impersonate/exit", "")
+	require.Equal(t, http.StatusBadRequest, we.Code, we.Body.String())
 }
 
 func TestAdminImpersonate_Guards(t *testing.T) {

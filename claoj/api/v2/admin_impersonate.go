@@ -32,7 +32,9 @@ func AdminImpersonateStart(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, apiUserError("already impersonating"))
 		return
 	}
-	if !actor.IsSuperuser {
+	// A deactivated account keeps a usable access token until it expires, so
+	// the active flag is checked here too, not only at login.
+	if !actor.IsSuperuser || !actor.IsActive {
 		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
@@ -54,6 +56,9 @@ func AdminImpersonateStart(c *gin.Context) {
 	}
 	target := profile.User
 
+	// The self case is technically subsumed by the superuser-target case
+	// (the actor must be a superuser to reach this point), but it gets its own
+	// message so the UI can explain what happened.
 	switch {
 	case target.ID == actor.UserID:
 		c.JSON(http.StatusBadRequest, apiUserError("cannot impersonate yourself"))
@@ -98,6 +103,11 @@ func AdminImpersonateStart(c *gin.Context) {
 // Requires an impersonating session. Revokes the impersonated token family
 // and reissues tokens for the superuser who started it.
 //
+// Revocation happens BEFORE the actor is re-checked: a demoted, deactivated
+// or deleted actor must not be able to keep a live impersonated session just
+// because the exit request is refused. In that case the request answers 403
+// and the family is already dead.
+//
 // It sits outside the admin route group on purpose: an impersonated account
 // is usually not staff, so it cannot pass AdminRequiredMiddleware — and the
 // exit button must stay reachable from that session.
@@ -108,21 +118,22 @@ func AdminImpersonateExit(c *gin.Context) {
 		return
 	}
 
+	if familyID := c.GetString("family_id"); familyID != "" && authHandlers.RefreshStore != nil {
+		if err := authHandlers.RefreshStore.RevokeFamily(familyID); err != nil {
+			log.Printf("impersonate: revoke family %s: %v", familyID, err)
+		}
+	}
+
 	var actor models.AuthUser
 	if err := db.DB.Select("id", "username", "is_active", "is_superuser").First(&actor, impersonatorID).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, apiUserError("impersonator not found"))
 		return
 	}
-	// A demoted or deactivated actor must not get their session back.
+	// A demoted or deactivated actor must not get their session back; the
+	// impersonated family is already revoked above.
 	if !actor.IsActive || !actor.IsSuperuser {
 		c.JSON(http.StatusForbidden, apiUserError("impersonator is no longer a superuser"))
 		return
-	}
-
-	if familyID := c.GetString("family_id"); familyID != "" && authHandlers.RefreshStore != nil {
-		if err := authHandlers.RefreshStore.RevokeFamily(familyID); err != nil {
-			log.Printf("impersonate: revoke family %s: %v", familyID, err)
-		}
 	}
 
 	if err := startSession(c, actor, 0); err != nil {
@@ -153,6 +164,9 @@ func startSession(c *gin.Context, user models.AuthUser, impersonatorID uint) err
 	}
 	if authHandlers.RefreshStore != nil {
 		ttl := 7 * 24 * time.Hour
+		if impersonatorID != 0 {
+			ttl = auth.ImpersonationRefreshTTL
+		}
 		if err := authHandlers.RefreshStore.Save(refreshToken, tokenstore.Entry{
 			UserID:    user.ID,
 			FamilyID:  familyID,
@@ -174,6 +188,7 @@ func startSession(c *gin.Context, user models.AuthUser, impersonatorID uint) err
 func writeImpersonationAudit(c *gin.Context, userID uint, username, action string, resourceID uint, details gin.H) {
 	store := auditlog.Default
 	if store == nil {
+		log.Printf("impersonate: audit store unavailable, dropping %s entry for user %d", action, userID)
 		return
 	}
 	raw, _ := json.Marshal(details)

@@ -1368,7 +1368,9 @@
       "viewingAs": "Viewing as {username}",
       "startedBy": "started by {username}",
       "exit": "Exit impersonation",
-      "exitError": "Could not exit impersonation."
+      "exitError": "Could not exit impersonation.",
+      "exitDenied": "Your account is no longer an active superuser. This impersonated session has been revoked; log out to clear it.",
+      "logout": "Log out"
     },
     "contests": {
       "title": "Contests",

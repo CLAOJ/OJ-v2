@@ -1368,7 +1368,9 @@
       "viewingAs": "Đang xem với tư cách {username}",
       "startedBy": "do {username} bắt đầu",
       "exit": "Thoát mạo danh",
-      "exitError": "Không thể thoát mạo danh."
+      "exitError": "Không thể thoát mạo danh.",
+      "exitDenied": "Tài khoản của bạn không còn là quản trị viên cấp cao đang hoạt động. Phiên mạo danh này đã bị thu hồi; hãy đăng xuất để xoá phiên.",
+      "logout": "Đăng xuất"
     },
     "contests": {
       "title": "Kỳ thi",

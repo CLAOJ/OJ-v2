@@ -14,6 +14,13 @@ var (
 	ErrInvalidToken = errors.New("invalid or expired token")
 )
 
+// ImpersonationRefreshTTL is the lifetime of an impersonated session's refresh
+// token and family. It is deliberately short: while impersonating, the exit
+// window is exactly this long (the access token lives 15 minutes and can be
+// rotated from this refresh token). 2 hours covers a support/debug session
+// without leaving a live "login as" session behind for a week.
+const ImpersonationRefreshTTL = 2 * time.Hour
+
 // Claims extends standard JWT claims with CLAOJ user properties
 type Claims struct {
 	UserID   uint   `json:"user_id"`
@@ -76,10 +83,15 @@ func GenerateTokensAs(userID uint, username string, isAdmin bool, familyID strin
 		return "", "", "", err
 	}
 
-	// 2. Refresh Token - 7 days default, 30 days if extendedRefresh
+	// 2. Refresh Token - 7 days default, 30 days if extendedRefresh.
+	// An impersonated session always gets the short TTL regardless of
+	// extendedRefresh, so a "remember me" actor cannot widen the exit window.
 	refreshTTL := 7 * 24 * time.Hour
 	if extendedRefresh {
 		refreshTTL = 30 * 24 * time.Hour
+	}
+	if impersonatorID != 0 {
+		refreshTTL = ImpersonationRefreshTTL
 	}
 	refreshClaims := &Claims{
 		UserID:         userID,
