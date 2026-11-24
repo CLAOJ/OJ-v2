@@ -30,6 +30,7 @@ type Judge struct {
 	AuthKey     string     `gorm:"column:auth_key;size:100;not null"`
 	IsBlocked   bool       `gorm:"column:is_blocked;not null;default:0"`
 	IsDisabled  bool       `gorm:"column:is_disabled;not null;default:0"`
+	Tier        int        `gorm:"column:tier;not null;default:1"` // v1 tier; informational in v2 — no tier routing
 	Online      bool       `gorm:"column:online;not null;default:0"`
 	StartTime   *time.Time `gorm:"column:start_time"`
 	Ping        *float64   `gorm:"column:ping"`

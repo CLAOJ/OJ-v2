@@ -201,3 +201,30 @@ func TestEvent_JudgeStatusWithoutPingOrLoadIsIgnored(t *testing.T) {
 	r := newEventRouter()
 	assert.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "judge-status"}))
 }
+
+func TestEvent_HandshakeRecordsLastIP(t *testing.T) {
+	judge := setupEventDB(t)
+	r := newEventRouter()
+
+	var before models.Judge
+	require.NoError(t, db.DB.First(&before, judge.ID).Error)
+	require.Nil(t, before.LastIP)
+
+	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret",
+		Packet{"name": "judge-runtimes", "executors": map[string]interface{}{}}))
+
+	var j models.Judge
+	require.NoError(t, db.DB.First(&j, judge.ID).Error)
+	require.NotNil(t, j.LastIP)
+	assert.Equal(t, "192.0.2.1", *j.LastIP, "httptest requests come from 192.0.2.1")
+}
+
+func TestEvent_GradingPacketsDoNotWriteLastIP(t *testing.T) {
+	judge := setupEventDB(t)
+	r := newEventRouter()
+	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "grading-begin", "submission-id": 7}))
+
+	var j models.Judge
+	require.NoError(t, db.DB.First(&j, judge.ID).Error)
+	assert.Nil(t, j.LastIP, "only handshake/status record the address")
+}

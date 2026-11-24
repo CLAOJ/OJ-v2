@@ -27,6 +27,14 @@ func EventHandler(c *gin.Context) {
 		return
 	}
 
+	// The handshake (judge-runtimes) and the status beat are the only packets
+	// that mean "this judge is here"; record where it came from.
+	if name := pkt.Name(); name == "judge-runtimes" || name == "judge-status" {
+		if err := RecordLastIP(judge.ID, c.ClientIP()); err != nil {
+			log.Printf("bridge: %s from %q: record last_ip: %v", name, judge.Name, err)
+		}
+	}
+
 	if err := HandleEvent(judge, pkt); err != nil {
 		if errors.Is(err, ErrBadPacket) {
 			c.AbortWithStatus(http.StatusBadRequest)

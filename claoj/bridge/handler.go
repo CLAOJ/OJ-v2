@@ -66,6 +66,16 @@ func HandleEvent(judge *models.Judge, pkt Packet) error {
 	}
 }
 
+// RecordLastIP stores the address the judge connected from, the way v1 wrote
+// judge_judge.last_ip when the daemon opened its websocket. Called only on the
+// handshake and the periodic status: grading packets would add a write each.
+func RecordLastIP(judgeID uint, ip string) error {
+	if ip == "" {
+		return nil
+	}
+	return db.DB.Model(&models.Judge{}).Where("id = ?", judgeID).Update("last_ip", ip).Error
+}
+
 // onJudgeStatus records the round trip and machine load the agent measured,
 // which are v2's analog of v1's judge_judge.ping/load (v1's daemon reported
 // both). Fields that are absent or negative — an older agent, or a failed

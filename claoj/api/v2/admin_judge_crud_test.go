@@ -279,3 +279,81 @@ func TestAdminJudgeUpdate_OnlineJudgeCannotBeRenamedOrRekeyed(t *testing.T) {
 	w := doRequest(router, http.MethodPatch, "/admin/judge/1", `{"description":"ok while online"}`)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 }
+
+func TestAdminJudge_TierDefaultsToOneAndRoundTrips(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "tiered", false)
+	var got models.Judge
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, 1, got.Tier, "v1 default")
+
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+
+	w := doRequest(router, http.MethodPatch, "/admin/judge/1", `{"tier":3}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, 3, got.Tier)
+
+	list := authedRouter(root.ID, http.MethodGet, "/admin/judges", AdminJudgeList)
+	w = doRequest(list, http.MethodGet, "/admin/judges", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"tier":3`)
+
+	detail := authedRouter(root.ID, http.MethodGet, "/admin/judge/:id", AdminJudgeDetail)
+	w = doRequest(detail, http.MethodGet, "/admin/judge/1", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"tier":3`)
+}
+
+func TestAdminJudgeUpdate_RejectsNonPositiveTier(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "tiered", false)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+
+	for _, body := range []string{`{"tier":0}`, `{"tier":-2}`} {
+		w := doRequest(router, http.MethodPatch, "/admin/judge/1", body)
+		require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	}
+	var got models.Judge
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, 1, got.Tier)
+}
+
+func TestAdminJudge_TierEditableWhileOnline(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "live", true)
+	root := models.AuthUser{Username: "root", IsActive: true, IsStaff: true, IsSuperuser: true}
+	require.NoError(t, db.DB.Create(&root).Error)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/judge/:id", AdminJudgeUpdate)
+
+	w := doRequest(router, http.MethodPatch, "/admin/judge/1", `{"tier":2}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var got models.Judge
+	require.NoError(t, db.DB.First(&got, j.ID).Error)
+	require.Equal(t, 2, got.Tier)
+}
+
+func TestAdminJudgeDetail_ShowsKeyAndCapabilityIDs(t *testing.T) {
+	setupJudgeCrudDB(t)
+	j := seedJudge(t, "capable", false)
+	lang := models.Language{Key: "py3", Name: "Python 3"}
+	require.NoError(t, db.DB.Create(&lang).Error)
+	p := models.Problem{Code: "p1", Name: "P1"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+	require.NoError(t, db.DB.Model(&j).Association("Problems").Append(&p))
+	require.NoError(t, db.DB.Model(&j).Association("Runtimes").Append(&lang))
+
+	router := authedRouter(1, http.MethodGet, "/admin/judge/:id", AdminJudgeDetail)
+	w := doRequest(router, http.MethodGet, "/admin/judge/1", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, j.AuthKey, body["auth_key"], "v1 shows the key on the change form")
+	require.Equal(t, []any{float64(p.ID)}, body["problem_ids"])
+	require.Equal(t, []any{float64(lang.ID)}, body["runtime_ids"])
+}
