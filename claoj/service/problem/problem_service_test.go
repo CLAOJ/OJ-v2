@@ -537,6 +537,131 @@ func (s *ProblemServiceTestSuite) TestListProblems_SearchIsLiteral() {
 	s.Equal("a_b", resp.Problems[0].Code)
 }
 
+func (s *ProblemServiceTestSuite) TestListProblems_SortWhitelistAndDirection() {
+	g := s.createTestGroup("gsort")
+	pLow := s.createTestProblem("bbb", "Bee", g.ID)
+	s.createTestProblem("ccc", "Cee", g.ID)
+	pHigh := s.createTestProblem("aaa", "Aye", g.ID)
+	s.Require().NoError(s.database.Model(&pLow).Update("points", 10).Error)
+	s.Require().NoError(s.database.Model(&pHigh).Update("points", 250).Error)
+
+	codes := func(req ListProblemsRequest) []string {
+		resp, err := s.service.ListProblems(req)
+		s.Require().NoError(err)
+		out := make([]string, len(resp.Problems))
+		for i, p := range resp.Problems {
+			out[i] = p.Code
+		}
+		return out
+	}
+
+	s.Equal([]string{"aaa", "bbb", "ccc"}, codes(ListProblemsRequest{Page: 1, PageSize: 10, Sort: "code", Order: "asc"}))
+	s.Equal([]string{"ccc", "bbb", "aaa"}, codes(ListProblemsRequest{Page: 1, PageSize: 10, Sort: "code", Order: "desc"}))
+	s.Equal([]string{"bbb", "ccc", "aaa"}, codes(ListProblemsRequest{Page: 1, PageSize: 10, Sort: "points", Order: "asc"}))
+	s.Equal([]string{"aaa", "ccc", "bbb"}, codes(ListProblemsRequest{Page: 1, PageSize: 10, Sort: "points", Order: "desc"}))
+	// Unknown sort is ignored rather than reaching SQL.
+	s.Equal([]string{"bbb", "ccc", "aaa"}, codes(ListProblemsRequest{Page: 1, PageSize: 10, Sort: "points; DROP TABLE judge_problem", Order: "asc"}))
+}
+
+func (s *ProblemServiceTestSuite) TestListProblems_DefaultSortIsDateDesc() {
+	g := s.createTestGroup("gdate")
+	old := s.createTestProblem("old", "Old", g.ID)
+	mid := s.createTestProblem("mid", "Mid", g.ID)
+	newest := s.createTestProblem("new", "New", g.ID)
+	at := func(y int, m time.Month, d int) *time.Time {
+		t := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+		return &t
+	}
+	s.Require().NoError(s.database.Model(&old).Update("date", at(2023, 11, 1)).Error)
+	s.Require().NoError(s.database.Model(&mid).Update("date", at(2024, 5, 1)).Error)
+	s.Require().NoError(s.database.Model(&newest).Update("date", at(2025, 2, 1)).Error)
+
+	resp, err := s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10})
+	s.Require().NoError(err)
+	s.Equal([]string{"new", "mid", "old"}, []string{resp.Problems[0].Code, resp.Problems[1].Code, resp.Problems[2].Code})
+
+	resp, err = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Sort: "date", Order: "asc"})
+	s.Require().NoError(err)
+	s.Equal("old", resp.Problems[0].Code)
+}
+
+func (s *ProblemServiceTestSuite) TestListProblems_CreatorFilter() {
+	g := s.createTestGroup("gcreator")
+	alice := s.createTestProfile("alice")
+	bob := s.createTestProfile("bob")
+	a := s.createTestProblem("by-alice", "A", g.ID)
+	ab := s.createTestProblem("by-both", "B", g.ID)
+	s.createTestProblem("by-none", "C", g.ID)
+	s.Require().NoError(s.database.Model(&a).Association("Authors").Append(&alice))
+	s.Require().NoError(s.database.Model(&ab).Association("Authors").Append(&alice, &bob))
+
+	resp, err := s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Creator: "alice"})
+	s.Require().NoError(err)
+	s.Equal(int64(2), resp.Total)
+	s.Len(resp.Problems, 2, "a problem with two authors is listed once")
+
+	resp, err = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Creator: "bob"})
+	s.Require().NoError(err)
+	s.Equal(int64(1), resp.Total)
+	s.Equal("by-both", resp.Problems[0].Code)
+
+	resp, err = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Creator: "nobody"})
+	s.Require().NoError(err)
+	s.Equal(int64(0), resp.Total)
+	s.Empty(resp.Problems)
+}
+
+func (s *ProblemServiceTestSuite) TestListProblems_YearFilter() {
+	g := s.createTestGroup("gyear")
+	in2024 := s.createTestProblem("y2024", "In", g.ID)
+	in2025 := s.createTestProblem("y2025", "Next", g.ID)
+	s.createTestProblem("undated", "No date", g.ID)
+	at := func(y, m, d int) *time.Time {
+		t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
+		return &t
+	}
+	s.Require().NoError(s.database.Model(&in2024).Update("date", at(2024, 3, 1)).Error)
+	s.Require().NoError(s.database.Model(&in2025).Update("date", at(2025, 1, 1)).Error)
+	s.Require().NoError(s.database.Model(&in2025).Update("date", at(2025, 12, 31)).Error)
+
+	resp, err := s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Year: 2024})
+	s.Require().NoError(err)
+	s.Equal(int64(1), resp.Total)
+	s.Equal("y2024", resp.Problems[0].Code)
+
+	resp, err = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Year: 2025})
+	s.Require().NoError(err)
+	s.Equal(int64(1), resp.Total, "undated problems are excluded when year is set")
+
+	resp, err = s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10, Year: 2020})
+	s.Require().NoError(err)
+	s.Equal(int64(0), resp.Total)
+}
+
+func (s *ProblemServiceTestSuite) TestListProblems_AuthorsIncluded() {
+	g := s.createTestGroup("gauthors")
+	alice := s.createTestProfile("alice")
+	bob := s.createTestProfile("bob")
+	withAuthors := s.createTestProblem("with-authors", "A", g.ID)
+	s.createTestProblem("no-authors", "B", g.ID)
+	s.Require().NoError(s.database.Model(&withAuthors).Association("Authors").Append(&alice, &bob))
+
+	resp, err := s.service.ListProblems(ListProblemsRequest{Page: 1, PageSize: 10})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Problems, 2)
+
+	byCode := map[string]ProblemProfile{}
+	for _, p := range resp.Problems {
+		byCode[p.Code] = p
+	}
+	s.Require().Len(byCode["with-authors"].Authors, 2)
+	s.Equal("alice", byCode["with-authors"].Authors[0].Username)
+	s.Equal(alice.ID, byCode["with-authors"].Authors[0].ID)
+	s.Equal("bob", byCode["with-authors"].Authors[1].Username)
+	s.Empty(byCode["no-authors"].Authors)
+	s.NotNil(byCode["no-authors"].Authors, "authors is a JSON array, never null")
+}
+
 func (s *ProblemServiceTestSuite) TestCreateProblem_V1FieldsRoundTrip() {
 	group := s.createTestGroup("gall")
 	license := s.createTestLicense("cc-by")

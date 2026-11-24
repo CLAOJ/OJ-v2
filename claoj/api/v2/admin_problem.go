@@ -26,6 +26,7 @@ func AdminProblemList(c *gin.Context) {
 		isPublic = &b
 	}
 	groupID, _ := strconv.ParseUint(c.Query("group_id"), 10, 32)
+	year, _ := strconv.Atoi(c.Query("year"))
 
 	resp, err := getProblemService().ListProblems(problem.ListProblemsRequest{
 		Page:     page,
@@ -33,6 +34,10 @@ func AdminProblemList(c *gin.Context) {
 		Search:   strings.TrimSpace(c.Query("search")),
 		IsPublic: isPublic,
 		GroupID:  uint(groupID),
+		Sort:     c.Query("sort"),
+		Order:    c.Query("order"),
+		Creator:  strings.TrimSpace(c.Query("creator")),
+		Year:     year,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -40,16 +45,17 @@ func AdminProblemList(c *gin.Context) {
 	}
 
 	type Item struct {
-		ID                uint    `json:"id"`
-		Code              string  `json:"code"`
-		Name              string  `json:"name"`
-		Points            float64 `json:"points"`
-		Partial           bool    `json:"partial"`
-		IsPublic          bool    `json:"is_public"`
-		GroupName         string  `json:"group_name"`
-		UserCount         int     `json:"user_count"`
-		AcRate            float64 `json:"ac_rate"`
-		IsManuallyManaged bool    `json:"is_manually_managed"`
+		ID                uint                `json:"id"`
+		Code              string              `json:"code"`
+		Name              string              `json:"name"`
+		Points            float64             `json:"points"`
+		Partial           bool                `json:"partial"`
+		IsPublic          bool                `json:"is_public"`
+		GroupName         string              `json:"group_name"`
+		UserCount         int                 `json:"user_count"`
+		AcRate            float64             `json:"ac_rate"`
+		IsManuallyManaged bool                `json:"is_manually_managed"`
+		Authors           []relations.UserRef `json:"authors"`
 	}
 	items := make([]Item, len(resp.Problems))
 	for i, p := range resp.Problems {
@@ -64,6 +70,7 @@ func AdminProblemList(c *gin.Context) {
 			UserCount:         p.UserCount,
 			AcRate:            p.AcRate,
 			IsManuallyManaged: p.IsManuallyManaged,
+			Authors:           p.Authors,
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{

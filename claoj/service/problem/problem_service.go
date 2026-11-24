@@ -3,6 +3,7 @@ package problem
 
 import (
 	"fmt"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -155,6 +156,10 @@ type ListProblemsRequest struct {
 	Search   string // code or name contains (literal)
 	IsPublic *bool
 	GroupID  uint
+	Sort     string // whitelisted column name; empty = date
+	Order    string // "asc" | "desc"; empty = desc
+	Creator  string // author username (exact match)
+	Year     int    // problem.date calendar year; 0 = any
 }
 
 // ListProblemsResponse holds the response for listing problems.
@@ -218,7 +223,28 @@ func (s *ProblemService) ListProblems(req ListProblemsRequest) (*ListProblemsRes
 		if req.GroupID != 0 {
 			q = q.Where("judge_problem.group_id = ?", req.GroupID)
 		}
+		if req.Creator != "" {
+			q = q.Where(`judge_problem.id IN (
+				SELECT judge_problem_authors.problem_id FROM judge_problem_authors
+				JOIN judge_profile ON judge_profile.id = judge_problem_authors.profile_id
+				JOIN auth_user ON auth_user.id = judge_profile.user_id
+				WHERE auth_user.username = ?)`, req.Creator)
+		}
+		if req.Year != 0 {
+			start := time.Date(req.Year, 1, 1, 0, 0, 0, 0, time.UTC)
+			q = q.Where("judge_problem.date >= ? AND judge_problem.date < ?", start, start.AddDate(1, 0, 0))
+		}
 		return q
+	}
+
+	// Whitelisted sort columns: an unknown name or order falls back to the default.
+	sortCol := problemSortColumns[req.Sort]
+	if sortCol == "" {
+		sortCol = problemSortColumns["date"]
+	}
+	dir := "DESC"
+	if strings.EqualFold(req.Order, "asc") {
+		dir = "ASC"
 	}
 
 	var total int64
@@ -229,7 +255,7 @@ func (s *ProblemService) ListProblems(req ListProblemsRequest) (*ListProblemsRes
 	if err := filter(db.DB.Table("judge_problem").
 		Joins("LEFT JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
 		Select("judge_problem.*, judge_problemgroup.name as group_name")).
-		Order("judge_problem.date DESC").
+		Order(fmt.Sprintf("%s %s, judge_problem.id %s", sortCol, dir, dir)).
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Scan(&problems).Error; err != nil {
@@ -239,6 +265,13 @@ func (s *ProblemService) ListProblems(req ListProblemsRequest) (*ListProblemsRes
 	result := make([]ProblemProfile, len(problems))
 	for i, p := range problems {
 		result[i] = problemToProfile(p.Problem, p.GroupName)
+	}
+	authors, err := problemAuthorRefs(result)
+	if err != nil {
+		return nil, err
+	}
+	for i := range result {
+		result[i].Authors = authors[result[i].ID]
 	}
 
 	return &ListProblemsResponse{
@@ -623,6 +656,49 @@ func (s *ProblemService) ClearPdfURL(problemCode string) error {
 }
 
 // Helper functions
+
+// problemSortColumns is the sort= whitelist; user input never reaches SQL.
+var problemSortColumns = map[string]string{
+	"code":       "judge_problem.code",
+	"name":       "judge_problem.name",
+	"points":     "judge_problem.points",
+	"date":       "judge_problem.date",
+	"ac_rate":    "judge_problem.ac_rate",
+	"user_count": "judge_problem.user_count",
+}
+
+// problemAuthorRefs batches the authors of a page of problems into one query.
+func problemAuthorRefs(profiles []ProblemProfile) (map[uint][]relations.UserRef, error) {
+	refs := make(map[uint][]relations.UserRef, len(profiles))
+	ids := make([]uint, len(profiles))
+	for i, p := range profiles {
+		ids[i] = p.ID
+		refs[p.ID] = []relations.UserRef{}
+	}
+	if len(ids) == 0 {
+		return refs, nil
+	}
+
+	var rows []struct {
+		ProblemID uint
+		ID        uint
+		Username  string
+	}
+	err := db.DB.Table("judge_problem_authors").
+		Joins("JOIN judge_profile ON judge_profile.id = judge_problem_authors.profile_id").
+		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+		Select("judge_problem_authors.problem_id, judge_profile.id, auth_user.username").
+		Where("judge_problem_authors.problem_id IN ?", ids).
+		Order("auth_user.username").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		refs[r.ProblemID] = append(refs[r.ProblemID], relations.UserRef{ID: r.ID, Username: r.Username})
+	}
+	return refs, nil
+}
 
 func problemToProfile(p models.Problem, groupName string) ProblemProfile {
 	authorIDs := getProfileIDs(p.Authors)

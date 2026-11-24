@@ -209,6 +209,8 @@ type ListContestsRequest struct {
 	PageSize int
 	Search   string    // key or name contains (literal)
 	Status   string    // "", "upcoming", "ongoing", "past"
+	Sort     string    // whitelisted column name; empty = start_time
+	Order    string    // "asc" | "desc"; empty = desc
 	Now      time.Time // zero = time.Now(); tests pin it
 }
 

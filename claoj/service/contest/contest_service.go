@@ -33,6 +33,14 @@ func (s *ContestService) GetProblemService() *ContestProblemService {
 	return s.problems
 }
 
+// contestSortColumns is the sort= whitelist; user input never reaches SQL.
+var contestSortColumns = map[string]string{
+	"name":       "judge_contest.name",
+	"start_time": "judge_contest.start_time",
+	"user_count": "judge_contest.user_count",
+	"end_time":   "judge_contest.end_time",
+}
+
 // ListContests retrieves a paginated list of contests.
 func (s *ContestService) ListContests(req ListContestsRequest) (*ListContestsResponse, error) {
 	if req.Page <= 0 {
@@ -78,8 +86,17 @@ func (s *ContestService) ListContests(req ListContestsRequest) (*ListContestsRes
 	}
 
 	listQ, _ := filter(db.DB.Model(&models.Contest{}))
+	// Whitelisted sort columns: an unknown name or order falls back to the default.
+	sortCol := contestSortColumns[req.Sort]
+	if sortCol == "" {
+		sortCol = contestSortColumns["start_time"]
+	}
+	dir := "DESC"
+	if strings.EqualFold(req.Order, "asc") {
+		dir = "ASC"
+	}
 	var contests []models.Contest
-	if err := listQ.Order("start_time DESC").
+	if err := listQ.Order(fmt.Sprintf("%s %s, id %s", sortCol, dir, dir)).
 		Offset((req.Page - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&contests).Error; err != nil {

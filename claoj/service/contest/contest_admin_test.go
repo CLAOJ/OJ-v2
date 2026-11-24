@@ -552,6 +552,40 @@ func TestListContests_SearchAndStatus(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidStatus)
 }
 
+func TestListContests_SortWhitelistAndDirection(t *testing.T) {
+	setupContestDB(t)
+	base := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	mk := func(key, name string, start time.Time, users int) {
+		c := models.Contest{Key: key, Name: name, StartTime: start, EndTime: start.Add(2 * time.Hour), UserCount: users}
+		require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+	}
+	mk("late", "Charlie", base.Add(2*time.Hour), 500)
+	mk("early", "Alpha", base, 5)
+	mk("middle", "Bravo", base.Add(time.Hour), 50)
+	svc := NewContestService()
+
+	keys := func(req ListContestsRequest) []string {
+		req.Page, req.PageSize = 1, 10
+		resp, err := svc.ListContests(req)
+		require.NoError(t, err)
+		out := make([]string, len(resp.Contests))
+		for i, c := range resp.Contests {
+			out[i] = c.Key
+		}
+		return out
+	}
+
+	require.Equal(t, []string{"early", "middle", "late"}, keys(ListContestsRequest{Sort: "name", Order: "asc"}))
+	require.Equal(t, []string{"late", "middle", "early"}, keys(ListContestsRequest{Sort: "name", Order: "desc"}))
+	require.Equal(t, []string{"early", "middle", "late"}, keys(ListContestsRequest{Sort: "start_time", Order: "asc"}))
+	require.Equal(t, []string{"late", "middle", "early"}, keys(ListContestsRequest{Sort: "start_time", Order: "desc"}))
+	require.Equal(t, []string{"early", "middle", "late"}, keys(ListContestsRequest{Sort: "user_count", Order: "asc"}))
+	require.Equal(t, []string{"late", "middle", "early"}, keys(ListContestsRequest{Sort: "user_count", Order: "desc"}))
+	// Default and unknown sorts fall back to start_time DESC.
+	require.Equal(t, []string{"late", "middle", "early"}, keys(ListContestsRequest{}))
+	require.Equal(t, []string{"late", "middle", "early"}, keys(ListContestsRequest{Sort: "start_time; DROP TABLE judge_contest", Order: "desc"}))
+}
+
 func TestUpdateContest_ICPCFormatConfigTypes(t *testing.T) {
 	setupContestDB(t)
 	c := newContest(t, "icpcfmt")

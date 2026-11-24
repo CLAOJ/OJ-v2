@@ -275,3 +275,40 @@ func TestAdminProblemUpdate_ClearNullableFields(t *testing.T) {
 	require.Nil(t, got.LicenseID)
 	require.Nil(t, got.SuggesterID)
 }
+
+
+func TestAdminProblemList_SortFilterCreatorAndAuthors(t *testing.T) {
+	group := setupAdminProblemDB(t)
+	alice := createAdminProblemTestUser(t, "alice")
+	d2025 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	d2026 := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	mk := func(code string, date *time.Time) models.Problem {
+		p := models.Problem{Code: code, Name: code, GroupID: group.ID, Date: date}
+		require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+		return p
+	}
+	mk("bbb", &d2026)
+	aaa := mk("aaa", &d2026)
+	mk("ccc", &d2025)
+	require.NoError(t, db.DB.Model(&aaa).Association("Authors").Append(&alice))
+
+	w := doRequest(authedRouter(1, http.MethodGet, "/admin/problems", AdminProblemList),
+		http.MethodGet, "/admin/problems?sort=code&order=asc&year=2026&creator=alice", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body struct {
+		Data []struct {
+			Code    string `json:"code"`
+			Authors []struct {
+				ID       uint   `json:"id"`
+				Username string `json:"username"`
+			} `json:"authors"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Len(t, body.Data, 1)
+	require.Equal(t, "aaa", body.Data[0].Code)
+	require.Len(t, body.Data[0].Authors, 1)
+	require.Equal(t, alice.ID, body.Data[0].Authors[0].ID)
+	require.Equal(t, "alice", body.Data[0].Authors[0].Username)
+}

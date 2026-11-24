@@ -67,6 +67,8 @@ func AdminContestList(c *gin.Context) {
 		PageSize: pageSize,
 		Search:   strings.TrimSpace(c.Query("search")),
 		Status:   c.Query("status"),
+		Sort:     c.Query("sort"),
+		Order:    c.Query("order"),
 	})
 	if err != nil {
 		if errors.Is(err, contest.ErrInvalidStatus) {
