@@ -3,6 +3,8 @@
 // schema is owned by Django migrations in the OJ repository.
 package models
 
+import "time"
+
 // AuthGroup is Django's auth_group — the "role" unit shared with the Django site.
 type AuthGroup struct {
 	ID          uint             `gorm:"primaryKey;column:id"`
@@ -58,3 +60,16 @@ type AuthUserPermission struct {
 }
 
 func (AuthUserPermission) TableName() string { return "auth_user_user_permissions" }
+
+// RegistrationProfile is django-registration-redux's activation record, read
+// and written for display/parity only: v2 verifies emails with one-time
+// tokens, not this table. Its user_id points at auth_user and is unique.
+type RegistrationProfile struct {
+	ID            uint      `gorm:"primaryKey;column:id"`
+	UserID        uint      `gorm:"column:user_id"`
+	ActivationKey string    `gorm:"column:activation_key;size:40"`
+	Activated     bool      `gorm:"column:activated"`
+	Created       time.Time `gorm:"column:created"`
+}
+
+func (RegistrationProfile) TableName() string { return "registration_registrationprofile" }

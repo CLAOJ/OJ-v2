@@ -107,6 +107,13 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/users", auth.RequirePerm("auth.add_user"), v2.AdminUserCreate)
 			admin.POST("/admin/user/:id/password", auth.RequirePerm("auth.change_user"), v2.AdminUserSetPassword)
 
+			// Registrations / account activation (v1 registration profiles +
+			// v2 email-verification tokens). Mutations are superuser-only
+			// inside the handlers.
+			admin.GET("/admin/registrations", v2.AdminRegistrationList)
+			admin.POST("/admin/registration/:userId/activate", v2.AdminRegistrationActivate)
+			admin.POST("/admin/registration/:userId/resend", v2.AdminRegistrationResend)
+
 			// Django group (role) management — writes rows in Django's own auth tables
 			admin.GET("/admin/groups", v2.AdminGroupList)
 			admin.GET("/admin/group/:id", v2.AdminGroupDetail)

@@ -141,6 +141,9 @@ func ResendVerification(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Verification email sent. Please check your inbox."})
 }
 
+// sendVerificationEmail is a test seam around the real SMTP helper.
+var sendVerificationEmail = email.SendVerificationEmail
+
 // SendVerificationEmailOnRegistration sends verification email to newly registered user
 func SendVerificationEmailOnRegistration(userID uint, emailAddr, username string) error {
 	// Invalidate any existing tokens for this user
@@ -165,5 +168,5 @@ func SendVerificationEmailOnRegistration(userID uint, emailAddr, username string
 	verifyLink := config.C.App.SiteFullURL + "/verify-email?token=" + tokenStr
 
 	// Send verification email
-	return email.SendVerificationEmail(emailAddr, username, verifyLink)
+	return sendVerificationEmail(emailAddr, username, verifyLink)
 }

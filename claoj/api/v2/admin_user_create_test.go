@@ -28,7 +28,7 @@ func setupAdminUserCreateDB(t *testing.T) {
 		&models.AuthUser{}, &models.AuthGroup{}, &models.DjangoContentType{},
 		&models.AuthPermission{}, &models.AuthUserGroup{}, &models.AuthGroupPermission{},
 		&models.AuthUserPermission{}, &models.Profile{}, &models.Organization{}, &models.Language{},
-		&models.WebAuthnCredential{},
+		&models.WebAuthnCredential{}, &models.RegistrationProfile{},
 	))
 	db.DB = database
 	userService = nil
