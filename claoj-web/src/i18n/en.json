@@ -2094,6 +2094,13 @@
       "subtitle": "Plagiarism reports per contest problem and language, as in v1.",
       "contestLabel": "Contest",
       "contestPlaceholder": "Search a contest by key or name",
+      "contestList": "Contests",
+      "contestListEmpty": "No contests match your search.",
+      "phase": {
+        "upcoming": "Upcoming",
+        "ongoing": "Ongoing",
+        "past": "Ended"
+      },
       "pickContest": "Pick a contest to see or run its MOSS reports.",
       "run": "Run MOSS",
       "running": "Running… results refresh automatically",

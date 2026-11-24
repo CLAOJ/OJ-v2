@@ -4,15 +4,16 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ScanSearch, Play, Trash2, ExternalLink } from 'lucide-react';
-import { adminMossApi, type ContestMossResult } from '@/lib/adminApi';
-import { searchContests } from '@/lib/adminSearch';
+import { ScanSearch, Play, Trash2, ExternalLink, Search } from 'lucide-react';
+import { adminContestApi, adminMossApi, type ContestMossResult } from '@/lib/adminApi';
+import { contestPhase } from '@/lib/contestPhase';
 import { useListParams } from '@/hooks/useListParams';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
 
 const KEYS = ['contest'] as const;
+const LIST_SIZE = 20;
 
 type ApiError = { response?: { data?: { error?: string } } };
 const errorText = (e: unknown) => (e as ApiError)?.response?.data?.error ?? String(e);
@@ -25,11 +26,11 @@ export default function AdminMossPage() {
     const [term, setTerm] = useState('');
     const debounced = useDebounce(term.trim(), 250);
 
-    const { data: matches = [] } = useQuery({
-        queryKey: ['moss-contest-search', debounced],
-        queryFn: () => searchContests(debounced),
-        enabled: debounced.length > 0,
+    const { data: contestList, isLoading: listLoading, isError: listError, error: listErrorValue } = useQuery({
+        queryKey: ['moss-contest-list', debounced],
+        queryFn: async () => (await adminContestApi.list(1, LIST_SIZE, { search: debounced })).data,
     });
+    const contests = contestList?.data ?? [];
 
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['admin-contest-moss', contestKey],
@@ -73,33 +74,56 @@ export default function AdminMossPage() {
                 <p className="text-sm text-muted-foreground mt-1">{t('moss.subtitle')}</p>
             </div>
 
-            <div className="relative max-w-md">
-                <label htmlFor="moss-contest" className="text-xs text-muted-foreground block mb-1">{t('moss.contestLabel')}</label>
-                <input
-                    id="moss-contest"
-                    value={term}
-                    onChange={e => setTerm(e.target.value)}
-                    placeholder={contestKey || t('moss.contestPlaceholder')}
-                    autoComplete="off"
-                    className="w-full h-9 px-3 rounded-md border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-                {debounced && matches.length > 0 && (
-                    <ul className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-60 overflow-y-auto">
-                        {matches.map(m => (
-                            <li key={m.id}>
-                                <button
-                                    type="button"
-                                    onClick={() => { setFilters({ contest: m.label }); setTerm(''); }}
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex gap-2 items-baseline"
-                                >
-                                    <span className="font-medium">{m.label}</span>
-                                    <span className="text-xs text-muted-foreground truncate">{m.detail}</span>
-                                </button>
-                            </li>
-                        ))}
+            <section className="rounded-md border bg-card">
+                <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b bg-secondary/60">
+                    <h2 className="text-sm font-semibold">{t('moss.contestList')}</h2>
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+                        <input
+                            aria-label={t('moss.contestLabel')}
+                            value={term}
+                            onChange={e => setTerm(e.target.value)}
+                            placeholder={t('moss.contestPlaceholder')}
+                            autoComplete="off"
+                            className="w-full h-8 pl-8 pr-3 rounded-md border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                    </div>
+                </header>
+
+                {listLoading ? (
+                    <div className="p-4 space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-6 w-full" />)}</div>
+                ) : listError ? (
+                    <p className="px-4 py-6 text-center text-sm text-destructive">{errorText(listErrorValue)}</p>
+                ) : contests.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t('moss.contestListEmpty')}</p>
+                ) : (
+                    <ul className="divide-y max-h-96 overflow-y-auto">
+                        {contests.map(c => {
+                            const selected = c.key === contestKey;
+                            const phase = contestPhase(c.start_time, c.end_time);
+                            return (
+                                <li key={c.key}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilters({ contest: c.key })}
+                                        aria-pressed={selected}
+                                        className={`w-full flex items-center gap-3 px-4 py-2 text-left text-sm hover:bg-muted/50 ${selected ? 'bg-primary/10' : ''}`}
+                                    >
+                                        <span className={`truncate ${selected ? 'font-semibold text-primary' : 'font-medium'}`}>{c.name}</span>
+                                        <span className="shrink-0 font-mono text-xs text-muted-foreground">{c.key}</span>
+                                        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                                            {c.start_time ? new Date(c.start_time).toLocaleDateString() : '—'}
+                                        </span>
+                                        <span className={`shrink-0 w-24 text-right text-xs ${phase === 'ongoing' ? 'text-success' : 'text-muted-foreground'}`}>
+                                            {t(`moss.phase.${phase}`)}
+                                        </span>
+                                    </button>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
-            </div>
+            </section>
 
             {!contestKey ? (
                 <p className="text-sm text-muted-foreground">{t('moss.pickContest')}</p>

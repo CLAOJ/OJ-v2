@@ -2094,6 +2094,13 @@
       "subtitle": "Báo cáo đạo văn theo từng bài tập và ngôn ngữ của kỳ thi.",
       "contestLabel": "Kỳ thi",
       "contestPlaceholder": "Tìm kỳ thi theo mã hoặc tên",
+      "contestList": "Danh sách kỳ thi",
+      "contestListEmpty": "Không có kỳ thi nào khớp tìm kiếm.",
+      "phase": {
+        "upcoming": "Sắp diễn ra",
+        "ongoing": "Đang diễn ra",
+        "past": "Đã kết thúc"
+      },
       "pickContest": "Chọn một kỳ thi để xem hoặc chạy MOSS.",
       "run": "Chạy MOSS",
       "running": "Đang chạy… kết quả tự cập nhật",
