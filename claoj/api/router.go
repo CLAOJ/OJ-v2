@@ -152,6 +152,11 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/problem/:code/clarification", auth.RequireProblemEdit(), v2.ProblemClarificationCreate)
 			admin.DELETE("/admin/problem/clarification/:id", v2.ProblemClarificationDelete)
 			admin.PATCH("/admin/problem/clarification/:id", v2.ProblemClarificationUpdate)
+			// Problem Translations
+			admin.GET("/admin/problem/:code/translations", auth.RequireProblemEdit(), v2.ProblemTranslationList)
+			admin.POST("/admin/problem/:code/translations", auth.RequireProblemEdit(), v2.ProblemTranslationCreate)
+			admin.PATCH("/admin/problem/:code/translations/:id", auth.RequireProblemEdit(), v2.ProblemTranslationUpdate)
+			admin.DELETE("/admin/problem/:code/translations/:id", auth.RequireProblemEdit(), v2.ProblemTranslationDelete)
 			// Problem Data
 			admin.GET("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemData)
 			admin.POST("/admin/problem/:code/data", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataUpload)

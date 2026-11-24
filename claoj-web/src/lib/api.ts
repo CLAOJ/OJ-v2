@@ -312,6 +312,26 @@ export const problemClarificationApi = {
 };
 
 // ============================================================
+// PROBLEM TRANSLATION API
+// ============================================================
+
+import type { ProblemTranslation } from '@/types';
+
+export const problemTranslationApi = {
+    list: (problemCode: string) =>
+        api.get<{ data: ProblemTranslation[] }>(`/admin/problem/${problemCode}/translations`),
+
+    create: (problemCode: string, data: Omit<ProblemTranslation, 'id' | 'problem_id'>) =>
+        api.post<ProblemTranslation>(`/admin/problem/${problemCode}/translations`, data),
+
+    update: (problemCode: string, id: number, data: Omit<ProblemTranslation, 'id' | 'problem_id'>) =>
+        api.patch<ProblemTranslation>(`/admin/problem/${problemCode}/translations/${id}`, data),
+
+    delete: (problemCode: string, id: number) =>
+        api.delete<{ message: string }>(`/admin/problem/${problemCode}/translations/${id}`),
+};
+
+// ============================================================
 // BLOG VOTING API (Task #37)
 // ============================================================
 

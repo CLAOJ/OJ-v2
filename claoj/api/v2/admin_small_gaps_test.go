@@ -29,6 +29,7 @@ func setupSmallGapsDB(t *testing.T) (root, plain models.AuthUser, plainProfile m
 		&models.AuthPermission{}, &models.AuthUserGroup{}, &models.AuthGroupPermission{},
 		&models.AuthUserPermission{}, &models.Profile{}, &models.Organization{}, &models.Language{},
 		&models.ProblemGroup{}, &models.ProblemType{}, &models.Problem{}, &models.ProblemClarification{},
+		&models.ProblemTranslation{},
 		&models.Ticket{}, &models.TicketMessage{},
 	))
 	db.DB = database

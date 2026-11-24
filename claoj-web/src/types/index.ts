@@ -1020,6 +1020,18 @@ export interface ProblemClarification {
 }
 
 // ============================================================
+// PROBLEM TRANSLATION TYPES
+// ============================================================
+
+export interface ProblemTranslation {
+    id: number;
+    problem_id: number;
+    language: string;
+    name: string;
+    description: string;
+}
+
+// ============================================================
 // ADMIN COMMENT TYPES
 // ============================================================
 
