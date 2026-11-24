@@ -11,15 +11,47 @@ import (
 	"gorm.io/gorm"
 )
 
-// ParticipationList – GET /api/v2/participations
-// Supports ?contest=key and ?include_virtual=true filters. Returns one row per
-// participation with the contest key, username/display name, score, cumulative
-// time and the disqualification/virtual flags, plus the filtered row count so
-// the client can page.
+// ParticipationList – GET /api/v2/contest/:key/participations
+// Supports ?include_virtual=true filters. Returns one row per participation
+// with the contest key, username/display name, score, cumulative time and the
+// disqualification/virtual flags, plus the filtered row count so the client can
+// page. ?contest= is still accepted as a fallback for the pre-route URL.
 func ParticipationList(c *gin.Context) {
+	type Row struct {
+		ContestKey     string  `json:"contest"`
+		Username       string  `json:"user"`
+		DisplayName    string  `json:"display_name"`
+		Score          float64 `json:"score"`
+		Cumtime        uint    `json:"cumtime"`
+		IsDisqualified bool    `json:"is_disqualified"`
+		IsVirtual      bool    `json:"is_virtual"`
+	}
+
 	page, pageSize := parsePagination(c)
-	contestKey := c.Query("contest")
+	contestKey := c.Param("key")
+	if contestKey == "" {
+		contestKey = c.Query("contest")
+	}
 	includeVirtual := c.Query("include_virtual") == "true" || c.Query("include_virtual") == "1"
+
+	var ct models.Contest
+	if contestKey != "" {
+		if err := db.DB.Where("`key` = ?", contestKey).First(&ct).Error; err != nil {
+			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			return
+		}
+		// Organization-private contests must not leak their participants.
+		if !auth.CanViewContest(c, &ct) {
+			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			return
+		}
+		// v1 hides the whole scoreboard (and its participant list) while
+		// scoreboard_visibility says so.
+		if !auth.CanSeeContestScoreboard(c, &ct) {
+			c.JSON(http.StatusOK, gin.H{"results": []Row{}, "total": 0, "scoreboard_hidden": true})
+			return
+		}
+	}
 
 	// Only expose participations of contests the requesting user may see, so
 	// organization-private contests do not leak via their participant lists.
@@ -45,16 +77,6 @@ func ParticipationList(c *gin.Context) {
 	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
-	}
-
-	type Row struct {
-		ContestKey     string  `json:"contest"`
-		Username       string  `json:"user"`
-		DisplayName    string  `json:"display_name"`
-		Score          float64 `json:"score"`
-		Cumtime        uint    `json:"cumtime"`
-		IsDisqualified bool    `json:"is_disqualified"`
-		IsVirtual      bool    `json:"is_virtual"`
 	}
 
 	var rows []struct {

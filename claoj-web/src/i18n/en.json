@@ -322,7 +322,8 @@
     "showVirtual": "Virtual participants",
     "time": "Time",
     "disqualified": "Disqualified",
-    "noParticipants": "No participants yet."
+    "noParticipants": "No participants yet.",
+    "scoreboardHidden": "The scoreboard is hidden for now."
   },
   "Submissions": {
     "title": "Submissions",

@@ -80,7 +80,7 @@ func ContestList(c *gin.Context) {
 		return
 	}
 
-	sql += " ORDER BY start_time DESC LIMIT ? OFFSET ?"
+	sql += " ORDER BY start_time DESC, id DESC LIMIT ? OFFSET ?"
 	args = append(args, pageSize, (page-1)*pageSize)
 
 	if err := db.DB.Raw(sql, args...).Scan(&contests).Error; err != nil {

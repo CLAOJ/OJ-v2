@@ -35,6 +35,18 @@ func ContestRanking(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 		return
 	}
+	// scoreboard_visibility may keep the standings hidden for the duration of
+	// the contest (v1 can_see_full_scoreboard). Return no rows at all rather
+	// than a partial list that still leaks who is competing.
+	if !auth.CanSeeContestScoreboard(c, &ct) {
+		c.JSON(http.StatusOK, gin.H{
+			"contest":           ct.Key,
+			"problems":          []any{},
+			"rankings":          []any{},
+			"scoreboard_hidden": true,
+		})
+		return
+	}
 
 	// Fetch all participations for this contest.
 	// Usernames are resolved with an explicit JOIN below rather than

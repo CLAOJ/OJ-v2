@@ -9,6 +9,7 @@ import { Contest } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
+import { useDebounce } from '@/hooks/useDebounce';
 import { formatCountdown } from '@/lib/contestView';
 import { Link } from '@/navigation';
 import { useState, useEffect } from 'react';
@@ -37,6 +38,8 @@ export default function ContestsPageContent() {
     const { requireAuth } = useRequireAuth();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
+    // One request per pause in typing instead of one per keystroke.
+    const debouncedSearch = useDebounce(search, 300);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
     const [now, setNow] = useState(dayjs());
@@ -50,10 +53,10 @@ export default function ContestsPageContent() {
     // list pages instead of requesting everything in one call and silently
     // dropping every contest past the cap.
     const { data: contestsData, isLoading } = useQuery({
-        queryKey: ['contests', search, page, pageSize],
+        queryKey: ['contests', debouncedSearch, page, pageSize],
         queryFn: async () => {
             const res = await api.get<{ results: Contest[]; total: number }>('/contests', {
-                params: { search, page, page_size: pageSize }
+                params: { search: debouncedSearch, page, page_size: pageSize }
             });
             return res.data;
         }

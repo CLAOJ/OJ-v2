@@ -86,6 +86,7 @@ describe('buildScoreboardCsv', () => {
             username: 'alice',
             display_name: 'Alice "A" Liddell',
             organization: { short_name: 'ALPHA', name: 'Alpha Org' },
+            rating: 1500,
             score: 150,
             cumtime: 3725,
             breakdown: [{ points: 100, time: 60 }, { points: 50, time: 3600 }],
@@ -96,15 +97,38 @@ describe('buildScoreboardCsv', () => {
     it('emits the displayed columns and escapes quotes', () => {
         const csv = buildScoreboardCsv({ problems, rows, includeName: true, includeOrg: true });
         const lines = csv.split('\n');
-        expect(lines[0]).toBe('"Rank","Username","Name","Organization","Total","A","B","Window"');
+        expect(lines[0]).toBe('"Rank","Username","Name","Organization","Rating","Total","A","B","Window"');
         expect(lines[1]).toBe(
-            '"1","alice","Alice ""A"" Liddell","ALPHA","150","100 00:01:00","50 01:00:00","01:02:05"'
+            '"1","alice","Alice ""A"" Liddell","ALPHA","1500","150","100 00:01:00","50 01:00:00","01:02:05"'
         );
-        expect(lines[2]).toBe('"2","bob","bob","","0","","0","00:00:00"');
+        expect(lines[2]).toBe('"2","bob","bob","","","0","","0","00:00:00"');
     });
 
     it('drops name/org columns when toggled off', () => {
         const csv = buildScoreboardCsv({ problems, rows, includeName: false, includeOrg: false });
-        expect(csv.split('\n')[0]).toBe('"Rank","Username","Total","A","B","Window"');
+        expect(csv.split('\n')[0]).toBe('"Rank","Username","Rating","Total","A","B","Window"');
+    });
+
+    it('neutralises spreadsheet formula prefixes', () => {
+        const hostile = ['=1+1', '+cmd', '-2+3', '@SUM(A1)', '\tlead'].map((username, i) => ({
+            rank: i + 1,
+            username,
+            score: 0,
+            cumtime: 0,
+        }));
+        const csv = buildScoreboardCsv({
+            problems: [],
+            rows: hostile,
+            includeName: false,
+            includeOrg: false,
+        });
+        const cells = csv.split('\n').slice(1).map(line => line.split(',')[1]);
+        expect(cells).toEqual([
+            '"\'=1+1"',
+            '"\'+cmd"',
+            '"\'-2+3"',
+            '"\'@SUM(A1)"',
+            '"\'\tlead"',
+        ]);
     });
 });

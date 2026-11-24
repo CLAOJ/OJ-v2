@@ -2,7 +2,10 @@
 package auth
 
 import (
+	"time"
+
 	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -96,4 +99,77 @@ func userInContestOrg(contestID, profileID uint) bool {
 		Where("co.contest_id = ? AND po.profile_id = ?", contestID, profileID).
 		Count(&count)
 	return count > 0
+}
+
+// Contest scoreboard_visibility values (judge/models/contest.py:63-66).
+const (
+	scoreboardAfterContest       = "C"
+	scoreboardAfterParticipation = "P"
+)
+
+// CanSeeContestScoreboard mirrors Contest.can_see_full_scoreboard
+// (OJ/judge/models/contest.py:245-274). The full scoreboard is public once the
+// contest has started unless scoreboard_visibility hides it for the duration:
+//
+//	V – always visible once started
+//	C – hidden until the contest ends
+//	P – hidden until the viewer's own live participation has ended (per-user
+//	    window for time-limited contests, otherwise the contest end)
+//
+// Superusers, holders of see_private_contest / edit_all_contest, contest
+// authors/curators and the per-contest scoreboard viewers always see it.
+// Callers must return no standings at all when this reports false: a partial
+// list would still leak who is competing.
+func CanSeeContestScoreboard(c *gin.Context, contest *models.Contest) bool {
+	now := time.Now()
+	if !now.Before(contest.StartTime) {
+		hiddenForDuration := contest.ScoreboardVisibility == scoreboardAfterContest ||
+			contest.ScoreboardVisibility == scoreboardAfterParticipation
+		if !hiddenForDuration || !now.Before(contest.EndTime) {
+			return true
+		}
+	}
+
+	access := GetAccess(c)
+	if access.IsSuperuser && access.IsActive {
+		return true
+	}
+	if access.HasPerm("judge.see_private_contest") || access.HasPerm("judge.edit_all_contest") {
+		return true
+	}
+
+	profileID, ok := CurrentProfileID(c)
+	if !ok {
+		return false
+	}
+	if contestHasMember(contest.ID, "judge_contest_authors", profileID) ||
+		contestHasMember(contest.ID, "judge_contest_curators", profileID) ||
+		contestHasMember(contest.ID, "judge_contest_view_contest_scoreboard", profileID) {
+		return true
+	}
+	return contest.ScoreboardVisibility == scoreboardAfterParticipation && hasEndedLiveParticipation(contest, profileID, now)
+}
+
+// hasEndedLiveParticipation mirrors Contest.has_completed_contest: a live
+// (virtual = 0) participation whose ContestParticipation.end_time has passed —
+// real_start + time_limit for time-limited contests, otherwise contest end.
+func hasEndedLiveParticipation(contest *models.Contest, profileID uint, now time.Time) bool {
+	var participations []models.ContestParticipation
+	if err := db.DB.
+		Where("contest_id = ? AND user_id = ? AND virtual = 0", contest.ID, profileID).
+		Find(&participations).Error; err != nil {
+		return false
+	}
+	for _, p := range participations {
+		end := contest.EndTime
+		if contest.TimeLimit != nil && *contest.TimeLimit > 0 {
+			if windowEnd := p.RealStart.Add(time.Duration(*contest.TimeLimit) * time.Microsecond); windowEnd.Before(end) {
+				end = windowEnd
+			}
+		}
+		if end.Before(now) {
+			return true
+		}
+	}
+	return false
 }

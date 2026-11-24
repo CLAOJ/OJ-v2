@@ -121,3 +121,118 @@ func TestContestRanking_IncludeVirtualToggle(t *testing.T) {
 	// No display-name override: v1 falls back to the username.
 	require.Equal(t, "bob", rows[1]["display_name"])
 }
+
+type rankingPayload struct {
+	Rankings         []map[string]any `json:"rankings"`
+	ScoreboardHidden bool             `json:"scoreboard_hidden"`
+}
+
+// getRankingPayload hits the ranking endpoint as an anonymous visitor or as
+// userID (which the auth helpers resolve from the DB).
+func getRankingPayload(t *testing.T, target string, userID *uint) rankingPayload {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler := ContestRanking
+	if userID != nil {
+		handler = func(c *gin.Context) {
+			c.Set("user_id", *userID)
+			ContestRanking(c)
+		}
+	}
+	router.Handle(http.MethodGet, "/contest/:key/ranking", handler)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body rankingPayload
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	return body
+}
+
+func setScoreboardVisibility(t *testing.T, contestID uint, visibility string) {
+	t.Helper()
+	require.NoError(t, db.DB.Model(&models.Contest{}).
+		Where("id = ?", contestID).Update("scoreboard_visibility", visibility).Error)
+}
+
+// 'C' hides the standings until the contest ends and 'P' hides them until the
+// viewer's own participation ends; anonymous visitors never see them.
+func TestContestRanking_HiddenForDuration(t *testing.T) {
+	f := setupRankingDB(t)
+	setScoreboardVisibility(t, f.contest.ID, "C")
+
+	hidden := getRankingPayload(t, "/contest/c1/ranking", nil)
+	require.True(t, hidden.ScoreboardHidden)
+	require.Empty(t, hidden.Rankings)
+
+	setScoreboardVisibility(t, f.contest.ID, "P")
+	hidden = getRankingPayload(t, "/contest/c1/ranking", nil)
+	require.True(t, hidden.ScoreboardHidden)
+	require.Empty(t, hidden.Rankings)
+
+	setScoreboardVisibility(t, f.contest.ID, "V")
+	visible := getRankingPayload(t, "/contest/c1/ranking", nil)
+	require.False(t, visible.ScoreboardHidden)
+	require.Len(t, visible.Rankings, 1)
+}
+
+// The scoreboard stays hidden before the start time even when 'V'.
+func TestContestRanking_HiddenBeforeStart(t *testing.T) {
+	f := setupRankingDB(t)
+	now := time.Now()
+	require.NoError(t, db.DB.Model(&models.Contest{}).Where("id = ?", f.contest.ID).
+		Updates(map[string]any{"start_time": now.Add(time.Hour), "end_time": now.Add(2 * time.Hour)}).Error)
+
+	hidden := getRankingPayload(t, "/contest/c1/ranking", nil)
+	require.True(t, hidden.ScoreboardHidden)
+	require.Empty(t, hidden.Rankings)
+}
+
+func TestContestRanking_CVisibleAfterContestEnds(t *testing.T) {
+	f := setupRankingDB(t)
+	setScoreboardVisibility(t, f.contest.ID, "C")
+	now := time.Now()
+	require.NoError(t, db.DB.Model(&models.Contest{}).Where("id = ?", f.contest.ID).
+		Updates(map[string]any{"start_time": now.Add(-2 * time.Hour), "end_time": now.Add(-time.Hour)}).Error)
+
+	visible := getRankingPayload(t, "/contest/c1/ranking", nil)
+	require.False(t, visible.ScoreboardHidden)
+	require.Len(t, visible.Rankings, 1)
+}
+
+// 'P' opens for a participant once their per-user window has elapsed, not
+// before (v1 Contest.has_completed_contest).
+func TestContestRanking_PVisibleAfterOwnWindowEnds(t *testing.T) {
+	f := setupRankingDB(t)
+	setScoreboardVisibility(t, f.contest.ID, "P")
+	limit := int64(time.Hour.Microseconds())
+	require.NoError(t, db.DB.Model(&models.Contest{}).Where("id = ?", f.contest.ID).
+		Update("time_limit", limit).Error)
+
+	// Alice's participation started just now with a one-hour window: still open.
+	stillOpen := getRankingPayload(t, "/contest/c1/ranking", &f.liveUser.ID)
+	require.True(t, stillOpen.ScoreboardHidden)
+
+	// Shift the participation start back past its window; the contest itself is
+	// still running, so only the completed participation can reveal the board.
+	require.NoError(t, db.DB.Model(&models.ContestParticipation{}).
+		Where("contest_id = ? AND virtual = 0", f.contest.ID).
+		Update("start", time.Now().Add(-2*time.Hour)).Error)
+
+	visible := getRankingPayload(t, "/contest/c1/ranking", &f.liveUser.ID)
+	require.False(t, visible.ScoreboardHidden)
+	require.Len(t, visible.Rankings, 1)
+}
+
+// Judges with see_private_contest bypass the duration gate (v1 permission
+// short-circuit).
+func TestContestRanking_PrivilegedSeesHiddenStandings(t *testing.T) {
+	f := setupRankingDB(t)
+	setScoreboardVisibility(t, f.contest.ID, "C")
+	judge := createContestTestUser(t, "judge")
+	grantContestPerm(t, judge.UserID, "see_private_contest")
+
+	visible := getRankingPayload(t, "/contest/c1/ranking", &judge.UserID)
+	require.False(t, visible.ScoreboardHidden)
+	require.Len(t, visible.Rankings, 1)
+}

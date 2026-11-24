@@ -322,7 +322,8 @@
     "showVirtual": "Thí sinh ảo",
     "time": "Thời gian",
     "disqualified": "Bị loại",
-    "noParticipants": "Chưa có thí sinh tham gia."
+    "noParticipants": "Chưa có thí sinh tham gia.",
+    "scoreboardHidden": "Bảng điểm hiện đang được ẩn."
   },
   "Submissions": {
     "title": "Bài nộp",

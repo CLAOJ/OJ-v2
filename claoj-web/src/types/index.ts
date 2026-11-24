@@ -130,6 +130,7 @@ export interface Contest {
     end_time: string;
     is_rated: boolean;
     format?: string;
+    /** Microseconds (Django DurationField). The admin API uses seconds. */
     time_limit?: number;
     user_count: number;
     is_joined: boolean;
@@ -204,6 +205,8 @@ export interface RankingResponse {
     contest: string;
     problems: { label: string; points: number }[];
     rankings: RankingRow[];
+    /** Set when scoreboard_visibility hides the standings for now. */
+    scoreboard_hidden?: boolean;
 }
 
 /** GET /contest/:key/participations row. */

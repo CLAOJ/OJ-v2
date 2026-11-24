@@ -74,7 +74,10 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
 
     const selectTab = (tab: ContestTab) => {
         setActiveTab(tab);
-        router.replace(`${pathname}?tab=${tab}`, { scroll: false });
+        // Keep any other query params (e.g. a future ?from= link) intact.
+        const next = new URLSearchParams(searchParams.toString());
+        next.set('tab', tab);
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     };
 
     const { data: contest, isLoading: isFetching } = useQuery({
@@ -107,7 +110,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     const { data: participations, isLoading: isParticipationsFetching } = useQuery({
         queryKey: ['contest-participations', key, includeVirtual, participationPage],
         queryFn: async () => {
-            const res = await api.get<{ results: ContestParticipation[]; total: number }>(
+            const res = await api.get<{ results: ContestParticipation[]; total: number; scoreboard_hidden?: boolean }>(
                 `/contest/${key}/participations`,
                 {
                     params: {
@@ -197,7 +200,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         link.href = url;
         link.download = `ranking_${key}.csv`;
         link.click();
-        URL.revokeObjectURL(url);
+        // Revoking synchronously can cancel the download in some browsers.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     };
 
     return (
@@ -647,6 +651,9 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     </tfoot>
                                 )}
                             </table>
+                            {ranking?.scoreboard_hidden && (
+                                <p className="p-12 text-center text-sm text-muted-foreground">{t('scoreboardHidden')}</p>
+                            )}
                             {isRankingFetching && (
                                 <div className="p-24 space-y-4">
                                     <Skeleton className="h-16 w-full rounded-md" />
@@ -736,10 +743,12 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 </div>
                             )}
                             {participations && participations.results.length === 0 && !isParticipationsFetching && (
-                                <p className="p-12 text-center text-sm text-muted-foreground">{t('noParticipants')}</p>
+                                <p className="p-12 text-center text-sm text-muted-foreground">
+                                    {participations.scoreboard_hidden ? t('scoreboardHidden') : t('noParticipants')}
+                                </p>
                             )}
                         </div>
-                        {participations && (
+                        {participations && !participations.scoreboard_hidden && (
                             <PaginationBar
                                 page={participationPage}
                                 onPageChange={setParticipationPage}

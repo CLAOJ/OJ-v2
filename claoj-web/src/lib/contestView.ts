@@ -58,6 +58,7 @@ export interface ScoreboardCsvInput {
         username: string;
         display_name?: string;
         organization?: { short_name?: string; name?: string } | null;
+        rating?: number | null;
         score: number;
         cumtime: number;
         breakdown?: ({ points?: number; time?: number } | null)[];
@@ -66,22 +67,32 @@ export interface ScoreboardCsvInput {
     includeOrg: boolean;
 }
 
+/**
+ * Quoted RFC-4180 cell. Excel/LibreOffice still evaluate a quoted cell that
+ * starts with =, +, - or @ (or a tab), so string cells with those prefixes get
+ * a leading apostrophe; usernames and display names are user-controlled.
+ */
 function csvCell(value: string | number): string {
-    return `"${String(value).replace(/[\r\n]+/g, ' ').replace(/"/g, '""')}"`;
+    let text = String(value).replace(/[\r\n]+/g, ' ');
+    if (typeof value === 'string' && /^[=+\-@\t]/.test(text)) {
+        text = `'${text}`;
+    }
+    return `"${text.replace(/"/g, '""')}"`;
 }
 
-/** The scoreboard exactly as displayed (same toggles), as RFC-4180 CSV text. */
+/** The scoreboard's current view (same toggles), as RFC-4180 CSV text. */
 export function buildScoreboardCsv(input: ScoreboardCsvInput): string {
     const header = ['Rank', 'Username'];
     if (input.includeName) header.push('Name');
     if (input.includeOrg) header.push('Organization');
-    header.push('Total', ...input.problems.map(p => p.label), 'Window');
+    header.push('Rating', 'Total', ...input.problems.map(p => p.label), 'Window');
 
     const lines = [header.map(csvCell).join(',')];
     for (const row of input.rows) {
         const cells: (string | number)[] = [row.rank, row.username];
         if (input.includeName) cells.push(row.display_name || row.username);
         if (input.includeOrg) cells.push(row.organization?.short_name || row.organization?.name || '');
+        cells.push(row.rating ?? '');
         cells.push(row.score);
         input.problems.forEach((_, i) => {
             const cell = row.breakdown?.[i];
