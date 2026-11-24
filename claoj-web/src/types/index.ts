@@ -291,18 +291,24 @@ export interface ContestTag {
     description: string;
 }
 
-export interface AdminContestTag extends ContestTag {}
+export interface AdminContestTag extends ContestTag {
+    contest_count?: number;
+    contest_ids?: number[];
+    contests?: { id: number; key: string; name: string }[];
+}
 
 export interface AdminContestTagCreateRequest {
     name: string;
     color: string;
     description?: string;
+    contest_ids?: number[];
 }
 
 export interface AdminContestTagUpdateRequest {
     name?: string;
     color?: string;
     description?: string;
+    contest_ids?: number[];
 }
 
 export interface AdminUserGroupRef {
@@ -1439,12 +1445,16 @@ export interface AdminProblemGroup {
     id: number;
     name: string;
     full_name: string;
+    problem_count?: number;
 }
 
 export interface AdminProblemType {
     id: number;
     name: string;
     full_name: string;
+    problem_count?: number;
+    problem_ids?: number[];
+    problems?: { id: number; code: string; name: string }[];
 }
 
 export interface AdminProblemGroupCreateRequest {
@@ -1455,6 +1465,7 @@ export interface AdminProblemGroupCreateRequest {
 export interface AdminProblemTypeCreateRequest {
     name: string;
     full_name: string;
+    problem_ids?: number[];
 }
 
 export interface AdminProblemGroupUpdateRequest {
@@ -1463,6 +1474,7 @@ export interface AdminProblemGroupUpdateRequest {
 
 export interface AdminProblemTypeUpdateRequest {
     full_name?: string;
+    problem_ids?: number[];
 }
 
 // ============================================================

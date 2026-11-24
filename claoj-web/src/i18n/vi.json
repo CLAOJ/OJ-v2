@@ -1450,7 +1450,10 @@
       "previewNameFallback": "ten-the",
       "previewDescFallback": "Mô tả thẻ",
       "savingButton": "Đang lưu...",
-      "nameRequiredAlert": "Tên thẻ là bắt buộc"
+      "nameRequiredAlert": "Tên thẻ là bắt buộc",
+      "includedContests": "Kỳ thi bao gồm",
+      "includedContestsCount": "{count} kỳ thi",
+      "loadDetailFailed": "Không tải được thông tin thẻ"
     },
     "problems": {
       "title": "Bài tập",
@@ -1843,10 +1846,16 @@
       "subtitle": "Quản lý nhóm và dạng bài",
       "groupsTab": "Nhóm bài tập ({count})",
       "typesTab": "Dạng bài ({count})",
+      "searchGroupsPlaceholder": "Tìm nhóm bài tập...",
+      "searchTypesPlaceholder": "Tìm dạng bài...",
       "addGroupButton": "Thêm nhóm",
       "addTypeButton": "Thêm loại",
       "colName": "Tên",
       "colFullName": "Tên đầy đủ",
+      "colProblems": "Bài tập",
+      "includedProblems": "Bài tập bao gồm",
+      "includedProblemsCount": "{count} bài tập",
+      "viewProblems": "Xem bài tập",
       "noGroupsFound": "Không tìm thấy nhóm bài tập nào",
       "noTypesFound": "Không tìm thấy dạng bài nào",
       "createGroupTitle": "Tạo nhóm bài tập",

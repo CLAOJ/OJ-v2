@@ -1450,7 +1450,10 @@
       "previewNameFallback": "tag-name",
       "previewDescFallback": "Tag description",
       "savingButton": "Saving...",
-      "nameRequiredAlert": "Tag name is required"
+      "nameRequiredAlert": "Tag name is required",
+      "includedContests": "Included contests",
+      "includedContestsCount": "{count, plural, one {# contest} other {# contests}}",
+      "loadDetailFailed": "Failed to load tag details"
     },
     "problems": {
       "title": "Problems",
@@ -1843,10 +1846,16 @@
       "subtitle": "Manage problem groups and types",
       "groupsTab": "Problem Groups ({count})",
       "typesTab": "Problem Types ({count})",
+      "searchGroupsPlaceholder": "Search problem groups...",
+      "searchTypesPlaceholder": "Search problem types...",
       "addGroupButton": "Add Group",
       "addTypeButton": "Add Type",
       "colName": "Name",
       "colFullName": "Full Name",
+      "colProblems": "Problems",
+      "includedProblems": "Included problems",
+      "includedProblemsCount": "{count, plural, one {# problem} other {# problems}}",
+      "viewProblems": "View problems",
       "noGroupsFound": "No problem groups found",
       "noTypesFound": "No problem types found",
       "createGroupTitle": "Create Problem Group",

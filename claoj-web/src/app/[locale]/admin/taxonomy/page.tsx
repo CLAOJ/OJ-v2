@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { adminProblemGroupApi, adminProblemTypeApi } from '@/lib/adminApi';
+import { searchProblems } from '@/lib/adminSearch';
+import { EntityPicker, EntityOption } from '@/components/admin/EntityPicker';
 import { AdminProblemGroup, AdminProblemType, AdminProblemGroupCreateRequest, AdminProblemTypeCreateRequest } from '@/types';
+import { Link } from '@/navigation';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -37,9 +41,11 @@ export default function ProblemTaxonomyAdminPage() {
     const [groups, setGroups] = useState<AdminProblemGroup[]>([]);
     const [groupTotal, setGroupTotal] = useState(0);
     const [groupPage, setGroupPage] = useState(1);
+    const [groupSearch, setGroupSearch] = useState('');
     const [groupLoading, setGroupLoading] = useState(false);
     const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<AdminProblemGroup | null>(null);
+    const [editingGroupProblemCount, setEditingGroupProblemCount] = useState<number | null>(null);
     const [isEditGroupDialogOpen, setIsEditGroupDialogOpen] = useState(false);
     const [deleteGroupConfirmId, setDeleteGroupConfirmId] = useState<number | null>(null);
     const [groupFormData, setGroupFormData] = useState<AdminProblemGroupCreateRequest>({
@@ -51,20 +57,26 @@ export default function ProblemTaxonomyAdminPage() {
     const [types, setTypes] = useState<AdminProblemType[]>([]);
     const [typeTotal, setTypeTotal] = useState(0);
     const [typePage, setTypePage] = useState(1);
+    const [typeSearch, setTypeSearch] = useState('');
     const [typeLoading, setTypeLoading] = useState(false);
     const [isCreateTypeDialogOpen, setIsCreateTypeDialogOpen] = useState(false);
     const [editingType, setEditingType] = useState<AdminProblemType | null>(null);
+    const [typeProblemOptions, setTypeProblemOptions] = useState<EntityOption[]>([]);
     const [isEditTypeDialogOpen, setIsEditTypeDialogOpen] = useState(false);
     const [deleteTypeConfirmId, setDeleteTypeConfirmId] = useState<number | null>(null);
     const [typeFormData, setTypeFormData] = useState<AdminProblemTypeCreateRequest>({
         name: '',
         full_name: '',
+        problem_ids: [],
     });
+
+    const groupSearchDebounced = useDebounce(groupSearch.trim(), 300);
+    const typeSearchDebounced = useDebounce(typeSearch.trim(), 300);
 
     const loadGroups = async () => {
         setGroupLoading(true);
         try {
-            const response = await adminProblemGroupApi.list(groupPage, 20);
+            const response = await adminProblemGroupApi.list(groupPage, 20, groupSearchDebounced);
             setGroups(response.data.data);
             setGroupTotal(response.data.total);
         } catch (error) {
@@ -77,7 +89,7 @@ export default function ProblemTaxonomyAdminPage() {
     const loadTypes = async () => {
         setTypeLoading(true);
         try {
-            const response = await adminProblemTypeApi.list(typePage, 20);
+            const response = await adminProblemTypeApi.list(typePage, 20, typeSearchDebounced);
             setTypes(response.data.data);
             setTypeTotal(response.data.total);
         } catch (error) {
@@ -93,11 +105,13 @@ export default function ProblemTaxonomyAdminPage() {
         } else {
             loadTypes();
         }
-    }, [activeTab, groupPage, typePage]);
+    }, [activeTab, groupPage, typePage, groupSearchDebounced, typeSearchDebounced]);
 
     // Group handlers
     const openCreateGroupDialog = () => {
         setGroupFormData({ name: '', full_name: '' });
+        setEditingGroup(null);
+        setEditingGroupProblemCount(null);
         setIsCreateGroupDialogOpen(true);
     };
 
@@ -107,6 +121,7 @@ export default function ProblemTaxonomyAdminPage() {
             name: response.data.name,
             full_name: response.data.full_name,
         });
+        setEditingGroupProblemCount(response.data.problem_count ?? 0);
         setEditingGroup(group);
         setIsEditGroupDialogOpen(true);
     };
@@ -147,7 +162,9 @@ export default function ProblemTaxonomyAdminPage() {
 
     // Type handlers
     const openCreateTypeDialog = () => {
-        setTypeFormData({ name: '', full_name: '' });
+        setTypeFormData({ name: '', full_name: '', problem_ids: [] });
+        setTypeProblemOptions([]);
+        setEditingType(null);
         setIsCreateTypeDialogOpen(true);
     };
 
@@ -156,7 +173,9 @@ export default function ProblemTaxonomyAdminPage() {
         setTypeFormData({
             name: response.data.name,
             full_name: response.data.full_name,
+            problem_ids: response.data.problem_ids ?? [],
         });
+        setTypeProblemOptions((response.data.problems ?? []).map((p) => ({ id: p.id, label: p.code, detail: p.name })));
         setEditingType(ptype);
         setIsEditTypeDialogOpen(true);
     };
@@ -175,7 +194,10 @@ export default function ProblemTaxonomyAdminPage() {
     const handleUpdateType = async () => {
         if (!editingType) return;
         try {
-            await adminProblemTypeApi.update(editingType.id, { full_name: typeFormData.full_name });
+            await adminProblemTypeApi.update(editingType.id, {
+                full_name: typeFormData.full_name,
+                problem_ids: typeFormData.problem_ids,
+            });
             toast.success(t('taxonomy.typeUpdated'));
             setIsEditTypeDialogOpen(false);
             loadTypes();
@@ -232,7 +254,20 @@ export default function ProblemTaxonomyAdminPage() {
             {/* Problem Groups Tab */}
             {activeTab === 'groups' && (
                 <div className="space-y-4">
-                    <div className="flex justify-end">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                value={groupSearch}
+                                onChange={(e) => {
+                                    setGroupSearch(e.target.value);
+                                    setGroupPage(1);
+                                }}
+                                placeholder={t('taxonomy.searchGroupsPlaceholder')}
+                                className="pl-9"
+                                aria-label={t('taxonomy.searchGroupsPlaceholder')}
+                            />
+                        </div>
                         <Button onClick={openCreateGroupDialog}>
                             <Plus className="h-4 w-4 mr-2" />
                             {t('taxonomy.addGroupButton')}
@@ -326,7 +361,20 @@ export default function ProblemTaxonomyAdminPage() {
             {/* Problem Types Tab */}
             {activeTab === 'types' && (
                 <div className="space-y-4">
-                    <div className="flex justify-end">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                value={typeSearch}
+                                onChange={(e) => {
+                                    setTypeSearch(e.target.value);
+                                    setTypePage(1);
+                                }}
+                                placeholder={t('taxonomy.searchTypesPlaceholder')}
+                                className="pl-9"
+                                aria-label={t('taxonomy.searchTypesPlaceholder')}
+                            />
+                        </div>
                         <Button onClick={openCreateTypeDialog}>
                             <Plus className="h-4 w-4 mr-2" />
                             {t('taxonomy.addTypeButton')}
@@ -339,19 +387,20 @@ export default function ProblemTaxonomyAdminPage() {
                                 <TableRow>
                                     <TableHead>{t('taxonomy.colName')}</TableHead>
                                     <TableHead>{t('taxonomy.colFullName')}</TableHead>
+                                    <TableHead className="text-right">{t('taxonomy.colProblems')}</TableHead>
                                     <TableHead className="text-right">{t('common.actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {typeLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8">
+                                        <TableCell colSpan={4} className="text-center py-8">
                                             {t('common.loading')}
                                         </TableCell>
                                     </TableRow>
                                 ) : types.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                             {t('taxonomy.noTypesFound')}
                                         </TableCell>
                                     </TableRow>
@@ -360,6 +409,9 @@ export default function ProblemTaxonomyAdminPage() {
                                         <TableRow key={ptype.id}>
                                             <TableCell className="font-mono font-bold">{ptype.name}</TableCell>
                                             <TableCell>{ptype.full_name}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant="secondary">{ptype.problem_count ?? 0}</Badge>
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <Button
@@ -451,6 +503,17 @@ export default function ProblemTaxonomyAdminPage() {
                                 placeholder={t('taxonomy.groupFullNamePlaceholder')}
                             />
                         </div>
+                        {editingGroup && editingGroupProblemCount !== null && (
+                            <div className="text-sm text-muted-foreground">
+                                {t('taxonomy.includedProblemsCount', { count: editingGroupProblemCount })}{' '}
+                                <Link
+                                    href={`/admin/problems?group_id=${editingGroup.id}`}
+                                    className="text-primary hover:underline"
+                                >
+                                    {t('taxonomy.viewProblems')}
+                                </Link>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => {
@@ -500,6 +563,15 @@ export default function ProblemTaxonomyAdminPage() {
                                 placeholder={t('taxonomy.typeFullNamePlaceholder')}
                             />
                         </div>
+                        <EntityPicker
+                            id="type_problems"
+                            label={t('taxonomy.includedProblems')}
+                            value={typeFormData.problem_ids ?? []}
+                            onChange={(ids) => setTypeFormData({ ...typeFormData, problem_ids: ids })}
+                            search={searchProblems}
+                            queryKey="problems"
+                            initialOptions={typeProblemOptions}
+                        />
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => {

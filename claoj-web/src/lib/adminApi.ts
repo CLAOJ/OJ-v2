@@ -715,8 +715,8 @@ export const adminLicenseApi = {
 
 
 export const adminProblemGroupApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminProblemGroupListResponse>(`/admin/problem-groups?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminProblemGroupListResponse>(`/admin/problem-groups?${qs({ page, page_size: pageSize, search })}`),
 
     detail: (id: number) =>
         api.get<AdminProblemGroup>(`/admin/problem-group/${id}`),
@@ -732,8 +732,8 @@ export const adminProblemGroupApi = {
 };
 
 export const adminProblemTypeApi = {
-    list: (page: number = 1, pageSize: number = 50) =>
-        api.get<AdminProblemTypeListResponse>(`/admin/problem-types?page=${page}&page_size=${pageSize}`),
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminProblemTypeListResponse>(`/admin/problem-types?${qs({ page, page_size: pageSize, search })}`),
 
     detail: (id: number) =>
         api.get<AdminProblemType>(`/admin/problem-type/${id}`),

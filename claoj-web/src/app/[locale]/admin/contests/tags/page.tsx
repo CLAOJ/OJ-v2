@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
+import { searchContests } from '@/lib/adminSearch';
+import { EntityPicker } from '@/components/admin/EntityPicker';
 import { AdminContestTag, AdminContestTagCreateRequest, AdminContestTagUpdateRequest } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -65,6 +67,17 @@ export default function AdminContestTagsPage() {
     });
 
     const tags = data?.data || [];
+
+    // The list row has no included ids, so the edit modal loads the detail first.
+    const openEditTag = async (tag: AdminContestTag) => {
+        try {
+            const res = await api.get<AdminContestTag>(`/admin/contest-tag/${tag.id}`);
+            setEditingTag({ ...tag, ...res.data });
+        } catch {
+            // Never open with an unknown selection: saving would clear the tag's contests.
+            alert(t('contestTags.loadDetailFailed'));
+        }
+    };
 
     const filteredTags = tags.filter(t =>
         t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,8 +169,11 @@ export default function AdminContestTagsPage() {
                                         >
                                             {tag.name}
                                         </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                            {t('contestTags.includedContestsCount', { count: tag.contest_count ?? 0 })}
+                                        </span>
                                         <button
-                                            onClick={() => setEditingTag(tag)}
+                                            onClick={() => openEditTag(tag)}
                                             className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                             title={t('contestTags.editTitle')}
                                         >
@@ -235,6 +251,10 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
     const [name, setName] = useState(tag?.name || '');
     const [color, setColor] = useState(tag?.color || '#3b82f6');
     const [description, setDescription] = useState(tag?.description || '');
+    const [contestIds, setContestIds] = useState<number[]>(tag?.contest_ids ?? []);
+    const [contestOptions] = useState(
+        () => (tag?.contests ?? []).map((c) => ({ id: c.id, label: c.key, detail: c.name })),
+    );
 
     const handleSubmit = () => {
         if (!name.trim()) {
@@ -245,6 +265,7 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
             name: name.trim(),
             color,
             description: description.trim(),
+            contest_ids: contestIds,
         });
     };
 
@@ -311,6 +332,16 @@ function CreateEditTagModal({ tag, onClose, onSubmit, isLoading }: CreateEditTag
                             onChange={(e) => setDescription(e.target.value)}
                         />
                     </div>
+
+                    <EntityPicker
+                        id="tag_contests"
+                        label={t('contestTags.includedContests')}
+                        value={contestIds}
+                        onChange={setContestIds}
+                        search={searchContests}
+                        queryKey="contests"
+                        initialOptions={contestOptions}
+                    />
 
                     {/* Preview */}
                     <div className="pt-2">
