@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminSubmissionApi, adminErrorMessage } from '@/lib/adminApi';
@@ -23,6 +23,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { getStatusVariant, cn } from '@/lib/utils';
+import { formatMemoryMb } from '@/lib/submissionDetail';
 
 const FILTER_KEYS = ['user', 'problem', 'result', 'status', 'language'] as const;
 const PAGE_SIZE = 50;
@@ -34,6 +35,8 @@ export default function AdminSubmissionPage() {
     const [batchPreview, setBatchPreview] = useState<{ count: number; message: string } | null>(null);
     const [isExecutingBatch, setIsExecutingBatch] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+    const [selected, setSelected] = useState<number[]>([]);
+    const [showBulkDelete, setShowBulkDelete] = useState(false);
     const queryClient = useQueryClient();
 
     const { page, filters, setFilters, setPage, reset } = useListParams(FILTER_KEYS);
@@ -46,7 +49,6 @@ export default function AdminSubmissionPage() {
     const userFilter = filters.user ?? '';
     const problemFilter = filters.problem ?? '';
     const langFilter = filters.language ?? '';
-    const verdictFilter = filters.result ?? filters.status ?? '';
 
     const rejudgeMutation = useMutation({
         mutationFn: (id: number) => adminSubmissionApi.rejudge(id),
@@ -94,7 +96,29 @@ export default function AdminSubmissionPage() {
 
     const submissions = data?.data || [];
 
-    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'AB', 'QU', 'P', 'G'];
+    // A filtered or paged list invalidates the previous selection.
+    useEffect(() => {
+        setSelected([]);
+    }, [page, debounced]);
+
+    const bulkDeleteMutation = useMutation({
+        mutationFn: (ids: number[]) => adminSubmissionApi.bulkDelete(ids),
+        onSuccess: (res) => {
+            toast.success(t('submissions.bulkDeleteSuccess', { count: res.data.deleted }));
+            setSelected([]);
+            setShowBulkDelete(false);
+            queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
+        },
+        onError: (err) => toast.error(adminErrorMessage(err, t('submissions.bulkDeleteError'))),
+    });
+
+    const deletable = submissions.filter(s => !STATUS_CODES.includes(s.status));
+    const allSelected = deletable.length > 0 && selected.length === deletable.length;
+    const toggleSelected = (id: number) =>
+        setSelected(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
+
+    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'AB'];
+    const statuses = ['QU', 'P', 'G', 'D', 'IE', 'CE', 'AB'];
 
     // Batch rejudge preview
     const handleBatchPreview = async () => {
@@ -115,8 +139,8 @@ export default function AdminSubmissionPage() {
                 dry_run: true
             });
             setBatchPreview({ count: res.data.count, message: res.data.message });
-        } catch (err: any) {
-            setBatchPreview({ count: 0, message: err.response?.data?.error || t('submissions.previewError') });
+        } catch (err) {
+            setBatchPreview({ count: 0, message: adminErrorMessage(err, t('submissions.previewError')) });
         }
     };
 
@@ -142,8 +166,8 @@ export default function AdminSubmissionPage() {
             setShowBatchModal(false);
             setBatchPreview(null);
             refetch();
-        } catch (err: any) {
-            alert(`${t('submissions.errorPrefix')}${err.response?.data?.error || t('submissions.batchRejudgeError')}`);
+        } catch (err) {
+            alert(`${t('submissions.errorPrefix')}${adminErrorMessage(err, t('submissions.batchRejudgeError'))}`);
         } finally {
             setIsExecutingBatch(false);
         }
@@ -178,6 +202,13 @@ export default function AdminSubmissionPage() {
                         className="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                         <RefreshCw size={18} /> {t('submissions.batchRejudgeButton')}
+                    </button>
+                    <button
+                        onClick={() => setShowBulkDelete(true)}
+                        disabled={selected.length === 0}
+                        className="px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <Trash2 size={18} /> {t('submissions.bulkDeleteButton', { count: selected.length })}
                     </button>
                     <button
                         onClick={() => reset()}
@@ -245,7 +276,7 @@ export default function AdminSubmissionPage() {
             )}
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 rounded-md bg-card border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 p-6 rounded-md bg-card border">
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.usernameLabel')}</label>
                     <div className="relative">
@@ -275,14 +306,23 @@ export default function AdminSubmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.verdictLabel')}</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.statusLabel')}</label>
                     <select
                         className="w-full h-10 px-3 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
-                        value={verdictFilter}
-                        onChange={(e) => {
-                            const v = e.target.value;
-                            setFilters(STATUS_CODES.includes(v) ? { status: v, result: '' } : { result: v, status: '' });
-                        }}
+                        value={filters.status ?? ''}
+                        onChange={(e) => setFilters({ status: e.target.value })}
+                    >
+                        <option value="">{t('submissions.allStatusesOption')}</option>
+                        {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('submissions.resultLabel')}</label>
+                    <select
+                        className="w-full h-10 px-3 rounded-xl bg-muted/30 border focus:ring-2 focus:ring-primary/20 outline-none"
+                        value={filters.result ?? ''}
+                        onChange={(e) => setFilters({ result: e.target.value })}
                     >
                         <option value="">{t('submissions.allResultsOption')}</option>
                         {results.map(r => <option key={r} value={r}>{r}</option>)}
@@ -307,25 +347,47 @@ export default function AdminSubmissionPage() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-muted/30 border-b">
-                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground w-40">{t('submissions.colUser')}</th>
-                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('submissions.colProblem')}</th>
-                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
-                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center">{t('submissions.colScore')}</th>
-                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
-                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-right">{t('common.actions')}</th>
+                                <th className="px-3 py-4 w-10">
+                                    <input
+                                        type="checkbox"
+                                        aria-label={t('submissions.selectAll')}
+                                        checked={allSelected}
+                                        disabled={deletable.length === 0}
+                                        onChange={(e) => setSelected(e.target.checked ? deletable.map(s => s.id) : [])}
+                                    />
+                                </th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground w-20">{t('submissions.colId')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground w-40">{t('submissions.colUser')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground">{t('submissions.colProblem')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground">{t('submissions.languageLabel')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center">{t('submissions.colScore')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colMemory')}</th>
+                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
                             {isLoading ? (
                                 Array.from({ length: 15 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={6} className="px-6 py-6"><Skeleton className="h-10 w-full rounded-xl" /></td>
+                                        <td colSpan={10} className="px-6 py-6"><Skeleton className="h-10 w-full rounded-xl" /></td>
                                     </tr>
                                 ))
                             ) : (
                                 submissions.map((s) => (
                                     <tr key={s.id} className="hover:bg-muted/10 transition-colors">
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 py-4">
+                                            <input
+                                                type="checkbox"
+                                                aria-label={t('submissions.selectRow', { id: s.id })}
+                                                checked={selected.includes(s.id)}
+                                                disabled={STATUS_CODES.includes(s.status)}
+                                                onChange={() => toggleSelected(s.id)}
+                                            />
+                                        </td>
+                                        <td className="px-3 py-4 font-mono text-xs text-muted-foreground">#{s.id}</td>
+                                        <td className="px-3 py-4">
                                             <Link href={`/user/${s.user}`} className="flex items-center gap-3 group outline-none">
                                                 <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground font-medium text-xs">
                                                     {s.user[0]?.toUpperCase()}
@@ -333,28 +395,32 @@ export default function AdminSubmissionPage() {
                                                 <span className="font-medium text-sm">{s.user}</span>
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 py-4">
                                             <Link href={`/submission/${s.id}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
                                                 <span className="font-medium text-sm tracking-tight">{s.problem}</span>
-                                                <span className="text-xs text-muted-foreground opacity-40">{t('submissions.problemCodeLabel')}</span>
+                                                <span className="text-xs text-muted-foreground">{s.problem_name || t('submissions.problemCodeLabel')}</span>
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-3 py-4 font-mono text-xs">{s.language}</td>
+                                        <td className="px-3 py-4 text-center">
                                             <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded text-xs font-medium uppercase shadow-sm">
                                                 {s.result || s.status}
                                             </Badge>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-3 py-4 text-center">
                                             <div className="inline-flex items-center justify-center w-12 h-8 rounded-xl font-medium text-xs border">
                                                 {s.score !== null ? Math.round(s.score) : '-'}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-3 py-4 text-center">
                                             {s.time !== null ? (
                                                 <span className="text-xs font-mono">{(s.time * 1000).toFixed(0)}ms</span>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">-</span>
                                             )}
+                                        </td>
+                                        <td className="px-3 py-4 text-center text-xs font-mono">
+                                            {formatMemoryMb(s.memory)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex gap-2">
@@ -423,6 +489,17 @@ export default function AdminSubmissionPage() {
                 confirmText={t('common.delete')}
                 cancelText={t('common.cancel')}
                 isLoading={deleteMutation.isPending}
+            />
+
+            <ConfirmDialog
+                isOpen={showBulkDelete}
+                onClose={() => setShowBulkDelete(false)}
+                onConfirm={() => bulkDeleteMutation.mutate(selected)}
+                title={t('submissions.bulkDeleteTitle')}
+                description={t('submissions.bulkDeleteConfirm', { count: selected.length })}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                isLoading={bulkDeleteMutation.isPending}
             />
         </div>
     );

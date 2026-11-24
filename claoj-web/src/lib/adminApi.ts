@@ -14,7 +14,8 @@ import type {
     AdminUserCreateRequest,
     AdminOrganizationDetail,
     AdminClassListResponse,
-    AdminSubmission,
+    AdminSubmissionDetail,
+    AdminSubmissionUpdateRequest,
     Group,
     GroupDetail,
     GroupMembersResponse,
@@ -455,6 +456,15 @@ export interface BatchRescoreResponse {
 export const adminSubmissionApi = {
     list: (page: number = 1, pageSize: number = 50, filters: { user?: string; problem?: string; result?: string; status?: string; language?: string } = {}) =>
         api.get<AdminSubmissionListResponse>(`/admin/submissions?${qs({ page, page_size: pageSize, ...filters })}`),
+
+    detail: (id: number) =>
+        api.get<AdminSubmissionDetail>(`/admin/submission/${id}`),
+
+    update: (id: number, data: AdminSubmissionUpdateRequest) =>
+        api.patch<{ success: boolean; message: string }>(`/admin/submission/${id}`, data),
+
+    bulkDelete: (ids: number[]) =>
+        api.post<{ success: boolean; deleted: number; message: string }>('/admin/submissions/bulk-delete', { ids }),
 
     rejudge: (id: number) =>
         api.post(`/admin/submission/${id}/rejudge`),

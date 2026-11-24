@@ -738,6 +738,7 @@ export interface AdminSubmission {
     id: number;
     user: string;
     problem: string;
+    problem_name?: string;
     language: string;
     status: string;
     result: string | null;
@@ -746,6 +747,69 @@ export interface AdminSubmission {
     memory: number | null;
     date: string;
     is_pretested: boolean;
+}
+
+/** GET /admin/submission/:id */
+export interface AdminSubmissionTestCase {
+    id: number;
+    case: number;
+    status: string;
+    time: number | null;
+    memory: number | null;
+    points: number | null;
+    total: number | null;
+    feedback: string;
+}
+
+export interface AdminSubmissionDetail {
+    id: number;
+    user: string;
+    problem: string;
+    problem_name: string;
+    language_id: number;
+    language: string;
+    language_name: string;
+    date: string;
+    time: number | null;
+    memory: number | null;
+    points: number | null;
+    status: string;
+    result: string | null;
+    error: string | null;
+    case_points: number;
+    case_total: number;
+    current_testcase: number;
+    batch: boolean;
+    is_pretested: boolean;
+    judged_on_id: number | null;
+    judged_on: string;
+    judged_date: string | null;
+    rejudged_date: string | null;
+    locked_after: string | null;
+    is_locked: boolean;
+    is_archived: boolean;
+    contest_object_id: number | null;
+    contest_key: string;
+    contest_name: string;
+    source: string;
+    test_cases: AdminSubmissionTestCase[];
+}
+
+/** PATCH /admin/submission/:id */
+export interface AdminSubmissionUpdateRequest {
+    language_id?: number;
+    status?: string;
+    result?: string | null;
+    points?: number;
+    case_points?: number;
+    case_total?: number;
+    judged_on_id?: number | null;
+    judged_date?: string | null;
+    error?: string;
+    contest_object_id?: number | null;
+    source?: string;
+    locked_after?: string | null;
+    is_archived?: boolean;
 }
 
 export interface AdminUserUpdateRequest {
