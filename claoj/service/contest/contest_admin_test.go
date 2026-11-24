@@ -145,7 +145,7 @@ func TestUpdateContest_StaffAndTagsFullLists(t *testing.T) {
 }
 
 // TestUpdateContest_BanningClearsCurrentContest mirrors v1's ContestForm.clean:
-// banning kicks the user out of this contest, but never out of another one.
+// banning clears the banned profiles' current contest pointer whatever it was.
 func TestUpdateContest_BanningClearsCurrentContest(t *testing.T) {
 	setupContestDB(t)
 	c := newContest(t, "banme")
@@ -163,7 +163,7 @@ func TestUpdateContest_BanningClearsCurrentContest(t *testing.T) {
 			Update("current_contest_id", p.contest).Error)
 	}
 
-	// Banned: heres (in this contest) and elsewhere (in a different one).
+	// Banned: heres (in this contest) and elsewhere (pointing elsewhere).
 	banned := []uint{heres.ID, elsewhere.ID}
 	_, err := NewContestService().UpdateContest(UpdateContestRequest{ContestKey: c.Key, BannedUserIDs: &banned})
 	require.NoError(t, err)
@@ -173,9 +173,8 @@ func TestUpdateContest_BanningClearsCurrentContest(t *testing.T) {
 		require.NoError(t, db.DB.First(&got, p.ID).Error)
 		return got.CurrentContestID
 	}
-	require.Nil(t, current(heres), "a user banned from this contest is kicked out")
-	require.NotNil(t, current(elsewhere))
-	require.Equal(t, other.ID, *current(elsewhere), "a different current contest is left alone")
+	require.Nil(t, current(heres), "a banned user is kicked out")
+	require.Nil(t, current(elsewhere), "a banned user's pointer is cleared whatever it was")
 	require.NotNil(t, current(kept))
 	require.Equal(t, third.ID, *current(kept), "non-banned users are never touched")
 }
