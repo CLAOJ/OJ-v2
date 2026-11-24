@@ -3,15 +3,21 @@ package problemgroup
 
 // ProblemGroup represents a problem group.
 type ProblemGroup struct {
-	ID       uint
-	Name     string
-	FullName string
+	ID           uint
+	Name         string
+	FullName     string
+	ProblemCount int64
 }
 
 // ListGroupsResponse holds the response for listing groups.
 type ListGroupsResponse struct {
 	Groups []ProblemGroup
 	Total  int64
+}
+
+// ListGroupsRequest holds parameters for listing groups.
+type ListGroupsRequest struct {
+	Search string
 }
 
 // GetGroupRequest holds parameters for getting a group.

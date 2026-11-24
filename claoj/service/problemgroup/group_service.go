@@ -16,14 +16,20 @@ func NewProblemGroupService() *ProblemGroupService {
 }
 
 // ListGroups retrieves a list of all problem groups.
-func (s *ProblemGroupService) ListGroups() (*ListGroupsResponse, error) {
-	var groups []models.ProblemGroup
-	if err := db.DB.Order("name ASC").Find(&groups).Error; err != nil {
-		return nil, err
+func (s *ProblemGroupService) ListGroups(req ListGroupsRequest) (*ListGroupsResponse, error) {
+	query := db.DB.Model(&models.ProblemGroup{})
+	if req.Search != "" {
+		p := db.ContainsPattern(req.Search)
+		query = query.Where("(name LIKE ? ESCAPE '!' OR full_name LIKE ? ESCAPE '!')", p, p)
 	}
 
 	var total int64
-	if err := db.DB.Model(&models.ProblemGroup{}).Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	var groups []models.ProblemGroup
+	if err := query.Order("name ASC").Find(&groups).Error; err != nil {
 		return nil, err
 	}
 
@@ -53,6 +59,9 @@ func (s *ProblemGroupService) GetGroup(req GetGroupRequest) (*ProblemGroup, erro
 	}
 
 	result := groupToModel(group)
+	if err := db.DB.Model(&models.Problem{}).Where("group_id = ?", group.ID).Count(&result.ProblemCount).Error; err != nil {
+		return nil, err
+	}
 	return &result, nil
 }
 

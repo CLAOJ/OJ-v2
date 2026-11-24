@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -17,7 +18,9 @@ import (
 // AdminProblemGroupList - GET /api/v2/admin/problem-groups
 // List all problem groups
 func AdminProblemGroupList(c *gin.Context) {
-	resp, err := getProblemGroupService().ListGroups()
+	resp, err := getProblemGroupService().ListGroups(problemgroup.ListGroupsRequest{
+		Search: strings.TrimSpace(c.Query("search")),
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
@@ -64,9 +67,10 @@ func AdminProblemGroupDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":        group.ID,
-		"name":      group.Name,
-		"full_name": group.FullName,
+		"id":            group.ID,
+		"name":          group.Name,
+		"full_name":     group.FullName,
+		"problem_count": group.ProblemCount,
 	})
 }
 
