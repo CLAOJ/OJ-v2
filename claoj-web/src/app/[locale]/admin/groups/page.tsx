@@ -414,7 +414,7 @@ function GroupFormModal({ mode, group, permissionsByAppModel, isSaving, onClose,
 
                     {mode === 'edit' && group && (
                         <div className="space-y-2">
-                            <Label className="block">{t('members')}</Label>
+                            <p className="text-sm font-medium">{t('members')}</p>
                             <GroupMembersEditor groupId={group.id} t={t} />
                         </div>
                     )}
@@ -453,6 +453,10 @@ interface GroupMembersEditorProps {
  * changes hit the group-scoped endpoints and invalidate the group queries so
  * the card counts and the detail panel stay accurate.
  *
+ * The search box only drives the add-candidate picker; the member list and
+ * its count always reflect the group's real membership, so typing a name
+ * never makes a populated group look empty.
+ *
  * shortcut: the member list is capped at one page (100); larger groups need
  * paging or infinite scroll, which the endpoint already supports.
  */
@@ -462,8 +466,8 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
     const debouncedTerm = useDebounce(term.trim(), 300);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['admin-group-members', groupId, debouncedTerm],
-        queryFn: async () => (await adminGroupsApi.members(groupId, 1, 100, debouncedTerm)).data,
+        queryKey: ['admin-group-members', groupId],
+        queryFn: async () => (await adminGroupsApi.members(groupId, 1, 100)).data,
     });
     const members = data?.data || [];
     const total = data?.total ?? members.length;
@@ -499,6 +503,7 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
 
     return (
         <div className="space-y-2">
+            <Label htmlFor="group-member-search">{t('addMember')}</Label>
             <Input
                 id="group-member-search"
                 value={term}
@@ -532,7 +537,7 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
             <div className="border rounded-xl divide-y max-h-56 overflow-y-auto">
                 {isLoading ? (
                     <div className="p-3 text-sm text-muted-foreground">{t('loading')}</div>
-                ) : members.length === 0 ? (
+                ) : total === 0 ? (
                     <div className="p-3 text-sm text-muted-foreground">{t('noMembers')}</div>
                 ) : (
                     members.map((m) => (
@@ -545,6 +550,7 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
                                 variant="ghost"
                                 size="sm"
                                 className="text-destructive hover:text-destructive"
+                                aria-label={t('removeMemberNamed', { name: m.username })}
                                 disabled={removeMutation.isPending}
                                 onClick={() => removeMutation.mutate(m.id)}
                             >
@@ -555,7 +561,11 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
                 )}
             </div>
 
-            <p className="text-xs text-muted-foreground">{t('memberCount', { count: total })}</p>
+            <p className="text-xs text-muted-foreground">
+                {total > members.length
+                    ? t('membersShowing', { shown: members.length, total })
+                    : t('memberCount', { count: total })}
+            </p>
             <p className="text-xs text-muted-foreground">{t('membersApplyImmediately')}</p>
         </div>
     );

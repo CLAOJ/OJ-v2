@@ -13,6 +13,7 @@ type GroupSummary struct {
 
 // GroupUser is a minimal user reference used in GroupDetail.Users.
 type GroupUser struct {
+	// ID is judge_profile.id, not auth_user.id.
 	ID       uint
 	Username string
 }

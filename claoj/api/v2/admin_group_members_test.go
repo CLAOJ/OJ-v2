@@ -3,6 +3,7 @@ package v2
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
 	"testing"
 
@@ -92,6 +93,14 @@ func TestAdminGroupMembers_ListSearchPagination(t *testing.T) {
 
 	// Search narrows to matching members and keeps the total in sync.
 	w = doRequest(router, http.MethodGet, target+"?search=bob", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body = decodeMembers(t, w.Body.Bytes())
+	require.Equal(t, int64(1), body.Total)
+	require.Len(t, body.Data, 1)
+	require.Equal(t, "bob", body.Data[0].Username)
+
+	// Search also matches the email column.
+	w = doRequest(router, http.MethodGet, target+"?search="+url.QueryEscape("bob@example.com"), "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	body = decodeMembers(t, w.Body.Bytes())
 	require.Equal(t, int64(1), body.Total)

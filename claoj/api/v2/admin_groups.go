@@ -364,6 +364,8 @@ func AdminGroupAddMember(c *gin.Context) {
 	}
 
 	var input struct {
+		// UserID is a judge_profile.id (the id the admin user APIs and
+		// pickers return), not an auth_user.id.
 		UserID uint `json:"user_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
