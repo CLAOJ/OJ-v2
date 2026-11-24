@@ -90,6 +90,10 @@ func TestAdminFlatPageCRUD(t *testing.T) {
 	w = doRequest(listRouter, http.MethodGet, "/admin/flat-pages?search=nomatch", "")
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &list))
 	require.Equal(t, int64(0), list.Total)
+	// LIKE wildcards in the term are literal: "abou_" must not match "about".
+	w = doRequest(listRouter, http.MethodGet, "/admin/flat-pages?search=abou_", "")
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &list))
+	require.Equal(t, int64(0), list.Total)
 
 	// Detail
 	detailRouter := cmsRouter(1, http.MethodGet, "/admin/flat-page/:id", AdminFlatPageDetail)

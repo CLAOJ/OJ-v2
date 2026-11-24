@@ -82,8 +82,8 @@ func AdminFlatPageList(c *gin.Context) {
 	query := func() *gorm.DB {
 		q := db.DB.Model(&models.FlatPage{})
 		if search != "" {
-			like := "%" + search + "%"
-			q = q.Where("url LIKE ? OR title LIKE ?", like, like)
+			p := db.ContainsPattern(search)
+			q = q.Where("url LIKE ? ESCAPE '!' OR title LIKE ? ESCAPE '!'", p, p)
 		}
 		return q
 	}
@@ -299,8 +299,8 @@ func AdminRedirectList(c *gin.Context) {
 	query := func() *gorm.DB {
 		q := db.DB.Model(&models.Redirect{}).Where("site_id = ?", models.CMSSiteID)
 		if search != "" {
-			like := "%" + search + "%"
-			q = q.Where("old_path LIKE ? OR new_path LIKE ?", like, like)
+			p := db.ContainsPattern(search)
+			q = q.Where("old_path LIKE ? ESCAPE '!' OR new_path LIKE ? ESCAPE '!'", p, p)
 		}
 		return q
 	}

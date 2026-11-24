@@ -148,3 +148,39 @@ func TestDelete_NotFound(t *testing.T) {
 	setupDeleteDB(t)
 	require.ErrorIs(t, NewSubmissionService(nil).Delete(DeleteRequest{SubmissionID: 999}), ErrSubmissionNotFound)
 }
+
+// Two submissions of one participation are recalculated together: the
+// participation is recomputed once, not once per deleted row.
+func TestBulkDelete_RecalculatesEachParticipationOnce(t *testing.T) {
+	prof := setupDeleteDB(t)
+	a := seedAC(t, prof, "p1", 100)
+	b := seedAC(t, prof, "p2", 50)
+
+	contest := models.Contest{Key: "c1", Name: "C1", StartTime: time.Now().Add(-time.Hour), EndTime: time.Now().Add(time.Hour)}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&contest).Error)
+	part := models.ContestParticipation{ContestID: contest.ID, UserID: prof.ID, RealStart: time.Now()}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&part).Error)
+	for _, s := range []models.Submission{a, b} {
+		require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.ContestSubmission{
+			SubmissionID: s.ID, ProblemID: 1, ParticipationID: part.ID, Points: 100,
+		}).Error)
+	}
+
+	calls := 0
+	old := recomputeParticipation
+	t.Cleanup(func() { recomputeParticipation = old })
+	recomputeParticipation = func(p *models.ContestParticipation) error {
+		calls++
+		require.Equal(t, part.ID, p.ID)
+		return nil
+	}
+
+	n, err := NewSubmissionService(nil).BulkDelete(BulkDeleteRequest{SubmissionIDs: []uint{a.ID, b.ID}})
+	require.NoError(t, err)
+	require.Equal(t, 2, n)
+	require.Equal(t, 1, calls, "one recompute per participation, not per submission")
+
+	var got models.Profile
+	require.NoError(t, db.DB.First(&got, prof.ID).Error)
+	require.Equal(t, 0.0, got.Points, "points are recalculated after both deletes")
+}

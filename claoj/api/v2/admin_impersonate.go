@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// AdminImpersonateStart - POST /api/v2/admin/impersonate/:userId
+// AdminImpersonateStart - POST /api/admin/impersonate/:userId
 // Opens a session as judge_profile :userId (same id space as /admin/users).
 // Superuser-only, matching v1's django-impersonate. The actor's own tokens
 // are left intact: the browser's cookies are replaced, not revoked, so the
@@ -99,7 +99,7 @@ func AdminImpersonateStart(c *gin.Context) {
 	})
 }
 
-// AdminImpersonateExit - POST /api/v2/admin/impersonate/exit
+// AdminImpersonateExit - POST /api/admin/impersonate/exit
 // Requires an impersonating session. Revokes the impersonated token family
 // and reissues tokens for the superuser who started it.
 //

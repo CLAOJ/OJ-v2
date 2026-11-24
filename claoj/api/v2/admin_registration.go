@@ -30,7 +30,7 @@ type adminRegistrationV1 struct {
 	HasActivationKey bool `json:"has_activation_key"`
 }
 
-// AdminRegistrationList - GET /api/v2/admin/registrations
+// AdminRegistrationList - GET /api/admin/registrations
 //
 // Lists accounts by activation state. Pending means auth_user.is_active = 0,
 // which is what v2 registration creates until the email token is consumed.
@@ -150,7 +150,7 @@ func registrationTarget(c *gin.Context) (models.AuthUser, bool) {
 	return u, true
 }
 
-// AdminRegistrationActivate - POST /api/v2/admin/registration/:userId/activate
+// AdminRegistrationActivate - POST /api/admin/registration/:userId/activate
 //
 // Activates the account (is_active = true) and marks the v1 registration row
 // activated when it exists. Outstanding verification tokens are revoked
@@ -205,7 +205,7 @@ func AdminRegistrationActivate(c *gin.Context) {
 	})
 }
 
-// AdminRegistrationResend - POST /api/v2/admin/registration/:userId/resend
+// AdminRegistrationResend - POST /api/admin/registration/:userId/resend
 //
 // Replaces any outstanding verification token with a fresh one and emails the
 // verification link through the existing helper. Already-active accounts get

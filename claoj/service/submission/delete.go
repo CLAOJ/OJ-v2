@@ -55,7 +55,11 @@ func (s *SubmissionService) Delete(req DeleteRequest) error {
 		return err
 	}
 
-	recalculateAfterDelete(&sub, &cSub, inContest)
+	participations := map[uint]*models.ContestParticipation{}
+	if inContest {
+		participations[cSub.ParticipationID] = &cSub.Participation
+	}
+	recalculateAffected([]models.Submission{sub}, participations)
 	return nil
 }
 
@@ -66,7 +70,8 @@ type BulkDeleteRequest struct {
 
 // BulkDelete removes the given submissions in one transaction. Unknown ids are
 // ignored; any submission still being judged aborts the whole batch. Points
-// are recalculated after the commit, once per affected submission.
+// are recalculated after the commit, once per affected user, organization and
+// participation.
 func (s *SubmissionService) BulkDelete(req BulkDeleteRequest) (int, error) {
 	if len(req.SubmissionIDs) == 0 {
 		return 0, nil
@@ -105,10 +110,14 @@ func (s *SubmissionService) BulkDelete(req BulkDeleteRequest) (int, error) {
 		return 0, err
 	}
 
+	participations := make(map[uint]*models.ContestParticipation, len(subs))
 	for i := range subs {
 		link := links[subs[i].ID]
-		recalculateAfterDelete(&subs[i], &link.cSub, link.ok)
+		if link.ok {
+			participations[link.cSub.ParticipationID] = &link.cSub.Participation
+		}
 	}
+	recalculateAffected(subs, participations)
 	return len(subs), nil
 }
 
@@ -127,24 +136,38 @@ func deleteSubmissionRows(tx *gorm.DB, sub *models.Submission) error {
 	return tx.Delete(sub).Error
 }
 
-// recalculateAfterDelete refreshes the points the deleted submission fed. A
-// failure is logged, not returned: retrying the delete could not fix it.
-func recalculateAfterDelete(sub *models.Submission, cSub *models.ContestSubmission, inContest bool) {
-	if err := scoring.CalculateProfilePoints(db.DB, sub.UserID); err != nil {
-		log.Printf("submission: delete %d: recalculate points for profile %d: %v", sub.ID, sub.UserID, err)
-	}
-	var orgIDs []uint
-	if err := db.DB.Table("judge_profile_organizations").Where("profile_id = ?", sub.UserID).Pluck("organization_id", &orgIDs).Error; err != nil {
-		log.Printf("submission: delete %d: load organizations of user %d: %v", sub.ID, sub.UserID, err)
-	}
-	for _, orgID := range orgIDs {
-		if err := scoring.CalculateOrganizationPoints(db.DB, orgID); err != nil {
-			log.Printf("submission: delete %d: recalculate points for organization %d: %v", sub.ID, orgID, err)
+// recalculateAffected refreshes what a batch of deleted submissions fed: the
+// owners' points, their organizations' points and the contest participations'
+// scores — once per distinct user, organization and participation, not once
+// per submission. A failure is logged, not returned: retrying the delete could
+// not fix it.
+func recalculateAffected(subs []models.Submission, participations map[uint]*models.ContestParticipation) {
+	users := make(map[uint]bool, len(subs))
+	orgs := make(map[uint]bool)
+	for _, sub := range subs {
+		users[sub.UserID] = true
+		var orgIDs []uint
+		if err := db.DB.Table("judge_profile_organizations").Where("profile_id = ?", sub.UserID).Pluck("organization_id", &orgIDs).Error; err != nil {
+			log.Printf("submission: delete %d: load organizations of user %d: %v", sub.ID, sub.UserID, err)
+			continue
+		}
+		for _, orgID := range orgIDs {
+			orgs[orgID] = true
 		}
 	}
-	if inContest {
-		if err := recomputeParticipation(&cSub.Participation); err != nil {
-			log.Printf("submission: delete %d: recompute participation %d: %v", sub.ID, cSub.ParticipationID, err)
+	for userID := range users {
+		if err := scoring.CalculateProfilePoints(db.DB, userID); err != nil {
+			log.Printf("submission: delete: recalculate points for profile %d: %v", userID, err)
+		}
+	}
+	for orgID := range orgs {
+		if err := scoring.CalculateOrganizationPoints(db.DB, orgID); err != nil {
+			log.Printf("submission: delete: recalculate points for organization %d: %v", orgID, err)
+		}
+	}
+	for id, p := range participations {
+		if err := recomputeParticipation(p); err != nil {
+			log.Printf("submission: delete: recompute participation %d: %v", id, err)
 		}
 	}
 }
