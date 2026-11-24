@@ -35,6 +35,8 @@ type Class struct {
 	Name           string `gorm:"column:name;size:128;not null"`
 	Slug           string `gorm:"column:slug;size:128;not null"`
 	IsActive       bool   `gorm:"column:is_active;not null;default:1"`
+
+	Organization Organization `gorm:"foreignKey:OrganizationID"`
 }
 
 func (Class) TableName() string { return "judge_class" }

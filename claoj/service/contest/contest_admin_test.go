@@ -198,6 +198,7 @@ func TestCreateContest_V1FieldsRoundTrip(t *testing.T) {
 		RatingCeiling:              ip(2000),
 		PerformanceCeilingOverride: ip(2100),
 		RateAll:                    true,
+		IsPrivate:                  true,
 		HideProblemAuthors:         true,
 		ShowShortDisplay:           true,
 		LimitJoinOrganizations:     true,
@@ -224,6 +225,7 @@ func TestCreateContest_V1FieldsRoundTrip(t *testing.T) {
 	require.Equal(t, ip(2000), got.RatingCeiling)
 	require.Equal(t, ip(2100), got.PerformanceCeilingOverride)
 	require.True(t, got.RateAll)
+	require.True(t, got.IsPrivate)
 	require.True(t, got.HideProblemAuthors)
 	require.True(t, got.ShowShortDisplay)
 	require.True(t, got.LimitJoinOrganizations)
@@ -283,6 +285,7 @@ func TestUpdateContest_V1FieldsReplaceAndClear(t *testing.T) {
 		ShowShortDisplay:                bp(true),
 		LimitJoinOrganizations:          bp(true),
 		RateAll:                         bp(true),
+		IsPrivate:                       bp(true),
 		RatingFloor:                     ip(1200),
 		RatingCeiling:                   ip(2000),
 		PerformanceCeilingOverride:      ip(2100),
@@ -309,6 +312,7 @@ func TestUpdateContest_V1FieldsReplaceAndClear(t *testing.T) {
 	require.True(t, got.ShowShortDisplay)
 	require.True(t, got.LimitJoinOrganizations)
 	require.True(t, got.RateAll)
+	require.True(t, got.IsPrivate)
 	require.Equal(t, ip(1200), got.RatingFloor)
 	require.Equal(t, ip(2000), got.RatingCeiling)
 	require.Equal(t, ip(2100), got.PerformanceCeilingOverride)
@@ -331,11 +335,17 @@ func TestUpdateContest_V1FieldsReplaceAndClear(t *testing.T) {
 		ClearRatingFloor:                true,
 		ClearRatingCeiling:              true,
 		ClearPerformanceCeilingOverride: true,
+		ScoreboardCacheTimeout:          up(0),
+		LimitJoinOrganizations:          bp(false),
+		IsPrivate:                       bp(false),
 	})
 	require.NoError(t, err)
 
 	got, err = svc.GetContest(GetContestRequest{ContestKey: c.Key})
 	require.NoError(t, err)
+	require.Equal(t, uint(0), got.ScoreboardCacheTimeout)
+	require.False(t, got.LimitJoinOrganizations)
+	require.False(t, got.IsPrivate)
 	require.Empty(t, got.OrganizationIDs)
 	require.Empty(t, got.BannedUserIDs)
 	require.Empty(t, got.PrivateContestantIDs)

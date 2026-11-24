@@ -45,7 +45,7 @@ func TestAdminContestCreate_AndUpdateV1Fields(t *testing.T) {
 		"is_rated":true,"scoreboard_visibility":"C","scoreboard_cache_timeout":30,
 		"use_clarifications":false,"push_announcements":true,
 		"rating_floor":1200,"rating_ceiling":2000,"performance_ceiling_override":2100,
-		"rate_all":true,"hide_problem_authors":true,"show_short_display":true,
+		"rate_all":true,"is_private":true,"hide_problem_authors":true,"show_short_display":true,
 		"limit_join_organizations":true,
 		"og_image":"https://example.com/og.png","logo_override_image":"https://example.com/logo.png",
 		"problem_label_script":"return 'A'","points_precision":5,
@@ -74,6 +74,7 @@ func TestAdminContestCreate_AndUpdateV1Fields(t *testing.T) {
 	require.EqualValues(t, 2000, got["rating_ceiling"])
 	require.EqualValues(t, 2100, got["performance_ceiling_override"])
 	require.Equal(t, true, got["rate_all"])
+	require.Equal(t, true, got["is_private"])
 	require.Equal(t, true, got["hide_problem_authors"])
 	require.Equal(t, true, got["show_short_display"])
 	require.Equal(t, true, got["limit_join_organizations"])
@@ -108,6 +109,7 @@ func TestAdminContestCreate_AndUpdateV1Fields(t *testing.T) {
 
 	// Clear the relations and the nullable ints.
 	patch := `{"scoreboard_visibility":"P","use_clarifications":true,
+		"is_private":false,"scoreboard_cache_timeout":0,"limit_join_organizations":false,
 		"organization_ids":[],"banned_user_ids":[],"private_contestant_ids":[],
 		"view_scoreboard_user_ids":[],"join_organization_ids":[],"class_ids":[],
 		"clear_rating_floor":true,"clear_rating_ceiling":true,"clear_performance_ceiling_override":true}`
@@ -121,6 +123,9 @@ func TestAdminContestCreate_AndUpdateV1Fields(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 	require.Equal(t, "P", got["scoreboard_visibility"])
 	require.Equal(t, true, got["use_clarifications"])
+	require.Equal(t, false, got["is_private"])
+	require.EqualValues(t, 0, got["scoreboard_cache_timeout"])
+	require.Equal(t, false, got["limit_join_organizations"])
 	require.Nil(t, got["rating_floor"])
 	require.Nil(t, got["rating_ceiling"])
 	require.Nil(t, got["performance_ceiling_override"])

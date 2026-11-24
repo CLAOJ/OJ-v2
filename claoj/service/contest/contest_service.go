@@ -174,6 +174,7 @@ func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfil
 		RatingCeiling:              req.RatingCeiling,
 		PerformanceCeilingOverride: req.PerformanceCeilingOverride,
 		RateAll:                    req.RateAll,
+		IsPrivate:                  req.IsPrivate,
 		HideProblemAuthors:         req.HideProblemAuthors,
 		ShowShortDisplay:           req.ShowShortDisplay,
 		IsOrganizationPrivate:      req.IsOrganizationPrivate,
@@ -323,6 +324,9 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 	}
 	if req.RateAll != nil {
 		updates["rate_all"] = *req.RateAll
+	}
+	if req.IsPrivate != nil {
+		updates["is_private"] = *req.IsPrivate
 	}
 	if req.PointsPrecision != nil {
 		if !validPointsPrecision(*req.PointsPrecision) {

@@ -126,6 +126,7 @@ func AdminContestCreate(c *gin.Context) {
 		RatingCeiling         *int    `json:"rating_ceiling"`
 		PerformanceCeilingOverride *int `json:"performance_ceiling_override"`
 		RateAll               bool    `json:"rate_all"`
+		IsPrivate             bool    `json:"is_private"`
 		HideProblemAuthors    bool    `json:"hide_problem_authors"`
 		ShowShortDisplay      bool    `json:"show_short_display"`
 		LimitJoinOrganizations bool   `json:"limit_join_organizations"`
@@ -187,6 +188,7 @@ func AdminContestCreate(c *gin.Context) {
 		RatingCeiling:              input.RatingCeiling,
 		PerformanceCeilingOverride: input.PerformanceCeilingOverride,
 		RateAll:                    input.RateAll,
+		IsPrivate:                  input.IsPrivate,
 		HideProblemAuthors:         input.HideProblemAuthors,
 		ShowShortDisplay:           input.ShowShortDisplay,
 		LimitJoinOrganizations:     input.LimitJoinOrganizations,
@@ -258,6 +260,7 @@ func AdminContestUpdate(c *gin.Context) {
 		ShowShortDisplay                *bool                          `json:"show_short_display"`
 		LimitJoinOrganizations          *bool                          `json:"limit_join_organizations"`
 		RateAll                         *bool                          `json:"rate_all"`
+		IsPrivate                       *bool                          `json:"is_private"`
 		PointsPrecision                 *int                           `json:"points_precision"`
 		RatingFloor                     *int                           `json:"rating_floor"`
 		RatingCeiling                   *int                           `json:"rating_ceiling"`
@@ -314,6 +317,7 @@ func AdminContestUpdate(c *gin.Context) {
 		ShowShortDisplay:                input.ShowShortDisplay,
 		LimitJoinOrganizations:          input.LimitJoinOrganizations,
 		RateAll:                         input.RateAll,
+		IsPrivate:                       input.IsPrivate,
 		PointsPrecision:                 input.PointsPrecision,
 		RatingFloor:                     input.RatingFloor,
 		RatingCeiling:                   input.RatingCeiling,

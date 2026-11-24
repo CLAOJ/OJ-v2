@@ -93,6 +93,7 @@ type CreateContestRequest struct {
 	RatingCeiling              *int
 	PerformanceCeilingOverride *int
 	RateAll                    bool
+	IsPrivate                  bool
 	HideProblemAuthors         bool
 	ShowShortDisplay           bool
 	OgImage                    string
@@ -150,6 +151,7 @@ type UpdateContestRequest struct {
 	ClearRatingCeiling    bool
 	ClearPerformanceCeilingOverride bool
 	RateAll               *bool
+	IsPrivate             *bool
 	OgImage               *string
 	LogoOverrideImage     *string
 	ProblemLabelScript    *string
