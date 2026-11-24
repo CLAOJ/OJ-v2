@@ -175,7 +175,7 @@ func UserSolvedProblems(c *gin.Context) {
 	var solved []SolvedRow
 	// Same visibility rule as the PP calculation: v1's solved list hides
 	// organization-private problems and archived submissions.
-	db.DB.Raw(`
+	if err := db.DB.Raw(`
 		SELECT pr.code, pr.name, COALESCE(s.points, 0) AS points, s.date,
 		       COALESCE(NULLIF(l.short_name, ''), l.key, '') AS language,
 		       s.case_points, s.case_total
@@ -192,7 +192,10 @@ func UserSolvedProblems(c *gin.Context) {
 		      LIMIT 1
 		  )
 		ORDER BY s.date DESC, pr.code ASC
-	`, profile.ID).Scan(&solved)
+	`, profile.ID).Scan(&solved).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
 
 	c.JSON(http.StatusOK, apiList(solved))
 }
@@ -314,9 +317,11 @@ func UserAnalytics(c *gin.Context) {
 		Order("date ASC").
 		Scan(&activity)
 
-	// v1 renders the past year: today and the 364 days before it, in the
-	// database's timezone (DATE() is evaluated there, same as v1's cache).
-	today := time.Now()
+	// The past year: today and the 364 days before it. Day keys are computed
+	// in UTC so they agree with the DATE() the database groups by. This
+	// diverges from v1, which renders the grid in the viewer's timezone (and
+	// drifts from its own UTC cache around midnight).
+	today := time.Now().UTC()
 	yearStart := today.AddDate(0, 0, -364)
 	var yearCounts []Activity
 	db.DB.Table("judge_submission").

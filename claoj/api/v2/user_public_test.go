@@ -153,10 +153,11 @@ func TestProfileSolved_ReturnsNameDateLanguageAndTests(t *testing.T) {
 
 func TestProfileAnalytics_YearHeatmap(t *testing.T) {
 	fx := setupProfileDB(t)
-	now := time.Now()
-	// Noon keeps the database DATE() on the same calendar day in sqlite, which
-	// stores timezone-aware timestamps (MySQL DATETIME has no offset).
-	today := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.Local)
+	// The endpoint keys days in UTC, so the fixture does too. Noon keeps the
+	// database DATE() on the same calendar day in sqlite, which stores
+	// timezone-aware timestamps (MySQL DATETIME has no offset).
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.UTC)
 	addSubmission(t, fx.visibleA, fx.profile, 100, "AC", false, today)
 	addSubmission(t, fx.visibleB, fx.profile, 100, "AC", false, today.AddDate(0, 0, -10))
 	addSubmission(t, fx.visibleB, fx.profile, 100, "AC", false, today.AddDate(0, 0, -400)) // outside the year
