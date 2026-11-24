@@ -8,10 +8,8 @@ interface FormatSettings {
     format_name?: string;
     access_code?: string;
     is_visible: boolean;
-    is_rated: boolean;
     hide_problem_tags: boolean;
     run_pretests_only: boolean;
-    is_organization_private: boolean;
 }
 
 interface ContestFormData {
@@ -127,15 +125,6 @@ export function FormatSection({ formData, selectedFormat, register, setValue, fo
                     <input
                         type="checkbox"
                         className="rounded w-5 h-5"
-                        {...register('is_rated')}
-                    />
-                    <span className="text-sm font-medium">{t('contestForm.ratedContestLabel')}</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        className="rounded w-5 h-5"
                         {...register('hide_problem_tags')}
                     />
                     <span className="text-sm font-medium">{t('contestForm.hideProblemTagsLabel')}</span>
@@ -148,15 +137,6 @@ export function FormatSection({ formData, selectedFormat, register, setValue, fo
                         {...register('run_pretests_only')}
                     />
                     <span className="text-sm font-medium">{t('contestForm.pretestsOnlyLabel')}</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        className="rounded w-5 h-5"
-                        {...register('is_organization_private')}
-                    />
-                    <span className="text-sm font-medium">{t('contestForm.privateToOrgLabel')}</span>
                 </label>
             </div>
         </div>

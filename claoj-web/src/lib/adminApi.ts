@@ -12,6 +12,7 @@ import type {
     AdminJudgeCreateRequest,
     AdminUserCreateRequest,
     AdminOrganization,
+    AdminClassListResponse,
     AdminSubmission,
     Group,
     GroupDetail,
@@ -328,6 +329,15 @@ export const adminOrganizationApi = {
 
     delete: (id: number) =>
         api.delete(`/admin/organization/${id}`),
+};
+
+// ============================================================
+// ADMIN CLASS API (read-only picker source)
+// ============================================================
+
+export const adminClassApi = {
+    list: (page: number = 1, pageSize: number = 50, search?: string) =>
+        api.get<AdminClassListResponse>(`/admin/classes?${qs({ page, page_size: pageSize, search })}`),
 };
 
 // ============================================================

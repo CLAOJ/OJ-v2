@@ -360,9 +360,17 @@ export interface UserRef {
     username: string;
 }
 
+/** id/name pair for organization and class chips (see service/contest/types.go). */
+export interface NamedRef {
+    id: number;
+    name: string;
+}
+
 /** v1 single-char codes, see judge/models/problem.py. */
 export type SubmissionSourceVisibilityMode = 'A' | 'S' | 'O' | 'F';
 export type TestcaseVisibilityMode = 'A' | 'C' | 'O';
+/** v1 Contest.SCOREBOARD_VISIBILITY codes, see judge/models/contest.py. */
+export type ScoreboardVisibility = 'V' | 'C' | 'P';
 
 export interface AdminProblemDetail {
     id: number;
@@ -461,16 +469,43 @@ export interface AdminContestDetail {
     format_config: Record<string, unknown> | null;
     access_code: string;
     hide_problem_tags: boolean;
+    hide_problem_authors: boolean;
     run_pretests_only: boolean;
+    show_short_display: boolean;
+    use_clarifications: boolean;
+    push_announcements: boolean;
+    scoreboard_visibility: ScoreboardVisibility;
+    scoreboard_cache_timeout: number;
+    points_precision: number;
+    rating_floor: number | null;
+    rating_ceiling: number | null;
+    performance_ceiling_override: number | null;
+    rate_all: boolean;
+    is_private: boolean;
     is_organization_private: boolean;
+    limit_join_organizations: boolean;
+    og_image: string;
+    logo_override_image: string;
+    problem_label_script: string;
     locked_after: string | null;
     author_ids: number[];
     curator_ids: number[];
     tester_ids: number[];
     tag_ids: number[];
+    organization_ids: number[];
+    banned_user_ids: number[];
+    private_contestant_ids: number[];
+    view_scoreboard_user_ids: number[];
+    join_organization_ids: number[];
+    class_ids: number[];
     authors: UserRef[];
     curators: UserRef[];
     testers: UserRef[];
+    banned_users: UserRef[];
+    private_contestants: UserRef[];
+    view_scoreboard_users: UserRef[];
+    join_organizations: NamedRef[];
+    classes: NamedRef[];
     problems: AdminContestProblemRow[];
 }
 
@@ -496,13 +531,39 @@ export interface AdminContestUpdateRequest {
     format_config?: string;
     access_code?: string;
     hide_problem_tags?: boolean;
+    hide_problem_authors?: boolean;
     run_pretests_only?: boolean;
+    show_short_display?: boolean;
+    use_clarifications?: boolean;
+    push_announcements?: boolean;
+    scoreboard_visibility?: ScoreboardVisibility;
+    scoreboard_cache_timeout?: number;
+    points_precision?: number;
+    rating_floor?: number;
+    rating_ceiling?: number;
+    performance_ceiling_override?: number;
+    rate_all?: boolean;
+    is_private?: boolean;
     is_organization_private?: boolean;
+    limit_join_organizations?: boolean;
+    og_image?: string;
+    logo_override_image?: string;
+    problem_label_script?: string;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
     tag_ids?: number[];
+    organization_ids?: number[];
+    banned_user_ids?: number[];
+    private_contestant_ids?: number[];
+    view_scoreboard_user_ids?: number[];
+    join_organization_ids?: number[];
+    class_ids?: number[];
     problems?: ContestProblemInput[];
+    /** Nullable rating columns: an omitted value alone means "no change" on PATCH. */
+    clear_rating_floor?: boolean;
+    clear_rating_ceiling?: boolean;
+    clear_performance_ceiling_override?: boolean;
 }
 
 export interface AdminProblem {
@@ -577,6 +638,16 @@ export interface AdminOrganization {
     member_count: number;
 }
 
+/** GET /admin/classes row (picker source for contest class ids). */
+export interface AdminClass {
+    id: number;
+    name: string;
+    slug: string;
+    is_active: boolean;
+    organization_id: number;
+    organization_name: string;
+}
+
 export interface AdminSubmission {
     id: number;
     user: string;
@@ -618,12 +689,34 @@ export interface AdminContestCreateRequest {
     format_config?: string;
     access_code?: string;
     hide_problem_tags?: boolean;
+    hide_problem_authors?: boolean;
     run_pretests_only?: boolean;
+    show_short_display?: boolean;
+    use_clarifications?: boolean;
+    push_announcements?: boolean;
+    scoreboard_visibility?: ScoreboardVisibility;
+    scoreboard_cache_timeout?: number;
+    points_precision?: number;
+    rating_floor?: number;
+    rating_ceiling?: number;
+    performance_ceiling_override?: number;
+    rate_all?: boolean;
+    is_private?: boolean;
     is_organization_private?: boolean;
+    limit_join_organizations?: boolean;
+    og_image?: string;
+    logo_override_image?: string;
+    problem_label_script?: string;
     author_ids?: number[];
     curator_ids?: number[];
     tester_ids?: number[];
     tag_ids?: number[];
+    organization_ids?: number[];
+    banned_user_ids?: number[];
+    private_contestant_ids?: number[];
+    view_scoreboard_user_ids?: number[];
+    join_organization_ids?: number[];
+    class_ids?: number[];
     problem_ids?: number[];
 }
 
@@ -1265,6 +1358,7 @@ export type AdminContestListResponse = AdminListResponse<AdminContest>;
 export type AdminProblemListResponse = AdminListResponse<AdminProblem>;
 export type AdminJudgeListResponse = AdminListResponse<AdminJudge>;
 export type AdminOrganizationListResponse = AdminListResponse<AdminOrganization>;
+export type AdminClassListResponse = AdminListResponse<AdminClass>;
 export type AdminSubmissionListResponse = AdminListResponse<AdminSubmission>;
 export type AdminSolutionListResponse = AdminListResponse<AdminSolution>;
 // GET /api/admin/tickets returns { items, total } (not { data, total })

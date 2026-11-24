@@ -5,7 +5,6 @@ import type {
     AdminProblemCreateRequest,
     AdminProblemUpdateRequest,
     AdminContestDetail,
-    AdminContestProblemRow,
     AdminContestUpdateRequest,
     AdminContestCreateRequest,
     ContestProblemInput,
@@ -133,11 +132,33 @@ export function contestToFormData(c: AdminContestDetail): ContestFormData {
         hide_problem_tags: c.hide_problem_tags,
         run_pretests_only: c.run_pretests_only,
         is_organization_private: c.is_organization_private,
+        rate_all: c.rate_all,
+        rating_floor: c.rating_floor ?? undefined,
+        rating_ceiling: c.rating_ceiling ?? undefined,
+        performance_ceiling_override: c.performance_ceiling_override ?? undefined,
+        scoreboard_visibility: c.scoreboard_visibility,
+        scoreboard_cache_timeout: c.scoreboard_cache_timeout,
+        points_precision: c.points_precision,
+        is_private: c.is_private,
+        hide_problem_authors: c.hide_problem_authors,
+        show_short_display: c.show_short_display,
+        use_clarifications: c.use_clarifications,
+        push_announcements: c.push_announcements,
+        limit_join_organizations: c.limit_join_organizations,
+        og_image: c.og_image,
+        logo_override_image: c.logo_override_image,
+        problem_label_script: c.problem_label_script,
         author_ids: [...c.author_ids],
         curator_ids: [...c.curator_ids],
         tester_ids: [...c.tester_ids],
         tag_ids: [...c.tag_ids],
         problem_ids: c.problems.map(p => p.problem_id),
+        organization_ids: [...c.organization_ids],
+        banned_user_ids: [...c.banned_user_ids],
+        private_contestant_ids: [...c.private_contestant_ids],
+        view_scoreboard_user_ids: [...c.view_scoreboard_user_ids],
+        join_organization_ids: [...c.join_organization_ids],
+        class_ids: [...c.class_ids],
     };
 }
 
@@ -160,25 +181,62 @@ function sharedContestFields(data: ContestFormData) {
         hide_problem_tags: data.hide_problem_tags,
         run_pretests_only: data.run_pretests_only,
         is_organization_private: data.is_organization_private,
+        rate_all: data.rate_all ?? false,
+        rating_floor: data.rating_floor,
+        rating_ceiling: data.rating_ceiling,
+        performance_ceiling_override: data.performance_ceiling_override,
+        scoreboard_visibility: data.scoreboard_visibility ?? 'V',
+        scoreboard_cache_timeout: data.scoreboard_cache_timeout ?? 0,
+        // 0 is a valid precision, so only an empty field is left out.
+        points_precision: data.points_precision,
+        is_private: data.is_private ?? false,
+        hide_problem_authors: data.hide_problem_authors ?? false,
+        show_short_display: data.show_short_display ?? false,
+        // Omitted = the backend's v1 default (clarifications on).
+        use_clarifications: data.use_clarifications,
+        push_announcements: data.push_announcements ?? false,
+        limit_join_organizations: data.limit_join_organizations ?? false,
+        og_image: data.og_image ?? '',
+        logo_override_image: data.logo_override_image ?? '',
+        problem_label_script: data.problem_label_script ?? '',
         author_ids: data.author_ids ?? [],
         curator_ids: data.curator_ids ?? [],
         tester_ids: data.tester_ids ?? [],
         tag_ids: data.tag_ids ?? [],
+        organization_ids: data.organization_ids ?? [],
+        banned_user_ids: data.banned_user_ids ?? [],
+        private_contestant_ids: data.private_contestant_ids ?? [],
+        view_scoreboard_user_ids: data.view_scoreboard_user_ids ?? [],
+        join_organization_ids: data.join_organization_ids ?? [],
+        class_ids: data.class_ids ?? [],
     };
 }
 
-export function contestFormToUpdate(data: ContestFormData, existing: AdminContestProblemRow[]): AdminContestUpdateRequest {
-    const byProblem = new Map(existing.map(row => [row.problem_id, row]));
+/**
+ * PATCH ignores an omitted rating floor/ceiling (nil = no change), so an
+ * emptied field has to say so with its clear flag instead.
+ */
+export function contestFormToUpdate(data: ContestFormData, existing?: AdminContestDetail): AdminContestUpdateRequest {
+    const byProblem = new Map((existing?.problems ?? []).map(row => [row.problem_id, row]));
     const problems: ContestProblemInput[] = (data.problem_ids ?? []).map(id => {
         const row = byProblem.get(id);
         return row
             ? { problem_id: id, points: row.points, partial: row.partial, is_pretested: row.is_pretested }
             : { problem_id: id };
     });
+    const clearFloor = data.rating_floor == null && existing?.rating_floor != null;
+    const clearCeiling = data.rating_ceiling == null && existing?.rating_ceiling != null;
+    const clearPerformance = data.performance_ceiling_override == null && existing?.performance_ceiling_override != null;
     return {
         ...sharedContestFields(data),
         time_limit: minutesToSeconds(data.time_limit) ?? 0,
         problems,
+        rating_floor: clearFloor ? undefined : data.rating_floor,
+        rating_ceiling: clearCeiling ? undefined : data.rating_ceiling,
+        performance_ceiling_override: clearPerformance ? undefined : data.performance_ceiling_override,
+        ...(clearFloor ? { clear_rating_floor: true } : {}),
+        ...(clearCeiling ? { clear_rating_ceiling: true } : {}),
+        ...(clearPerformance ? { clear_performance_ceiling_override: true } : {}),
     };
 }
 
@@ -188,5 +246,5 @@ export function contestFormToCreate(data: ContestFormData): AdminContestCreateRe
         key: data.key,
         time_limit: minutesToSeconds(data.time_limit),
         problem_ids: data.problem_ids ?? [],
-    } as AdminContestCreateRequest;
+    };
 }

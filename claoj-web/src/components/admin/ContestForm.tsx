@@ -8,10 +8,16 @@ import api from '@/lib/api';
 import { BasicInfoSection } from './contest-form/BasicInfoSection';
 import { ScheduleSection } from './contest-form/ScheduleSection';
 import { FormatSection } from './contest-form/FormatSection';
+import { RatingSection } from './contest-form/RatingSection';
+import { ScoreboardSection } from './contest-form/ScoreboardSection';
+import { AccessSection } from './contest-form/AccessSection';
+import { DetailsSection } from './contest-form/DetailsSection';
+import { SettingsSection } from './contest-form/SettingsSection';
 import { ProblemsSection } from './contest-form/ProblemsSection';
 import { TagsSection } from './contest-form/TagsSection';
 import { StaffSection } from './contest-form/StaffSection';
 import type { EntityOption } from './EntityPicker';
+import type { ScoreboardVisibility } from '@/types';
 
 export interface ContestFormData {
     key: string;
@@ -34,11 +40,47 @@ export interface ContestFormData {
     tester_ids?: number[];
     problem_ids?: number[];
     tag_ids?: number[];
+    rate_all?: boolean;
+    rating_floor?: number;
+    rating_ceiling?: number;
+    performance_ceiling_override?: number;
+    scoreboard_visibility?: ScoreboardVisibility;
+    scoreboard_cache_timeout?: number;
+    points_precision?: number;
+    is_private?: boolean;
+    hide_problem_authors?: boolean;
+    show_short_display?: boolean;
+    use_clarifications?: boolean;
+    push_announcements?: boolean;
+    limit_join_organizations?: boolean;
+    og_image?: string;
+    logo_override_image?: string;
+    problem_label_script?: string;
+    organization_ids?: number[];
+    banned_user_ids?: number[];
+    private_contestant_ids?: number[];
+    view_scoreboard_user_ids?: number[];
+    join_organization_ids?: number[];
+    class_ids?: number[];
+}
+
+/** Chips for the relation pickers, keyed by the form field they belong to. */
+export interface ContestFormOptions {
+    problems?: EntityOption[];
+    author_ids?: EntityOption[];
+    curator_ids?: EntityOption[];
+    tester_ids?: EntityOption[];
+    organization_ids?: EntityOption[];
+    banned_user_ids?: EntityOption[];
+    private_contestant_ids?: EntityOption[];
+    view_scoreboard_user_ids?: EntityOption[];
+    join_organization_ids?: EntityOption[];
+    class_ids?: EntityOption[];
 }
 
 export interface ContestFormProps {
     initialData?: ContestFormData;
-    initialOptions?: { problems?: EntityOption[]; author_ids?: EntityOption[]; curator_ids?: EntityOption[]; tester_ids?: EntityOption[] };
+    initialOptions?: ContestFormOptions;
     onSubmit: (data: ContestFormData) => Promise<void>;
     isLoading?: boolean;
 }
@@ -74,6 +116,28 @@ export default function ContestForm({ initialData, initialOptions, onSubmit, isL
             tester_ids: initialData?.tester_ids ?? [],
             problem_ids: initialData?.problem_ids ?? [],
             tag_ids: initialData?.tag_ids ?? [],
+            rate_all: initialData?.rate_all ?? false,
+            rating_floor: initialData?.rating_floor,
+            rating_ceiling: initialData?.rating_ceiling,
+            performance_ceiling_override: initialData?.performance_ceiling_override,
+            scoreboard_visibility: initialData?.scoreboard_visibility ?? 'V',
+            scoreboard_cache_timeout: initialData?.scoreboard_cache_timeout ?? 0,
+            points_precision: initialData?.points_precision,
+            is_private: initialData?.is_private ?? false,
+            hide_problem_authors: initialData?.hide_problem_authors ?? false,
+            show_short_display: initialData?.show_short_display ?? false,
+            use_clarifications: initialData?.use_clarifications ?? true,
+            push_announcements: initialData?.push_announcements ?? false,
+            limit_join_organizations: initialData?.limit_join_organizations ?? false,
+            og_image: initialData?.og_image || '',
+            logo_override_image: initialData?.logo_override_image || '',
+            problem_label_script: initialData?.problem_label_script || '',
+            organization_ids: initialData?.organization_ids ?? [],
+            banned_user_ids: initialData?.banned_user_ids ?? [],
+            private_contestant_ids: initialData?.private_contestant_ids ?? [],
+            view_scoreboard_user_ids: initialData?.view_scoreboard_user_ids ?? [],
+            join_organization_ids: initialData?.join_organization_ids ?? [],
+            class_ids: initialData?.class_ids ?? [],
         }
     });
 
@@ -136,15 +200,43 @@ export default function ContestForm({ initialData, initialOptions, onSubmit, isL
                     format_name: watch('format_name'),
                     access_code: watch('access_code'),
                     is_visible: watch('is_visible'),
-                    is_rated: watch('is_rated'),
                     hide_problem_tags: watch('hide_problem_tags'),
-                    run_pretests_only: watch('run_pretests_only'),
-                    is_organization_private: watch('is_organization_private')
+                    run_pretests_only: watch('run_pretests_only')
                 }}
                 selectedFormat={selectedFormat || 'default'}
                 register={register}
                 setValue={setValue}
                 formatConfigError={(errors.format_config?.message as string | undefined)}
+            />
+
+            <RatingSection register={register} />
+
+            <ScoreboardSection register={register} />
+
+            <AccessSection
+                selected={{
+                    organization_ids: watch('organization_ids') || [],
+                    banned_user_ids: watch('banned_user_ids') || [],
+                    private_contestant_ids: watch('private_contestant_ids') || [],
+                    view_scoreboard_user_ids: watch('view_scoreboard_user_ids') || [],
+                    join_organization_ids: watch('join_organization_ids') || [],
+                    class_ids: watch('class_ids') || []
+                }}
+                initialOptions={initialOptions}
+                register={register}
+                onChange={(field, ids) => setValue(field, ids)}
+            />
+
+            <DetailsSection register={register} />
+
+            <SettingsSection
+                settings={{
+                    push_announcements: watch('push_announcements') || false,
+                    hide_problem_authors: watch('hide_problem_authors') || false,
+                    show_short_display: watch('show_short_display') || false,
+                    use_clarifications: watch('use_clarifications') ?? true
+                }}
+                register={register}
             />
 
             <ProblemsSection

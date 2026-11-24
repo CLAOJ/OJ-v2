@@ -24,10 +24,20 @@ const problem: AdminProblemDetail = {
 const contest: AdminContestDetail = {
     id: 1, key: 'tik25', name: 'TiK25', description: 'd', summary: 's',
     start_time: '2026-11-01T02:00:00Z', end_time: '2026-11-01T05:00:00Z', time_limit: 5400,
-    is_visible: true, is_rated: false, format_name: 'ioi16', format_config: { cumtime: true },
-    access_code: '', hide_problem_tags: false, run_pretests_only: false, is_organization_private: false,
+    is_visible: true, is_rated: true, format_name: 'ioi16', format_config: { cumtime: true },
+    access_code: '', hide_problem_tags: false, hide_problem_authors: true, run_pretests_only: false,
+    show_short_display: true, use_clarifications: false, push_announcements: true,
+    scoreboard_visibility: 'C', scoreboard_cache_timeout: 600, points_precision: 5,
+    rating_floor: 1200, rating_ceiling: 2400, performance_ceiling_override: 3000, rate_all: true,
+    is_private: true, is_organization_private: true, limit_join_organizations: true,
+    og_image: '/og.png', logo_override_image: '/logo.png', problem_label_script: 'print(1)',
     locked_after: null, author_ids: [4], curator_ids: [], tester_ids: [9], tag_ids: [3],
+    organization_ids: [5], banned_user_ids: [6], private_contestant_ids: [7],
+    view_scoreboard_user_ids: [8], join_organization_ids: [12], class_ids: [13],
     authors: [{ id: 4, username: 'a' }], curators: [], testers: [{ id: 9, username: 'b' }],
+    banned_users: [{ id: 6, username: 'd' }], private_contestants: [{ id: 7, username: 'e' }],
+    view_scoreboard_users: [{ id: 8, username: 'f' }],
+    join_organizations: [{ id: 12, name: 'Org' }], classes: [{ id: 13, name: 'Class 10A' }],
     problems: [
         { id: 11, problem_id: 20, code: 'p20', name: 'P20', points: 250, partial: false, is_pretested: true, order: 1 },
         { id: 12, problem_id: 21, code: 'p21', name: 'P21', points: 100, partial: true, is_pretested: false, order: 2 },
@@ -163,7 +173,7 @@ describe('adminForms', () => {
 
     it('contestFormToUpdate preserves per-problem settings and appends new problems', () => {
         const f = { ...contestToFormData(contest), problem_ids: [21, 20, 30] };
-        const req = contestFormToUpdate(f, contest.problems);
+        const req = contestFormToUpdate(f, contest);
         expect(req.problems).toEqual([
             { problem_id: 21, points: 100, partial: true, is_pretested: false },
             { problem_id: 20, points: 250, partial: false, is_pretested: true },
@@ -177,7 +187,109 @@ describe('adminForms', () => {
 
     it('an emptied time limit clears it on update and is omitted on create', () => {
         const f = { ...contestToFormData(contest), time_limit: undefined };
-        expect(contestFormToUpdate(f, contest.problems).time_limit).toBe(0);
+        expect(contestFormToUpdate(f, contest).time_limit).toBe(0);
         expect(contestFormToCreate(f).time_limit).toBeUndefined();
+    });
+
+    it('contestToFormData maps every v1 rating/scoreboard/access field', () => {
+        const f = contestToFormData(contest);
+        expect(f.rate_all).toBe(true);
+        expect(f.rating_floor).toBe(1200);
+        expect(f.rating_ceiling).toBe(2400);
+        expect(f.performance_ceiling_override).toBe(3000);
+        expect(f.scoreboard_visibility).toBe('C');
+        expect(f.scoreboard_cache_timeout).toBe(600);
+        expect(f.points_precision).toBe(5);
+        expect(f.is_private).toBe(true);
+        expect(f.limit_join_organizations).toBe(true);
+        expect(f.og_image).toBe('/og.png');
+        expect(f.logo_override_image).toBe('/logo.png');
+        expect(f.problem_label_script).toBe('print(1)');
+        expect(f.push_announcements).toBe(true);
+        expect(f.hide_problem_authors).toBe(true);
+        expect(f.show_short_display).toBe(true);
+        expect(f.use_clarifications).toBe(false);
+        expect(f.organization_ids).toEqual([5]);
+        expect(f.banned_user_ids).toEqual([6]);
+        expect(f.private_contestant_ids).toEqual([7]);
+        expect(f.view_scoreboard_user_ids).toEqual([8]);
+        expect(f.join_organization_ids).toEqual([12]);
+        expect(f.class_ids).toEqual([13]);
+    });
+
+    it('contestToFormData renders a null rating column as an empty field', () => {
+        const f = contestToFormData({ ...contest, rating_floor: null, rating_ceiling: null, performance_ceiling_override: null });
+        expect(f.rating_floor).toBeUndefined();
+        expect(f.rating_ceiling).toBeUndefined();
+        expect(f.performance_ceiling_override).toBeUndefined();
+    });
+
+    it('contestFormToUpdate round-trips every extended field', () => {
+        const req = contestFormToUpdate(contestToFormData(contest), contest);
+        expect(req.rate_all).toBe(true);
+        expect(req.rating_floor).toBe(1200);
+        expect(req.rating_ceiling).toBe(2400);
+        expect(req.performance_ceiling_override).toBe(3000);
+        expect(req.scoreboard_visibility).toBe('C');
+        expect(req.scoreboard_cache_timeout).toBe(600);
+        expect(req.points_precision).toBe(5);
+        expect(req.is_private).toBe(true);
+        expect(req.limit_join_organizations).toBe(true);
+        expect(req.og_image).toBe('/og.png');
+        expect(req.logo_override_image).toBe('/logo.png');
+        expect(req.problem_label_script).toBe('print(1)');
+        expect(req.push_announcements).toBe(true);
+        expect(req.hide_problem_authors).toBe(true);
+        expect(req.show_short_display).toBe(true);
+        expect(req.use_clarifications).toBe(false);
+        expect(req.organization_ids).toEqual([5]);
+        expect(req.banned_user_ids).toEqual([6]);
+        expect(req.private_contestant_ids).toEqual([7]);
+        expect(req.view_scoreboard_user_ids).toEqual([8]);
+        expect(req.join_organization_ids).toEqual([12]);
+        expect(req.class_ids).toEqual([13]);
+        expect(req.clear_rating_floor).toBeUndefined();
+        expect(req.clear_rating_ceiling).toBeUndefined();
+        expect(req.clear_performance_ceiling_override).toBeUndefined();
+    });
+
+    it('an emptied rating column is cleared with its flag, never sent as null', () => {
+        const f = { ...contestToFormData(contest), rating_floor: undefined, rating_ceiling: undefined, performance_ceiling_override: undefined };
+        const req = contestFormToUpdate(f, contest);
+        expect(req.clear_rating_floor).toBe(true);
+        expect(req.clear_rating_ceiling).toBe(true);
+        expect(req.clear_performance_ceiling_override).toBe(true);
+        expect(req.rating_floor).toBeUndefined();
+        expect(req.rating_ceiling).toBeUndefined();
+        expect(req.performance_ceiling_override).toBeUndefined();
+    });
+
+    it('an already empty rating column sets no clear flag', () => {
+        const empty = { ...contest, rating_floor: null, rating_ceiling: null, performance_ceiling_override: null };
+        const req = contestFormToUpdate(contestToFormData(empty), empty);
+        expect(req.clear_rating_floor).toBeUndefined();
+        expect(req.clear_rating_ceiling).toBeUndefined();
+        expect(req.clear_performance_ceiling_override).toBeUndefined();
+    });
+
+    it('contestFormToCreate posts the extended payload', () => {
+        const req = contestFormToCreate(contestToFormData(contest));
+        expect(req.key).toBe('tik25');
+        expect(req.rate_all).toBe(true);
+        expect(req.rating_floor).toBe(1200);
+        expect(req.scoreboard_visibility).toBe('C');
+        expect(req.points_precision).toBe(5);
+        expect(req.use_clarifications).toBe(false);
+        expect(req.problem_label_script).toBe('print(1)');
+        expect(req.private_contestant_ids).toEqual([7]);
+        expect(req.view_scoreboard_user_ids).toEqual([8]);
+        expect(req.join_organization_ids).toEqual([12]);
+        expect(req.class_ids).toEqual([13]);
+        expect('clear_rating_floor' in req).toBe(false);
+    });
+
+    it('contestFormToCreate keeps a zero points precision', () => {
+        const req = contestFormToCreate({ ...contestToFormData(contest), points_precision: 0 });
+        expect(req.points_precision).toBe(0);
     });
 });
