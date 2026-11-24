@@ -8,7 +8,7 @@ import { adminProblemApi } from '@/lib/adminApi';
 import { problemToFormData } from '@/lib/adminForms';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
-import { Code2, ArrowLeft, Database, MessageSquare } from 'lucide-react';
+import { Code2, ArrowLeft, Database, MessageSquare, BookOpen } from 'lucide-react';
 import { Link } from '@/navigation';
 
 export default function EditProblemPage() {
@@ -85,6 +85,13 @@ export default function EditProblemPage() {
                 >
                     <MessageSquare size={18} />
                     {t('problems.clarificationsLink')}
+                </Link>
+                <Link
+                    href={`/admin/problems/${code}/editorial`}
+                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                >
+                    <BookOpen size={18} />
+                    {t('problems.editorialLink')}
                 </Link>
             </div>
 

@@ -258,6 +258,7 @@ export default function CommentAdminPage() {
                                                 size="sm"
                                                 onClick={() => handleToggleHidden(comment)}
                                                 title={comment.hidden ? t('comments.unhideTitle') : t('comments.hideTitle')}
+                                                aria-label={comment.hidden ? t('comments.unhideTitle') : t('comments.hideTitle')}
                                             >
                                                 {comment.hidden ? (
                                                     <Eye className="h-4 w-4" />
@@ -269,6 +270,8 @@ export default function CommentAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => openEditDialog(comment)}
+                                                title={t('common.edit')}
+                                                aria-label={t('common.edit')}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -277,6 +280,8 @@ export default function CommentAdminPage() {
                                                 size="sm"
                                                 onClick={() => setDeleteConfirmId(comment.id)}
                                                 className="text-destructive hover:text-destructive"
+                                                title={t('common.delete')}
+                                                aria-label={t('common.delete')}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

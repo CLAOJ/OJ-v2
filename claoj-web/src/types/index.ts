@@ -1296,11 +1296,13 @@ export type AdminMiscConfigListResponse = AdminListResponse<AdminMiscConfig>;
 export interface LanguageLimit {
     id: number;
     problem_id: number;
+    problem_code: string;
+    problem_name: string;
     language_id: number;
+    language_key: string;
+    language_name: string;
     time_limit: number;
     memory_limit: number;
-    problem?: { id: number; code: string; name: string };
-    language?: { id: number; key: string; name: string };
 }
 
 export interface AdminLanguageLimit extends LanguageLimit {}

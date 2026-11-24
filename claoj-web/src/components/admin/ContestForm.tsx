@@ -144,6 +144,7 @@ export default function ContestForm({ initialData, initialOptions, onSubmit, isL
                 selectedFormat={selectedFormat || 'default'}
                 register={register}
                 setValue={setValue}
+                formatConfigError={(errors.format_config?.message as string | undefined)}
             />
 
             <ProblemsSection

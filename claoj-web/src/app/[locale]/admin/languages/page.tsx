@@ -396,6 +396,8 @@ export default function LanguageAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => openEditDialog(lang)}
+                                                title={t('common.edit')}
+                                                aria-label={t('common.edit')}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -404,6 +406,8 @@ export default function LanguageAdminPage() {
                                                 size="sm"
                                                 onClick={() => setDeleteConfirmId(lang.id)}
                                                 className="text-destructive hover:text-destructive"
+                                                title={t('common.delete')}
+                                                aria-label={t('common.delete')}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

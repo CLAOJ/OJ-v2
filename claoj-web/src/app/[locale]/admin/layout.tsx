@@ -29,6 +29,7 @@ import {
     History,
     PanelTop,
     ArrowLeft,
+    ChevronRight,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -103,6 +104,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         ?? (pathname === '/admin' ? '/admin' : undefined);
 
     const activeLabel = ALL_ITEMS.find(i => i.href === activeHref)?.key;
+
+    // Third crumb only for the create/edit pages; dynamic segments (codes, keys)
+    // stay in the heading, not the breadcrumb.
+    const lastSegment = pathname.split('/').filter(Boolean).pop();
+    const actionKey = lastSegment === 'create' || lastSegment === 'edit' ? lastSegment : undefined;
 
     if (loading || !allowed) {
         return (
@@ -204,6 +210,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 <main className="p-4 lg:p-8 max-w-[1400px]">
+                    {activeLabel && (
+                        <nav
+                            aria-label={t('layout.breadcrumb')}
+                            className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground"
+                        >
+                            <Link href="/admin" className="hover:text-foreground transition-colors">
+                                {t('layout.adminLabel')}
+                            </Link>
+                            <ChevronRight size={12} aria-hidden="true" />
+                            {actionKey ? (
+                                <>
+                                    <Link href={activeHref!} className="hover:text-foreground transition-colors">
+                                        {t(`nav.${activeLabel}`)}
+                                    </Link>
+                                    <ChevronRight size={12} aria-hidden="true" />
+                                    <span aria-current="page" className="text-foreground">
+                                        {t(`common.${actionKey}`)}
+                                    </span>
+                                </>
+                            ) : (
+                                <span aria-current="page" className="text-foreground">
+                                    {t(`nav.${activeLabel}`)}
+                                </span>
+                            )}
+                        </nav>
+                    )}
                     <Suspense fallback={null}>{children}</Suspense>
                 </main>
             </div>

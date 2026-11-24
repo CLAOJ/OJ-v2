@@ -283,6 +283,7 @@ export default function BlogPostAdminPage() {
                                                 size="sm"
                                                 onClick={() => handleToggleVisibility(post)}
                                                 title={post.visible ? t('blogPosts.hideTitle') : t('blogPosts.showTitle')}
+                                                aria-label={post.visible ? t('blogPosts.hideTitle') : t('blogPosts.showTitle')}
                                             >
                                                 {post.visible ? (
                                                     <Eye className="h-4 w-4" />
@@ -295,6 +296,7 @@ export default function BlogPostAdminPage() {
                                                 size="sm"
                                                 onClick={() => handleToggleSticky(post)}
                                                 title={post.sticky ? t('blogPosts.unstickyTitle') : t('blogPosts.stickyTitle')}
+                                                aria-label={post.sticky ? t('blogPosts.unstickyTitle') : t('blogPosts.stickyTitle')}
                                             >
                                                 <Pin className={`h-4 w-4 ${post.sticky ? 'fill-current' : ''}`} />
                                             </Button>
@@ -302,6 +304,8 @@ export default function BlogPostAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => openEditDialog(post)}
+                                                title={t('common.edit')}
+                                                aria-label={t('common.edit')}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -310,6 +314,8 @@ export default function BlogPostAdminPage() {
                                                 size="sm"
                                                 onClick={() => setDeleteConfirmId(post.id)}
                                                 className="text-destructive hover:text-destructive"
+                                                title={t('common.delete')}
+                                                aria-label={t('common.delete')}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

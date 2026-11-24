@@ -272,6 +272,8 @@ export default function ProblemTaxonomyAdminPage() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openEditGroupDialog(group)}
+                                                        title={t('common.edit')}
+                                                        aria-label={t('common.edit')}
                                                     >
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
@@ -280,6 +282,8 @@ export default function ProblemTaxonomyAdminPage() {
                                                         size="sm"
                                                         onClick={() => setDeleteGroupConfirmId(group.id)}
                                                         className="text-destructive hover:text-destructive"
+                                                        title={t('common.delete')}
+                                                        aria-label={t('common.delete')}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -362,6 +366,8 @@ export default function ProblemTaxonomyAdminPage() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openEditTypeDialog(ptype)}
+                                                        title={t('common.edit')}
+                                                        aria-label={t('common.edit')}
                                                     >
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
@@ -370,6 +376,8 @@ export default function ProblemTaxonomyAdminPage() {
                                                         size="sm"
                                                         onClick={() => setDeleteTypeConfirmId(ptype.id)}
                                                         className="text-destructive hover:text-destructive"
+                                                        title={t('common.delete')}
+                                                        aria-label={t('common.delete')}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>

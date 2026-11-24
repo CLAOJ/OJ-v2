@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Settings2 } from 'lucide-react';
+import { formatLimitSeconds, formatLimitMemory } from '@/lib/utils';
 
 interface ProblemOption {
     id: number;
@@ -114,21 +115,16 @@ export default function LanguageLimitsAdminPage() {
         setIsCreateDialogOpen(true);
     };
 
-    const openEditDialog = async (limit: AdminLanguageLimit) => {
-        try {
-            const response = await adminLanguageLimitApi.detail(limit.id);
-            setFormData({
-                problem_id: response.data.problem_id,
-                language_id: response.data.language_id,
-                time_limit: response.data.time_limit,
-                // Stored in KB; the form edits MB.
-                memory_limit: Math.round(response.data.memory_limit / 1024),
-            });
-            setEditingLimit(limit);
-            setIsEditDialogOpen(true);
-        } catch (error) {
-            toast.error(t('languageLimits.loadDetailFailed'));
-        }
+    const openEditDialog = (limit: AdminLanguageLimit) => {
+        setFormData({
+            problem_id: limit.problem_id,
+            language_id: limit.language_id,
+            time_limit: Number(limit.time_limit) || 0,
+            // Stored in KB; the form edits MB.
+            memory_limit: Math.round((Number(limit.memory_limit) || 0) / 1024),
+        });
+        setEditingLimit(limit);
+        setIsEditDialogOpen(true);
     };
 
     const handleCreate = async () => {
@@ -242,15 +238,15 @@ export default function LanguageLimitsAdminPage() {
                             limits.map((limit) => (
                                 <TableRow key={limit.id}>
                                     <TableCell className="font-medium">
-                                        {limit.problem?.code || t('languageLimits.unknownLabel')} - {limit.problem?.name || ''}
+                                        {limit.problem_code || t('languageLimits.unknownLabel')} - {limit.problem_name || ''}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">{limit.language?.name || limit.language?.key || t('languageLimits.unknownLabel')}</span>
+                                            <span className="font-medium">{limit.language_name || limit.language_key || t('languageLimits.unknownLabel')}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell>{limit.time_limit.toFixed(2)}s</TableCell>
-                                    <TableCell>{Math.round(limit.memory_limit / 1024)} MB</TableCell>
+                                    <TableCell>{formatLimitSeconds(limit.time_limit) ?? t('languageLimits.unknownLabel')}</TableCell>
+                                    <TableCell>{formatLimitMemory(limit.memory_limit) ?? t('languageLimits.unknownLabel')}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button

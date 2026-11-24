@@ -212,6 +212,8 @@ export default function NavigationBarsAdminPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => openEditDialog(navBar)}
+                                                title={t('common.edit')}
+                                                aria-label={t('common.edit')}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -220,6 +222,8 @@ export default function NavigationBarsAdminPage() {
                                                 size="sm"
                                                 onClick={() => setDeleteConfirmId(navBar.id)}
                                                 className="text-destructive hover:text-destructive"
+                                                title={t('common.delete')}
+                                                aria-label={t('common.delete')}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

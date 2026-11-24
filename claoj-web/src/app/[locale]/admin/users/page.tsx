@@ -248,6 +248,8 @@ export default function AdminUserPage() {
                                                             setShowEditModal(true);
                                                         }}
                                                         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        title={t('common.edit')}
+                                                        aria-label={t('common.edit')}
                                                     >
                                                         <Edit size={18} />
                                                     </button>
@@ -264,6 +266,8 @@ export default function AdminUserPage() {
                                                             onClick={() => unbanMutation.mutate(user.id)}
                                                             disabled={unbanMutation.isPending}
                                                             className="p-2 hover:bg-success/10 text-success rounded-lg transition-colors"
+                                                            title={t('users.unbanButton')}
+                                                            aria-label={t('users.unbanButton')}
                                                         >
                                                             <UserCheck size={18} />
                                                         </button>
@@ -275,6 +279,8 @@ export default function AdminUserPage() {
                                                                 setShowEditModal(true);
                                                             }}
                                                             className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
+                                                            title={t('users.banUserButton')}
+                                                            aria-label={t('users.banUserButton')}
                                                         >
                                                             <Ban size={18} />
                                                         </button>
@@ -283,6 +289,8 @@ export default function AdminUserPage() {
                                                         onClick={() => deleteMutation.mutate(user.id)}
                                                         disabled={deleteMutation.isPending}
                                                         className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
+                                                        title={t('common.delete')}
+                                                        aria-label={t('common.delete')}
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>

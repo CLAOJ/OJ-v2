@@ -22,6 +22,18 @@ export function formatTime(seconds: number): string {
     return `${mins}m ${secs}s`;
 }
 
+/** Time limit in seconds → "1.50s"; null when the value is missing. */
+export function formatLimitSeconds(seconds: number | null | undefined): string | null {
+    if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return null;
+    return `${seconds.toFixed(2)}s`;
+}
+
+/** Language-limit memory is stored in KB → "256 MB"; null when missing. */
+export function formatLimitMemory(kilobytes: number | null | undefined): string | null {
+    if (typeof kilobytes !== 'number' || !Number.isFinite(kilobytes)) return null;
+    return `${Math.round(kilobytes / 1024)} MB`;
+}
+
 export function getStatusColor(status: string): string {
     switch (status) {
         case 'AC': return 'text-emerald-500';

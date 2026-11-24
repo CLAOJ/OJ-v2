@@ -42,6 +42,7 @@ interface FormatSectionProps {
     selectedFormat: string;
     register: UseFormRegister<ContestFormData>;
     setValue: (field: keyof ContestFormData, value: any) => void;
+    formatConfigError?: string;
 }
 
 const CONTEST_FORMATS = [
@@ -51,7 +52,7 @@ const CONTEST_FORMATS = [
     { value: 'ecoo', label: 'ECOO' },
 ];
 
-export function FormatSection({ formData, selectedFormat, register, setValue }: FormatSectionProps) {
+export function FormatSection({ formData, selectedFormat, register, setValue, formatConfigError }: FormatSectionProps) {
     const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
@@ -84,6 +85,32 @@ export function FormatSection({ formData, selectedFormat, register, setValue }: 
                         {...register('access_code')}
                     />
                 </div>
+            </div>
+
+            <div>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">
+                    {t('contestForm.formatConfigLabel')}
+                </label>
+                <textarea
+                    rows={5}
+                    className="w-full px-3 py-2 rounded-xl bg-card border font-mono text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    placeholder={t('contestForm.formatConfigPlaceholder')}
+                    {...register('format_config', {
+                        // Empty is fine: the format keeps its defaults.
+                        validate: (value) => {
+                            if (!value || !value.trim()) return true;
+                            try {
+                                JSON.parse(value);
+                                return true;
+                            } catch {
+                                return t('contestForm.formatConfigInvalid');
+                            }
+                        },
+                    })}
+                />
+                <p className={cn('text-xs mt-1', formatConfigError ? 'text-destructive' : 'text-muted-foreground')}>
+                    {formatConfigError || t('contestForm.formatConfigHint')}
+                </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
