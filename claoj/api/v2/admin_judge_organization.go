@@ -2,6 +2,7 @@ package v2
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/scoring"
 	"github.com/CLAOJ/claoj/service/organization"
 	"github.com/gin-gonic/gin"
 )
@@ -340,24 +342,28 @@ func AdminOrganizationList(c *gin.Context) {
 	}
 
 	type Item struct {
-		ID          uint   `json:"id"`
-		Name        string `json:"name"`
-		Slug        string `json:"slug"`
-		ShortName   string `json:"short_name"`
-		IsOpen      bool   `json:"is_open"`
-		IsUnlisted  bool   `json:"is_unlisted"`
-		MemberCount int    `json:"member_count"`
+		ID                uint    `json:"id"`
+		Name              string  `json:"name"`
+		Slug              string  `json:"slug"`
+		ShortName         string  `json:"short_name"`
+		IsOpen            bool    `json:"is_open"`
+		IsUnlisted        bool    `json:"is_unlisted"`
+		LogoOverrideImage string  `json:"logo_override_image"`
+		MemberCount       int     `json:"member_count"`
+		PerformancePoints float64 `json:"performance_points"`
 	}
 	items := make([]Item, len(resp.Organizations))
 	for i, o := range resp.Organizations {
 		items[i] = Item{
-			ID:          o.ID,
-			Name:        o.Name,
-			Slug:        o.Slug,
-			ShortName:   o.ShortName,
-			IsOpen:      o.IsOpen,
-			IsUnlisted:  o.IsUnlisted,
-			MemberCount: o.MemberCount,
+			ID:                o.ID,
+			Name:              o.Name,
+			Slug:              o.Slug,
+			ShortName:         o.ShortName,
+			IsOpen:            o.IsOpen,
+			IsUnlisted:        o.IsUnlisted,
+			LogoOverrideImage: o.LogoOverrideImage,
+			MemberCount:       o.MemberCount,
+			PerformancePoints: o.PerformancePoints,
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -368,17 +374,58 @@ func AdminOrganizationList(c *gin.Context) {
 	})
 }
 
+// AdminOrganizationDetail - GET /api/v2/admin/organization/:id
+func AdminOrganizationDetail(c *gin.Context) {
+	idParam := c.Param("id")
+	organizationID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid organization ID"))
+		return
+	}
+
+	profile, err := getOrgService().GetOrganization(organization.GetOrganizationRequest{
+		OrganizationID: uint(organizationID),
+	})
+	if err != nil {
+		if errors.Is(err, organization.ErrOrganizationNotFound) {
+			c.JSON(http.StatusNotFound, apiError("organization not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":                  profile.ID,
+		"name":                profile.Name,
+		"slug":                profile.Slug,
+		"short_name":          profile.ShortName,
+		"about":               profile.About,
+		"is_open":             profile.IsOpen,
+		"is_unlisted":         profile.IsUnlisted,
+		"slots":               profile.Slots,
+		"access_code":         profile.AccessCode,
+		"logo_override_image": profile.LogoOverrideImage,
+		"creation_date":       profile.CreationDate.Format(time.RFC3339),
+		"member_count":        profile.MemberCount,
+		"performance_points":  profile.PerformancePoints,
+		"admins":              profile.Admins,
+	})
+}
+
 // AdminOrganizationCreate - POST /api/v2/admin/organizations
 func AdminOrganizationCreate(c *gin.Context) {
 	var input struct {
-		Name        string  `json:"name" binding:"required"`
-		Slug        string  `json:"slug" binding:"required"`
-		ShortName   string  `json:"short_name" binding:"required"`
-		About       string  `json:"about"`
-		IsOpen      bool    `json:"is_open"`
-		IsUnlisted  bool    `json:"is_unlisted"`
-		Slots       *int    `json:"slots"`
-		AccessCode  *string `json:"access_code"`
+		Name              string  `json:"name" binding:"required"`
+		Slug              string  `json:"slug" binding:"required"`
+		ShortName         string  `json:"short_name" binding:"required"`
+		About             string  `json:"about"`
+		IsOpen            bool    `json:"is_open"`
+		IsUnlisted        bool    `json:"is_unlisted"`
+		Slots             *int    `json:"slots"`
+		AccessCode        *string `json:"access_code"`
+		LogoOverrideImage string  `json:"logo_override_image"`
+		Admins            []uint  `json:"admins"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -386,15 +433,28 @@ func AdminOrganizationCreate(c *gin.Context) {
 		return
 	}
 
+	// v1 keeps admins/is_open/slots readonly on the form without this perm.
+	if (input.IsOpen || input.Slots != nil || len(input.Admins) > 0) &&
+		!auth.HasPerm(c, "judge.organization_admin") {
+		c.JSON(http.StatusForbidden, apiUserError("setting administrators, open status or slots requires the judge.organization_admin permission"))
+		return
+	}
+	if missing := missingProfileIDs(input.Admins); len(missing) > 0 {
+		c.JSON(http.StatusBadRequest, apiUserError(fmt.Sprintf("unknown profile IDs: %v", missing)))
+		return
+	}
+
 	profile, err := getOrgService().CreateOrganization(organization.CreateOrganizationRequest{
-		Name:       input.Name,
-		Slug:       input.Slug,
-		ShortName:  input.ShortName,
-		About:      input.About,
-		IsOpen:     input.IsOpen,
-		IsUnlisted: input.IsUnlisted,
-		Slots:      input.Slots,
-		AccessCode: input.AccessCode,
+		Name:              input.Name,
+		Slug:              input.Slug,
+		ShortName:         input.ShortName,
+		About:             input.About,
+		IsOpen:            input.IsOpen,
+		IsUnlisted:        input.IsUnlisted,
+		Slots:             input.Slots,
+		AccessCode:        input.AccessCode,
+		LogoOverrideImage: input.LogoOverrideImage,
+		AdminIDs:          input.Admins,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -417,14 +477,16 @@ func AdminOrganizationUpdate(c *gin.Context) {
 	}
 
 	var input struct {
-		Name       *string `json:"name"`
-		Slug       *string `json:"slug"`
-		ShortName  *string `json:"short_name"`
-		About      *string `json:"about"`
-		IsOpen     *bool   `json:"is_open"`
-		IsUnlisted *bool   `json:"is_unlisted"`
-		Slots      *int    `json:"slots"`
-		AccessCode *string `json:"access_code"`
+		Name              *string `json:"name"`
+		Slug              *string `json:"slug"`
+		ShortName         *string `json:"short_name"`
+		About             *string `json:"about"`
+		IsOpen            *bool   `json:"is_open"`
+		IsUnlisted        *bool   `json:"is_unlisted"`
+		Slots             *int    `json:"slots"`
+		AccessCode        *string `json:"access_code"`
+		LogoOverrideImage *string `json:"logo_override_image"`
+		Admins            *[]uint `json:"admins"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -432,16 +494,40 @@ func AdminOrganizationUpdate(c *gin.Context) {
 		return
 	}
 
+	var org models.Organization
+	if err := db.DB.Preload("Admins").First(&org, organizationID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		return
+	}
+
+	// Unchanged (echoed) values pass; only an actual change is gated, matching
+	// v1 where these fields are readonly without judge.organization_admin.
+	restrictedChange := (input.IsOpen != nil && *input.IsOpen != org.IsOpen) ||
+		(input.Slots != nil && (org.Slots == nil || *org.Slots != *input.Slots)) ||
+		(input.Admins != nil && !sameIDs(orgAdminIDs(org.Admins), *input.Admins))
+	if restrictedChange && !auth.HasPerm(c, "judge.organization_admin") {
+		c.JSON(http.StatusForbidden, apiUserError("changing administrators, open status or slots requires the judge.organization_admin permission"))
+		return
+	}
+	if input.Admins != nil {
+		if missing := missingProfileIDs(*input.Admins); len(missing) > 0 {
+			c.JSON(http.StatusBadRequest, apiUserError(fmt.Sprintf("unknown profile IDs: %v", missing)))
+			return
+		}
+	}
+
 	profile, err := getOrgService().UpdateOrganization(organization.UpdateOrganizationRequest{
-		OrganizationID: uint(organizationID),
-		Name:           input.Name,
-		Slug:           input.Slug,
-		ShortName:      input.ShortName,
-		About:          input.About,
-		IsOpen:         input.IsOpen,
-		IsUnlisted:     input.IsUnlisted,
-		Slots:          input.Slots,
-		AccessCode:     input.AccessCode,
+		OrganizationID:    uint(organizationID),
+		Name:              input.Name,
+		Slug:              input.Slug,
+		ShortName:         input.ShortName,
+		About:             input.About,
+		IsOpen:            input.IsOpen,
+		IsUnlisted:        input.IsUnlisted,
+		Slots:             input.Slots,
+		AccessCode:        input.AccessCode,
+		LogoOverrideImage: input.LogoOverrideImage,
+		AdminIDs:          input.Admins,
 	})
 	if err != nil {
 		if errors.Is(err, organization.ErrOrganizationNotFound) {
@@ -456,6 +542,82 @@ func AdminOrganizationUpdate(c *gin.Context) {
 		"success":      true,
 		"organization": profile,
 	})
+}
+
+// AdminOrganizationRecalculate - POST /api/v2/admin/organization/:id/recalculate
+func AdminOrganizationRecalculate(c *gin.Context) {
+	idParam := c.Param("id")
+	organizationID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiError("invalid organization ID"))
+		return
+	}
+
+	var org models.Organization
+	if err := db.DB.First(&org, organizationID).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		return
+	}
+
+	if err := scoring.CalculateOrganizationPoints(db.DB, uint(organizationID)); err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if err := db.DB.Model(&org).Select("performance_points").First(&org, organizationID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"performance_points": org.PerformancePoints})
+}
+
+// missingProfileIDs lists the requested profile ids that have no row.
+func missingProfileIDs(ids []uint) []uint {
+	if len(ids) == 0 {
+		return nil
+	}
+	var found []uint
+	db.DB.Model(&models.Profile{}).Where("id IN ?", ids).Pluck("id", &found)
+	seen := make(map[uint]bool, len(found))
+	for _, id := range found {
+		seen[id] = true
+	}
+	var missing []uint
+	for _, id := range ids {
+		if !seen[id] {
+			missing = append(missing, id)
+		}
+	}
+	return missing
+}
+
+func orgAdminIDs(admins []models.Profile) []uint {
+	ids := make([]uint, len(admins))
+	for i, p := range admins {
+		ids[i] = p.ID
+	}
+	return ids
+}
+
+// sameIDs compares two id lists as sets.
+func sameIDs(a, b []uint) bool {
+	as := make(map[uint]bool, len(a))
+	for _, id := range a {
+		as[id] = true
+	}
+	bs := make(map[uint]bool, len(b))
+	for _, id := range b {
+		bs[id] = true
+	}
+	if len(as) != len(bs) {
+		return false
+	}
+	for id := range as {
+		if !bs[id] {
+			return false
+		}
+	}
+	return true
 }
 
 // AdminOrganizationDelete - DELETE /api/v2/admin/organization/:id

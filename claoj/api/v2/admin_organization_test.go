@@ -1,0 +1,229 @@
+package v2
+
+import (
+	"net/http"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm/clause"
+)
+
+// ============================================================
+// Admin organization detail/create/update, the judge.organization_admin
+// field gate and points recalculation. Reuses setupAdminUserCreateDB /
+// seedAccount / authedRouter / doRequest.
+// ============================================================
+
+func seedOrganization(t *testing.T, name string) models.Organization {
+	t.Helper()
+	org := models.Organization{
+		Name: name, Slug: name, ShortName: name,
+		CreationDate: time.Date(2021, 5, 6, 7, 8, 9, 0, time.UTC),
+	}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&org).Error)
+	return org
+}
+
+func orgURL(org models.Organization, suffix string) string {
+	return "/admin/organization/" + strconv.Itoa(int(org.ID)) + suffix
+}
+
+func grantOrgAdminPerm(t *testing.T, userID uint) {
+	t.Helper()
+	ct := models.DjangoContentType{AppLabel: "judge", Model: "organization"}
+	require.NoError(t, db.DB.Create(&ct).Error)
+	perm := models.AuthPermission{Name: "Can administrate organization", ContentTypeID: ct.ID, Codename: "organization_admin"}
+	require.NoError(t, db.DB.Create(&perm).Error)
+	require.NoError(t, db.DB.Create(&models.AuthUserPermission{UserID: userID, PermissionID: perm.ID}).Error)
+}
+
+func dbOrgAdminIDs(t *testing.T, orgID uint) []uint {
+	t.Helper()
+	var ids []uint
+	require.NoError(t, db.DB.Table("judge_organization_admins").
+		Where("organization_id = ?", orgID).Order("profile_id").Pluck("profile_id", &ids).Error)
+	return ids
+}
+
+func TestAdminOrganizationDetail_Shape(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	_, adminProfile := seedAccount(t, "ada", false, false)
+
+	org := seedOrganization(t, "acme")
+	slots, accessCode := 7, "secret7"
+	require.NoError(t, db.DB.Model(&org).Updates(map[string]any{
+		"about": "<p>hi</p>", "is_open": true, "slots": slots, "access_code": accessCode,
+		"logo_override_image": "/logo/acme.png", "member_count": 3, "performance_points": 12.5,
+	}).Error)
+	require.NoError(t, db.DB.Model(&org).Association("Admins").Append(&adminProfile))
+
+	router := authedRouter(root.ID, http.MethodGet, "/admin/organization/:id", AdminOrganizationDetail)
+	w := doRequest(router, http.MethodGet, orgURL(org, ""), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	body := detailBody(t, w.Body)
+	require.Equal(t, float64(org.ID), body["id"])
+	require.Equal(t, "acme", body["name"])
+	require.Equal(t, "<p>hi</p>", body["about"])
+	require.Equal(t, true, body["is_open"])
+	require.Equal(t, float64(slots), body["slots"])
+	require.Equal(t, accessCode, body["access_code"])
+	require.Equal(t, "/logo/acme.png", body["logo_override_image"])
+	require.Equal(t, float64(3), body["member_count"])
+	require.Equal(t, 12.5, body["performance_points"])
+
+	var stored models.Organization
+	require.NoError(t, db.DB.First(&stored, org.ID).Error)
+	require.Equal(t, stored.CreationDate.Format(time.RFC3339), body["creation_date"])
+
+	require.Equal(t, []any{map[string]any{"id": float64(adminProfile.ID), "username": "ada"}}, body["admins"])
+	require.NotContains(t, body, "organization", "detail must be flat")
+}
+
+func TestAdminOrganizationDetail_NotFoundAndBadID(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	router := authedRouter(root.ID, http.MethodGet, "/admin/organization/:id", AdminOrganizationDetail)
+
+	w := doRequest(router, http.MethodGet, "/admin/organization/999", "")
+	require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+
+	w = doRequest(router, http.MethodGet, "/admin/organization/nope", "")
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+func TestAdminOrganizationCreateUpdate_RoundTrip(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	_, ada := seedAccount(t, "ada", false, false)
+	_, bob := seedAccount(t, "bob", false, false)
+
+	router := authedRouter(root.ID, http.MethodPost, "/admin/organizations", AdminOrganizationCreate)
+	w := doRequest(router, http.MethodPost, "/admin/organizations", `{
+		"name":"Round Trip","slug":"round-trip","short_name":"RT","about":"about",
+		"is_open":true,"is_unlisted":true,"slots":5,"access_code":"code123",
+		"logo_override_image":"/logo/rt.png","admins":[`+strconv.Itoa(int(ada.ID))+`]}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var org models.Organization
+	require.NoError(t, db.DB.Where("slug = ?", "round-trip").First(&org).Error)
+	require.Equal(t, "/logo/rt.png", org.LogoOverrideImage)
+	require.Equal(t, []uint{ada.ID}, dbOrgAdminIDs(t, org.ID))
+
+	update := authedRouter(root.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	w = doRequest(update, http.MethodPatch, orgURL(org, ""), `{
+		"logo_override_image":"/logo/rt2.png","admins":[`+strconv.Itoa(int(bob.ID))+`],
+		"is_open":false,"slots":9}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	require.NoError(t, db.DB.First(&org, org.ID).Error)
+	require.Equal(t, "/logo/rt2.png", org.LogoOverrideImage)
+	require.False(t, org.IsOpen)
+	require.Equal(t, 9, *org.Slots)
+	require.Equal(t, []uint{bob.ID}, dbOrgAdminIDs(t, org.ID), "admins are replaced, not merged")
+
+	// An explicit empty list clears the admins.
+	w = doRequest(update, http.MethodPatch, orgURL(org, ""), `{"admins":[]}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Empty(t, dbOrgAdminIDs(t, org.ID))
+}
+
+func TestAdminOrganizationUpdate_CreationDateIgnored(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	org := seedOrganization(t, "dated")
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	w := doRequest(router, http.MethodPatch, orgURL(org, ""), `{"name":"Dated2","creation_date":"2000-01-01T00:00:00Z"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var stored models.Organization
+	require.NoError(t, db.DB.First(&stored, org.ID).Error)
+	require.Equal(t, "Dated2", stored.Name)
+	require.Equal(t, org.CreationDate, stored.CreationDate, "creation_date is auto_now_add in Django")
+}
+
+// v1 keeps admins/is_open/slots readonly without judge.organization_admin:
+// echoing them back passes, changing any of them is 403.
+func TestAdminOrganizationUpdate_RestrictedFieldsGate(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	_, plainUser := seedAccount(t, "orgadmin", true, false)
+	_, adminProfile := seedAccount(t, "ada", false, false)
+	org := seedOrganization(t, "gated")
+	require.NoError(t, db.DB.Model(&org).Association("Admins").Append(&adminProfile))
+
+	withoutPerm := authedRouter(plainUser.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	adminJSON := strconv.Itoa(int(adminProfile.ID))
+
+	cases := []struct {
+		name string
+		body string
+		want int
+	}{
+		{"echoed values pass", `{"name":"Gated","is_open":false,"admins":[` + adminJSON + `]}`, http.StatusOK},
+		{"open status change", `{"is_open":true}`, http.StatusForbidden},
+		{"slots change", `{"slots":4}`, http.StatusForbidden},
+		{"admins change", `{"admins":[]}`, http.StatusForbidden},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := doRequest(withoutPerm, http.MethodPatch, orgURL(org, ""), tc.body)
+			require.Equal(t, tc.want, w.Code, w.Body.String())
+		})
+	}
+
+	grantOrgAdminPerm(t, plainUser.ID)
+	withPerm := authedRouter(plainUser.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	w := doRequest(withPerm, http.MethodPatch, orgURL(org, ""), `{"is_open":true,"slots":4,"admins":[]}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var stored models.Organization
+	require.NoError(t, db.DB.First(&stored, org.ID).Error)
+	require.True(t, stored.IsOpen)
+	require.Equal(t, 4, *stored.Slots)
+	require.Empty(t, dbOrgAdminIDs(t, org.ID))
+}
+
+func TestAdminOrganizationUpdate_UnknownAdminIDs(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	org := seedOrganization(t, "badids")
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/organization/:id", AdminOrganizationUpdate)
+	w := doRequest(router, http.MethodPatch, orgURL(org, ""), `{"admins":[777]}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "777")
+
+	w = doRequest(router, http.MethodPatch, "/admin/organization/999", `{"name":"x"}`)
+	require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+}
+
+// CalculateOrganizationPoints sums the org's members' performance points, so a
+// member with 100 PP must move the org from 0 to 100.
+func TestAdminOrganizationRecalculate(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	_, memberProfile := seedAccount(t, "member", false, false)
+	org := seedOrganization(t, "scored")
+
+	require.NoError(t, db.DB.Model(&models.Profile{}).Where("id = ?", memberProfile.ID).
+		Update("performance_points", 100).Error)
+	require.NoError(t, db.DB.Model(&org).Association("Members").Append(&memberProfile))
+
+	router := authedRouter(root.ID, http.MethodPost, "/admin/organization/:id/recalculate", AdminOrganizationRecalculate)
+	w := doRequest(router, http.MethodPost, orgURL(org, "/recalculate"), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Equal(t, 100.0, detailBody(t, w.Body)["performance_points"])
+
+	var stored models.Organization
+	require.NoError(t, db.DB.First(&stored, org.ID).Error)
+	require.Equal(t, 100.0, stored.PerformancePoints)
+
+	w = doRequest(router, http.MethodPost, "/admin/organization/999/recalculate", "")
+	require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+}

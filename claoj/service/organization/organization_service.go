@@ -2,9 +2,12 @@
 package organization
 
 import (
+	"time"
+
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
+	"github.com/CLAOJ/claoj/service/relations"
 	"gorm.io/gorm"
 )
 
@@ -19,35 +22,42 @@ type OrganizationProfile struct {
 	IsUnlisted        bool
 	Slots             *int
 	AccessCode        *string
+	LogoOverrideImage string
+	CreationDate      time.Time
 	MemberCount       int
 	PerformancePoints float64
+	Admins            []relations.UserRef
 	AdminIDs          []uint
 	MemberIDs         []uint
 }
 
 // CreateOrganizationRequest holds the parameters for creating an organization.
 type CreateOrganizationRequest struct {
-	Name       string
-	Slug       string
-	ShortName  string
-	About      string
-	IsOpen     bool
-	IsUnlisted bool
-	Slots      *int
-	AccessCode *string
+	Name              string
+	Slug              string
+	ShortName         string
+	About             string
+	IsOpen            bool
+	IsUnlisted        bool
+	Slots             *int
+	AccessCode        *string
+	LogoOverrideImage string
+	AdminIDs          []uint
 }
 
 // UpdateOrganizationRequest holds the parameters for updating an organization.
 type UpdateOrganizationRequest struct {
-	OrganizationID uint
-	Name           *string
-	Slug           *string
-	ShortName      *string
-	About          *string
-	IsOpen         *bool
-	IsUnlisted     *bool
-	Slots          *int
-	AccessCode     *string
+	OrganizationID    uint
+	Name              *string
+	Slug              *string
+	ShortName         *string
+	About             *string
+	IsOpen            *bool
+	IsUnlisted        *bool
+	Slots             *int
+	AccessCode        *string
+	LogoOverrideImage *string
+	AdminIDs          *[]uint
 }
 
 // DeleteOrganizationRequest holds the parameters for deleting an organization.
@@ -150,7 +160,7 @@ func (s *OrganizationService) ListOrganizations(req ListOrganizationsRequest) (*
 // GetOrganization retrieves an organization by ID with full details.
 func (s *OrganizationService) GetOrganization(req GetOrganizationRequest) (*OrganizationProfile, error) {
 	var org models.Organization
-	if err := db.DB.Preload("Admins").Preload("Members").First(&org, req.OrganizationID).Error; err != nil {
+	if err := db.DB.Preload("Admins.User").Preload("Members").First(&org, req.OrganizationID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrOrganizationNotFound
 		}
@@ -164,22 +174,30 @@ func (s *OrganizationService) GetOrganization(req GetOrganizationRequest) (*Orga
 // CreateOrganization creates a new organization.
 func (s *OrganizationService) CreateOrganization(req CreateOrganizationRequest) (*OrganizationProfile, error) {
 	org := models.Organization{
-		Name:       sanitization.SanitizeTitle(req.Name),
-		Slug:       req.Slug,
-		ShortName:  sanitization.SanitizeTitle(req.ShortName),
-		About:      sanitization.SanitizeBlogContent(req.About),
-		IsOpen:     req.IsOpen,
-		IsUnlisted: req.IsUnlisted,
-		Slots:      req.Slots,
-		AccessCode: req.AccessCode,
+		Name:              sanitization.SanitizeTitle(req.Name),
+		Slug:              req.Slug,
+		ShortName:         sanitization.SanitizeTitle(req.ShortName),
+		About:             sanitization.SanitizeBlogContent(req.About),
+		IsOpen:            req.IsOpen,
+		IsUnlisted:        req.IsUnlisted,
+		Slots:             req.Slots,
+		AccessCode:        req.AccessCode,
+		LogoOverrideImage: req.LogoOverrideImage,
 	}
 
-	if err := db.DB.Create(&org).Error; err != nil {
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit("Admins", "Members").Create(&org).Error; err != nil {
+			return err
+		}
+		if len(req.AdminIDs) > 0 {
+			return relations.Sync[models.Profile](tx, &org, "Admins", &req.AdminIDs, nil, nil)
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	profile := organizationToProfile(org)
-	return &profile, nil
+	return s.GetOrganization(GetOrganizationRequest{OrganizationID: org.ID})
 }
 
 // UpdateOrganization updates an existing organization.
@@ -192,40 +210,49 @@ func (s *OrganizationService) UpdateOrganization(req UpdateOrganizationRequest) 
 		return nil, err
 	}
 
-	updates := make(map[string]interface{})
-	if req.Name != nil {
-		updates["name"] = sanitization.SanitizeTitle(*req.Name)
-	}
-	if req.Slug != nil {
-		updates["slug"] = *req.Slug
-	}
-	if req.ShortName != nil {
-		updates["short_name"] = sanitization.SanitizeTitle(*req.ShortName)
-	}
-	if req.About != nil {
-		updates["about"] = sanitization.SanitizeBlogContent(*req.About)
-	}
-	if req.IsOpen != nil {
-		updates["is_open"] = *req.IsOpen
-	}
-	if req.IsUnlisted != nil {
-		updates["is_unlisted"] = *req.IsUnlisted
-	}
-	if req.Slots != nil {
-		updates["slots"] = *req.Slots
-	}
-	if req.AccessCode != nil {
-		updates["access_code"] = *req.AccessCode
-	}
-
-	if len(updates) > 0 {
-		if err := db.DB.Model(&org).Updates(updates).Error; err != nil {
-			return nil, err
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		updates := make(map[string]interface{})
+		if req.Name != nil {
+			updates["name"] = sanitization.SanitizeTitle(*req.Name)
 		}
+		if req.Slug != nil {
+			updates["slug"] = *req.Slug
+		}
+		if req.ShortName != nil {
+			updates["short_name"] = sanitization.SanitizeTitle(*req.ShortName)
+		}
+		if req.About != nil {
+			updates["about"] = sanitization.SanitizeBlogContent(*req.About)
+		}
+		if req.IsOpen != nil {
+			updates["is_open"] = *req.IsOpen
+		}
+		if req.IsUnlisted != nil {
+			updates["is_unlisted"] = *req.IsUnlisted
+		}
+		if req.Slots != nil {
+			updates["slots"] = *req.Slots
+		}
+		if req.AccessCode != nil {
+			updates["access_code"] = *req.AccessCode
+		}
+		if req.LogoOverrideImage != nil {
+			updates["logo_override_image"] = *req.LogoOverrideImage
+		}
+
+		if len(updates) > 0 {
+			if err := tx.Model(&org).Updates(updates).Error; err != nil {
+				return err
+			}
+		}
+
+		return relations.Sync[models.Profile](tx, &org, "Admins", req.AdminIDs, nil, nil)
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	profile := organizationToProfile(org)
-	return &profile, nil
+	return s.GetOrganization(GetOrganizationRequest{OrganizationID: org.ID})
 }
 
 // DeleteOrganization performs a soft delete by marking the organization as closed and unlisted.
@@ -323,8 +350,11 @@ func organizationToProfile(o models.Organization) OrganizationProfile {
 		IsUnlisted:        o.IsUnlisted,
 		Slots:             o.Slots,
 		AccessCode:        o.AccessCode,
+		LogoOverrideImage: o.LogoOverrideImage,
+		CreationDate:      o.CreationDate,
 		MemberCount:       o.MemberCount,
 		PerformancePoints: o.PerformancePoints,
+		Admins:            relations.UserRefs(o.Admins),
 		AdminIDs:          adminIDs,
 		MemberIDs:         memberIDs,
 	}
