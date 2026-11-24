@@ -1623,6 +1623,7 @@ export interface AdminNavigationBar {
     key: string;
     label: string;
     path: string;
+    regex: string;
     parent_id?: number;
     order: number;
     level: number;
@@ -1637,7 +1638,9 @@ export interface AdminNavigationBarDetail {
     key: string;
     label: string;
     path: string;
-    parent_id?: number;
+    regex: string;
+    parent_id?: number | null;
+    parent_label?: string;
     order: number;
     level: number;
     lft: number;
@@ -1649,6 +1652,7 @@ export interface AdminNavigationBarCreateRequest {
     key: string;
     label: string;
     path: string;
+    regex?: string;
     parent_id?: number;
     order?: number;
 }
@@ -1656,6 +1660,8 @@ export interface AdminNavigationBarCreateRequest {
 export interface AdminNavigationBarUpdateRequest {
     label?: string;
     path?: string;
+    regex?: string;
+    parent_id?: number | null;
     order?: number;
 }
 

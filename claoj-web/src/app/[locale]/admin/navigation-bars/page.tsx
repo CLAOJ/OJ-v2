@@ -16,6 +16,8 @@ import {
     DialogTitle,
 } from '@/components/ui/Dialog';
 import { Label } from '@/components/ui/Label';
+import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Link as LinkIcon, Layers } from 'lucide-react';
 
@@ -36,9 +38,11 @@ export default function NavigationBarsAdminPage() {
         key: '',
         label: '',
         path: '',
+        regex: '',
         parent_id: undefined,
         order: 0,
     });
+    const [samplePath, setSamplePath] = useState('/problems');
 
     const loadNavBars = async () => {
         setLoading(true);
@@ -62,6 +66,7 @@ export default function NavigationBarsAdminPage() {
             key: '',
             label: '',
             path: '',
+            regex: '',
             parent_id: undefined,
             order: 0,
         });
@@ -75,6 +80,8 @@ export default function NavigationBarsAdminPage() {
                 key: response.data.key,
                 label: response.data.label,
                 path: response.data.path,
+                regex: response.data.regex ?? '',
+                parent_id: response.data.parent_id ?? undefined,
                 order: response.data.order,
             });
             setEditingNavBar(navBar);
@@ -83,6 +90,35 @@ export default function NavigationBarsAdminPage() {
             toast.error(t('navigationBars.loadDetailFailed'));
         }
     };
+
+    // A nav bar cannot be moved under itself or one of its descendants.
+    const excludedParentIds = (() => {
+        const excluded = new Set<number>();
+        if (!editingNavBar) return excluded;
+        excluded.add(editingNavBar.id);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const nb of navBars) {
+                if (nb.parent_id != null && excluded.has(nb.parent_id) && !excluded.has(nb.id)) {
+                    excluded.add(nb.id);
+                    changed = true;
+                }
+            }
+        }
+        return excluded;
+    })();
+
+    // Preview the highlight regex against a sample path, same syntax as Go's
+    // regexp package on the server.
+    const regexPreview: 'empty' | 'invalid' | 'match' | 'no-match' = (() => {
+        if (!formData.regex) return 'empty';
+        try {
+            return new RegExp(formData.regex).test(samplePath) ? 'match' : 'no-match';
+        } catch {
+            return 'invalid';
+        }
+    })();
 
     const handleCreate = async () => {
         try {
@@ -102,6 +138,8 @@ export default function NavigationBarsAdminPage() {
             const updateData: AdminNavigationBarUpdateRequest = {
                 label: formData.label,
                 path: formData.path,
+                regex: formData.regex ?? '',
+                parent_id: formData.parent_id ?? null,
                 order: formData.order,
             };
             await adminNavigationBarApi.update(editingNavBar.id, updateData);
@@ -312,7 +350,61 @@ export default function NavigationBarsAdminPage() {
                             />
                         </div>
 
+                        <div className="grid gap-2">
+                            <Label htmlFor="regex">{t('navigationBars.regexLabel')}</Label>
+                            <Textarea
+                                id="regex"
+                                rows={2}
+                                className="font-mono"
+                                value={formData.regex ?? ''}
+                                onChange={(e) => setFormData({
+                ...formData, regex: e.target.value })}
+                                placeholder={t('navigationBars.regexPlaceholder')}
+                            />
+                            <p className="text-xs text-muted-foreground">{t('navigationBars.regexHint')}</p>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    aria-label={t('navigationBars.regexPreviewLabel')}
+                                    value={samplePath}
+                                    onChange={(e) => setSamplePath(e.target.value)}
+                                    className="h-9 font-mono"
+                                />
+                                <Badge
+                                    variant={
+                                        regexPreview === 'match' ? 'success'
+                                            : regexPreview === 'invalid' ? 'destructive'
+                                                : regexPreview === 'no-match' ? 'warning' : 'outline'
+                                    }
+                                    className="shrink-0"
+                                >
+                                    {regexPreview === 'empty' && t('navigationBars.regexPreviewEmpty')}
+                                    {regexPreview === 'invalid' && t('navigationBars.regexPreviewInvalid')}
+                                    {regexPreview === 'match' && t('navigationBars.regexPreviewMatch')}
+                                    {regexPreview === 'no-match' && t('navigationBars.regexPreviewNoMatch')}
+                                </Badge>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="parent">{t('navigationBars.parentLabel')}</Label>
+                                <Select
+                                    id="parent"
+                                    value={formData.parent_id ?? ''}
+                                    onChange={(e) => setFormData({
+                ...formData, parent_id: e.target.value ? Number(e.target.value) : undefined })}
+                                >
+                                    <option value="">{t('navigationBars.parentNone')}</option>
+                                    {/* shortcut: options come from the loaded page (50), upgrade to a full fetch if nav items ever exceed one page */}
+                                    {navBars
+                                        .filter((nb) => !excludedParentIds.has(nb.id))
+                                        .map((nb) => (
+                                            <option key={nb.id} value={nb.id}>
+                                                {'\u00A0'.repeat(nb.level * 2)}{nb.label}
+                                            </option>
+                                        ))}
+                                </Select>
+                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="order">{t('navigationBars.orderLabel')}</Label>
                                 <Input
@@ -332,7 +424,7 @@ export default function NavigationBarsAdminPage() {
                         }}>
                             {t('common.cancel')}
                         </Button>
-                        <Button onClick={editingNavBar ? handleUpdate : handleCreate}>
+                        <Button onClick={editingNavBar ? handleUpdate : handleCreate} disabled={regexPreview === 'invalid'}>
                             {editingNavBar ? t('common.saveChanges') : t('common.create')}
                         </Button>
                     </DialogFooter>
