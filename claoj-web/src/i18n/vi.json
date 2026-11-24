@@ -223,7 +223,19 @@
     "memoryLimit": "Giới hạn bộ nhớ",
     "acRateAria": "Tỷ lệ bài nộp được chấp nhận",
     "group": "Nhóm",
-    "problemClarifications": "Làm rõ đề bài"
+    "problemClarifications": "Làm rõ đề bài",
+    "allGroups": "Tất cả nhóm",
+    "hasEditorial": "Có lời giải",
+    "acCount": "# AC",
+    "suggestions": "Đề xuất",
+    "suggest": {
+      "title": "Bài tập đề xuất",
+      "subtitle": "Các bài do người dùng đề xuất và đang chờ duyệt.",
+      "forbidden": "Bạn không có quyền xem danh sách bài đề xuất.",
+      "empty": "Không có đề xuất nào đang chờ duyệt.",
+      "suggester": "Người đề xuất",
+      "date": "Ngày"
+    }
   },
   "Contest": {
     "title": "Kỳ thi",

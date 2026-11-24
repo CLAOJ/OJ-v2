@@ -21,6 +21,22 @@ export interface Problem {
     is_solved: boolean;
 }
 
+/** A problem group or type — the public taxonomy the list filters use. */
+export interface ProblemTaxonomy {
+    id: number;
+    name: string;
+    full_name: string;
+}
+
+/** A problem suggestion awaiting review (GET /problems/suggest). */
+export interface SuggestedProblem {
+    code: string;
+    name: string;
+    points: number;
+    date: string | null;
+    suggester: string;
+}
+
 export interface ProblemDetail extends Problem {
     id: number;
     description: string;

@@ -223,7 +223,19 @@
     "memoryLimit": "Memory Limit",
     "acRateAria": "Accepted submission rate",
     "group": "Group",
-    "problemClarifications": "Problem Clarifications"
+    "problemClarifications": "Problem Clarifications",
+    "allGroups": "All groups",
+    "hasEditorial": "Has editorial",
+    "acCount": "# AC",
+    "suggestions": "Suggestions",
+    "suggest": {
+      "title": "Suggested problems",
+      "subtitle": "Problems suggested by users and still awaiting review.",
+      "forbidden": "You do not have permission to view suggested problems.",
+      "empty": "No suggestions are waiting for review.",
+      "suggester": "Suggester",
+      "date": "Date"
+    }
   },
   "Contest": {
     "title": "Contests",
