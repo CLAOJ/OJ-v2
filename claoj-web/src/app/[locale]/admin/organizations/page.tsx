@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminOrganizationApi } from '@/lib/adminApi';
 import { Badge } from '@/components/ui/Badge';
@@ -24,10 +24,8 @@ const PAGE_SIZE = 50;
 
 export default function AdminOrganizationsPage() {
     const t = useTranslations('Admin');
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [editingOrg, setEditingOrg] = useState<any>(null);
-
-    const queryClient = useQueryClient();
+    // undefined = closed, null = create, number = edit that organization.
+    const [modalOrgId, setModalOrgId] = useState<number | null | undefined>(undefined);
 
     const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
     const search = useDebounce(filters.search ?? '', 300);
@@ -36,15 +34,6 @@ export default function AdminOrganizationsPage() {
         queryKey: ['admin-organizations', page, search],
         queryFn: async () => (await adminOrganizationApi.list(page, PAGE_SIZE, search)).data,
     });
-
-    const createMutation = useMutation({
-        mutationFn: (data: any) => adminOrganizationApi.create(data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
-        }
-    });
-
-    const [newOrg, setNewOrg] = useState({ name: '', slug: '', short_name: '' });
 
     const organizations = data?.data || [];
 
@@ -71,7 +60,7 @@ export default function AdminOrganizationsPage() {
                         />
                     </div>
                     <button
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() => setModalOrgId(null)}
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
                     >
                         <Plus size={18} /> {t('common.create')}
@@ -95,8 +84,10 @@ export default function AdminOrganizationsPage() {
                             <div key={org.id} className="bg-card rounded-md p-6 border hover:border-primary/30 hover:shadow-lg transition-all">
                                 <div className="flex items-center justify-between">
                                     <Link href={`/organization/${org.id}`} className="flex items-center gap-4 flex-1">
-                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                                            {org.name[0].toUpperCase()}
+                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg overflow-hidden shrink-0">
+                                            {org.logo_override_image ? (
+                                                <img src={org.logo_override_image} alt="" className="w-full h-full object-cover" />
+                                            ) : org.name[0].toUpperCase()}
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-lg hover:text-primary transition-colors">{org.name}</h3>
@@ -107,6 +98,8 @@ export default function AdminOrganizationsPage() {
                                                     <Users size={14} />
                                                     {t('organizations.memberCount', { count: org.member_count })}
                                                 </div>
+                                                <span className="text-muted-foreground">|</span>
+                                                <span>{t('organizations.pointsShort', { points: org.performance_points })}</span>
                                             </div>
                                         </div>
                                     </Link>
@@ -120,7 +113,7 @@ export default function AdminOrganizationsPage() {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                setEditingOrg(org);
+                                                setModalOrgId(org.id);
                                             }}
                                             className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                             title={t('organizations.editTitle')}
@@ -137,72 +130,10 @@ export default function AdminOrganizationsPage() {
 
             <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={PAGE_SIZE} />
 
-            {/* Create Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-card rounded-md w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4">{t('organizations.createModalTitle')}</h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium mb-2 block">{t('organizations.nameLabel')}</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                                    value={newOrg.name}
-                                    onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">{t('organizations.slugLabel')}</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                                        value={newOrg.slug}
-                                        onChange={(e) => setNewOrg({ ...newOrg, slug: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">{t('organizations.shortNameLabel')}</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                                        value={newOrg.short_name}
-                                        onChange={(e) => setNewOrg({ ...newOrg, short_name: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="px-4 py-2 rounded-xl hover:bg-muted transition-colors"
-                            >
-                                {t('common.cancel')}
-                            </button>
-                            <button
-                                onClick={() => {
-                                    createMutation.mutate(newOrg);
-                                    setShowCreateModal(false);
-                                    setNewOrg({ name: '', slug: '', short_name: '' });
-                                }}
-                                disabled={createMutation.isPending}
-                                className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors"
-                            >
-                                {t('common.create')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit Modal */}
-            {editingOrg && (
+            {modalOrgId !== undefined && (
                 <OrganizationEditModal
-                    organization={editingOrg}
-                    onClose={() => setEditingOrg(null)}
+                    organizationId={modalOrgId}
+                    onClose={() => setModalOrgId(undefined)}
                 />
             )}
         </div>

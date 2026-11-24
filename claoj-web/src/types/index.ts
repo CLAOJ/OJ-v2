@@ -703,7 +703,17 @@ export interface AdminOrganization {
     is_open: boolean;
     is_unlisted: boolean;
     slots?: number;
+    logo_override_image?: string;
     member_count: number;
+    performance_points: number;
+}
+
+/** GET /admin/organization/:id — the full editable shape. */
+export interface AdminOrganizationDetail extends AdminOrganization {
+    about: string;
+    access_code: string | null;
+    creation_date: string;
+    admins: { id: number; username: string }[];
 }
 
 /** GET /admin/classes row (picker source for contest class ids). */

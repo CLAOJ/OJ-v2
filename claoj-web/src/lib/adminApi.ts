@@ -12,7 +12,7 @@ import type {
     AdminJudgeUpdateRequest,
     AdminJudgeCreateRequest,
     AdminUserCreateRequest,
-    AdminOrganization,
+    AdminOrganizationDetail,
     AdminClassListResponse,
     AdminSubmission,
     Group,
@@ -363,26 +363,38 @@ export interface AdminOrganizationUpdateRequest {
     is_unlisted?: boolean;
     slots?: number;
     access_code?: string;
+    logo_override_image?: string;
+    admins?: number[];
+}
+
+export interface AdminOrganizationCreateRequest {
+    name: string;
+    slug: string;
+    short_name: string;
+    about?: string;
+    is_open?: boolean;
+    is_unlisted?: boolean;
+    slots?: number;
+    access_code?: string;
+    logo_override_image?: string;
+    admins?: number[];
 }
 
 export const adminOrganizationApi = {
     list: (page: number = 1, pageSize: number = 50, search?: string) =>
         api.get<AdminOrganizationListResponse>(`/admin/organizations?${qs({ page, page_size: pageSize, search })}`),
 
-    create: (data: {
-        name: string;
-        slug: string;
-        short_name: string;
-        about?: string;
-        is_open?: boolean;
-        is_unlisted?: boolean;
-        slots?: number;
-        access_code?: string;
-    }) =>
-        api.post<{ success: boolean; organization: AdminOrganization }>('/admin/organizations', data),
+    get: (id: number) =>
+        api.get<AdminOrganizationDetail>(`/admin/organization/${id}`),
+
+    create: (data: AdminOrganizationCreateRequest) =>
+        api.post<{ success: boolean; organization: AdminOrganizationDetail }>('/admin/organizations', data),
 
     update: (id: number, data: AdminOrganizationUpdateRequest) =>
-        api.patch(`/admin/organization/${id}`, data),
+        api.patch<{ success: boolean; organization: AdminOrganizationDetail }>(`/admin/organization/${id}`, data),
+
+    recalculate: (id: number) =>
+        api.post<{ performance_points: number }>(`/admin/organization/${id}/recalculate`),
 
     delete: (id: number) =>
         api.delete(`/admin/organization/${id}`),
