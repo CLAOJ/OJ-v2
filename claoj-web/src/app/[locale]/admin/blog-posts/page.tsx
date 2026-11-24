@@ -46,7 +46,7 @@ const emptyForm: AdminBlogPostCreateRequest = {
     sticky: false,
     global_post: false,
     og_image: '',
-    organization_id: undefined,
+    organization_id: null,
 };
 
 export default function BlogPostAdminPage() {
@@ -66,6 +66,8 @@ export default function BlogPostAdminPage() {
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
     const [authorOptions, setAuthorOptions] = useState<EntityOption[]>([]);
     const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
+    // The post's current org may not be in the first 100, so keep it aside.
+    const [editingOrg, setEditingOrg] = useState<{ id: number; name: string } | null>(null);
 
     const [formData, setFormData] = useState<AdminBlogPostCreateRequest>(emptyForm);
 
@@ -89,9 +91,14 @@ export default function BlogPostAdminPage() {
         }
     };
 
-    useEffect(() => {
+    // Reset to page 1 in the same render a filter changes: React re-renders
+    // before effects run, so the fetch below sees page 1 and fires once
+    // instead of racing a stale-page request.
+    const [appliedFilters, setAppliedFilters] = useState({ search: debouncedSearch, visible: visibleFilter });
+    if (appliedFilters.search !== debouncedSearch || appliedFilters.visible !== visibleFilter) {
+        setAppliedFilters({ search: debouncedSearch, visible: visibleFilter });
         setPage(1);
-    }, [debouncedSearch, visibleFilter]);
+    }
 
     useEffect(() => {
         loadPosts();
@@ -100,6 +107,8 @@ export default function BlogPostAdminPage() {
     const openCreateDialog = () => {
         setFormData({ ...emptyForm, publish_on: new Date().toISOString() });
         setAuthorOptions([]);
+        setEditingPost(null);
+        setEditingOrg(null);
         setIsCreateDialogOpen(true);
     };
 
@@ -123,6 +132,8 @@ export default function BlogPostAdminPage() {
                 id: authorId,
                 label: response.data.author_names?.[i] ?? `#${authorId}`,
             })));
+            const orgId = response.data.organization_id ?? null;
+            setEditingOrg(orgId ? { id: orgId, name: response.data.organization_name || `#${orgId}` } : null);
             setEditingPost(post);
             setIsEditDialogOpen(true);
         } catch (error) {
@@ -439,10 +450,13 @@ export default function BlogPostAdminPage() {
                                     value={formData.organization_id ?? ''}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        organization_id: e.target.value ? Number(e.target.value) : undefined,
+                                        organization_id: e.target.value ? Number(e.target.value) : null,
                                     })}
                                 >
                                     <option value="">{t('blogPosts.noOrganization')}</option>
+                                    {editingOrg && !organizations.some((org) => org.id === editingOrg.id) && (
+                                        <option value={editingOrg.id}>{editingOrg.name}</option>
+                                    )}
                                     {organizations.map((org) => (
                                         <option key={org.id} value={org.id}>{org.name}</option>
                                     ))}

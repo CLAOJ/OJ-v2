@@ -1337,7 +1337,7 @@ export interface AdminBlogPostDetail {
     sticky: boolean;
     global_post: boolean;
     og_image: string;
-    organization_id?: number;
+    organization_id: number | null;
     organization_name?: string;
     score: number;
 }
@@ -1353,7 +1353,8 @@ export interface AdminBlogPostCreateRequest {
     sticky?: boolean;
     global_post?: boolean;
     og_image?: string;
-    organization_id?: number;
+    /** null detaches the post from any organization. */
+    organization_id?: number | null;
 }
 
 export interface AdminBlogPostUpdateRequest {
@@ -1367,7 +1368,8 @@ export interface AdminBlogPostUpdateRequest {
     sticky?: boolean;
     global_post?: boolean;
     og_image?: string;
-    organization_id?: number;
+    /** null clears the organization; omitting the key leaves it unchanged. */
+    organization_id?: number | null;
 }
 
 // ============================================================
