@@ -26,6 +26,11 @@ export function weekdayOf(date: string): number {
 /**
  * Group a dense, oldest-first day series into week columns. Levels follow v1:
  * `ceil(count / max * (levels - 1))`, with zero activity always level 0.
+ *
+ * shortcut: assumes the series is dense and contiguous (one entry per day,
+ * oldest first, no gaps), which is what /analytics activity_year returns — a
+ * missing day would shift every later cell. Upgrade to date-keyed padding if
+ * the API ever returns sparse days.
  */
 export function buildHeatmapWeeks(days: HeatmapDay[], levels = 5): HeatmapWeek[] {
     if (days.length === 0) return [];

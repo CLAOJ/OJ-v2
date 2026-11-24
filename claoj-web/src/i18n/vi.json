@@ -642,7 +642,7 @@
     "viewSubmissions": "Xem bài nộp",
     "submissionActivity": "Hoạt động nộp bài",
     "activitySummary": "{count} bài nộp trong năm qua",
-    "activityDay": "{count} bài nộp vào {date}",
+    "activityError": "Không tải được hoạt động",
     "noActivity": "Không có bài nộp nào trong năm qua.",
     "less": "Ít",
     "more": "Nhiều",

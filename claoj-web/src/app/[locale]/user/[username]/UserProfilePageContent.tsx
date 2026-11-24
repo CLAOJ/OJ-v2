@@ -76,7 +76,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
         }
     });
 
-    const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    const { data: analytics, isLoading: analyticsLoading, isError: analyticsError } = useQuery({
         queryKey: ['user', username, 'analytics'],
         queryFn: async () => {
             const res = await api.get<UserAnalytics>(`/user/${username}/analytics`);
@@ -117,13 +117,19 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
         () => buildHeatmapWeeks(analytics?.activity_year ?? []),
         [analytics]
     );
-    // Locale-aware weekday initials and day labels; 2023-01-01 was a Sunday.
+    const activityTotal = useMemo(
+        () => (analytics?.activity_year ?? []).reduce((sum, d) => sum + d.count, 0),
+        [analytics]
+    );
+    // Locale-aware weekday initials and day labels. timeZone:'UTC' keeps the
+    // calendar day of a `YYYY-MM-DD` key in every viewer timezone (2023-01-01
+    // was a Sunday).
     const weekdayLabels = useMemo(() => {
-        const format = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+        const format = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
         return Array.from({ length: 7 }, (_, i) => format.format(new Date(Date.UTC(2023, 0, 1 + i))));
     }, [locale]);
     const dayLabel = useMemo(
-        () => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' }),
+        () => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }),
         [locale]
     );
 
@@ -146,7 +152,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
     const stats = [
         { label: t('rank'), value: user.rank ? `#${user.rank}` : '-', icon: Hash, color: 'text-muted-foreground' },
         { label: t('points'), value: Math.round(user.points), icon: Award, color: 'text-muted-foreground' },
-        { label: t('pp'), value: Math.round(user.performance_points), icon: Zap, color: 'text-muted-foreground' },
+        { label: t('pp'), value: user.performance_points.toFixed(2), icon: Zap, color: 'text-muted-foreground' },
         { label: t('contributionShort'), value: user.contribution_points, icon: Activity, color: 'text-muted-foreground' },
     ];
 
@@ -213,7 +219,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             <span className="text-sm font-medium">{user.rating_rank ? `#${user.rating_rank}` : '-'}</span>
                         </div>
                         <Link
-                            href={`/submissions?user=${user.username}`}
+                            href={`/submissions?user=${encodeURIComponent(user.username)}`}
                             className="flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-primary transition-colors group/sub"
                         >
                             {t('viewSubmissions')}
@@ -285,7 +291,8 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-2xl font-semibold text-primary">{Math.round(user.performance_points)}</span>
+                            {/* Same precision as the breakdown panel below. */}
+                            <span className="text-2xl font-semibold text-primary">{user.performance_points.toFixed(2)}</span>
                             {ppBreakdownOpen ? <ChevronUp size={20} className="text-muted-foreground" /> : <ChevronDown size={20} className="text-muted-foreground" />}
                         </div>
                     </button>
@@ -682,9 +689,13 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 <div className="bg-card border rounded-md p-4 shadow-sm space-y-4">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <h3 className="text-xl font-semibold tracking-tight">{t('submissionActivity')}</h3>
-                                        <span className="text-xs font-medium text-muted-foreground">
-                                            {t('activitySummary', { count: (analytics?.activity_year ?? []).reduce((sum, d) => sum + d.count, 0) })}
-                                        </span>
+                                        {analyticsError ? (
+                                            <span className="text-xs font-medium text-destructive">{t('activityError')}</span>
+                                        ) : !analyticsLoading && (
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                                {t('activitySummary', { count: activityTotal })}
+                                            </span>
+                                        )}
                                     </div>
                                     {analyticsLoading ? (
                                         <Skeleton className="h-28 w-full rounded-md" />
@@ -694,7 +705,14 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                         </p>
                                     ) : (
                                         <div className="overflow-x-auto custom-scrollbar">
-                                            <div className="inline-flex gap-2">
+                                            {/* One summary label for the grid; the 365 cells are
+                                                decorative and would only add noise to a screen
+                                                reader (the title attribute still serves hover). */}
+                                            <div
+                                                className="inline-flex gap-2"
+                                                role="img"
+                                                aria-label={t('activitySummary', { count: activityTotal })}
+                                            >
                                                 <div className="flex flex-col gap-1 pr-1 text-[10px] font-medium text-muted-foreground">
                                                     {weekdayLabels.map((label, i) => (
                                                         <span key={i} className="h-3 leading-3">{label}</span>
@@ -708,11 +726,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                             ) : (
                                                                 <div
                                                                     key={cell.date}
-                                                                    role="img"
-                                                                    aria-label={t('activityDay', {
-                                                                        count: cell.count,
-                                                                        date: dayLabel.format(new Date(`${cell.date}T00:00:00Z`)),
-                                                                    })}
+                                                                    aria-hidden="true"
                                                                     title={dayLabel.format(new Date(`${cell.date}T00:00:00Z`))}
                                                                     className={cn(
                                                                         'w-3 h-3 rounded-sm',

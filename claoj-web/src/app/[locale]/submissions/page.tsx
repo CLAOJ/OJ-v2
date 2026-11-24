@@ -35,10 +35,21 @@ export default function SubmissionListPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     // The profile's "View submissions" link deep-links into a prefiltered list.
-    const [userFilter, setUserFilter] = useState(() => searchParams.get('user') ?? '');
+    // Follow the URL when it changes, not only on mount: navigating from
+    // another profile while this page is mounted must reseed the filter. The
+    // adjustment runs during render (React's documented pattern) so the first
+    // query already uses the new value.
+    const urlUser = searchParams.get('user');
+    const [userFilter, setUserFilter] = useState(urlUser ?? '');
     const [problemFilter, setProblemFilter] = useState('');
     const [resultFilter, setResultFilter] = useState('');
     const [langFilter, setLangFilter] = useState('');
+    const [seenUrlUser, setSeenUrlUser] = useState(urlUser);
+    if (urlUser !== seenUrlUser) {
+        setSeenUrlUser(urlUser);
+        setUserFilter(urlUser ?? '');
+        setPage(1);
+    }
 
     const { data: languages } = useQuery({
         queryKey: ['languages'],
