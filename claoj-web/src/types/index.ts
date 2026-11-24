@@ -593,6 +593,8 @@ export interface AdminProblem {
     type_ids: number[];
     allowed_langs: number[];
     pdf_url: string;
+    date: string | null;
+    authors: UserRef[];
 }
 
 export interface AdminJudge {

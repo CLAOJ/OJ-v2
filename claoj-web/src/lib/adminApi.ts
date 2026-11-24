@@ -1,4 +1,5 @@
 import api from './api';
+import type { ContestSort, ProblemSort, SortOrder } from './listSort';
 import type {
     AdminUser,
     AdminUserUpdateRequest,
@@ -185,7 +186,12 @@ export const adminUserApi = {
 
 
 export const adminContestApi = {
-    list: (page: number = 1, pageSize: number = 50, filters: { search?: string; status?: 'upcoming' | 'ongoing' | 'past' } = {}) =>
+    list: (page: number = 1, pageSize: number = 50, filters: {
+        search?: string;
+        status?: 'upcoming' | 'ongoing' | 'past';
+        sort?: ContestSort;
+        order?: SortOrder;
+    } = {}) =>
         api.get<AdminContestListResponse>(`/admin/contests?${qs({ page, page_size: pageSize, ...filters })}`),
 
     detail: (key: string) =>
@@ -247,7 +253,15 @@ export const announcementApi = {
 
 
 export const adminProblemApi = {
-    list: (page: number = 1, pageSize: number = 50, filters: { search?: string; is_public?: 'true' | 'false'; group_id?: number } = {}) =>
+    list: (page: number = 1, pageSize: number = 50, filters: {
+        search?: string;
+        is_public?: 'true' | 'false';
+        group_id?: number;
+        creator?: string;
+        year?: number;
+        sort?: ProblemSort;
+        order?: SortOrder;
+    } = {}) =>
         api.get<AdminProblemListResponse>(`/admin/problems?${qs({ page, page_size: pageSize, ...filters })}`),
 
     detail: (code: string) =>

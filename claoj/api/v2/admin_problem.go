@@ -55,6 +55,7 @@ func AdminProblemList(c *gin.Context) {
 		UserCount         int                 `json:"user_count"`
 		AcRate            float64             `json:"ac_rate"`
 		IsManuallyManaged bool                `json:"is_manually_managed"`
+		Date              *time.Time          `json:"date"`
 		Authors           []relations.UserRef `json:"authors"`
 	}
 	items := make([]Item, len(resp.Problems))
@@ -70,6 +71,7 @@ func AdminProblemList(c *gin.Context) {
 			UserCount:         p.UserCount,
 			AcRate:            p.AcRate,
 			IsManuallyManaged: p.IsManuallyManaged,
+			Date:              p.Date,
 			Authors:           p.Authors,
 		}
 	}

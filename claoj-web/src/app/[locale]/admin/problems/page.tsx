@@ -10,21 +10,23 @@ import { Link } from '@/navigation';
 import { useListParams } from '@/hooks/useListParams';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PaginationBar } from '@/components/ui/PaginationBar';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { formatShortDate } from '@/lib/date';
+import { toggleSort, yearOptions, type ProblemSort, type SortOrder } from '@/lib/listSort';
 import {
     Search,
     Code2,
-    Ban,
     Edit,
     Trash2,
     Database,
-    Clock,
     Plus,
     Copy
 } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 
-const FILTER_KEYS = ['search', 'is_public', 'group_id'] as const;
+const FILTER_KEYS = ['search', 'is_public', 'group_id', 'creator', 'year', 'sort', 'order'] as const;
 const PAGE_SIZE = 50;
+const DEFAULT_SORT: ProblemSort = 'date';
 
 export default function AdminProblemPage() {
     const t = useTranslations('Admin');
@@ -35,13 +37,26 @@ export default function AdminProblemPage() {
 
     const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
     const search = useDebounce(filters.search ?? '', 300);
+    const creator = useDebounce(filters.creator ?? '', 300);
+    const year = filters.year ? Number(filters.year) : undefined;
+    const sort = (filters.sort ?? DEFAULT_SORT) as ProblemSort;
+    const order: SortOrder = filters.order === 'asc' ? 'asc' : 'desc';
+
+    const handleSort = (column: ProblemSort, firstOrder: SortOrder) => {
+        const next = toggleSort({ sort, order }, column, firstOrder);
+        setFilters({ sort: next.sort, order: next.order });
+    };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['admin-problems', page, search, filters.is_public, filters.group_id],
+        queryKey: ['admin-problems', page, search, creator, filters.is_public, filters.group_id, year, sort, order],
         queryFn: async () => (await adminProblemApi.list(page, PAGE_SIZE, {
             search,
+            creator,
+            year,
             is_public: filters.is_public as 'true' | 'false' | undefined,
             group_id: filters.group_id ? Number(filters.group_id) : undefined,
+            sort,
+            order,
         })).data,
     });
 
@@ -100,6 +115,23 @@ export default function AdminProblemPage() {
                         <option value="">{t('problems.groupAll')}</option>
                         {groups?.data.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
+                    <input
+                        type="text"
+                        aria-label={t('problems.creatorFilter')}
+                        placeholder={t('problems.creatorPlaceholder')}
+                        className="w-full md:w-44 h-10 px-3 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                        value={filters.creator ?? ''}
+                        onChange={(e) => setFilters({ creator: e.target.value })}
+                    />
+                    <select
+                        aria-label={t('problems.yearFilter')}
+                        className="h-10 px-3 rounded-xl bg-card border"
+                        value={filters.year ?? ''}
+                        onChange={(e) => setFilters({ year: e.target.value })}
+                    >
+                        <option value="">{t('problems.yearAll')}</option>
+                        {yearOptions(new Date().getFullYear()).map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
                     <Link
                         href="/admin/problems/create"
                         className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
@@ -117,100 +149,130 @@ export default function AdminProblemPage() {
             ) : (
                 <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                        <table className="w-full text-left text-sm">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colProblem')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colStats')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('problems.colGroup')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <SortableHeader
+                                        label={t('problems.colProblem')}
+                                        active={sort === 'name'}
+                                        order={order}
+                                        onClick={() => handleSort('name', 'asc')}
+                                    />
+                                    <SortableHeader
+                                        label={t('problems.colCode')}
+                                        active={sort === 'code'}
+                                        order={order}
+                                        onClick={() => handleSort('code', 'asc')}
+                                    />
+                                    <SortableHeader
+                                        label={t('problems.colPoints')}
+                                        active={sort === 'points'}
+                                        order={order}
+                                        onClick={() => handleSort('points', 'desc')}
+                                        className="text-right"
+                                    />
+                                    <SortableHeader
+                                        label={t('problems.colDate')}
+                                        active={sort === 'date'}
+                                        order={order}
+                                        onClick={() => handleSort('date', 'desc')}
+                                    />
+                                    <SortableHeader
+                                        label={t('problems.colAcRate')}
+                                        active={sort === 'ac_rate'}
+                                        order={order}
+                                        onClick={() => handleSort('ac_rate', 'desc')}
+                                        className="text-right"
+                                    />
+                                    <SortableHeader
+                                        label={t('problems.colUsers')}
+                                        active={sort === 'user_count'}
+                                        order={order}
+                                        onClick={() => handleSort('user_count', 'desc')}
+                                        className="text-right"
+                                    />
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('problems.colAuthors')}</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('problems.colGroup')}</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {problems.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
+                                        <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                                             {t('problems.noProblemsFound')}
                                         </td>
                                     </tr>
                                 ) : (
                                     problems.map((problem) => (
                                         <tr key={problem.code} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3 mb-1">
+                                            <td className="px-4 py-2">
+                                                <div className="flex items-center gap-2">
                                                     <Link
                                                         href={`/problem/${problem.code}`}
-                                                        className="font-bold text-sm hover:text-primary transition-colors"
+                                                        className="font-semibold text-sm hover:text-primary transition-colors"
                                                     >
                                                         {problem.name}
                                                     </Link>
                                                     {problem.partial && (
-                                                        <Badge variant="secondary" className="text-xs">{t('problems.partialBadge')}</Badge>
+                                                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{t('problems.partialBadge')}</Badge>
                                                     )}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span className="font-mono">{problem.code}</span>
                                                     {problem.is_public ? (
-                                                        <Badge variant="success" className="text-xs">{t('problems.publicBadge')}</Badge>
+                                                        <Badge variant="success" className="text-[10px] py-0 px-1.5">{t('problems.publicBadge')}</Badge>
                                                     ) : (
-                                                        <Badge variant="destructive" className="text-xs">{t('problems.privateBadge')}</Badge>
+                                                        <Badge variant="destructive" className="text-[10px] py-0 px-1.5">{t('problems.privateBadge')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1 text-sm">
-                                                    <span className="text-muted-foreground font-bold">
-                                                        {t('problems.pointsLabel', { count: problem.points.toFixed(1) })}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {t('problems.acRateLabel', { rate: Math.round(problem.ac_rate * 100) })}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {t('problems.usersLabel', { count: problem.user_count })}
-                                                    </span>
-                                                </div>
+                                            <td className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">{problem.code}</td>
+                                            <td className="px-4 py-2 text-sm text-right whitespace-nowrap">{problem.points.toFixed(1)}</td>
+                                            <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{formatShortDate(problem.date)}</td>
+                                            <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{Math.round(problem.ac_rate * 100)}%</td>
+                                            <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{problem.user_count}</td>
+                                            <td className="px-4 py-2 text-xs text-muted-foreground">
+                                                <span
+                                                    className="block max-w-[10rem] truncate"
+                                                    title={problem.authors.map(a => a.username).join(', ')}
+                                                >
+                                                    {problem.authors.map(a => a.username).join(', ') || '—'}
+                                                </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm text-muted-foreground">
-                                                    {problem.group_name || t('problems.uncategorized')}
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    {problem.is_manually_managed ? t('problems.manuallyManaged') : t('problems.autoManaged')}
-                                                </div>
+                                            <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                                                {problem.group_name || t('problems.uncategorized')} · {problem.is_manually_managed ? t('problems.manuallyManaged') : t('problems.autoManaged')}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <td className="px-4 py-2 text-right">
+                                                <div className="flex justify-end gap-1">
                                                     <Link
                                                         href={`/admin/problems/${problem.code}/edit`}
-                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                                         title={t('problems.editTitle')}
                                                     >
-                                                        <Edit size={18} />
+                                                        <Edit size={16} />
                                                     </Link>
                                                     <Link
                                                         href={`/admin/problems/${problem.code}/data`}
-                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                                         title={t('problems.manageDataTitle')}
                                                     >
-                                                        <Database size={18} />
+                                                        <Database size={16} />
                                                     </Link>
                                                     <button
                                                         onClick={() => {
                                                             setProblemToClone({ code: problem.code, name: problem.name });
                                                             setCloneModalOpen(true);
                                                         }}
-                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                                         title={t('problems.cloneTitle')}
                                                     >
-                                                        <Copy size={18} />
+                                                        <Copy size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => deleteMutation.mutate(problem.code)}
                                                         disabled={deleteMutation.isPending}
-                                                        className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
                                                         title={t('problems.deleteTitle')}
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </td>

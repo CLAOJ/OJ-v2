@@ -13,23 +13,23 @@ import { Link } from '@/navigation';
 import { useListParams } from '@/hooks/useListParams';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PaginationBar } from '@/components/ui/PaginationBar';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { toggleSort, type ContestSort, type SortOrder } from '@/lib/listSort';
 import {
     Search,
     Tag,
     Trophy,
-    Globe,
     Ban,
     Edit,
     Trash2,
-    Calendar,
-    Clock,
     RefreshCw,
     Play,
     Copy as CopyIcon
 } from 'lucide-react';
 
-const FILTER_KEYS = ['search', 'status'] as const;
+const FILTER_KEYS = ['search', 'status', 'sort', 'order'] as const;
 const PAGE_SIZE = 50;
+const DEFAULT_SORT: ContestSort = 'start_time';
 
 export default function AdminContestPage() {
     const t = useTranslations('Admin');
@@ -41,12 +41,21 @@ export default function AdminContestPage() {
 
     const { page, filters, setFilters, setPage } = useListParams(FILTER_KEYS);
     const search = useDebounce(filters.search ?? '', 300);
+    const sort = (filters.sort ?? DEFAULT_SORT) as ContestSort;
+    const order: SortOrder = filters.order === 'asc' ? 'asc' : 'desc';
+
+    const handleSort = (column: ContestSort, firstOrder: SortOrder) => {
+        const next = toggleSort({ sort, order }, column, firstOrder);
+        setFilters({ sort: next.sort, order: next.order });
+    };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['admin-contests', page, search, filters.status],
+        queryKey: ['admin-contests', page, search, filters.status, sort, order],
         queryFn: async () => (await adminContestApi.list(page, PAGE_SIZE, {
             search,
             status: filters.status as 'upcoming' | 'ongoing' | 'past' | undefined,
+            sort,
+            order,
         })).data,
     });
 
@@ -118,90 +127,100 @@ export default function AdminContestPage() {
             ) : (
                 <div className="bg-card rounded-md border overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                        <table className="w-full text-left text-sm">
                             <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colContest')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colTime')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground">{t('contests.colSettings')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <SortableHeader
+                                        label={t('contests.colContest')}
+                                        active={sort === 'name'}
+                                        order={order}
+                                        onClick={() => handleSort('name', 'asc')}
+                                    />
+                                    <SortableHeader
+                                        label={t('contests.colStart')}
+                                        active={sort === 'start_time'}
+                                        order={order}
+                                        onClick={() => handleSort('start_time', 'desc')}
+                                    />
+                                    <SortableHeader
+                                        label={t('contests.colEnd')}
+                                        active={sort === 'end_time'}
+                                        order={order}
+                                        onClick={() => handleSort('end_time', 'desc')}
+                                    />
+                                    <SortableHeader
+                                        label={t('contests.colUsers')}
+                                        active={sort === 'user_count'}
+                                        order={order}
+                                        onClick={() => handleSort('user_count', 'desc')}
+                                        className="text-right"
+                                    />
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('contests.colSettings')}</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {contests.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
+                                        <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                                             {t('contests.noContestsFound')}
                                         </td>
                                     </tr>
                                 ) : (
                                     contests.map((contest) => (
                                         <tr key={contest.key} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-sm mb-1">{contest.name}</div>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span className="font-mono">{contest.key}</span>
+                                            <td className="px-4 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-sm">{contest.name}</span>
                                                     {contest.is_rated && (
-                                                        <Badge variant="warning" className="text-xs">{t('contests.rated')}</Badge>
+                                                        <Badge variant="warning" className="text-[10px] py-0 px-1.5">{t('contests.rated')}</Badge>
                                                     )}
                                                     {contest.is_organization_private && (
-                                                        <Badge variant="secondary" className="text-xs">{t('contests.private')}</Badge>
+                                                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{t('contests.private')}</Badge>
                                                     )}
                                                 </div>
+                                                <div className="text-xs text-muted-foreground font-mono">{contest.key}</div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1 text-sm">
-                                                    <span className="text-muted-foreground">
-                                                        {contest.start_time && new Date(contest.start_time).toLocaleDateString()}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                        <Clock size={12} />
-                                                        {contest.end_time && new Date(contest.end_time).toLocaleDateString()}
-                                                    </span>
-                                                </div>
+                                            <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                                                {contest.start_time && new Date(contest.start_time).toLocaleDateString()}
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    {contest.is_visible ? (
-                                                        <Badge variant="success" className="flex items-center gap-1 text-xs">
-                                                            {t('contests.visible')}
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="destructive" className="flex items-center text-xs">
-                                                            {t('contests.hidden')}
-                                                        </Badge>
-                                                    )}
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {t('contests.userCount', { count: contest.user_count })}
-                                                    </span>
-                                                </div>
+                                            <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                                                {contest.end_time && new Date(contest.end_time).toLocaleDateString()}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{contest.user_count}</td>
+                                            <td className="px-4 py-2">
+                                                {contest.is_visible ? (
+                                                    <Badge variant="success" className="text-[10px] py-0 px-1.5">{t('contests.visible')}</Badge>
+                                                ) : (
+                                                    <Badge variant="destructive" className="text-[10px] py-0 px-1.5">{t('contests.hidden')}</Badge>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-2 text-right">
+                                                <div className="flex justify-end gap-1">
                                                     <button
                                                         onClick={() => {
                                                             setSelectedContest({ key: contest.key, name: contest.name });
                                                             setCloneModalOpen(true);
                                                         }}
-                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                                         title={t('contests.cloneTitle')}
                                                     >
-                                                        <CopyIcon size={18} />
+                                                        <CopyIcon size={16} />
                                                     </button>
                                                     <Link
                                                         href={`/admin/contests/${contest.key}/edit`}
-                                                        className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
                                                         title={t('contests.editTitle')}
                                                     >
-                                                        <Edit size={18} />
+                                                        <Edit size={16} />
                                                     </Link>
                                                     <button
                                                         onClick={() => deleteMutation.mutate(contest.key)}
                                                         disabled={deleteMutation.isPending}
-                                                        className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
                                                         title={t('contests.deleteTitle')}
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </td>
