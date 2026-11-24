@@ -37,7 +37,8 @@ const contest: AdminContestDetail = {
     authors: [{ id: 4, username: 'a' }], curators: [], testers: [{ id: 9, username: 'b' }],
     banned_users: [{ id: 6, username: 'd' }], private_contestants: [{ id: 7, username: 'e' }],
     view_scoreboard_users: [{ id: 8, username: 'f' }],
-    join_organizations: [{ id: 12, name: 'Org' }], classes: [{ id: 13, name: 'Class 10A' }],
+    join_organizations: [{ id: 12, name: 'Org' }], organizations: [{ id: 5, name: 'Org 5' }],
+    classes: [{ id: 13, name: 'Class 10A' }],
     problems: [
         { id: 11, problem_id: 20, code: 'p20', name: 'P20', points: 250, partial: false, is_pretested: true, order: 1 },
         { id: 12, problem_id: 21, code: 'p21', name: 'P21', points: 100, partial: true, is_pretested: false, order: 2 },
@@ -291,5 +292,28 @@ describe('adminForms', () => {
     it('contestFormToCreate keeps a zero points precision', () => {
         const req = contestFormToCreate({ ...contestToFormData(contest), points_precision: 0 });
         expect(req.points_precision).toBe(0);
+    });
+
+    it('contestFormToUpdate keeps a zero points precision and zero cache timeout', () => {
+        const f = { ...contestToFormData(contest), points_precision: 0, scoreboard_cache_timeout: 0 };
+        const req = contestFormToUpdate(f, contest);
+        expect(req.points_precision).toBe(0);
+        expect(req.scoreboard_cache_timeout).toBe(0);
+    });
+
+    it('contestFormToUpdate works without the existing detail', () => {
+        const f = contestToFormData(contest);
+        const req = contestFormToUpdate(f);
+        expect(req.problems).toEqual([{ problem_id: 20 }, { problem_id: 21 }]);
+        expect(req.rating_floor).toBe(1200);
+        expect(req.clear_rating_floor).toBeUndefined();
+        expect(req.clear_rating_ceiling).toBeUndefined();
+        expect(req.clear_performance_ceiling_override).toBeUndefined();
+        expect(req.scoreboard_visibility).toBe('C');
+    });
+
+    it('an empty scoreboard visibility falls back to the visible code', () => {
+        const req = contestFormToCreate({ ...contestToFormData(contest), scoreboard_visibility: undefined });
+        expect(req.scoreboard_visibility).toBe('V');
     });
 });

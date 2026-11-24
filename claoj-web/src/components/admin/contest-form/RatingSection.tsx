@@ -3,13 +3,11 @@
 import { UseFormRegister } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import type { ContestFormData } from '../ContestForm';
+import { optionalInt } from './optionalInt';
 
 interface RatingSectionProps {
     register: UseFormRegister<ContestFormData>;
 }
-
-/** Empty number input → undefined, so the mapper can tell "cleared" from zero. */
-export const optionalInt = { setValueAs: (v: string) => (v === '' || v == null ? undefined : Number(v)) };
 
 export function RatingSection({ register }: RatingSectionProps) {
     const t = useTranslations('Admin');

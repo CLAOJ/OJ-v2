@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { adminContestApi, adminOrganizationApi } from '@/lib/adminApi';
+import { adminContestApi } from '@/lib/adminApi';
 import { contestToFormData, contestFormToUpdate } from '@/lib/adminForms';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
@@ -25,16 +25,6 @@ export default function EditContestPage() {
         queryFn: async () => {
             const res = await adminContestApi.detail(key);
             return res.data;
-        }
-    });
-
-    // The detail carries organization ids only, so names for their chips come
-    // from the (small) admin organization list.
-    const { data: organizations } = useQuery({
-        queryKey: ['admin-organizations-chips'],
-        queryFn: async () => {
-            const res = await adminOrganizationApi.list(1, 500);
-            return res.data.data;
         }
     });
 
@@ -88,16 +78,12 @@ export default function EditContestPage() {
     }
 
     const initialData = contestToFormData(contestData);
-    const organizationChip = (id: number) => {
-        const org = organizations?.find(o => o.id === id);
-        return { id, label: org ? (org.short_name || org.name) : `#${id}` };
-    };
     const initialOptions = {
         problems: contestData.problems.map(p => ({ id: p.problem_id, label: p.code, detail: p.name })),
         author_ids: contestData.authors.map(u => ({ id: u.id, label: u.username })),
         curator_ids: contestData.curators.map(u => ({ id: u.id, label: u.username })),
         tester_ids: contestData.testers.map(u => ({ id: u.id, label: u.username })),
-        organization_ids: contestData.organization_ids.map(organizationChip),
+        organization_ids: contestData.organizations.map(o => ({ id: o.id, label: o.name })),
         banned_user_ids: contestData.banned_users.map(u => ({ id: u.id, label: u.username })),
         private_contestant_ids: contestData.private_contestants.map(u => ({ id: u.id, label: u.username })),
         view_scoreboard_user_ids: contestData.view_scoreboard_users.map(u => ({ id: u.id, label: u.username })),

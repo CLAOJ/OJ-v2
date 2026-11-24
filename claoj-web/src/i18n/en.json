@@ -2086,7 +2086,7 @@
       "scoreboardCacheTimeoutHint": "How long the scoreboard is cached. 0 disables caching.",
       "pointsPrecisionLabel": "Points precision",
       "pointsPrecisionPlaceholder": "3",
-      "pointsPrecisionHint": "Decimals shown for points, 0-10.",
+      "pointsPrecisionHint": "Decimals shown for points, 0-10. Leave empty to keep the current value.",
       "accessTitle": "Access & Privacy",
       "privateContestLabel": "Private to specific users",
       "organizationsLabel": "Organizations",

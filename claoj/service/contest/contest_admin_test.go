@@ -243,6 +243,7 @@ func TestCreateContest_V1FieldsRoundTrip(t *testing.T) {
 	require.Equal(t, "private", got.PrivateContestants[0].Username)
 	require.Equal(t, "viewer", got.ViewScoreboardUsers[0].Username)
 	require.Equal(t, []NamedRef{{ID: joinOrg.ID, Name: "joinorg"}}, got.JoinOrganizations)
+	require.Equal(t, []NamedRef{{ID: org.ID, Name: "org"}}, got.Organizations)
 	require.Equal(t, []NamedRef{{ID: class.ID, Name: "class10a"}}, got.Classes)
 }
 
@@ -261,6 +262,7 @@ func TestCreateContest_DefaultsMatchV1(t *testing.T) {
 	require.Equal(t, 3, got.PointsPrecision)
 	require.Empty(t, got.ClassIDs)
 	require.Empty(t, got.Classes)
+	require.Empty(t, got.Organizations)
 }
 
 func TestUpdateContest_V1FieldsReplaceAndClear(t *testing.T) {

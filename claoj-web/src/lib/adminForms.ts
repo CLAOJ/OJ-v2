@@ -185,7 +185,7 @@ function sharedContestFields(data: ContestFormData) {
         rating_floor: data.rating_floor,
         rating_ceiling: data.rating_ceiling,
         performance_ceiling_override: data.performance_ceiling_override,
-        scoreboard_visibility: data.scoreboard_visibility ?? 'V',
+        scoreboard_visibility: data.scoreboard_visibility || 'V',
         scoreboard_cache_timeout: data.scoreboard_cache_timeout ?? 0,
         // 0 is a valid precision, so only an empty field is left out.
         points_precision: data.points_precision,

@@ -65,6 +65,7 @@ type ContestProfile struct {
 	PrivateContestants     []relations.UserRef `json:"private_contestants"`
 	ViewScoreboardUsers    []relations.UserRef `json:"view_scoreboard_users"`
 	JoinOrganizations      []NamedRef          `json:"join_organizations"`
+	Organizations          []NamedRef          `json:"organizations"`
 	Classes                []NamedRef          `json:"classes"`
 }
 

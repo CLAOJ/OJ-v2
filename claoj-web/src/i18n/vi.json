@@ -2086,7 +2086,7 @@
       "scoreboardCacheTimeoutHint": "Thời gian cache bảng điểm. 0 là không cache.",
       "pointsPrecisionLabel": "Độ chính xác điểm",
       "pointsPrecisionPlaceholder": "3",
-      "pointsPrecisionHint": "Số chữ số thập phân của điểm, 0-10.",
+      "pointsPrecisionHint": "Số chữ số thập phân của điểm, 0-10. Để trống để giữ giá trị hiện tại.",
       "accessTitle": "Truy cập & Riêng tư",
       "privateContestLabel": "Riêng tư cho người dùng cụ thể",
       "organizationsLabel": "Tổ chức",

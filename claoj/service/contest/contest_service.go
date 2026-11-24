@@ -775,6 +775,7 @@ func contestToProfile(c models.Contest) ContestProfile {
 		PrivateContestants:         relations.UserRefs(c.PrivateContestants),
 		ViewScoreboardUsers:        relations.UserRefs(c.ViewContestScoreboard),
 		JoinOrganizations:          orgRefs(c.JoinOrganizations),
+		Organizations:              orgRefs(c.Organizations),
 		Classes:                    classRefs(c.Classes),
 	}
 }

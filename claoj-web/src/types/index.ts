@@ -505,6 +505,7 @@ export interface AdminContestDetail {
     private_contestants: UserRef[];
     view_scoreboard_users: UserRef[];
     join_organizations: NamedRef[];
+    organizations: NamedRef[];
     classes: NamedRef[];
     problems: AdminContestProblemRow[];
 }

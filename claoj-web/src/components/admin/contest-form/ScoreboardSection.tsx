@@ -4,7 +4,7 @@ import { UseFormRegister } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import type { ScoreboardVisibility } from '@/types';
 import type { ContestFormData } from '../ContestForm';
-import { optionalInt } from './RatingSection';
+import { optionalInt } from './optionalInt';
 
 interface ScoreboardSectionProps {
     register: UseFormRegister<ContestFormData>;
