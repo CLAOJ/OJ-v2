@@ -38,6 +38,7 @@ export default function ContestsPageContent() {
     const { requireAuth } = useRequireAuth();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
+    const [showAllPast, setShowAllPast] = useState(false);
     const [now, setNow] = useState(dayjs());
 
     useEffect(() => {
@@ -277,7 +278,7 @@ export default function ContestsPageContent() {
                     />
 
                     <ContestTable
-                        contests={past.slice(0, 10)}
+                        contests={showAllPast ? past : past.slice(0, 10)}
                         title={t('pastContests')}
                         icon={History}
                         emptyMsg={t('noPast')}
@@ -285,8 +286,12 @@ export default function ContestsPageContent() {
 
                     {past.length > 10 && (
                         <div className="flex justify-center pt-4">
-                            <button className="text-sm font-medium text-primary flex items-center gap-1 hover:underline">
-                                {t('viewAllPast')} <ChevronRight size={16} />
+                            <button
+                                onClick={() => setShowAllPast(v => !v)}
+                                className="text-sm font-medium text-primary flex items-center gap-1 hover:underline"
+                            >
+                                {showAllPast ? t('viewLessPast') : t('viewAllPast')}
+                                <ChevronRight size={16} className={cn(showAllPast && 'rotate-90')} />
                             </button>
                         </div>
                     )}

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
 import { statusKey } from '@/lib/submissionStatus';
+import { formatMemoryMb, summarizeTestScore } from '@/lib/submissionDetail';
 import dayjs from 'dayjs';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
@@ -184,6 +185,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const isAdmin = user?.is_admin || user?.is_staff;
     const resultInfo = sub?.result ? STATUS_INFO[sub.result] : null;
     const statusInfo = sub?.status ? STATUS_INFO[sub.status] || { color: 'text-zinc-500', icon: <AlertCircle size={20} /> } : null;
+    const testScore = summarizeTestScore(sub?.test_cases ?? []);
 
     if (isLoading) {
         return (
@@ -302,14 +304,20 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
 
                     {/* Right: Stats */}
                     <div className="flex gap-3 flex-wrap">
-                        <div className="px-6 py-4 rounded-md bg-primary/5 border border-primary/10 text-center min-w-[100px]">
+                        <div className="px-6 py-4 rounded-md bg-primary/5 border border-primary/10 text-center min-w-[140px]">
                             <span className="text-xs text-muted-foreground block mb-1">{t('score')}</span>
-                            <span className="text-2xl font-semibold text-primary">
-                                {sub.points !== null ? sub.points.toFixed(0) : '-'}
-                                {sub.case_total > 0 && (
-                                    <span className="text-sm text-muted-foreground font-medium">/{sub.case_total}</span>
+                            <div className="text-2xl font-semibold text-primary">
+                                {testScore ? `${testScore.passed}/${testScore.total}` : (sub.points !== null ? sub.points.toFixed(0) : '-')}
+                                {testScore ? (
+                                    <span className="text-sm text-muted-foreground font-medium block">
+                                        {testScore.points.toFixed(3)}/{testScore.maxPoints.toFixed(3)} {t('points')}
+                                    </span>
+                                ) : (
+                                    sub.case_total > 0 && (
+                                        <span className="text-sm text-muted-foreground font-medium">/{sub.case_total}</span>
+                                    )
                                 )}
-                            </span>
+                            </div>
                         </div>
                         <div className="px-6 py-4 rounded-md bg-card border text-center min-w-[100px]">
                             <span className="text-xs text-muted-foreground block mb-1">{t('time')}</span>
@@ -320,7 +328,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                         <div className="px-6 py-4 rounded-md bg-card border text-center min-w-[100px]">
                             <span className="text-xs text-muted-foreground block mb-1">{t('memory')}</span>
                             <span className="text-2xl font-semibold">
-                                {sub.memory !== null ? `${sub.memory.toFixed(1)}MB` : '-'}
+                                {formatMemoryMb(sub.memory)}
                             </span>
                         </div>
                     </div>

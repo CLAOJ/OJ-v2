@@ -311,7 +311,8 @@
     "window": "Thời gian làm bài",
     "pageSubtitle": "Tham gia thử thách, khẳng định bản thân và nâng cao rating của bạn.",
     "viewCalendar": "Xem lịch thi",
-    "viewAllPast": "Xem tất cả kỳ thi đã kết thúc"
+    "viewAllPast": "Xem tất cả kỳ thi đã kết thúc",
+    "viewLessPast": "Thu gọn danh sách kỳ thi đã kết thúc"
   },
   "Submissions": {
     "title": "Bài nộp",
@@ -375,6 +376,7 @@
     "notFoundDesc": "Bài nộp bạn đang tìm không tồn tại.",
     "backToSubmissions": "Quay lại danh sách bài nộp",
     "score": "Điểm",
+    "points": "điểm",
     "sourceCode": "Mã nguồn",
     "testCaseResults": "Kết quả test",
     "noTestCaseResults": "Chưa có kết quả test",

@@ -27,6 +27,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 
 const TRENDING_LIMIT = 5;
+// Slider ceiling, and the points value at which the upper bound is not sent at
+// all: problems are authored with at most 100 points, and a hard `points_max`
+// must never hide anything above the slider range.
+const POINTS_MAX = 100;
 
 export default function ProblemsPageContent() {
     const t = useTranslations('Problems');
@@ -35,7 +39,7 @@ export default function ProblemsPageContent() {
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<string>('all');
     const [pointsMin, setPointsMin] = useState<number>(0);
-    const [pointsMax, setPointsMax] = useState<number>(50);
+    const [pointsMax, setPointsMax] = useState<number>(POINTS_MAX);
     const [sort, setSort] = useState<string>('code');
     const [order, setOrder] = useState<'asc' | 'desc'>('asc');
     const [page, setPage] = useState(1);
@@ -48,7 +52,7 @@ export default function ProblemsPageContent() {
                 search,
                 status: status !== 'all' ? status : '',
                 points_min: pointsMin.toString(),
-                points_max: pointsMax.toString(),
+                points_max: pointsMax >= POINTS_MAX ? '' : pointsMax.toString(),
                 sort,
                 order,
                 page: page.toString(),
@@ -148,7 +152,7 @@ export default function ProblemsPageContent() {
                                 <input
                                     type="range"
                                     min="0"
-                                    max="50"
+                                    max={POINTS_MAX}
                                     step="1"
                                     value={pointsMax}
                                     onChange={(e) => setPointsMax(parseInt(e.target.value))}
@@ -162,7 +166,7 @@ export default function ProblemsPageContent() {
                                 setSearch('');
                                 setStatus('all');
                                 setPointsMin(0);
-                                setPointsMax(50);
+                                setPointsMax(POINTS_MAX);
                             }}
                             className="w-full h-9 rounded-md bg-muted/50 text-xs font-medium hover:bg-muted transition-all border border-dashed flex items-center justify-center gap-2"
                         >

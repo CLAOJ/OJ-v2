@@ -329,7 +329,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
                         {(problem.description?.trim() || !problem.pdf_url) && (
                             <div className="prose prose-sm dark:prose-invert max-w-none bg-card border rounded-md p-4 shadow-sm leading-relaxed">
-                                <MathRenderer content={problem.description} fullMarkup={problem.is_full_markup} />
+                                <MathRenderer content={problem.description} />
                             </div>
                         )}
                         {problem.pdf_url && <PdfStatementViewer code={code} />}

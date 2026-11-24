@@ -311,7 +311,8 @@
     "window": "Window",
     "pageSubtitle": "Participate in challenges, win recognition, and grow your rating.",
     "viewCalendar": "View Calendar",
-    "viewAllPast": "View all past contests"
+    "viewAllPast": "View all past contests",
+    "viewLessPast": "Show fewer past contests"
   },
   "Submissions": {
     "title": "Submissions",
@@ -375,6 +376,7 @@
     "notFoundDesc": "The submission you're looking for doesn't exist.",
     "backToSubmissions": "Back to Submissions",
     "score": "Score",
+    "points": "points",
     "sourceCode": "Source Code",
     "testCaseResults": "Test Case Results",
     "noTestCaseResults": "No test case results available",
