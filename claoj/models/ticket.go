@@ -23,7 +23,10 @@ type Ticket struct {
 	IsOpen         bool      `gorm:"column:is_open;not null;default:1"`
 
 	// relations
-	User      Profile         `gorm:"foreignKey:UserID"`
+	// judge_ticket.user_id is a judge_profile id. judge_profile also has a
+	// user_id column, so GORM guesses has-one (profile.user_id = ticket.id);
+	// belongsTo forces the belongs-to reading.
+	User      Profile         `gorm:"foreignKey:UserID;references:ID;belongsTo:User"`
 	Messages  []TicketMessage `gorm:"foreignKey:TicketID"`
 	Assignees []Profile       `gorm:"many2many:judge_ticket_assignees;joinForeignKey:ticket_id;joinReferences:profile_id"`
 }
@@ -39,7 +42,7 @@ type TicketMessage struct {
 	Time     time.Time `gorm:"column:time;not null"`
 
 	Ticket Ticket  `gorm:"foreignKey:TicketID"`
-	User   Profile `gorm:"foreignKey:UserID"`
+	User   Profile `gorm:"foreignKey:UserID;references:ID;belongsTo:User"`
 }
 
 func (TicketMessage) TableName() string { return "judge_ticketmessage" }

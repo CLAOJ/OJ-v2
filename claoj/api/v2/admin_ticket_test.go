@@ -17,18 +17,43 @@ import (
 type ticketFixture struct {
 	root, plain  models.AuthUser
 	plainProfile models.Profile
-	problemCT    models.DjangoContentType
-	contestCT    models.DjangoContentType
+	// creator is a profile whose id deliberately differs from its auth_user id,
+	// so code that mixes the two id spaces (judge_ticket.user_id is a
+	// judge_profile id) fails instead of accidentally matching.
+	creator   models.Profile
+	problemCT models.DjangoContentType
+	contestCT models.DjangoContentType
 }
 
 func setupAdminTickets(t *testing.T) ticketFixture {
 	t.Helper()
 	root, plain, plainProfile := setupSmallGapsDB(t)
 	f := ticketFixture{root: root, plain: plain, plainProfile: plainProfile}
+
+	// django_content_type ids depend on migration order. Seed unrelated rows
+	// first so problem/contest are not 1/2 (the historic hardcoded values): the
+	// linked-item tests then really prove model-name resolution.
+	for _, ct := range []models.DjangoContentType{
+		{AppLabel: "judge", Model: "submission"},
+		{AppLabel: "judge", Model: "contestparticipation"},
+	} {
+		require.NoError(t, db.DB.Create(&ct).Error)
+	}
 	f.problemCT = models.DjangoContentType{AppLabel: "judge", Model: "problem"}
 	f.contestCT = models.DjangoContentType{AppLabel: "judge", Model: "contest"}
 	require.NoError(t, db.DB.Create(&f.problemCT).Error)
 	require.NoError(t, db.DB.Create(&f.contestCT).Error)
+	require.NotEqual(t, uint(1), f.problemCT.ID)
+	require.NotEqual(t, uint(2), f.contestCT.ID)
+
+	// One auth_user without a profile shifts every later profile id, so
+	// creator.ID != creator.UserID.
+	require.NoError(t, db.DB.Create(&models.AuthUser{Username: "noprofile", IsActive: true}).Error)
+	creatorUser := models.AuthUser{Username: "carol", IsActive: true}
+	require.NoError(t, db.DB.Create(&creatorUser).Error)
+	f.creator = models.Profile{UserID: creatorUser.ID, Timezone: "UTC"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&f.creator).Error)
+	require.NotEqual(t, f.creator.ID, f.creator.UserID)
 	return f
 }
 
@@ -48,7 +73,7 @@ func (f ticketFixture) contest(t *testing.T, key, name string) models.Contest {
 
 func (f ticketFixture) ticket(t *testing.T, title string, contentTypeID, objectID uint) models.Ticket {
 	t.Helper()
-	tk := models.Ticket{Title: title, UserID: f.plainProfile.ID, Time: time.Now(), ContentTypeID: contentTypeID, ObjectID: objectID}
+	tk := models.Ticket{Title: title, UserID: f.creator.ID, Time: time.Now(), ContentTypeID: contentTypeID, ObjectID: objectID}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&tk).Error)
 	return tk
 }
@@ -121,6 +146,8 @@ func TestTicketDetailUserSideStillResolvesLinkedItem(t *testing.T) {
 	f := setupAdminTickets(t)
 	p := f.problem(t, "p1", "Two Sum")
 	tk := f.ticket(t, "user ticket", f.problemCT.ID, p.ID)
+	tk.UserID = f.plainProfile.ID
+	require.NoError(t, db.DB.Save(&tk).Error)
 
 	router := authedRouter(f.plain.ID, http.MethodGet, "/ticket/:id", TicketDetail)
 	w := doRequest(router, http.MethodGet, "/ticket/"+itoa(tk.ID), "")
@@ -138,6 +165,40 @@ func TestTicketDetailUserSideStillResolvesLinkedItem(t *testing.T) {
 	require.Equal(t, "problem", body.LinkedItem.Type)
 	require.Equal(t, "p1", body.LinkedItem.Code)
 	require.Equal(t, "Two Sum", body.LinkedItem.Name)
+}
+
+func TestAdminTicketCreatorRelation(t *testing.T) {
+	f := setupAdminTickets(t)
+	tk := f.ticket(t, "creator check", 0, 0)
+
+	// judge_ticket.user_id holds a judge_profile id. The fixture guarantees it
+	// differs from the creator's auth_user id, so an id-space mixup fails; a
+	// has-one guess (judge_profile.user_id = ticket.id) also fails, because it
+	// resolves a different profile.
+	require.NotEqual(t, f.creator.ID, f.creator.UserID)
+	require.Equal(t, f.creator.ID, tk.UserID)
+
+	detailRouter := authedRouter(f.root.ID, http.MethodGet, "/admin/ticket/:id", AdminTicketDetail)
+	w := doRequest(detailRouter, http.MethodGet, "/admin/ticket/"+itoa(tk.ID), "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var detail map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &detail))
+	require.Equal(t, "carol", detail["creator"])
+	require.Equal(t, float64(f.creator.ID), detail["creator_id"])
+
+	listRouter := authedRouter(f.root.ID, http.MethodGet, "/admin/tickets", AdminTicketList)
+	w = doRequest(listRouter, http.MethodGet, "/admin/tickets", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var list struct {
+		Items []struct {
+			ID   uint   `json:"id"`
+			User string `json:"user"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &list))
+	require.Len(t, list.Items, 1)
+	require.Equal(t, tk.ID, list.Items[0].ID)
+	require.Equal(t, "carol", list.Items[0].User)
 }
 
 func TestAdminTicketUpdate(t *testing.T) {
@@ -158,12 +219,22 @@ func TestAdminTicketUpdate(t *testing.T) {
 		return doRequest(router, http.MethodPatch, target, body).Code
 	}
 
-	require.Equal(t, http.StatusOK, patch(`{"title":"new title","user_id":`+itoa(rootProfileID)+`,"linked_type":"problem","linked_id":`+itoa(p.ID)+`}`))
+	require.Equal(t, http.StatusOK, patch(`{"title":"new title","user_id":`+itoa(f.plainProfile.ID)+`,"linked_type":"problem","linked_id":`+itoa(p.ID)+`}`))
 	got := load()
 	require.Equal(t, "new title", got.Title)
-	require.Equal(t, f.root.ID, got.UserID)
+	require.Equal(t, f.plainProfile.ID, got.UserID)
 	require.Equal(t, f.problemCT.ID, got.ContentTypeID)
 	require.Equal(t, p.ID, got.ObjectID)
+
+	// user_id is a judge_profile id, not an auth_user id: creator.ID differs
+	// from creator.UserID, so storing the auth id fails here.
+	require.Equal(t, http.StatusOK, patch(`{"user_id":`+itoa(f.creator.ID)+`}`))
+	got = load()
+	require.Equal(t, f.creator.ID, got.UserID)
+	require.NotEqual(t, f.creator.UserID, got.UserID)
+
+	require.Equal(t, http.StatusOK, patch(`{"user_id":`+itoa(rootProfileID)+`}`))
+	require.Equal(t, rootProfileID, load().UserID)
 
 	require.Equal(t, http.StatusOK, patch(`{"linked_type":"contest","linked_id":`+itoa(c.ID)+`}`))
 	got = load()
@@ -190,7 +261,7 @@ func TestAdminTicketUpdate(t *testing.T) {
 	}
 	got = load()
 	require.Equal(t, "new title", got.Title)
-	require.Equal(t, f.root.ID, got.UserID)
+	require.Equal(t, rootProfileID, got.UserID)
 	require.Zero(t, got.ContentTypeID)
 
 	require.Equal(t, http.StatusNotFound, doRequest(router, http.MethodPatch, "/admin/ticket/999", `{"title":"x"}`).Code)
@@ -212,10 +283,10 @@ func TestAdminTicketMessageUpdateDelete(t *testing.T) {
 	f := setupAdminTickets(t)
 	tk := f.ticket(t, "with messages", 0, 0)
 	other := f.ticket(t, "other", 0, 0)
-	msg := models.TicketMessage{TicketID: tk.ID, UserID: f.plain.ID, Body: "original", Time: time.Now()}
+	msg := models.TicketMessage{TicketID: tk.ID, UserID: f.creator.ID, Body: "original", Time: time.Now()}
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&msg).Error)
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.TicketMessage{
-		TicketID: other.ID, UserID: f.plain.ID, Body: "other body", Time: time.Now(),
+		TicketID: other.ID, UserID: f.creator.ID, Body: "other body", Time: time.Now(),
 	}).Error)
 
 	patchRouter := authedRouter(f.root.ID, http.MethodPatch, "/admin/ticket/:id/message/:messageId", AdminTicketMessageUpdate)
@@ -232,17 +303,18 @@ func TestAdminTicketMessageUpdateDelete(t *testing.T) {
 	require.Equal(t, http.StatusOK, patch(tk.ID, `{"body":"edited"}`))
 	require.Equal(t, "edited", load().Body)
 
-	rootProfileID := f.rootProfileID(t)
-	require.Equal(t, http.StatusOK, patch(tk.ID, `{"user_id":`+itoa(rootProfileID)+`}`))
-	require.Equal(t, f.root.ID, load().UserID)
+	// The author is not editable; an unknown user_id in the body is ignored.
+	require.Equal(t, http.StatusOK, patch(tk.ID, `{"body":"edited again","user_id":`+itoa(f.plainProfile.ID)+`}`))
+	require.Equal(t, "edited again", load().Body)
+	require.Equal(t, f.creator.ID, load().UserID)
 
 	require.Equal(t, http.StatusBadRequest, patch(tk.ID, `{"body":"   "}`))
-	require.Equal(t, "edited", load().Body)
+	require.Equal(t, "edited again", load().Body)
 
 	// A message reached through the wrong ticket is a 404, for edit and delete.
 	require.Equal(t, http.StatusNotFound, patch(other.ID, `{"body":"stolen"}`))
 	require.Equal(t, http.StatusNotFound, doRequest(deleteRouter, http.MethodDelete, "/admin/ticket/"+itoa(other.ID)+"/message/"+itoa(msg.ID), "").Code)
-	require.Equal(t, "edited", load().Body)
+	require.Equal(t, "edited again", load().Body)
 
 	require.Equal(t, http.StatusNotFound, doRequest(patchRouter, http.MethodPatch, "/admin/ticket/"+itoa(tk.ID)+"/message/999", `{"body":"x"}`).Code)
 	require.Equal(t, http.StatusBadRequest, doRequest(patchRouter, http.MethodPatch, "/admin/ticket/"+itoa(tk.ID)+"/message/abc", `{"body":"x"}`).Code)

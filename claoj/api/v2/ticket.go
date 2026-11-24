@@ -623,7 +623,7 @@ func AdminTicketUpdate(c *gin.Context) {
 
 	if req.UserID != nil {
 		var profile models.Profile
-		if err := db.DB.Select("user_id").First(&profile, *req.UserID).Error; err != nil {
+		if err := db.DB.Select("id").First(&profile, *req.UserID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.JSON(http.StatusBadRequest, apiUserError("user not found"))
 				return
@@ -631,7 +631,8 @@ func AdminTicketUpdate(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 			return
 		}
-		ticket.UserID = profile.UserID
+		// judge_ticket.user_id is a judge_profile id, not an auth_user id.
+		ticket.UserID = profile.ID
 	}
 
 	if req.LinkedType != nil || req.LinkedID != nil {
@@ -673,8 +674,7 @@ func AdminTicketUpdate(c *gin.Context) {
 }
 
 type AdminTicketMessageUpdateRequest struct {
-	Body   *string `json:"body"`
-	UserID *uint   `json:"user_id"` // judge_profile id
+	Body *string `json:"body"`
 }
 
 // loadTicketMessage resolves the :id/:messageId pair, writing 404 when the
@@ -731,19 +731,6 @@ func AdminTicketMessageUpdate(c *gin.Context) {
 			return
 		}
 		message.Body = body
-	}
-
-	if req.UserID != nil {
-		var profile models.Profile
-		if err := db.DB.Select("user_id").First(&profile, *req.UserID).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.JSON(http.StatusBadRequest, apiUserError("user not found"))
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
-			return
-		}
-		message.UserID = profile.UserID
 	}
 
 	if err := db.DB.Save(message).Error; err != nil {
