@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/CLAOJ/claoj/service/problem"
+	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/gin-gonic/gin"
 )
 
@@ -94,20 +96,35 @@ func AdminProblemDetail(c *gin.Context) {
 // AdminProblemCreate - POST /api/v2/admin/problems
 func AdminProblemCreate(c *gin.Context) {
 	var input struct {
-		Code              string  `json:"code" binding:"required"`
-		Name              string  `json:"name" binding:"required"`
-		Description       string  `json:"description" binding:"required"`
-		Points            float64 `json:"points" binding:"required"`
-		Partial           bool    `json:"partial"`
-		IsPublic          bool    `json:"is_public"`
-		TimeLimit         float64 `json:"time_limit" binding:"required"`
-		MemoryLimit       uint    `json:"memory_limit" binding:"required"`
-		GroupID           uint    `json:"group_id"`
-		TypeIDs           []uint  `json:"type_ids"`
-		AuthorIDs         []uint  `json:"author_ids"`
-		AllowedLangIDs    []uint  `json:"allowed_lang_ids"`
-		IsManuallyManaged bool    `json:"is_manually_managed"`
-		PdfURL            string  `json:"pdf_url"`
+		Code                           string     `json:"code" binding:"required"`
+		Name                           string     `json:"name" binding:"required"`
+		Description                    string     `json:"description" binding:"required"`
+		Points                         float64    `json:"points" binding:"required"`
+		Partial                        bool       `json:"partial"`
+		IsPublic                       bool       `json:"is_public"`
+		TimeLimit                      float64    `json:"time_limit" binding:"required"`
+		MemoryLimit                    uint       `json:"memory_limit" binding:"required"`
+		GroupID                        uint       `json:"group_id"`
+		TypeIDs                        []uint     `json:"type_ids"`
+		AuthorIDs                      []uint     `json:"author_ids"`
+		CuratorIDs                     []uint     `json:"curator_ids"`
+		TesterIDs                      []uint     `json:"tester_ids"`
+		AllowedLangIDs                 []uint     `json:"allowed_lang_ids"`
+		IsManuallyManaged              bool       `json:"is_manually_managed"`
+		PdfURL                         string     `json:"pdf_url"`
+		Source                         string     `json:"source"`
+		Date                           *time.Time `json:"date"`
+		LicenseID                      *uint      `json:"license_id"`
+		OgImage                        string     `json:"og_image"`
+		Summary                        string     `json:"summary"`
+		ShortCircuit                   bool       `json:"short_circuit"`
+		IsFullMarkup                   bool       `json:"is_full_markup"`
+		SubmissionSourceVisibilityMode string     `json:"submission_source_visibility_mode"`
+		TestcaseVisibilityMode         string     `json:"testcase_visibility_mode"`
+		IsOrganizationPrivate          bool       `json:"is_organization_private"`
+		OrganizationIDs                []uint     `json:"organization_ids"`
+		BannedUserIDs                  []uint     `json:"banned_user_ids"`
+		SuggesterID                    *uint      `json:"suggester_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -116,22 +133,41 @@ func AdminProblemCreate(c *gin.Context) {
 	}
 
 	profile, err := getProblemService().CreateProblem(problem.CreateProblemRequest{
-		Code:              input.Code,
-		Name:              input.Name,
-		Description:       input.Description,
-		Points:            input.Points,
-		Partial:           input.Partial,
-		IsPublic:          input.IsPublic,
-		TimeLimit:         input.TimeLimit,
-		MemoryLimit:       input.MemoryLimit,
-		GroupID:           input.GroupID,
-		TypeIDs:           input.TypeIDs,
-		AuthorIDs:         input.AuthorIDs,
-		AllowedLangIDs:    input.AllowedLangIDs,
-		IsManuallyManaged: input.IsManuallyManaged,
-		PdfURL:            input.PdfURL,
+		Code:                           input.Code,
+		Name:                           input.Name,
+		Description:                    input.Description,
+		Points:                         input.Points,
+		Partial:                        input.Partial,
+		IsPublic:                       input.IsPublic,
+		TimeLimit:                      input.TimeLimit,
+		MemoryLimit:                    input.MemoryLimit,
+		GroupID:                        input.GroupID,
+		TypeIDs:                        input.TypeIDs,
+		AuthorIDs:                      input.AuthorIDs,
+		CuratorIDs:                     input.CuratorIDs,
+		TesterIDs:                      input.TesterIDs,
+		AllowedLangIDs:                 input.AllowedLangIDs,
+		IsManuallyManaged:              input.IsManuallyManaged,
+		PdfURL:                         input.PdfURL,
+		Source:                         input.Source,
+		Date:                           input.Date,
+		LicenseID:                      input.LicenseID,
+		OgImage:                        input.OgImage,
+		Summary:                        input.Summary,
+		ShortCircuit:                   input.ShortCircuit,
+		IsFullMarkup:                   input.IsFullMarkup,
+		SubmissionSourceVisibilityMode: input.SubmissionSourceVisibilityMode,
+		TestcaseVisibilityMode:         input.TestcaseVisibilityMode,
+		IsOrganizationPrivate:          input.IsOrganizationPrivate,
+		OrganizationIDs:                input.OrganizationIDs,
+		BannedUserIDs:                  input.BannedUserIDs,
+		SuggesterID:                    input.SuggesterID,
 	})
 	if err != nil {
+		if errors.Is(err, problem.ErrInvalidVisibilityMode) || errors.Is(err, relations.ErrUnknownID) {
+			c.JSON(http.StatusBadRequest, apiError(err.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
@@ -151,27 +187,40 @@ func AdminProblemUpdate(c *gin.Context) {
 	code := c.Param("code")
 
 	var input struct {
-		Name              *string  `json:"name"`
-		Description       *string  `json:"description"`
-		Points            *float64 `json:"points"`
-		Partial           *bool    `json:"partial"`
-		IsPublic          *bool    `json:"is_public"`
-		TimeLimit         *float64 `json:"time_limit"`
-		MemoryLimit       *uint    `json:"memory_limit"`
-		IsManuallyManaged *bool    `json:"is_manually_managed"`
-		PdfURL            *string  `json:"pdf_url"`
-		GroupID           *uint    `json:"group_id"`
-		AuthorIDs         *[]uint  `json:"author_ids"`
-		CuratorIDs        *[]uint  `json:"curator_ids"`
-		TesterIDs         *[]uint  `json:"tester_ids"`
-		TypeIDs           *[]uint  `json:"type_ids"`
-		AllowedLangIDs    *[]uint  `json:"allowed_lang_ids"`
-		AddTypeIDs        []uint   `json:"add_type_ids"`
-		RemoveTypeIDs     []uint   `json:"remove_type_ids"`
-		AddAuthorIDs      []uint   `json:"add_author_ids"`
-		RemoveAuthorIDs   []uint   `json:"remove_author_ids"`
-		AddLangIDs        []uint   `json:"add_lang_ids"`
-		RemoveLangIDs     []uint   `json:"remove_lang_ids"`
+		Name                           *string    `json:"name"`
+		Description                    *string    `json:"description"`
+		Points                         *float64   `json:"points"`
+		Partial                        *bool      `json:"partial"`
+		IsPublic                       *bool      `json:"is_public"`
+		TimeLimit                      *float64   `json:"time_limit"`
+		MemoryLimit                    *uint      `json:"memory_limit"`
+		IsManuallyManaged              *bool      `json:"is_manually_managed"`
+		PdfURL                         *string    `json:"pdf_url"`
+		GroupID                        *uint      `json:"group_id"`
+		AuthorIDs                      *[]uint    `json:"author_ids"`
+		CuratorIDs                     *[]uint    `json:"curator_ids"`
+		TesterIDs                      *[]uint    `json:"tester_ids"`
+		TypeIDs                        *[]uint    `json:"type_ids"`
+		AllowedLangIDs                 *[]uint    `json:"allowed_lang_ids"`
+		AddTypeIDs                     []uint     `json:"add_type_ids"`
+		RemoveTypeIDs                  []uint     `json:"remove_type_ids"`
+		AddAuthorIDs                   []uint     `json:"add_author_ids"`
+		RemoveAuthorIDs                []uint     `json:"remove_author_ids"`
+		AddLangIDs                     []uint     `json:"add_lang_ids"`
+		RemoveLangIDs                  []uint     `json:"remove_lang_ids"`
+		Source                         *string    `json:"source"`
+		Date                           *time.Time `json:"date"`
+		LicenseID                      *uint      `json:"license_id"`
+		OgImage                        *string    `json:"og_image"`
+		Summary                        *string    `json:"summary"`
+		ShortCircuit                   *bool      `json:"short_circuit"`
+		IsFullMarkup                   *bool      `json:"is_full_markup"`
+		SubmissionSourceVisibilityMode *string    `json:"submission_source_visibility_mode"`
+		TestcaseVisibilityMode         *string    `json:"testcase_visibility_mode"`
+		IsOrganizationPrivate          *bool      `json:"is_organization_private"`
+		OrganizationIDs                *[]uint    `json:"organization_ids"`
+		BannedUserIDs                  *[]uint    `json:"banned_user_ids"`
+		SuggesterID                    *uint      `json:"suggester_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -202,6 +251,20 @@ func AdminProblemUpdate(c *gin.Context) {
 		RemoveAuthorIDs:   input.RemoveAuthorIDs,
 		AddLangIDs:        input.AddLangIDs,
 		RemoveLangIDs:     input.RemoveLangIDs,
+
+		Source:                         input.Source,
+		Date:                           input.Date,
+		LicenseID:                      input.LicenseID,
+		OgImage:                        input.OgImage,
+		Summary:                        input.Summary,
+		ShortCircuit:                   input.ShortCircuit,
+		IsFullMarkup:                   input.IsFullMarkup,
+		SubmissionSourceVisibilityMode: input.SubmissionSourceVisibilityMode,
+		TestcaseVisibilityMode:         input.TestcaseVisibilityMode,
+		IsOrganizationPrivate:          input.IsOrganizationPrivate,
+		OrganizationIDs:                input.OrganizationIDs,
+		BannedUserIDs:                  input.BannedUserIDs,
+		SuggesterID:                    input.SuggesterID,
 	})
 	if err != nil {
 		if errors.Is(err, problem.ErrProblemNotFound) {

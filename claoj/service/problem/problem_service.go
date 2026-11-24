@@ -2,6 +2,7 @@
 package problem
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/CLAOJ/claoj/db"
@@ -46,27 +47,44 @@ type ProblemProfile struct {
 	TypeIDs                        []uint              `json:"type_ids"`
 	AllowedLangIDs                 []uint              `json:"allowed_lang_ids"`
 	OrganizationIDs                []uint              `json:"organization_ids"`
+	BannedUserIDs                  []uint              `json:"banned_user_ids"`
 	Authors                        []relations.UserRef `json:"authors"`
 	Curators                       []relations.UserRef `json:"curators"`
 	Testers                        []relations.UserRef `json:"testers"`
+	BannedUsers                    []relations.UserRef `json:"banned_users"`
 }
 
 // CreateProblemRequest holds the parameters for creating a problem.
 type CreateProblemRequest struct {
-	Code              string
-	Name              string
-	Description       string
-	Points            float64
-	Partial           bool
-	IsPublic          bool
-	TimeLimit         float64
-	MemoryLimit       uint
-	GroupID           uint
-	TypeIDs           []uint
-	AuthorIDs         []uint
-	AllowedLangIDs    []uint
-	IsManuallyManaged bool
-	PdfURL            string
+	Code                           string
+	Name                           string
+	Description                    string
+	Points                         float64
+	Partial                        bool
+	IsPublic                       bool
+	TimeLimit                      float64
+	MemoryLimit                    uint
+	GroupID                        uint
+	TypeIDs                        []uint
+	AuthorIDs                      []uint
+	CuratorIDs                     []uint
+	TesterIDs                      []uint
+	AllowedLangIDs                 []uint
+	IsManuallyManaged              bool
+	PdfURL                         string
+	Source                         string
+	Date                           *time.Time
+	LicenseID                      *uint
+	OgImage                        string
+	Summary                        string
+	ShortCircuit                   bool
+	IsFullMarkup                   bool
+	SubmissionSourceVisibilityMode string
+	TestcaseVisibilityMode         string
+	IsOrganizationPrivate          bool
+	OrganizationIDs                []uint
+	BannedUserIDs                  []uint
+	SuggesterID                    *uint
 }
 
 // UpdateProblemRequest holds the parameters for updating a problem.
@@ -95,6 +113,20 @@ type UpdateProblemRequest struct {
 	RemoveAuthorIDs   []uint
 	AddLangIDs        []uint
 	RemoveLangIDs     []uint
+
+	Source                         *string
+	Date                           *time.Time
+	LicenseID                      *uint
+	OgImage                        *string
+	Summary                        *string
+	ShortCircuit                   *bool
+	IsFullMarkup                   *bool
+	SubmissionSourceVisibilityMode *string
+	TestcaseVisibilityMode         *string
+	IsOrganizationPrivate          *bool
+	OrganizationIDs                *[]uint
+	BannedUserIDs                  *[]uint
+	SuggesterID                    *uint
 }
 
 // DeleteProblemRequest holds the parameters for deleting a problem.
@@ -225,6 +257,7 @@ func (s *ProblemService) GetProblem(req GetProblemRequest) (*ProblemProfile, err
 		Preload("Testers.User").
 		Preload("AllowedLangs").
 		Preload("Organizations").
+		Preload("BannedUsers.User").
 		Where("code = ?", req.ProblemCode).First(&problem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrProblemNotFound
@@ -238,18 +271,34 @@ func (s *ProblemService) GetProblem(req GetProblemRequest) (*ProblemProfile, err
 
 // CreateProblem creates a new problem.
 func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfile, error) {
+	srcMode, tcMode, err := visibilityModes(req.SubmissionSourceVisibilityMode, req.TestcaseVisibilityMode)
+	if err != nil {
+		return nil, err
+	}
+
 	problem := models.Problem{
-		Code:              req.Code,
-		Name:              sanitization.SanitizeTitle(req.Name),
-		Description:       sanitization.SanitizeProblemContent(req.Description),
-		Points:            req.Points,
-		Partial:           req.Partial,
-		IsPublic:          req.IsPublic,
-		TimeLimit:         req.TimeLimit,
-		MemoryLimit:       req.MemoryLimit,
-		GroupID:           req.GroupID,
-		IsManuallyManaged: req.IsManuallyManaged,
-		PdfURL:            req.PdfURL,
+		Code:                           req.Code,
+		Name:                           sanitization.SanitizeTitle(req.Name),
+		Description:                    sanitization.SanitizeProblemContent(req.Description),
+		Points:                         req.Points,
+		Partial:                        req.Partial,
+		IsPublic:                       req.IsPublic,
+		TimeLimit:                      req.TimeLimit,
+		MemoryLimit:                    req.MemoryLimit,
+		GroupID:                        req.GroupID,
+		IsManuallyManaged:              req.IsManuallyManaged,
+		PdfURL:                         req.PdfURL,
+		Source:                         req.Source,
+		Date:                           req.Date,
+		LicenseID:                      req.LicenseID,
+		OgImage:                        req.OgImage,
+		Summary:                        req.Summary,
+		ShortCircuit:                   req.ShortCircuit,
+		IsFullMarkup:                   req.IsFullMarkup,
+		SubmissionSourceVisibilityMode: srcMode,
+		TestcaseVisibilityMode:         tcMode,
+		IsOrganizationPrivate:          req.IsOrganizationPrivate,
+		SuggesterID:                    req.SuggesterID,
 	}
 
 	if err := db.DB.Create(&problem).Error; err != nil {
@@ -257,33 +306,36 @@ func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfil
 	}
 
 	// Handle many-to-many relations
-	if len(req.TypeIDs) > 0 {
-		var types []models.ProblemType
-		db.DB.Where("id IN ?", req.TypeIDs).Find(&types)
-		db.DB.Model(&problem).Association("Types").Append(&types)
-	}
-	if len(req.AuthorIDs) > 0 {
-		var authors []models.Profile
-		db.DB.Where("id IN ?", req.AuthorIDs).Find(&authors)
-		db.DB.Model(&problem).Association("Authors").Append(&authors)
-	}
-	if len(req.AllowedLangIDs) > 0 {
-		var langs []models.Language
-		db.DB.Where("id IN ?", req.AllowedLangIDs).Find(&langs)
-		db.DB.Model(&problem).Association("AllowedLangs").Append(&langs)
-	}
-
-	// Get group name
-	var groupName string
-	if req.GroupID > 0 {
-		var group models.ProblemGroup
-		if err := db.DB.First(&group, req.GroupID).Error; err == nil {
-			groupName = group.Name
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
+		if len(req.TypeIDs) > 0 {
+			var types []models.ProblemType
+			tx.Where("id IN ?", req.TypeIDs).Find(&types)
+			tx.Model(&problem).Association("Types").Append(&types)
 		}
+		if len(req.AllowedLangIDs) > 0 {
+			var langs []models.Language
+			tx.Where("id IN ?", req.AllowedLangIDs).Find(&langs)
+			tx.Model(&problem).Association("AllowedLangs").Append(&langs)
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "Authors", fullList(req.AuthorIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "Curators", fullList(req.CuratorIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "Testers", fullList(req.TesterIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Organization](tx, &problem, "Organizations", fullList(req.OrganizationIDs), nil, nil); err != nil {
+			return err
+		}
+		return relations.Sync[models.Profile](tx, &problem, "BannedUsers", fullList(req.BannedUserIDs), nil, nil)
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	profile := problemToProfile(problem, groupName)
-	return &profile, nil
+	return s.GetProblem(GetProblemRequest{ProblemCode: problem.Code})
 }
 
 // UpdateProblem updates an existing problem in one transaction.
@@ -334,6 +386,52 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 		}
 		updates["group_id"] = *req.GroupID
 	}
+	if req.Source != nil {
+		updates["source"] = *req.Source
+	}
+	if req.Date != nil {
+		updates["date"] = *req.Date
+	}
+	if req.LicenseID != nil {
+		updates["license_id"] = *req.LicenseID
+	}
+	if req.OgImage != nil {
+		updates["og_image"] = *req.OgImage
+	}
+	if req.Summary != nil {
+		updates["summary"] = *req.Summary
+	}
+	if req.ShortCircuit != nil {
+		updates["short_circuit"] = *req.ShortCircuit
+	}
+	if req.IsFullMarkup != nil {
+		updates["is_full_markup"] = *req.IsFullMarkup
+	}
+	if req.IsOrganizationPrivate != nil {
+		updates["is_organization_private"] = *req.IsOrganizationPrivate
+	}
+	if req.SuggesterID != nil {
+		updates["suggester_id"] = *req.SuggesterID
+	}
+	if req.SubmissionSourceVisibilityMode != nil || req.TestcaseVisibilityMode != nil {
+		var src, tc string
+		if req.SubmissionSourceVisibilityMode != nil {
+			src = *req.SubmissionSourceVisibilityMode
+		}
+		if req.TestcaseVisibilityMode != nil {
+			tc = *req.TestcaseVisibilityMode
+		}
+		src, tc, err := visibilityModes(src, tc)
+		if err != nil {
+			return nil, err
+		}
+		if req.SubmissionSourceVisibilityMode != nil {
+			updates["submission_source_visibility_mode"] = src
+		}
+		if req.TestcaseVisibilityMode != nil {
+			updates["testcase_visibility_mode"] = tc
+		}
+	}
 
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		if len(updates) > 0 {
@@ -352,6 +450,12 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 			return err
 		}
 		if err := relations.Sync[models.Profile](tx, &problem, "Testers", req.TesterIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Organization](tx, &problem, "Organizations", req.OrganizationIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &problem, "BannedUsers", req.BannedUserIDs, nil, nil); err != nil {
 			return err
 		}
 		return relations.Sync[models.Language](tx, &problem, "AllowedLangs", req.AllowedLangIDs, req.AddLangIDs, req.RemoveLangIDs)
@@ -497,6 +601,7 @@ func problemToProfile(p models.Problem, groupName string) ProblemProfile {
 	typeIDs := getTypeIDs(p.Types)
 	langIDs := getLangIDs(p.AllowedLangs)
 	orgIDs := getOrgIDs(p.Organizations)
+	bannedIDs := getProfileIDs(p.BannedUsers)
 
 	return ProblemProfile{
 		ID:                             p.ID,
@@ -534,7 +639,41 @@ func problemToProfile(p models.Problem, groupName string) ProblemProfile {
 		TypeIDs:                        typeIDs,
 		AllowedLangIDs:                 langIDs,
 		OrganizationIDs:                orgIDs,
+		BannedUserIDs:                  bannedIDs,
+		BannedUsers:                    relations.UserRefs(p.BannedUsers),
 	}
+}
+
+// visibilityModes maps v1's single-char visibility codes
+// (OJ/judge/models/problem.py) and rejects anything v1 would reject.
+// An empty string means "model default".
+func visibilityModes(src, tc string) (string, string, error) {
+	if src == "" {
+		src = models.SubmissionSourceAccessFollow
+	}
+	if tc == "" {
+		tc = models.ProblemTestcaseAccessOutContest
+	}
+	switch src {
+	case models.SubmissionSourceAccessAlways, models.SubmissionSourceAccessSolved,
+		models.SubmissionSourceAccessOnlyOwn, models.SubmissionSourceAccessFollow:
+	default:
+		return "", "", fmt.Errorf("%w: submission_source_visibility_mode %q", ErrInvalidVisibilityMode, src)
+	}
+	switch tc {
+	case models.ProblemTestcaseAccessAlways, models.ProblemTestcaseAccessOutContest, models.ProblemTestcaseAccessAuthorOnly:
+	default:
+		return "", "", fmt.Errorf("%w: testcase_visibility_mode %q", ErrInvalidVisibilityMode, tc)
+	}
+	return src, tc, nil
+}
+
+// fullList maps an empty create-time list to nil so relations.Sync is a no-op.
+func fullList(ids []uint) *[]uint {
+	if len(ids) == 0 {
+		return nil
+	}
+	return &ids
 }
 
 func getProfileIDs(profiles []models.Profile) []uint {

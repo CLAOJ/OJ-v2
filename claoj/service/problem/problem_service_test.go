@@ -37,6 +37,7 @@ func (s *ProblemServiceTestSuite) SetupTest() {
 		&models.Profile{},
 		&models.Language{},
 		&models.Organization{},
+		&models.License{},
 		&models.ProblemClarification{},
 	)
 	s.Require().NoError(err)
@@ -53,12 +54,12 @@ func (s *ProblemServiceTestSuite) createTestGroup(name string) models.ProblemGro
 
 func (s *ProblemServiceTestSuite) createTestProblem(code, name string, groupID uint) models.Problem {
 	problem := models.Problem{
-		Code:      code,
-		Name:      name,
-		GroupID:   groupID,
-		Points:    100,
-		IsPublic:  true,
-		Date:      func() *time.Time { t := time.Now(); return &t }(),
+		Code:     code,
+		Name:     name,
+		GroupID:  groupID,
+		Points:   100,
+		IsPublic: true,
+		Date:     func() *time.Time { t := time.Now(); return &t }(),
 	}
 	err := s.database.Create(&problem).Error
 	s.Require().NoError(err)
@@ -95,9 +96,9 @@ func (s *ProblemServiceTestSuite) createTestProfile(username string) models.Prof
 
 func (s *ProblemServiceTestSuite) createTestLanguage(name, key string) models.Language {
 	lang := models.Language{
-		Name:         name,
-		Key:          key,
-		CommonName:   name,
+		Name:       name,
+		Key:        key,
+		CommonName: name,
 	}
 	err := s.database.Create(&lang).Error
 	s.Require().NoError(err)
@@ -106,6 +107,22 @@ func (s *ProblemServiceTestSuite) createTestLanguage(name, key string) models.La
 
 func TestProblemServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(ProblemServiceTestSuite))
+}
+
+func (s *ProblemServiceTestSuite) createTestOrganization(name string) models.Organization {
+	org := models.Organization{
+		Name: name, Slug: name, ShortName: name, About: "", CreationDate: time.Now(),
+	}
+	err := s.database.Omit("Admins", "Members").Create(&org).Error
+	s.Require().NoError(err)
+	return org
+}
+
+func (s *ProblemServiceTestSuite) createTestLicense(key string) models.License {
+	license := models.License{Key: key, Link: "https://example.com/" + key, Name: key, Text: ""}
+	err := s.database.Create(&license).Error
+	s.Require().NoError(err)
+	return license
 }
 
 func (s *ProblemServiceTestSuite) TestListProblems() {
@@ -205,11 +222,11 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem() {
 	newName := "Updated Name"
 	newPoints := float64(200)
 	req := UpdateProblemRequest{
-		ProblemCode:   "UPDATE001",
-		Name:          &newName,
-		Points:        &newPoints,
-		AddTypeIDs:    []uint{problemType.ID},
-		AddAuthorIDs:  []uint{author.ID},
+		ProblemCode:  "UPDATE001",
+		Name:         &newName,
+		Points:       &newPoints,
+		AddTypeIDs:   []uint{problemType.ID},
+		AddAuthorIDs: []uint{author.ID},
 	}
 
 	profile, err := s.service.UpdateProblem(req)
@@ -231,8 +248,8 @@ func (s *ProblemServiceTestSuite) TestUpdateProblem() {
 func (s *ProblemServiceTestSuite) TestUpdateProblem_NotFound() {
 	newName := "Updated Name"
 	req := UpdateProblemRequest{
-		ProblemCode:   "NONEXISTENT",
-		Name:          &newName,
+		ProblemCode: "NONEXISTENT",
+		Name:        &newName,
 	}
 
 	profile, err := s.service.UpdateProblem(req)
@@ -517,4 +534,161 @@ func (s *ProblemServiceTestSuite) TestListProblems_SearchIsLiteral() {
 	s.Require().NoError(err)
 	s.Equal(int64(1), resp.Total)
 	s.Equal("a_b", resp.Problems[0].Code)
+}
+
+func (s *ProblemServiceTestSuite) TestCreateProblem_V1FieldsRoundTrip() {
+	group := s.createTestGroup("gall")
+	license := s.createTestLicense("cc-by")
+	author := s.createTestProfile("author")
+	curator := s.createTestProfile("curator")
+	tester := s.createTestProfile("tester")
+	banned := s.createTestProfile("banned")
+	suggester := s.createTestProfile("suggester")
+	org := s.createTestOrganization("org")
+	date := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+
+	_, err := s.service.CreateProblem(CreateProblemRequest{
+		Code: "ALL1", Name: "All Fields", Description: "body",
+		Points: 100, TimeLimit: 1.5, MemoryLimit: 262144, GroupID: group.ID,
+		Source: "VOI 2026", Date: &date, LicenseID: &license.ID,
+		OgImage: "https://example.com/og.png", Summary: "short summary",
+		ShortCircuit: true, IsFullMarkup: true,
+		SubmissionSourceVisibilityMode: models.SubmissionSourceAccessSolved,
+		TestcaseVisibilityMode:         models.ProblemTestcaseAccessAuthorOnly,
+		IsOrganizationPrivate:          true,
+		OrganizationIDs:                []uint{org.ID},
+		BannedUserIDs:                  []uint{banned.ID},
+		SuggesterID:                    &suggester.ID,
+		AuthorIDs:                      []uint{author.ID},
+		CuratorIDs:                     []uint{curator.ID},
+		TesterIDs:                      []uint{tester.ID},
+	})
+	s.Require().NoError(err)
+
+	got, err := s.service.GetProblem(GetProblemRequest{ProblemCode: "ALL1"})
+	s.Require().NoError(err)
+	s.Equal("VOI 2026", got.Source)
+	s.Require().NotNil(got.Date)
+	s.True(date.Equal(*got.Date))
+	s.Require().NotNil(got.LicenseID)
+	s.Equal(license.ID, *got.LicenseID)
+	s.Equal("https://example.com/og.png", got.OgImage)
+	s.Equal("short summary", got.Summary)
+	s.True(got.ShortCircuit)
+	s.True(got.IsFullMarkup)
+	s.Equal(models.SubmissionSourceAccessSolved, got.SubmissionSourceVisibilityMode)
+	s.Equal(models.ProblemTestcaseAccessAuthorOnly, got.TestcaseVisibilityMode)
+	s.True(got.IsOrganizationPrivate)
+	s.Equal([]uint{org.ID}, got.OrganizationIDs)
+	s.Equal([]uint{banned.ID}, got.BannedUserIDs)
+	s.Equal([]string{"banned"}, []string{got.BannedUsers[0].Username})
+	s.Require().NotNil(got.SuggesterID)
+	s.Equal(suggester.ID, *got.SuggesterID)
+	s.Equal([]uint{author.ID}, got.AuthorIDs)
+	s.Equal([]uint{curator.ID}, got.CuratorIDs)
+	s.Equal([]uint{tester.ID}, got.TesterIDs)
+}
+
+func (s *ProblemServiceTestSuite) TestCreateProblem_EmptyVisibilityModesUseDefaults() {
+	group := s.createTestGroup("gdef")
+
+	got, err := s.service.CreateProblem(CreateProblemRequest{
+		Code: "DEF1", Name: "Defaults", Description: "body",
+		Points: 100, TimeLimit: 1, MemoryLimit: 262144, GroupID: group.ID,
+	})
+	s.Require().NoError(err)
+	s.Equal(models.SubmissionSourceAccessFollow, got.SubmissionSourceVisibilityMode)
+	s.Equal(models.ProblemTestcaseAccessOutContest, got.TestcaseVisibilityMode)
+}
+
+func (s *ProblemServiceTestSuite) TestVisibilityModes_UnknownRejected() {
+	group := s.createTestGroup("gbad")
+	base := CreateProblemRequest{
+		Code: "BAD1", Name: "Bad", Description: "body",
+		Points: 100, TimeLimit: 1, MemoryLimit: 262144, GroupID: group.ID,
+	}
+
+	bad := base
+	bad.SubmissionSourceVisibilityMode = "X"
+	_, err := s.service.CreateProblem(bad)
+	s.ErrorIs(err, ErrInvalidVisibilityMode)
+
+	bad = base
+	bad.TestcaseVisibilityMode = "B"
+	_, err = s.service.CreateProblem(bad)
+	s.ErrorIs(err, ErrInvalidVisibilityMode)
+
+	var count int64
+	s.database.Model(&models.Problem{}).Count(&count)
+	s.Equal(int64(0), count, "an invalid mode must not create the problem")
+
+	_, err = s.service.CreateProblem(base)
+	s.Require().NoError(err)
+
+	badMode := "Z"
+	_, err = s.service.UpdateProblem(UpdateProblemRequest{ProblemCode: "BAD1", TestcaseVisibilityMode: &badMode})
+	s.ErrorIs(err, ErrInvalidVisibilityMode)
+
+	got, err := s.service.GetProblem(GetProblemRequest{ProblemCode: "BAD1"})
+	s.Require().NoError(err)
+	s.Equal(models.ProblemTestcaseAccessOutContest, got.TestcaseVisibilityMode)
+}
+
+func (s *ProblemServiceTestSuite) TestUpdateProblem_V1FieldsAndOrgBannedSync() {
+	group := s.createTestGroup("gupd")
+	s.createTestProblem("UPD1", "Before", group.ID)
+	license := s.createTestLicense("mit")
+	suggester := s.createTestProfile("suggester")
+	banned := s.createTestProfile("troll")
+	org1 := s.createTestOrganization("org1")
+	org2 := s.createTestOrganization("org2")
+	date := time.Date(2026, 5, 6, 7, 8, 9, 0, time.UTC)
+
+	source, og, summary := "ICPC 2025", "https://example.com/og.png", "one line"
+	shortCircuit, fullMarkup, orgPrivate := true, true, true
+	srcMode, tcMode := models.SubmissionSourceAccessAlways, models.ProblemTestcaseAccessAlways
+	orgIDs := []uint{org1.ID}
+	bannedIDs := []uint{banned.ID}
+
+	_, err := s.service.UpdateProblem(UpdateProblemRequest{
+		ProblemCode: "UPD1",
+		Source:      &source, Date: &date, LicenseID: &license.ID, OgImage: &og, Summary: &summary,
+		ShortCircuit: &shortCircuit, IsFullMarkup: &fullMarkup,
+		SubmissionSourceVisibilityMode: &srcMode, TestcaseVisibilityMode: &tcMode,
+		IsOrganizationPrivate: &orgPrivate, OrganizationIDs: &orgIDs, BannedUserIDs: &bannedIDs,
+		SuggesterID: &suggester.ID,
+	})
+	s.Require().NoError(err)
+
+	got, err := s.service.GetProblem(GetProblemRequest{ProblemCode: "UPD1"})
+	s.Require().NoError(err)
+	s.Equal("ICPC 2025", got.Source)
+	s.Require().NotNil(got.Date)
+	s.True(date.Equal(*got.Date))
+	s.Require().NotNil(got.LicenseID)
+	s.Equal(license.ID, *got.LicenseID)
+	s.Equal("https://example.com/og.png", got.OgImage)
+	s.Equal("one line", got.Summary)
+	s.True(got.ShortCircuit)
+	s.True(got.IsFullMarkup)
+	s.Equal(models.SubmissionSourceAccessAlways, got.SubmissionSourceVisibilityMode)
+	s.Equal(models.ProblemTestcaseAccessAlways, got.TestcaseVisibilityMode)
+	s.True(got.IsOrganizationPrivate)
+	s.Equal([]uint{org1.ID}, got.OrganizationIDs)
+	s.Equal([]uint{banned.ID}, got.BannedUserIDs)
+	s.Require().NotNil(got.SuggesterID)
+	s.Equal(suggester.ID, *got.SuggesterID)
+
+	// Relations are full replacement lists.
+	orgIDs = []uint{org2.ID}
+	bannedIDs = []uint{}
+	_, err = s.service.UpdateProblem(UpdateProblemRequest{
+		ProblemCode: "UPD1", OrganizationIDs: &orgIDs, BannedUserIDs: &bannedIDs,
+	})
+	s.Require().NoError(err)
+	got, _ = s.service.GetProblem(GetProblemRequest{ProblemCode: "UPD1"})
+	s.Equal([]uint{org2.ID}, got.OrganizationIDs)
+	s.Empty(got.BannedUserIDs)
+	s.NotNil(got.BannedUserIDs)
+	s.Equal("ICPC 2025", got.Source, "omitted scalars must stay unchanged")
 }

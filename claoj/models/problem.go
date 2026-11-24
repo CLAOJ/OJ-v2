@@ -8,7 +8,9 @@ const (
 	SubmissionSourceAccessOnlyOwn = "O"
 	SubmissionSourceAccessFollow  = "F"
 
-	ProblemTestcaseAccessAlways = "A"
+	ProblemTestcaseAccessAlways     = "A"
+	ProblemTestcaseAccessOutContest = "C"
+	ProblemTestcaseAccessAuthorOnly = "O"
 )
 
 // ProblemGroup mirrors judge_problemgroup.
