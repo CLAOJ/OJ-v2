@@ -10,6 +10,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// languageLimitItem is the slim row the admin table renders. The list used to
+// embed the whole Problem (description included) per row.
+type languageLimitItem struct {
+	ID           uint    `json:"id"`
+	ProblemID    uint    `json:"problem_id"`
+	ProblemCode  string  `json:"problem_code"`
+	ProblemName  string  `json:"problem_name"`
+	LanguageID   uint    `json:"language_id"`
+	LanguageKey  string  `json:"language_key"`
+	LanguageName string  `json:"language_name"`
+	TimeLimit    float64 `json:"time_limit"`
+	MemoryLimit  int     `json:"memory_limit"`
+}
+
+func newLanguageLimitItem(l models.LanguageLimit) languageLimitItem {
+	return languageLimitItem{
+		ID:           l.ID,
+		ProblemID:    l.ProblemID,
+		ProblemCode:  l.Problem.Code,
+		ProblemName:  l.Problem.Name,
+		LanguageID:   l.LanguageID,
+		LanguageKey:  l.Language.Key,
+		LanguageName: l.Language.Name,
+		TimeLimit:    l.TimeLimit,
+		MemoryLimit:  l.MemoryLimit,
+	}
+}
+
 // AdminLanguageLimitList - GET /api/v2/admin/language-limits
 // Lists all language limits with optional problem_id filter
 func AdminLanguageLimitList(c *gin.Context) {
@@ -32,7 +60,12 @@ func AdminLanguageLimitList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, apiListWithTotal(limits, total))
+	items := make([]languageLimitItem, len(limits))
+	for i, l := range limits {
+		items[i] = newLanguageLimitItem(l)
+	}
+
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
 // AdminLanguageLimitDetail - GET /api/v2/admin/language-limit/:id

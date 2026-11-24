@@ -223,6 +223,7 @@ func ContestDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"key":         ct.Key,
 		"name":        ct.Name,
+		"description": ct.Description,
 		"summary":     ct.Summary,
 		"start_time":  ct.StartTime,
 		"end_time":    ct.EndTime,
