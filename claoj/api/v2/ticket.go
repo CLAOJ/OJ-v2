@@ -24,7 +24,7 @@ func TicketList(c *gin.Context) {
 
 	page, pageSize := parsePagination(c)
 	search := c.Query("search")
-	status := c.Query("status") // "open", "closed", or ""
+	status := c.Query("status")     // "open", "closed", or ""
 	assigned := c.Query("assigned") // "true", "false", or ""
 
 	var tickets []models.Ticket
@@ -72,12 +72,12 @@ func TicketList(c *gin.Context) {
 	}
 
 	type Item struct {
-		ID           uint      `json:"id"`
-		Title        string    `json:"title"`
-		IsOpen       bool      `json:"is_open"`
-		IsContributive bool    `json:"is_contributive"`
-		Created      time.Time `json:"created"`
-		Assignees    []string  `json:"assignees"`
+		ID             uint      `json:"id"`
+		Title          string    `json:"title"`
+		IsOpen         bool      `json:"is_open"`
+		IsContributive bool      `json:"is_contributive"`
+		Created        time.Time `json:"created"`
+		Assignees      []string  `json:"assignees"`
 	}
 	items := make([]Item, len(tickets))
 	for i, t := range tickets {
@@ -206,27 +206,17 @@ func TicketDetail(c *gin.Context) {
 	}
 
 	// Build linked item info (problem or contest)
+	linked := resolveTicketLinkedItem(ticket.ContentTypeID, ticket.ObjectID)
 	var linkedItem map[string]interface{}
-	if ticket.ContentTypeID > 0 && ticket.ObjectID > 0 {
-		// Content type 1 = Problem, 2 = Contest (adjust based on your django_content_type IDs)
-		if ticket.ContentTypeID == 1 {
-			var problem models.Problem
-			if err := db.DB.First(&problem, ticket.ObjectID).Error; err == nil {
-				linkedItem = map[string]interface{}{
-					"type": "problem",
-					"code": problem.Code,
-					"name": problem.Name,
-				}
-			}
-		} else if ticket.ContentTypeID == 2 {
-			var contest models.Contest
-			if err := db.DB.First(&contest, ticket.ObjectID).Error; err == nil {
-				linkedItem = map[string]interface{}{
-					"type": "contest",
-					"key":  contest.Key,
-					"name": contest.Name,
-				}
-			}
+	if linked.Type != "" {
+		linkedItem = map[string]interface{}{
+			"type": linked.Type,
+			"name": linked.Name,
+		}
+		if linked.Type == "problem" {
+			linkedItem["code"] = linked.Code
+		} else {
+			linkedItem["key"] = linked.Code
 		}
 	}
 
@@ -236,15 +226,15 @@ func TicketDetail(c *gin.Context) {
 	}
 
 	response := gin.H{
-		"id":             ticket.ID,
-		"title":          ticket.Title,
-		"creator":        ticket.User.User.Username,
-		"is_open":        ticket.IsOpen,
+		"id":              ticket.ID,
+		"title":           ticket.Title,
+		"creator":         ticket.User.User.Username,
+		"is_open":         ticket.IsOpen,
 		"is_contributive": ticket.IsContributive,
-		"notes":          ticket.Notes,
-		"created":        ticket.Time,
-		"messages":       messages,
-		"assignees":      assigneeUsernames,
+		"notes":           ticket.Notes,
+		"created":         ticket.Time,
+		"messages":        messages,
+		"assignees":       assigneeUsernames,
 	}
 	if linkedItem != nil {
 		response["linked_item"] = linkedItem
@@ -256,6 +246,76 @@ func TicketDetail(c *gin.Context) {
 // ============================================================
 // ADMIN TICKET MANAGEMENT ENDPOINTS
 // ============================================================
+
+// ticketLinkedItem is a ticket's generic reference to a problem or contest.
+// Type is "" when the ticket is unlinked or the reference is orphaned.
+type ticketLinkedItem struct {
+	Type string // "problem" | "contest" | ""
+	ID   uint
+	Code string // problem code or contest key
+	Name string
+}
+
+// LinkedLabel renders the v1 admin list_display label (code + name).
+func (l ticketLinkedItem) LinkedLabel() string {
+	if l.Type == "" {
+		return ""
+	}
+	return l.Code + " – " + l.Name
+}
+
+// LinkedPath is the public site path of the linked item.
+func (l ticketLinkedItem) LinkedPath() string {
+	switch l.Type {
+	case "problem":
+		return "/problem/" + l.Code
+	case "contest":
+		return "/contest/" + l.Code
+	}
+	return ""
+}
+
+// resolveTicketLinkedItem loads the object referenced by a ticket's
+// content_type/object_id pair. The type comes from django_content_type's
+// app_label/model: ids depend on migration order, so they must never be
+// hardcoded.
+func resolveTicketLinkedItem(contentTypeID, objectID uint) ticketLinkedItem {
+	if contentTypeID == 0 || objectID == 0 {
+		return ticketLinkedItem{}
+	}
+	var ct models.DjangoContentType
+	if err := db.DB.First(&ct, contentTypeID).Error; err != nil || ct.AppLabel != "judge" {
+		return ticketLinkedItem{}
+	}
+	switch ct.Model {
+	case "problem":
+		var problem models.Problem
+		if err := db.DB.First(&problem, objectID).Error; err != nil {
+			return ticketLinkedItem{}
+		}
+		return ticketLinkedItem{Type: "problem", ID: problem.ID, Code: problem.Code, Name: problem.Name}
+	case "contest":
+		var contest models.Contest
+		if err := db.DB.First(&contest, objectID).Error; err != nil {
+			return ticketLinkedItem{}
+		}
+		return ticketLinkedItem{Type: "contest", ID: contest.ID, Code: contest.Key, Name: contest.Name}
+	}
+	return ticketLinkedItem{}
+}
+
+// ticketContentTypeID maps a public linked type name to its
+// django_content_type row.
+func ticketContentTypeID(linkedType string) (uint, bool) {
+	if linkedType != "problem" && linkedType != "contest" {
+		return 0, false
+	}
+	var ct models.DjangoContentType
+	if err := db.DB.Where("app_label = ? AND model = ?", "judge", linkedType).First(&ct).Error; err != nil {
+		return 0, false
+	}
+	return ct.ID, true
+}
 
 // AdminTicketList - GET /admin/tickets
 // Lists all tickets with filtering (admin only)
@@ -278,9 +338,7 @@ func AdminTicketList(c *gin.Context) {
 		query = query.Where("is_open = ?", false)
 	}
 	if assigned == "true" {
-		query = query.Joins("JOIN judge_ticket_assignees ON judge_ticket_assignees.ticket_id = judge_ticket.id").
-			Where("judge_ticket_assignees.profile_id IS NOT NULL").
-			Group("judge_ticket.id")
+		query = query.Where("EXISTS (SELECT 1 FROM judge_ticket_assignees WHERE judge_ticket_assignees.ticket_id = judge_ticket.id)")
 	} else if assigned == "false" {
 		query = query.Where("NOT EXISTS (SELECT 1 FROM judge_ticket_assignees WHERE judge_ticket_assignees.ticket_id = judge_ticket.id)")
 	}
@@ -290,23 +348,27 @@ func AdminTicketList(c *gin.Context) {
 		query = query.Where("is_contributive = ?", false)
 	}
 
+	// Count with the same filters as the rows (it previously ignored them).
+	var total int64
+	if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := query.Order("time DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&tickets).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	var total int64
-	db.DB.Model(&models.Ticket{}).Count(&total)
-
 	type Item struct {
-		ID             uint        `json:"id"`
-		Title          string      `json:"title"`
-		IsOpen         bool        `json:"is_open"`
-		IsContributive bool        `json:"is_contributive"`
-		Created        time.Time   `json:"created"`
-		User           string      `json:"user"`
-		Assignees      []string    `json:"assignees"`
-		Notes          string      `json:"notes"`
+		ID             uint      `json:"id"`
+		Title          string    `json:"title"`
+		IsOpen         bool      `json:"is_open"`
+		IsContributive bool      `json:"is_contributive"`
+		Created        time.Time `json:"created"`
+		User           string    `json:"user"`
+		Assignees      []string  `json:"assignees"`
+		Notes          string    `json:"notes"`
 	}
 	items := make([]Item, len(tickets))
 	for i, t := range tickets {
@@ -372,16 +434,23 @@ func AdminTicketDetail(c *gin.Context) {
 		assigneeUsernames[i] = a.User.Username
 	}
 
+	linked := resolveTicketLinkedItem(ticket.ContentTypeID, ticket.ObjectID)
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":              ticket.ID,
 		"title":           ticket.Title,
 		"creator":         ticket.User.User.Username,
+		"creator_id":      ticket.User.ID,
 		"is_open":         ticket.IsOpen,
 		"is_contributive": ticket.IsContributive,
 		"notes":           ticket.Notes,
 		"created":         ticket.Time,
 		"assignees":       assigneeUsernames,
 		"messages":        messages,
+		"linked_type":     linked.Type,
+		"linked_id":       linked.ID,
+		"linked_label":    linked.LinkedLabel(),
+		"linked_path":     linked.LinkedPath(),
 	})
 }
 
@@ -509,6 +578,214 @@ func AdminTicketUpdateNotes(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "notes updated"})
+}
+
+type AdminTicketUpdateRequest struct {
+	Title      *string `json:"title"`
+	UserID     *uint   `json:"user_id"`     // judge_profile id
+	LinkedType *string `json:"linked_type"` // "problem" | "contest" | ""
+	LinkedID   *uint   `json:"linked_id"`
+}
+
+// AdminTicketUpdate - PATCH /admin/ticket/:id
+// Edits the v1-editable ticket fields (title, creator, linked item). `time`
+// stays read-only, so the request struct has no such field.
+func AdminTicketUpdate(c *gin.Context) {
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
+
+	var req AdminTicketUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var ticket models.Ticket
+	if err := db.DB.First(&ticket, ticketID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	if req.Title != nil {
+		title := sanitization.SanitizeTitle(*req.Title)
+		if title == "" {
+			c.JSON(http.StatusBadRequest, apiUserError("title is required"))
+			return
+		}
+		ticket.Title = title
+	}
+
+	if req.UserID != nil {
+		var profile models.Profile
+		if err := db.DB.Select("user_id").First(&profile, *req.UserID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusBadRequest, apiUserError("user not found"))
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		ticket.UserID = profile.UserID
+	}
+
+	if req.LinkedType != nil || req.LinkedID != nil {
+		if req.LinkedType == nil || req.LinkedID == nil {
+			c.JSON(http.StatusBadRequest, apiUserError("linked_type and linked_id must be sent together"))
+			return
+		}
+		linkedType, linkedID := *req.LinkedType, *req.LinkedID
+		if linkedType == "" {
+			if linkedID != 0 {
+				c.JSON(http.StatusBadRequest, apiUserError("linked_id must be 0 when linked_type is empty"))
+				return
+			}
+			ticket.ContentTypeID, ticket.ObjectID = 0, 0
+		} else {
+			if linkedID == 0 {
+				c.JSON(http.StatusBadRequest, apiUserError("linked_id is required with linked_type"))
+				return
+			}
+			contentTypeID, known := ticketContentTypeID(linkedType)
+			if !known {
+				c.JSON(http.StatusBadRequest, apiUserError("unknown linked_type"))
+				return
+			}
+			if resolveTicketLinkedItem(contentTypeID, linkedID).Type == "" {
+				c.JSON(http.StatusBadRequest, apiUserError("linked item not found"))
+				return
+			}
+			ticket.ContentTypeID, ticket.ObjectID = contentTypeID, linkedID
+		}
+	}
+
+	if err := db.DB.Save(&ticket).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update ticket"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "ticket updated"})
+}
+
+type AdminTicketMessageUpdateRequest struct {
+	Body   *string `json:"body"`
+	UserID *uint   `json:"user_id"` // judge_profile id
+}
+
+// loadTicketMessage resolves the :id/:messageId pair, writing 404 when the
+// ticket or a message that does not belong to it is missing.
+func loadTicketMessage(c *gin.Context, ticketID, messageID string) (*models.TicketMessage, bool) {
+	var message models.TicketMessage
+	if err := db.DB.Where("ticket_id = ?", ticketID).First(&message, messageID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "message not found"})
+			return nil, false
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return nil, false
+	}
+	return &message, true
+}
+
+// AdminTicketMessageUpdate - PATCH /admin/ticket/:id/message/:messageId
+func AdminTicketMessageUpdate(c *gin.Context) {
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
+	messageID, ok := numericParam(c, "messageId")
+	if !ok {
+		return
+	}
+
+	var ticket models.Ticket
+	if err := db.DB.Select("id").First(&ticket, ticketID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	var req AdminTicketMessageUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	message, ok := loadTicketMessage(c, ticketID, messageID)
+	if !ok {
+		return
+	}
+
+	if req.Body != nil {
+		body := sanitization.SanitizeTicketBody(*req.Body)
+		if body == "" {
+			c.JSON(http.StatusBadRequest, apiUserError("body is required"))
+			return
+		}
+		message.Body = body
+	}
+
+	if req.UserID != nil {
+		var profile models.Profile
+		if err := db.DB.Select("user_id").First(&profile, *req.UserID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusBadRequest, apiUserError("user not found"))
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		message.UserID = profile.UserID
+	}
+
+	if err := db.DB.Save(message).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update message"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "message updated"})
+}
+
+// AdminTicketMessageDelete - DELETE /admin/ticket/:id/message/:messageId
+func AdminTicketMessageDelete(c *gin.Context) {
+	ticketID, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
+	messageID, ok := numericParam(c, "messageId")
+	if !ok {
+		return
+	}
+
+	var ticket models.Ticket
+	if err := db.DB.Select("id").First(&ticket, ticketID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	message, ok := loadTicketMessage(c, ticketID, messageID)
+	if !ok {
+		return
+	}
+
+	if err := db.DB.Delete(message).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete message"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "message deleted"})
 }
 
 // AdminTicketDelete - DELETE /admin/ticket/:id

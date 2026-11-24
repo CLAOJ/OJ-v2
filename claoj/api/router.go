@@ -278,6 +278,9 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/ticket/:id/toggle", v2.AdminTicketToggleOpen)
 			admin.POST("/admin/ticket/:id/set-contributive", v2.AdminTicketSetContributive)
 			admin.PATCH("/admin/ticket/:id/notes", v2.AdminTicketUpdateNotes)
+			admin.PATCH("/admin/ticket/:id", auth.RequirePerm("judge.change_ticket"), v2.AdminTicketUpdate)
+			admin.PATCH("/admin/ticket/:id/message/:messageId", auth.RequirePerm("judge.change_ticket"), v2.AdminTicketMessageUpdate)
+			admin.DELETE("/admin/ticket/:id/message/:messageId", auth.RequirePerm("judge.change_ticket"), v2.AdminTicketMessageDelete)
 			admin.DELETE("/admin/ticket/:id", auth.RequirePerm("judge.delete_ticket"), v2.AdminTicketDelete)
 
 		// Navigation Bars

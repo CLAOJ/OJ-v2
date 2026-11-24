@@ -65,6 +65,9 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 		{http.MethodPost, "/api/admin/user/1/password", `{"password":"Passw0rdOK"}`},
 		{http.MethodDelete, "/api/admin/submission/1", ""},
 		{http.MethodDelete, "/api/admin/ticket/1", ""},
+		{http.MethodPatch, "/api/admin/ticket/1", `{"title":"x"}`},
+		{http.MethodPatch, "/api/admin/ticket/1/message/1", `{"body":"x"}`},
+		{http.MethodDelete, "/api/admin/ticket/1/message/1", ""},
 	}
 	for _, rt := range routes {
 		t.Run(rt.method+" "+rt.path, func(t *testing.T) {
