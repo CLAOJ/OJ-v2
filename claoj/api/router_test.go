@@ -10,6 +10,7 @@ import (
 	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/config"
+	"github.com/CLAOJ/claoj/csrf"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,13 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// adminCSRF adds the double-submit pair the admin group requires on writes.
+func adminCSRF(req *http.Request) *http.Request {
+	req.AddCookie(&http.Cookie{Name: csrf.CSRFTokenCookie, Value: "tok"})
+	req.Header.Set(csrf.CSRFTokenHeader, "tok")
+	return req
+}
 
 // A signed-in staff user with no Django permissions must be stopped by the
 // route-level auth.RequirePerm gates, not only by checks inside handlers.
@@ -76,15 +84,20 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 		{http.MethodPost, "/api/admin/redirects", `{"old_path":"/a/","new_path":"/b/"}`},
 		{http.MethodPatch, "/api/admin/redirect/1", `{"new_path":"/b/"}`},
 		{http.MethodDelete, "/api/admin/redirect/1", ""},
+		{http.MethodPost, "/api/admin/navigation-bars", `{"key":"k","label":"L","path":"/p"}`},
+		{http.MethodPatch, "/api/admin/navigation-bar/1", `{"label":"x"}`},
+		{http.MethodDelete, "/api/admin/navigation-bar/1", ""},
 	}
 	for _, rt := range routes {
 		t.Run(rt.method+" "+rt.path, func(t *testing.T) {
 			req := httptest.NewRequest(rt.method, rt.path, strings.NewReader(rt.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.AddCookie(&http.Cookie{Name: "access_token", Value: token})
+			adminCSRF(req)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 			require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+			require.NotContains(t, w.Body.String(), "csrf", "must be stopped by the perm gate, not CSRF")
 		})
 	}
 
@@ -93,6 +106,18 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 		require.NoError(t, db.DB.Model(m).Count(&n).Error)
 		require.Equal(t, int64(1), n, "a forbidden delete must leave the row")
 	}
+
+	// SameSite=None session cookies make admin writes forgeable cross-site:
+	// a signed-in staff session without the double-submit pair is refused
+	// before any handler runs. contest-tags is is_staff-only, so CSRF is the
+	// only gate that can stop this request.
+	noCSRF := httptest.NewRequest(http.MethodPost, "/api/admin/contest-tags", strings.NewReader(`{"name":"x"}`))
+	noCSRF.Header.Set("Content-Type", "application/json")
+	noCSRF.AddCookie(&http.Cookie{Name: "access_token", Value: token})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, noCSRF)
+	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), "csrf_token_missing")
 
 	// The markdown image upload is admin-only: an anonymous caller is stopped by
 	// AdminRequiredMiddleware before the handler reads the body.

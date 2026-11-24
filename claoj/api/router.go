@@ -92,6 +92,10 @@ func NewRouter() *gin.Engine {
 		// =======================================================
 		admin := apiv2.Group("")
 		admin.Use(auth.AdminRequiredMiddleware())
+		// Session cookies are SameSite=None, so without this an admin write
+		// is forgeable cross-site. The web client echoes the csrf_token
+		// cookie in X-CSRF-Token on every non-GET request.
+		admin.Use(csrf.Middleware(csrf.DefaultConfig()))
 		admin.Use(middleware.Audit()) // Audit logging for all admin actions
 		{
 			// Users
@@ -297,12 +301,13 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/ticket/:id/message/:messageId", auth.RequirePerm("judge.change_ticket"), v2.AdminTicketMessageDelete)
 			admin.DELETE("/admin/ticket/:id", auth.RequirePerm("judge.delete_ticket"), v2.AdminTicketDelete)
 
-		// Navigation Bars
+		// Navigation Bars (v1 admin gates the whole model with
+		// judge.change_navigationbar; HasPerm lets superusers pass)
 		admin.GET("/admin/navigation-bars", v2.AdminNavigationBarList)
 		admin.GET("/admin/navigation-bar/:id", v2.AdminNavigationBarDetail)
-		admin.POST("/admin/navigation-bars", v2.AdminNavigationBarCreate)
-		admin.PATCH("/admin/navigation-bar/:id", v2.AdminNavigationBarUpdate)
-		admin.DELETE("/admin/navigation-bar/:id", v2.AdminNavigationBarDelete)
+		admin.POST("/admin/navigation-bars", auth.RequirePerm("judge.change_navigationbar"), v2.AdminNavigationBarCreate)
+		admin.PATCH("/admin/navigation-bar/:id", auth.RequirePerm("judge.change_navigationbar"), v2.AdminNavigationBarUpdate)
+		admin.DELETE("/admin/navigation-bar/:id", auth.RequirePerm("judge.change_navigationbar"), v2.AdminNavigationBarDelete)
 
 		// Flat pages + redirects (Django contrib tables, single site). Reads are
 		// staff-level; writes use the same codenames v1's Django admin checks.
