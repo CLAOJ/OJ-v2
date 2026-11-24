@@ -452,6 +452,15 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 		if err := relations.Sync[models.Profile](tx, &contest, "BannedUsers", req.BannedUserIDs, nil, nil); err != nil {
 			return err
 		}
+		// v1 parity: banning kicks the user out of this contest's contest mode.
+		// Only rows pointing at this very contest are touched.
+		if req.BannedUserIDs != nil && len(*req.BannedUserIDs) > 0 {
+			if err := tx.Model(&models.Profile{}).
+				Where("id IN ? AND current_contest_id = ?", *req.BannedUserIDs, contest.ID).
+				Update("current_contest_id", nil).Error; err != nil {
+				return err
+			}
+		}
 		if err := relations.Sync[models.Profile](tx, &contest, "PrivateContestants", req.PrivateContestantIDs, nil, nil); err != nil {
 			return err
 		}

@@ -29,6 +29,9 @@ func setupAdminDetailDB(t *testing.T) {
 		&models.AuthUser{}, &models.Profile{}, &models.Organization{}, &models.Language{},
 		&models.ProblemGroup{}, &models.ProblemType{}, &models.Problem{}, &models.ContestTag{},
 		&models.Contest{}, &models.ContestParticipation{}, &models.Submission{}, &models.ContestSubmission{},
+		// Django auth tables, so auth.GetAccess resolves real permission rows.
+		&models.DjangoContentType{}, &models.AuthPermission{}, &models.AuthUserPermission{},
+		&models.AuthGroup{}, &models.AuthUserGroup{}, &models.AuthGroupPermission{},
 	))
 	require.NoError(t, database.Migrator().DropTable("judge_contestproblem"))
 	require.NoError(t, database.Migrator().CreateTable(&models.ContestProblem{}))

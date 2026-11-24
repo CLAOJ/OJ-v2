@@ -115,6 +115,11 @@ v2 today: key, name, description, summary, start/end, time window, format, acces
 
 Same gaps as problems: no bulk actions, no sorting, no pagination/total UI, icon-only actions, tall rows. Status filter ✓, search ✓.
 
+### 2.4 Deferred in Phase 2
+
+- **Public contest-page rendering of announcements** and **push-on-create / resend** need the notification pipeline and the public consumption path; both land in Phase 5. Phase 2 ships the admin CRUD surface only.
+- **Contest access/rating field authz is still v2-wide coarse**: `is_private`, `private_contestants`, `organizations`, `rating_floor`/`rating_ceiling`/`rate_all` remain behind the pre-existing `RequireContestEdit` gate rather than v1's `create_private_contest` / `contest_rating` permissions. The two v1-gated fields that would otherwise be newly writable with no check — `problem_label_script` (`judge.contest_problem_label`) and `performance_ceiling_override` (`judge.override_performance_ceiling`) — are now checked on create and update.
+
 ---
 
 ## 3. Admin — remaining sections

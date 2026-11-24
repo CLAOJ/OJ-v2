@@ -144,6 +144,42 @@ func TestUpdateContest_StaffAndTagsFullLists(t *testing.T) {
 	require.Equal(t, "staff", got.Name, "failed relation must roll back the rename")
 }
 
+// TestUpdateContest_BanningClearsCurrentContest mirrors v1's ContestForm.clean:
+// banning kicks the user out of this contest, but never out of another one.
+func TestUpdateContest_BanningClearsCurrentContest(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "banme")
+	other := newContest(t, "other")
+	third := newContest(t, "third")
+	heres := newProfile(t, "heres")
+	elsewhere := newProfile(t, "elsewhere")
+	kept := newProfile(t, "kept")
+
+	for _, p := range []struct {
+		profile models.Profile
+		contest uint
+	}{{heres, c.ID}, {elsewhere, other.ID}, {kept, third.ID}} {
+		require.NoError(t, db.DB.Model(&models.Profile{}).Where("id = ?", p.profile.ID).
+			Update("current_contest_id", p.contest).Error)
+	}
+
+	// Banned: heres (in this contest) and elsewhere (in a different one).
+	banned := []uint{heres.ID, elsewhere.ID}
+	_, err := NewContestService().UpdateContest(UpdateContestRequest{ContestKey: c.Key, BannedUserIDs: &banned})
+	require.NoError(t, err)
+
+	current := func(p models.Profile) *uint {
+		var got models.Profile
+		require.NoError(t, db.DB.First(&got, p.ID).Error)
+		return got.CurrentContestID
+	}
+	require.Nil(t, current(heres), "a user banned from this contest is kicked out")
+	require.NotNil(t, current(elsewhere))
+	require.Equal(t, other.ID, *current(elsewhere), "a different current contest is left alone")
+	require.NotNil(t, current(kept))
+	require.Equal(t, third.ID, *current(kept), "non-banned users are never touched")
+}
+
 func TestGetContest_ProblemsCarryCodeAndName(t *testing.T) {
 	setupContestDB(t)
 	c := newContest(t, "probs")
@@ -278,29 +314,29 @@ func TestUpdateContest_V1FieldsReplaceAndClear(t *testing.T) {
 
 	users := func(p models.Profile) *[]uint { return &[]uint{p.ID} }
 	_, err := svc.UpdateContest(UpdateContestRequest{
-		ContestKey:                      c.Key,
-		ScoreboardVisibility:            strp("P"),
-		ScoreboardCacheTimeout:          up(60),
-		UseClarifications:               bp(false),
-		PushAnnouncements:               bp(true),
-		HideProblemAuthors:              bp(true),
-		ShowShortDisplay:                bp(true),
-		LimitJoinOrganizations:          bp(true),
-		RateAll:                         bp(true),
-		IsPrivate:                       bp(true),
-		RatingFloor:                     ip(1200),
-		RatingCeiling:                   ip(2000),
-		PerformanceCeilingOverride:      ip(2100),
-		PointsPrecision:                 ip(0),
-		OgImage:                         strp("https://example.com/og.png"),
-		LogoOverrideImage:               strp("https://example.com/logo.png"),
-		ProblemLabelScript:              strp("return 'A'"),
-		OrganizationIDs:                 &[]uint{org.ID},
-		BannedUserIDs:                   users(troll),
-		PrivateContestantIDs:            users(private),
-		ViewScoreboardUserIDs:           users(viewer),
-		JoinOrganizationIDs:             &[]uint{joinOrg.ID},
-		ClassIDs:                        &[]uint{class.ID},
+		ContestKey:                 c.Key,
+		ScoreboardVisibility:       strp("P"),
+		ScoreboardCacheTimeout:     up(60),
+		UseClarifications:          bp(false),
+		PushAnnouncements:          bp(true),
+		HideProblemAuthors:         bp(true),
+		ShowShortDisplay:           bp(true),
+		LimitJoinOrganizations:     bp(true),
+		RateAll:                    bp(true),
+		IsPrivate:                  bp(true),
+		RatingFloor:                ip(1200),
+		RatingCeiling:              ip(2000),
+		PerformanceCeilingOverride: ip(2100),
+		PointsPrecision:            ip(0),
+		OgImage:                    strp("https://example.com/og.png"),
+		LogoOverrideImage:          strp("https://example.com/logo.png"),
+		ProblemLabelScript:         strp("return 'A'"),
+		OrganizationIDs:            &[]uint{org.ID},
+		BannedUserIDs:              users(troll),
+		PrivateContestantIDs:       users(private),
+		ViewScoreboardUserIDs:      users(viewer),
+		JoinOrganizationIDs:        &[]uint{joinOrg.ID},
+		ClassIDs:                   &[]uint{class.ID},
 	})
 	require.NoError(t, err)
 

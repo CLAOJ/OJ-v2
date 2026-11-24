@@ -29,6 +29,17 @@ func createContestTestOrg(t *testing.T, name string) models.Organization {
 	return o
 }
 
+// grantContestPerm seeds judge.<codename> and attaches it to the auth user,
+// the same rows v1's Django admin reads.
+func grantContestPerm(t *testing.T, userID uint, codename string) {
+	t.Helper()
+	var ct models.DjangoContentType
+	require.NoError(t, db.DB.FirstOrCreate(&ct, models.DjangoContentType{AppLabel: "judge", Model: "contest"}).Error)
+	perm := models.AuthPermission{Name: codename, Codename: codename, ContentTypeID: ct.ID}
+	require.NoError(t, db.DB.Create(&perm).Error)
+	require.NoError(t, db.DB.Create(&models.AuthUserPermission{UserID: userID, PermissionID: perm.ID}).Error)
+}
+
 func TestAdminContestCreate_AndUpdateV1Fields(t *testing.T) {
 	setupAdminDetailDB(t)
 	viewer := createContestTestUser(t, "viewer")
@@ -38,6 +49,9 @@ func TestAdminContestCreate_AndUpdateV1Fields(t *testing.T) {
 	joinOrg := createContestTestOrg(t, "joinorg")
 	class := models.Class{OrganizationID: org.ID, Name: "Class A", Slug: "class-a"}
 	require.NoError(t, db.DB.Create(&class).Error)
+	// The two v1-gated fields below need their Django permission.
+	grantContestPerm(t, viewer.UserID, "contest_problem_label")
+	grantContestPerm(t, viewer.UserID, "override_performance_ceiling")
 
 	body := `{
 		"key":"full1","name":"Full","description":"d",
@@ -201,4 +215,102 @@ func TestAdminContest_ImageLengthCapsAre400(t *testing.T) {
 	var got models.Contest
 	require.NoError(t, db.DB.First(&got, c.ID).Error)
 	require.Empty(t, got.LogoOverrideImage)
+}
+
+// TestAdminContest_ElevatedFieldsForbiddenWithoutPerm proves the v1
+// readonly_fields gates: an author without judge.contest_problem_label /
+// judge.override_performance_ceiling cannot write those fields, and nothing
+// is stored.
+func TestAdminContest_ElevatedFieldsForbiddenWithoutPerm(t *testing.T) {
+	setupAdminDetailDB(t)
+	author := createContestTestUser(t, "author")
+	c := models.Contest{
+		Key: "gated", Name: "Gated", StartTime: time.Now(), EndTime: time.Now().Add(time.Hour),
+		FormatName: "default", ProblemLabelScript: "keep",
+	}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&c).Error)
+
+	cases := []struct{ name, createBody, updateBody string }{
+		{
+			name: "problem_label_script",
+			createBody: `{"key":"gated2","name":"G","description":"d",
+				"start_time":"2026-11-01T09:00:00Z","end_time":"2026-11-01T12:00:00Z",
+				"problem_label_script":"return 'A'"}`,
+			updateBody: `{"problem_label_script":"return 'A'"}`,
+		},
+		{
+			name: "performance_ceiling_override",
+			createBody: `{"key":"gated2","name":"G","description":"d",
+				"start_time":"2026-11-01T09:00:00Z","end_time":"2026-11-01T12:00:00Z",
+				"performance_ceiling_override":2100}`,
+			updateBody: `{"performance_ceiling_override":2100}`,
+		},
+		{
+			name:       "clear_performance_ceiling_override",
+			updateBody: `{"clear_performance_ceiling_override":true}`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.createBody != "" {
+				w := doRequest(authedRouter(author.UserID, http.MethodPost, "/admin/contests", AdminContestCreate),
+					http.MethodPost, "/admin/contests", tc.createBody)
+				require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+
+				var count int64
+				require.NoError(t, db.DB.Model(&models.Contest{}).Where("`key` = ?", "gated2").Count(&count).Error)
+				require.Zero(t, count, "a denied field must not leave a contest row")
+			}
+
+			w := doRequest(authedRouter(author.UserID, http.MethodPatch, "/admin/contest/:key", AdminContestUpdate),
+				http.MethodPatch, "/admin/contest/gated", tc.updateBody)
+			require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+		})
+	}
+
+	var got models.Contest
+	require.NoError(t, db.DB.First(&got, c.ID).Error)
+	require.Equal(t, "keep", got.ProblemLabelScript, "a denied update must not write")
+	require.Nil(t, got.PerformanceCeilingOverride)
+}
+
+// TestAdminContest_ElevatedFieldsAllowedWithPerm is the positive half: the
+// same fields succeed once the permissions are granted.
+func TestAdminContest_ElevatedFieldsAllowedWithPerm(t *testing.T) {
+	setupAdminDetailDB(t)
+	author := createContestTestUser(t, "labeler")
+	grantContestPerm(t, author.UserID, "contest_problem_label")
+	grantContestPerm(t, author.UserID, "override_performance_ceiling")
+
+	body := `{"key":"allowed","name":"A","description":"d",
+		"start_time":"2026-11-01T09:00:00Z","end_time":"2026-11-01T12:00:00Z",
+		"problem_label_script":"return 'A'","performance_ceiling_override":2100}`
+	w := doRequest(authedRouter(author.UserID, http.MethodPost, "/admin/contests", AdminContestCreate),
+		http.MethodPost, "/admin/contests", body)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	detail := func() map[string]any {
+		w := doRequest(authedRouter(author.UserID, http.MethodGet, "/admin/contest/:key", AdminContestDetail),
+			http.MethodGet, "/admin/contest/allowed", "")
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var got map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		return got
+	}
+	got := detail()
+	require.Equal(t, "return 'A'", got["problem_label_script"])
+	require.EqualValues(t, 2100, got["performance_ceiling_override"])
+
+	w = doRequest(authedRouter(author.UserID, http.MethodPatch, "/admin/contest/:key", AdminContestUpdate),
+		http.MethodPatch, "/admin/contest/allowed",
+		`{"problem_label_script":"return 'B'","performance_ceiling_override":2200}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	got = detail()
+	require.Equal(t, "return 'B'", got["problem_label_script"])
+	require.EqualValues(t, 2200, got["performance_ceiling_override"])
+
+	w = doRequest(authedRouter(author.UserID, http.MethodPatch, "/admin/contest/:key", AdminContestUpdate),
+		http.MethodPatch, "/admin/contest/allowed", `{"clear_performance_ceiling_override":true}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Nil(t, detail()["performance_ceiling_override"])
 }
