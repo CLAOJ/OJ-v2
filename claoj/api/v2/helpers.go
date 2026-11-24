@@ -65,6 +65,20 @@ func getAvatarURL(profile *models.Profile) string {
 	return getGravatarURL(profile.User.Email, 80)
 }
 
+// queryValues reads a filter as repeated params (?x=a&x=b), a comma-separated
+// value (?x=a,b), or both, trimming blanks. Empty entries are dropped.
+func queryValues(c *gin.Context, key string) []string {
+	var values []string
+	for _, raw := range c.QueryArray(key) {
+		for _, part := range strings.Split(raw, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				values = append(values, part)
+			}
+		}
+	}
+	return values
+}
+
 func parsePagination(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "100"))

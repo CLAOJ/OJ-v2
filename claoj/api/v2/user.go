@@ -61,20 +61,58 @@ func UserList(c *gin.Context) {
 		return
 	}
 
+	type userListOrg struct {
+		ID        uint   `json:"id"`
+		ShortName string `json:"short_name"`
+	}
+	// One extra query for every membership on this page — no per-row lookups.
+	type membershipRow struct {
+		ProfileID uint
+		ID        uint
+		ShortName string
+	}
+	orgsByProfile := map[uint][]userListOrg{}
+	if len(profiles) > 0 {
+		ids := make([]uint, len(profiles))
+		for i, p := range profiles {
+			ids[i] = p.ID
+		}
+		var rows []membershipRow
+		if err := db.DB.Table("judge_profile_organizations po").
+			Select("po.profile_id, o.id, o.short_name").
+			Joins("JOIN judge_organization o ON o.id = po.organization_id").
+			Where("po.profile_id IN ?", ids).
+			Order("o.id ASC").
+			Scan(&rows).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		for _, r := range rows {
+			orgsByProfile[r.ProfileID] = append(orgsByProfile[r.ProfileID], userListOrg{r.ID, r.ShortName})
+		}
+	}
+
 	type Item struct {
-		Username           string  `json:"username"`
-		Points             float64 `json:"points"`
-		PerformancePoints  float64 `json:"performance_points"`
-		Rating             *int    `json:"rating"`
-		ProblemCount       int     `json:"problem_count"`
-		ContributionPoints int     `json:"contribution_points"`
-		DisplayRank        string  `json:"display_rank"`
-		AvatarURL          string  `json:"avatar_url"`
+		Username           string        `json:"username"`
+		DisplayName        string        `json:"display_name"`
+		Points             float64       `json:"points"`
+		PerformancePoints  float64       `json:"performance_points"`
+		Rating             *int          `json:"rating"`
+		ProblemCount       int           `json:"problem_count"`
+		ContributionPoints int           `json:"contribution_points"`
+		DisplayRank        string        `json:"display_rank"`
+		AvatarURL          string        `json:"avatar_url"`
+		Organizations      []userListOrg `json:"organizations"`
 	}
 	items := make([]Item, len(profiles))
 	for i, p := range profiles {
+		orgs := orgsByProfile[p.ID]
+		if orgs == nil {
+			orgs = []userListOrg{}
+		}
 		items[i] = Item{
 			Username:           p.User.Username,
+			DisplayName:        p.UsernameDisplayOverride,
 			Points:             p.Points,
 			PerformancePoints:  p.PerformancePoints,
 			Rating:             p.Rating,
@@ -82,6 +120,7 @@ func UserList(c *gin.Context) {
 			ContributionPoints: p.ContributionPoints,
 			DisplayRank:        p.DisplayRank,
 			AvatarURL:          getAvatarURL(&p),
+			Organizations:      orgs,
 		}
 	}
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))
