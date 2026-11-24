@@ -20,4 +20,7 @@ var (
 	ErrInvalidPoints                = errors.New("contest: problem points must not be negative")
 	ErrContestProblemHasSubmissions = errors.New("contest: problem has contest submissions and cannot be removed")
 	ErrInvalidStatus                = errors.New("contest: status must be upcoming, ongoing or past")
+	ErrInvalidScoreboardVisibility  = errors.New("contest: scoreboard_visibility must be V, C or P")
+	ErrInvalidPointsPrecision       = errors.New("contest: points_precision must be between 0 and 10")
+	ErrFieldTooLong                 = errors.New("contest: field value too long")
 )

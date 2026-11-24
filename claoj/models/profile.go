@@ -28,6 +28,17 @@ type Organization struct {
 
 func (Organization) TableName() string { return "judge_organization" }
 
+// Class mirrors judge_class (organization-scoped student group).
+type Class struct {
+	ID             uint   `gorm:"primaryKey;column:id"`
+	OrganizationID uint   `gorm:"column:organization_id;not null;index"`
+	Name           string `gorm:"column:name;size:128;not null"`
+	Slug           string `gorm:"column:slug;size:128;not null"`
+	IsActive       bool   `gorm:"column:is_active;not null;default:1"`
+}
+
+func (Class) TableName() string { return "judge_class" }
+
 // Profile mirrors judge_profile (the user-extended info; auth_user is Django's built-in).
 type Profile struct {
 	ID                      uint       `gorm:"primaryKey;column:id"`

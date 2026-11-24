@@ -118,6 +118,21 @@ func AdminContestCreate(c *gin.Context) {
 		TimeLimit             *int64  `json:"time_limit"`
 		IsVisible             bool    `json:"is_visible"`
 		IsRated               bool    `json:"is_rated"`
+		ScoreboardVisibility  string  `json:"scoreboard_visibility"`
+		ScoreboardCacheTimeout uint   `json:"scoreboard_cache_timeout"`
+		UseClarifications     *bool   `json:"use_clarifications"`
+		PushAnnouncements     bool    `json:"push_announcements"`
+		RatingFloor           *int    `json:"rating_floor"`
+		RatingCeiling         *int    `json:"rating_ceiling"`
+		PerformanceCeilingOverride *int `json:"performance_ceiling_override"`
+		RateAll               bool    `json:"rate_all"`
+		HideProblemAuthors    bool    `json:"hide_problem_authors"`
+		ShowShortDisplay      bool    `json:"show_short_display"`
+		LimitJoinOrganizations bool   `json:"limit_join_organizations"`
+		OgImage               string  `json:"og_image"`
+		LogoOverrideImage     string  `json:"logo_override_image"`
+		ProblemLabelScript    string  `json:"problem_label_script"`
+		PointsPrecision       *int    `json:"points_precision"`
 		FormatName            string  `json:"format_name"`
 		FormatConfig          string  `json:"format_config"`
 		AccessCode            string  `json:"access_code"`
@@ -129,6 +144,12 @@ func AdminContestCreate(c *gin.Context) {
 		TesterIDs             []uint  `json:"tester_ids"`
 		ProblemIDs            []uint  `json:"problem_ids"`
 		TagIDs                []uint  `json:"tag_ids"`
+		OrganizationIDs       []uint  `json:"organization_ids"`
+		BannedUserIDs         []uint  `json:"banned_user_ids"`
+		PrivateContestantIDs  []uint  `json:"private_contestant_ids"`
+		ViewScoreboardUserIDs []uint  `json:"view_scoreboard_user_ids"`
+		JoinOrganizationIDs   []uint  `json:"join_organization_ids"`
+		ClassIDs              []uint  `json:"class_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -149,33 +170,60 @@ func AdminContestCreate(c *gin.Context) {
 	}
 
 	profile, err := getContestService().CreateContest(contest.CreateContestRequest{
-		Key:                   input.Key,
-		Name:                  input.Name,
-		Description:           input.Description,
-		Summary:               input.Summary,
-		StartTime:             startTime,
-		EndTime:               endTime,
-		TimeLimit:             positiveOrNil(secondsToMicros(input.TimeLimit)),
-		IsVisible:             input.IsVisible,
-		IsRated:               input.IsRated,
-		FormatName:            input.FormatName,
-		FormatConfig:          input.FormatConfig,
-		AccessCode:            input.AccessCode,
-		HideProblemTags:       input.HideProblemTags,
-		RunPretestsOnly:       input.RunPretestsOnly,
-		IsOrganizationPrivate: input.IsOrganizationPrivate,
-		AuthorIDs:             input.AuthorIDs,
-		CuratorIDs:            input.CuratorIDs,
-		TesterIDs:             input.TesterIDs,
-		ProblemIDs:            input.ProblemIDs,
-		TagIDs:                input.TagIDs,
+		Key:                        input.Key,
+		Name:                       input.Name,
+		Description:                input.Description,
+		Summary:                    input.Summary,
+		StartTime:                  startTime,
+		EndTime:                    endTime,
+		TimeLimit:                  positiveOrNil(secondsToMicros(input.TimeLimit)),
+		IsVisible:                  input.IsVisible,
+		IsRated:                    input.IsRated,
+		ScoreboardVisibility:       input.ScoreboardVisibility,
+		ScoreboardCacheTimeout:     input.ScoreboardCacheTimeout,
+		UseClarifications:          input.UseClarifications,
+		PushAnnouncements:          input.PushAnnouncements,
+		RatingFloor:                input.RatingFloor,
+		RatingCeiling:              input.RatingCeiling,
+		PerformanceCeilingOverride: input.PerformanceCeilingOverride,
+		RateAll:                    input.RateAll,
+		HideProblemAuthors:         input.HideProblemAuthors,
+		ShowShortDisplay:           input.ShowShortDisplay,
+		LimitJoinOrganizations:     input.LimitJoinOrganizations,
+		OgImage:                    input.OgImage,
+		LogoOverrideImage:          input.LogoOverrideImage,
+		ProblemLabelScript:         input.ProblemLabelScript,
+		PointsPrecision:            input.PointsPrecision,
+		FormatName:                 input.FormatName,
+		FormatConfig:               input.FormatConfig,
+		AccessCode:                 input.AccessCode,
+		HideProblemTags:            input.HideProblemTags,
+		RunPretestsOnly:            input.RunPretestsOnly,
+		IsOrganizationPrivate:      input.IsOrganizationPrivate,
+		AuthorIDs:                  input.AuthorIDs,
+		CuratorIDs:                 input.CuratorIDs,
+		TesterIDs:                  input.TesterIDs,
+		ProblemIDs:                 input.ProblemIDs,
+		TagIDs:                     input.TagIDs,
+		OrganizationIDs:            input.OrganizationIDs,
+		BannedUserIDs:              input.BannedUserIDs,
+		PrivateContestantIDs:       input.PrivateContestantIDs,
+		ViewScoreboardUserIDs:      input.ViewScoreboardUserIDs,
+		JoinOrganizationIDs:        input.JoinOrganizationIDs,
+		ClassIDs:                   input.ClassIDs,
 	})
 	if err != nil {
-		if errors.Is(err, contest.ErrInvalidFormatConfig) {
+		switch {
+		case errors.Is(err, contest.ErrInvalidFormatConfig):
 			c.JSON(http.StatusBadRequest, apiError("invalid format_config JSON"))
-			return
+		case errors.Is(err, contest.ErrInvalidScoreboardVisibility),
+			errors.Is(err, contest.ErrInvalidPointsPrecision),
+			errors.Is(err, contest.ErrFieldTooLong),
+			errors.Is(err, relations.ErrUnknownID):
+			c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		default:
+			c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
 
@@ -194,29 +242,53 @@ func AdminContestUpdate(c *gin.Context) {
 	key := c.Param("key")
 
 	var input struct {
-		Name                  *string                        `json:"name"`
-		Description           *string                        `json:"description"`
-		Summary               *string                        `json:"summary"`
-		StartTime             *string                        `json:"start_time"`
-		EndTime               *string                        `json:"end_time"`
-		TimeLimit             *int64                         `json:"time_limit"` // seconds; 0 clears
-		IsVisible             *bool                          `json:"is_visible"`
-		IsRated               *bool                          `json:"is_rated"`
-		AccessCode            *string                        `json:"access_code"`
-		HideProblemTags       *bool                          `json:"hide_problem_tags"`
-		RunPretestsOnly       *bool                          `json:"run_pretests_only"`
-		IsOrganizationPrivate *bool                          `json:"is_organization_private"`
-		FormatName            *string                        `json:"format_name"`
-		FormatConfig          *string                        `json:"format_config"`
-		AuthorIDs             *[]uint                        `json:"author_ids"`
-		CuratorIDs            *[]uint                        `json:"curator_ids"`
-		TesterIDs             *[]uint                        `json:"tester_ids"`
-		TagIDs                *[]uint                        `json:"tag_ids"`
-		Problems              *[]contest.ContestProblemInput `json:"problems"`
-		AddProblemIDs         []uint                         `json:"add_problem_ids"`
-		RemoveProblemIDs      []uint                         `json:"remove_problem_ids"`
-		AddTagIDs             []uint                         `json:"add_tag_ids"`
-		RemoveTagIDs          []uint                         `json:"remove_tag_ids"`
+		Name                            *string                        `json:"name"`
+		Description                     *string                        `json:"description"`
+		Summary                         *string                        `json:"summary"`
+		StartTime                       *string                        `json:"start_time"`
+		EndTime                         *string                        `json:"end_time"`
+		TimeLimit                       *int64                         `json:"time_limit"` // seconds; 0 clears
+		IsVisible                       *bool                          `json:"is_visible"`
+		IsRated                         *bool                          `json:"is_rated"`
+		ScoreboardVisibility            *string                        `json:"scoreboard_visibility"`
+		ScoreboardCacheTimeout          *uint                          `json:"scoreboard_cache_timeout"`
+		UseClarifications               *bool                          `json:"use_clarifications"`
+		PushAnnouncements               *bool                          `json:"push_announcements"`
+		HideProblemAuthors              *bool                          `json:"hide_problem_authors"`
+		ShowShortDisplay                *bool                          `json:"show_short_display"`
+		LimitJoinOrganizations          *bool                          `json:"limit_join_organizations"`
+		RateAll                         *bool                          `json:"rate_all"`
+		PointsPrecision                 *int                           `json:"points_precision"`
+		RatingFloor                     *int                           `json:"rating_floor"`
+		RatingCeiling                   *int                           `json:"rating_ceiling"`
+		PerformanceCeilingOverride      *int                           `json:"performance_ceiling_override"`
+		ClearRatingFloor                bool                           `json:"clear_rating_floor"`
+		ClearRatingCeiling              bool                           `json:"clear_rating_ceiling"`
+		ClearPerformanceCeilingOverride bool                           `json:"clear_performance_ceiling_override"`
+		OgImage                         *string                        `json:"og_image"`
+		LogoOverrideImage               *string                        `json:"logo_override_image"`
+		ProblemLabelScript              *string                        `json:"problem_label_script"`
+		AccessCode                      *string                        `json:"access_code"`
+		HideProblemTags                 *bool                          `json:"hide_problem_tags"`
+		RunPretestsOnly                 *bool                          `json:"run_pretests_only"`
+		IsOrganizationPrivate           *bool                          `json:"is_organization_private"`
+		FormatName                      *string                        `json:"format_name"`
+		FormatConfig                    *string                        `json:"format_config"`
+		AuthorIDs                       *[]uint                        `json:"author_ids"`
+		CuratorIDs                      *[]uint                        `json:"curator_ids"`
+		TesterIDs                       *[]uint                        `json:"tester_ids"`
+		TagIDs                          *[]uint                        `json:"tag_ids"`
+		OrganizationIDs                 *[]uint                        `json:"organization_ids"`
+		BannedUserIDs                   *[]uint                        `json:"banned_user_ids"`
+		PrivateContestantIDs            *[]uint                        `json:"private_contestant_ids"`
+		ViewScoreboardUserIDs           *[]uint                        `json:"view_scoreboard_user_ids"`
+		JoinOrganizationIDs             *[]uint                        `json:"join_organization_ids"`
+		ClassIDs                        *[]uint                        `json:"class_ids"`
+		Problems                        *[]contest.ContestProblemInput `json:"problems"`
+		AddProblemIDs                   []uint                         `json:"add_problem_ids"`
+		RemoveProblemIDs                []uint                         `json:"remove_problem_ids"`
+		AddTagIDs                       []uint                         `json:"add_tag_ids"`
+		RemoveTagIDs                    []uint                         `json:"remove_tag_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -225,30 +297,54 @@ func AdminContestUpdate(c *gin.Context) {
 	}
 
 	profile, err := getContestService().UpdateContest(contest.UpdateContestRequest{
-		ContestKey:            key,
-		Name:                  input.Name,
-		Description:           input.Description,
-		Summary:               input.Summary,
-		StartTime:             input.StartTime,
-		EndTime:               input.EndTime,
-		TimeLimit:             secondsToMicros(input.TimeLimit),
-		IsVisible:             input.IsVisible,
-		IsRated:               input.IsRated,
-		AccessCode:            input.AccessCode,
-		HideProblemTags:       input.HideProblemTags,
-		RunPretestsOnly:       input.RunPretestsOnly,
-		IsOrganizationPrivate: input.IsOrganizationPrivate,
-		FormatName:            input.FormatName,
-		FormatConfig:          input.FormatConfig,
-		AuthorIDs:             input.AuthorIDs,
-		CuratorIDs:            input.CuratorIDs,
-		TesterIDs:             input.TesterIDs,
-		TagIDs:                input.TagIDs,
-		Problems:              input.Problems,
-		AddProblemIDs:         input.AddProblemIDs,
-		RemoveProblemIDs:      input.RemoveProblemIDs,
-		AddTagIDs:             input.AddTagIDs,
-		RemoveTagIDs:          input.RemoveTagIDs,
+		ContestKey:                      key,
+		Name:                            input.Name,
+		Description:                     input.Description,
+		Summary:                         input.Summary,
+		StartTime:                       input.StartTime,
+		EndTime:                         input.EndTime,
+		TimeLimit:                       secondsToMicros(input.TimeLimit),
+		IsVisible:                       input.IsVisible,
+		IsRated:                         input.IsRated,
+		ScoreboardVisibility:            input.ScoreboardVisibility,
+		ScoreboardCacheTimeout:          input.ScoreboardCacheTimeout,
+		UseClarifications:               input.UseClarifications,
+		PushAnnouncements:               input.PushAnnouncements,
+		HideProblemAuthors:              input.HideProblemAuthors,
+		ShowShortDisplay:                input.ShowShortDisplay,
+		LimitJoinOrganizations:          input.LimitJoinOrganizations,
+		RateAll:                         input.RateAll,
+		PointsPrecision:                 input.PointsPrecision,
+		RatingFloor:                     input.RatingFloor,
+		RatingCeiling:                   input.RatingCeiling,
+		PerformanceCeilingOverride:      input.PerformanceCeilingOverride,
+		ClearRatingFloor:                input.ClearRatingFloor,
+		ClearRatingCeiling:              input.ClearRatingCeiling,
+		ClearPerformanceCeilingOverride: input.ClearPerformanceCeilingOverride,
+		OgImage:                         input.OgImage,
+		LogoOverrideImage:               input.LogoOverrideImage,
+		ProblemLabelScript:              input.ProblemLabelScript,
+		AccessCode:                      input.AccessCode,
+		HideProblemTags:                 input.HideProblemTags,
+		RunPretestsOnly:                 input.RunPretestsOnly,
+		IsOrganizationPrivate:           input.IsOrganizationPrivate,
+		FormatName:                      input.FormatName,
+		FormatConfig:                    input.FormatConfig,
+		AuthorIDs:                       input.AuthorIDs,
+		CuratorIDs:                      input.CuratorIDs,
+		TesterIDs:                       input.TesterIDs,
+		TagIDs:                          input.TagIDs,
+		OrganizationIDs:                 input.OrganizationIDs,
+		BannedUserIDs:                   input.BannedUserIDs,
+		PrivateContestantIDs:            input.PrivateContestantIDs,
+		ViewScoreboardUserIDs:           input.ViewScoreboardUserIDs,
+		JoinOrganizationIDs:             input.JoinOrganizationIDs,
+		ClassIDs:                        input.ClassIDs,
+		Problems:                        input.Problems,
+		AddProblemIDs:                   input.AddProblemIDs,
+		RemoveProblemIDs:                input.RemoveProblemIDs,
+		AddTagIDs:                       input.AddTagIDs,
+		RemoveTagIDs:                    input.RemoveTagIDs,
 	})
 	if err != nil {
 		switch {
@@ -262,6 +358,9 @@ func AdminContestUpdate(c *gin.Context) {
 			errors.Is(err, contest.ErrInvalidFormatConfig),
 			errors.Is(err, contest.ErrUnknownProblem),
 			errors.Is(err, contest.ErrInvalidPoints),
+			errors.Is(err, contest.ErrInvalidScoreboardVisibility),
+			errors.Is(err, contest.ErrInvalidPointsPrecision),
+			errors.Is(err, contest.ErrFieldTooLong),
 			errors.Is(err, relations.ErrUnknownID):
 			c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
 		default:

@@ -29,6 +29,7 @@ type ContestProfile struct {
 	PushAnnouncements      bool                `json:"push_announcements"`
 	RatingFloor            *int                `json:"rating_floor"`
 	RatingCeiling          *int                `json:"rating_ceiling"`
+	PerformanceCeilingOverride *int            `json:"performance_ceiling_override"`
 	RateAll                bool                `json:"rate_all"`
 	IsPrivate              bool                `json:"is_private"`
 	HideProblemTags        bool                `json:"hide_problem_tags"`
@@ -36,6 +37,7 @@ type ContestProfile struct {
 	RunPretestsOnly        bool                `json:"run_pretests_only"`
 	ShowShortDisplay       bool                `json:"show_short_display"`
 	IsOrganizationPrivate  bool                `json:"is_organization_private"`
+	LimitJoinOrganizations bool                `json:"limit_join_organizations"`
 	OgImage                string              `json:"og_image"`
 	LogoOverrideImage      string              `json:"logo_override_image"`
 	UserCount              int                 `json:"user_count"`
@@ -51,34 +53,70 @@ type ContestProfile struct {
 	TesterIDs              []uint              `json:"tester_ids"`
 	TagIDs                 []uint              `json:"tag_ids"`
 	OrganizationIDs        []uint              `json:"organization_ids"`
+	BannedUserIDs          []uint              `json:"banned_user_ids"`
+	PrivateContestantIDs   []uint              `json:"private_contestant_ids"`
+	ViewScoreboardUserIDs  []uint              `json:"view_scoreboard_user_ids"`
+	JoinOrganizationIDs    []uint              `json:"join_organization_ids"`
+	ClassIDs               []uint              `json:"class_ids"`
 	Authors                []relations.UserRef `json:"authors"`
 	Curators               []relations.UserRef `json:"curators"`
 	Testers                []relations.UserRef `json:"testers"`
+	BannedUsers            []relations.UserRef `json:"banned_users"`
+	PrivateContestants     []relations.UserRef `json:"private_contestants"`
+	ViewScoreboardUsers    []relations.UserRef `json:"view_scoreboard_users"`
+	JoinOrganizations      []NamedRef          `json:"join_organizations"`
+	Classes                []NamedRef          `json:"classes"`
+}
+
+// NamedRef is an id/name pair for organization and class chips in the form.
+type NamedRef struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
 }
 
 // CreateContestRequest holds the parameters for creating a contest.
 type CreateContestRequest struct {
-	Key                   string
-	Name                  string
-	Description           string
-	Summary               string
-	StartTime             time.Time
-	EndTime               time.Time
-	TimeLimit             *int64
-	IsVisible             bool
-	IsRated               bool
-	FormatName            string
-	FormatConfig          string
-	AccessCode            string
-	HideProblemTags       bool
-	RunPretestsOnly       bool
-	IsOrganizationPrivate bool
-	AuthorIDs             []uint
-	CuratorIDs            []uint
-	TesterIDs             []uint
-	ProblemIDs            []uint
-	TagIDs                []uint
-	OrganizationIDs       []uint
+	Key                        string
+	Name                       string
+	Description                string
+	Summary                    string
+	StartTime                  time.Time
+	EndTime                    time.Time
+	TimeLimit                  *int64
+	IsVisible                  bool
+	IsRated                    bool
+	ScoreboardVisibility       string
+	ScoreboardCacheTimeout     uint
+	UseClarifications          *bool // nil = v1 default (true)
+	PushAnnouncements          bool
+	RatingFloor                *int
+	RatingCeiling              *int
+	PerformanceCeilingOverride *int
+	RateAll                    bool
+	HideProblemAuthors         bool
+	ShowShortDisplay           bool
+	OgImage                    string
+	LogoOverrideImage          string
+	ProblemLabelScript         string
+	LimitJoinOrganizations     bool
+	PointsPrecision            *int // nil = v1 default (3)
+	FormatName                 string
+	FormatConfig               string
+	AccessCode                 string
+	HideProblemTags            bool
+	RunPretestsOnly            bool
+	IsOrganizationPrivate      bool
+	AuthorIDs                  []uint
+	CuratorIDs                 []uint
+	TesterIDs                  []uint
+	ProblemIDs                 []uint
+	TagIDs                     []uint
+	OrganizationIDs            []uint
+	BannedUserIDs              []uint
+	PrivateContestantIDs       []uint
+	ViewScoreboardUserIDs      []uint
+	JoinOrganizationIDs        []uint
+	ClassIDs                   []uint
 }
 
 // UpdateContestRequest holds the parameters for updating a contest.
@@ -95,8 +133,26 @@ type UpdateContestRequest struct {
 	IsRated               *bool
 	AccessCode            *string
 	HideProblemTags       *bool
+	HideProblemAuthors    *bool
 	RunPretestsOnly       *bool
+	ShowShortDisplay      *bool
+	UseClarifications     *bool
+	PushAnnouncements     *bool
 	IsOrganizationPrivate *bool
+	LimitJoinOrganizations *bool
+	ScoreboardVisibility  *string
+	ScoreboardCacheTimeout *uint
+	PointsPrecision       *int
+	RatingFloor           *int
+	RatingCeiling         *int
+	PerformanceCeilingOverride *int
+	ClearRatingFloor      bool
+	ClearRatingCeiling    bool
+	ClearPerformanceCeilingOverride bool
+	RateAll               *bool
+	OgImage               *string
+	LogoOverrideImage     *string
+	ProblemLabelScript    *string
 	TimeLimit             *int64
 	FormatName            *string
 	FormatConfig          *string
@@ -104,6 +160,12 @@ type UpdateContestRequest struct {
 	CuratorIDs            *[]uint
 	TesterIDs             *[]uint
 	TagIDs                *[]uint
+	OrganizationIDs       *[]uint
+	BannedUserIDs         *[]uint
+	PrivateContestantIDs  *[]uint
+	ViewScoreboardUserIDs *[]uint
+	JoinOrganizationIDs   *[]uint
+	ClassIDs              *[]uint
 	Problems              *[]ContestProblemInput
 	AddProblemIDs         []uint
 	RemoveProblemIDs      []uint

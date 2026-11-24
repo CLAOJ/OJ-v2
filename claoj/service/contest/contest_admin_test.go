@@ -1,11 +1,13 @@
 package contest
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -156,6 +158,238 @@ func TestGetContest_ProblemsCarryCodeAndName(t *testing.T) {
 
 func ip(v int) *int   { return &v }
 func bp(v bool) *bool { return &v }
+func up(v uint) *uint { return &v }
+
+// newOrg/newClass seed the v1 access relations (organizations + classes).
+func newOrg(t *testing.T, name string) models.Organization {
+	t.Helper()
+	o := models.Organization{Name: name, Slug: name, ShortName: name, CreationDate: time.Now()}
+	require.NoError(t, db.DB.Omit("Admins", "Members").Create(&o).Error)
+	return o
+}
+
+func newClass(t *testing.T, org models.Organization, name string) models.Class {
+	t.Helper()
+	c := models.Class{OrganizationID: org.ID, Name: name, Slug: name}
+	require.NoError(t, db.DB.Create(&c).Error)
+	return c
+}
+
+func TestCreateContest_V1FieldsRoundTrip(t *testing.T) {
+	setupContestDB(t)
+	viewer := newProfile(t, "viewer")
+	troll := newProfile(t, "troll")
+	private := newProfile(t, "private")
+	org := newOrg(t, "org")
+	joinOrg := newOrg(t, "joinorg")
+	class := newClass(t, org, "class10a")
+
+	noClarifications := false
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	svc := NewContestService()
+	_, err := svc.CreateContest(CreateContestRequest{
+		Key: "full", Name: "Full", Description: "<p>d</p>",
+		StartTime: start, EndTime: start.Add(2 * time.Hour),
+		ScoreboardVisibility:       "C",
+		ScoreboardCacheTimeout:     30,
+		UseClarifications:          &noClarifications,
+		PushAnnouncements:          true,
+		RatingFloor:                ip(1200),
+		RatingCeiling:              ip(2000),
+		PerformanceCeilingOverride: ip(2100),
+		RateAll:                    true,
+		HideProblemAuthors:         true,
+		ShowShortDisplay:           true,
+		LimitJoinOrganizations:     true,
+		OgImage:                    "https://example.com/og.png",
+		LogoOverrideImage:          "https://example.com/logo.png",
+		ProblemLabelScript:         "return 'A'",
+		PointsPrecision:            ip(5),
+		OrganizationIDs:            []uint{org.ID},
+		BannedUserIDs:              []uint{troll.ID},
+		PrivateContestantIDs:       []uint{private.ID},
+		ViewScoreboardUserIDs:      []uint{viewer.ID},
+		JoinOrganizationIDs:        []uint{joinOrg.ID},
+		ClassIDs:                   []uint{class.ID},
+	})
+	require.NoError(t, err)
+
+	got, err := svc.GetContest(GetContestRequest{ContestKey: "full"})
+	require.NoError(t, err)
+	require.Equal(t, "C", got.ScoreboardVisibility)
+	require.Equal(t, uint(30), got.ScoreboardCacheTimeout)
+	require.False(t, got.UseClarifications)
+	require.True(t, got.PushAnnouncements)
+	require.Equal(t, ip(1200), got.RatingFloor)
+	require.Equal(t, ip(2000), got.RatingCeiling)
+	require.Equal(t, ip(2100), got.PerformanceCeilingOverride)
+	require.True(t, got.RateAll)
+	require.True(t, got.HideProblemAuthors)
+	require.True(t, got.ShowShortDisplay)
+	require.True(t, got.LimitJoinOrganizations)
+	require.Equal(t, "https://example.com/og.png", got.OgImage)
+	require.Equal(t, "https://example.com/logo.png", got.LogoOverrideImage)
+	require.Equal(t, "return 'A'", got.ProblemLabelScript)
+	require.Equal(t, 5, got.PointsPrecision)
+	require.Equal(t, []uint{org.ID}, got.OrganizationIDs)
+	require.Equal(t, []uint{troll.ID}, got.BannedUserIDs)
+	require.Equal(t, []uint{private.ID}, got.PrivateContestantIDs)
+	require.Equal(t, []uint{viewer.ID}, got.ViewScoreboardUserIDs)
+	require.Equal(t, []uint{joinOrg.ID}, got.JoinOrganizationIDs)
+	require.Equal(t, []uint{class.ID}, got.ClassIDs)
+	require.Equal(t, "troll", got.BannedUsers[0].Username)
+	require.Equal(t, "private", got.PrivateContestants[0].Username)
+	require.Equal(t, "viewer", got.ViewScoreboardUsers[0].Username)
+	require.Equal(t, []NamedRef{{ID: joinOrg.ID, Name: "joinorg"}}, got.JoinOrganizations)
+	require.Equal(t, []NamedRef{{ID: class.ID, Name: "class10a"}}, got.Classes)
+}
+
+func TestCreateContest_DefaultsMatchV1(t *testing.T) {
+	setupContestDB(t)
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	svc := NewContestService()
+	_, err := svc.CreateContest(CreateContestRequest{
+		Key: "defaults", Name: "Defaults", StartTime: start, EndTime: start.Add(time.Hour),
+	})
+	require.NoError(t, err)
+	got, err := svc.GetContest(GetContestRequest{ContestKey: "defaults"})
+	require.NoError(t, err)
+	require.Equal(t, "V", got.ScoreboardVisibility)
+	require.True(t, got.UseClarifications)
+	require.Equal(t, 3, got.PointsPrecision)
+	require.Empty(t, got.ClassIDs)
+	require.Empty(t, got.Classes)
+}
+
+func TestUpdateContest_V1FieldsReplaceAndClear(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "updv1")
+	viewer := newProfile(t, "viewer")
+	troll := newProfile(t, "troll")
+	private := newProfile(t, "private")
+	org := newOrg(t, "org")
+	joinOrg := newOrg(t, "joinorg")
+	class := newClass(t, org, "class10a")
+	svc := NewContestService()
+
+	users := func(p models.Profile) *[]uint { return &[]uint{p.ID} }
+	_, err := svc.UpdateContest(UpdateContestRequest{
+		ContestKey:                      c.Key,
+		ScoreboardVisibility:            strp("P"),
+		ScoreboardCacheTimeout:          up(60),
+		UseClarifications:               bp(false),
+		PushAnnouncements:               bp(true),
+		HideProblemAuthors:              bp(true),
+		ShowShortDisplay:                bp(true),
+		LimitJoinOrganizations:          bp(true),
+		RateAll:                         bp(true),
+		RatingFloor:                     ip(1200),
+		RatingCeiling:                   ip(2000),
+		PerformanceCeilingOverride:      ip(2100),
+		PointsPrecision:                 ip(0),
+		OgImage:                         strp("https://example.com/og.png"),
+		LogoOverrideImage:               strp("https://example.com/logo.png"),
+		ProblemLabelScript:              strp("return 'A'"),
+		OrganizationIDs:                 &[]uint{org.ID},
+		BannedUserIDs:                   users(troll),
+		PrivateContestantIDs:            users(private),
+		ViewScoreboardUserIDs:           users(viewer),
+		JoinOrganizationIDs:             &[]uint{joinOrg.ID},
+		ClassIDs:                        &[]uint{class.ID},
+	})
+	require.NoError(t, err)
+
+	got, err := svc.GetContest(GetContestRequest{ContestKey: c.Key})
+	require.NoError(t, err)
+	require.Equal(t, "P", got.ScoreboardVisibility)
+	require.Equal(t, uint(60), got.ScoreboardCacheTimeout)
+	require.False(t, got.UseClarifications)
+	require.True(t, got.PushAnnouncements)
+	require.True(t, got.HideProblemAuthors)
+	require.True(t, got.ShowShortDisplay)
+	require.True(t, got.LimitJoinOrganizations)
+	require.True(t, got.RateAll)
+	require.Equal(t, ip(1200), got.RatingFloor)
+	require.Equal(t, ip(2000), got.RatingCeiling)
+	require.Equal(t, ip(2100), got.PerformanceCeilingOverride)
+	require.Equal(t, 0, got.PointsPrecision)
+	require.Equal(t, "https://example.com/og.png", got.OgImage)
+	require.Equal(t, []uint{troll.ID}, got.BannedUserIDs)
+	require.Equal(t, []uint{class.ID}, got.ClassIDs)
+	require.Equal(t, []uint{joinOrg.ID}, got.JoinOrganizationIDs)
+
+	// Empty full lists clear the relations; the clear flags null the ints.
+	empty := []uint{}
+	_, err = svc.UpdateContest(UpdateContestRequest{
+		ContestKey:                      c.Key,
+		OrganizationIDs:                 &empty,
+		BannedUserIDs:                   &empty,
+		PrivateContestantIDs:            &empty,
+		ViewScoreboardUserIDs:           &empty,
+		JoinOrganizationIDs:             &empty,
+		ClassIDs:                        &empty,
+		ClearRatingFloor:                true,
+		ClearRatingCeiling:              true,
+		ClearPerformanceCeilingOverride: true,
+	})
+	require.NoError(t, err)
+
+	got, err = svc.GetContest(GetContestRequest{ContestKey: c.Key})
+	require.NoError(t, err)
+	require.Empty(t, got.OrganizationIDs)
+	require.Empty(t, got.BannedUserIDs)
+	require.Empty(t, got.PrivateContestantIDs)
+	require.Empty(t, got.ViewScoreboardUserIDs)
+	require.Empty(t, got.JoinOrganizationIDs)
+	require.Empty(t, got.ClassIDs)
+	require.Empty(t, got.Classes)
+	require.Nil(t, got.RatingFloor)
+	require.Nil(t, got.RatingCeiling)
+	require.Nil(t, got.PerformanceCeilingOverride)
+}
+
+func TestUpdateContest_RejectsInvalidEnumsAndUnknownRelation(t *testing.T) {
+	setupContestDB(t)
+	c := newContest(t, "badfields")
+	svc := NewContestService()
+
+	_, err := svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, ScoreboardVisibility: strp("X")})
+	require.ErrorIs(t, err, ErrInvalidScoreboardVisibility)
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, PointsPrecision: ip(11)})
+	require.ErrorIs(t, err, ErrInvalidPointsPrecision)
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, PointsPrecision: ip(-1)})
+	require.ErrorIs(t, err, ErrInvalidPointsPrecision)
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, ClassIDs: &[]uint{99999}})
+	require.ErrorIs(t, err, relations.ErrUnknownID)
+
+	stored, err := svc.GetContest(GetContestRequest{ContestKey: c.Key})
+	require.NoError(t, err)
+	require.Equal(t, "V", stored.ScoreboardVisibility)
+	require.Equal(t, 3, stored.PointsPrecision)
+}
+
+func TestContest_ImageLengthCaps(t *testing.T) {
+	setupContestDB(t)
+	long := strings.Repeat("x", 151)
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	svc := NewContestService()
+
+	_, err := svc.CreateContest(CreateContestRequest{
+		Key: "longog", Name: "Long", StartTime: start, EndTime: start.Add(time.Hour),
+		OgImage: long,
+	})
+	require.ErrorIs(t, err, ErrFieldTooLong)
+	var count int64
+	require.NoError(t, db.DB.Model(&models.Contest{}).Where("`key` = ?", "longog").Count(&count).Error)
+	require.Zero(t, count, "a rejected field must not leave a contest row")
+
+	c := newContest(t, "lenlogo")
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, LogoOverrideImage: strp(long)})
+	require.ErrorIs(t, err, ErrFieldTooLong)
+	ok := strings.Repeat("é", 150) // 150 runes, 300 bytes
+	_, err = svc.UpdateContest(UpdateContestRequest{ContestKey: c.Key, LogoOverrideImage: strp(ok)})
+	require.NoError(t, err)
+}
 
 func contestRows(t *testing.T, contestID uint) []models.ContestProblem {
 	t.Helper()

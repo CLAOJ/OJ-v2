@@ -3,8 +3,10 @@ package contest
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/CLAOJ/claoj/contest_format"
 	"github.com/CLAOJ/claoj/db"
@@ -103,8 +105,13 @@ func (s *ContestService) GetContest(req GetContestRequest) (*ContestDetailRespon
 	if err := db.DB.Preload("Authors.User").
 		Preload("Curators.User").
 		Preload("Testers.User").
+		Preload("BannedUsers.User").
+		Preload("PrivateContestants.User").
+		Preload("ViewContestScoreboard.User").
 		Preload("Tags").
 		Preload("Organizations").
+		Preload("JoinOrganizations").
+		Preload("Classes").
 		Where("`key` = ?", req.ContestKey).First(&contest).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrContestNotFound
@@ -122,21 +129,63 @@ func (s *ContestService) GetContest(req GetContestRequest) (*ContestDetailRespon
 
 // CreateContest creates a new contest.
 func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfile, error) {
+	visibility := req.ScoreboardVisibility
+	if visibility == "" {
+		visibility = "V"
+	}
+	if !validScoreboardVisibility(visibility) {
+		return nil, ErrInvalidScoreboardVisibility
+	}
+	if err := checkFieldLength(req.OgImage, 150, "og_image"); err != nil {
+		return nil, err
+	}
+	if err := checkFieldLength(req.LogoOverrideImage, 150, "logo_override_image"); err != nil {
+		return nil, err
+	}
+	if req.PointsPrecision != nil && !validPointsPrecision(*req.PointsPrecision) {
+		return nil, ErrInvalidPointsPrecision
+	}
+	// v1 defaults: clarifications on, three digits of points. Written
+	// explicitly so the returned profile matches the stored row.
+	useClarifications := true
+	if req.UseClarifications != nil {
+		useClarifications = *req.UseClarifications
+	}
+	pointsPrecision := 3
+	if req.PointsPrecision != nil {
+		pointsPrecision = *req.PointsPrecision
+	}
+
 	contest := models.Contest{
-		Key:                   req.Key,
-		Name:                  sanitization.SanitizeTitle(req.Name),
-		Description:           sanitization.SanitizeProblemContent(req.Description),
-		Summary:               sanitization.SanitizeBlogSummary(req.Summary),
-		StartTime:             req.StartTime,
-		EndTime:               req.EndTime,
-		TimeLimit:             req.TimeLimit,
-		IsVisible:             req.IsVisible,
-		IsRated:               req.IsRated,
-		FormatName:            req.FormatName,
-		AccessCode:            req.AccessCode,
-		HideProblemTags:       req.HideProblemTags,
-		RunPretestsOnly:       req.RunPretestsOnly,
-		IsOrganizationPrivate: req.IsOrganizationPrivate,
+		Key:                        req.Key,
+		Name:                       sanitization.SanitizeTitle(req.Name),
+		Description:                sanitization.SanitizeProblemContent(req.Description),
+		Summary:                    sanitization.SanitizeBlogSummary(req.Summary),
+		StartTime:                  req.StartTime,
+		EndTime:                    req.EndTime,
+		TimeLimit:                  req.TimeLimit,
+		IsVisible:                  req.IsVisible,
+		IsRated:                    req.IsRated,
+		ScoreboardVisibility:       visibility,
+		ScoreboardCacheTimeout:     req.ScoreboardCacheTimeout,
+		UseClarifications:          useClarifications,
+		PushAnnouncements:          req.PushAnnouncements,
+		RatingFloor:                req.RatingFloor,
+		RatingCeiling:              req.RatingCeiling,
+		PerformanceCeilingOverride: req.PerformanceCeilingOverride,
+		RateAll:                    req.RateAll,
+		HideProblemAuthors:         req.HideProblemAuthors,
+		ShowShortDisplay:           req.ShowShortDisplay,
+		IsOrganizationPrivate:      req.IsOrganizationPrivate,
+		LimitJoinOrganizations:     req.LimitJoinOrganizations,
+		OgImage:                    req.OgImage,
+		LogoOverrideImage:          req.LogoOverrideImage,
+		ProblemLabelScript:         req.ProblemLabelScript,
+		PointsPrecision:            pointsPrecision,
+		FormatName:                 req.FormatName,
+		AccessCode:                 req.AccessCode,
+		HideProblemTags:            req.HideProblemTags,
+		RunPretestsOnly:            req.RunPretestsOnly,
 	}
 
 	if req.FormatConfig != "" {
@@ -146,36 +195,64 @@ func (s *ContestService) CreateContest(req CreateContestRequest) (*ContestProfil
 		}
 	}
 
-	if err := db.DB.Create(&contest).Error; err != nil {
+	// Insert and relations in one transaction so a rejected relation id
+	// cannot leave an orphan contest row.
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&contest).Error; err != nil {
+			return err
+		}
+		// GORM substitutes the model default for zero-value fields, so the
+		// legal v1 values false/0 must be written explicitly.
+		explicit := map[string]interface{}{}
+		if !useClarifications {
+			explicit["use_clarifications"] = false
+		}
+		if pointsPrecision == 0 {
+			explicit["points_precision"] = 0
+		}
+		if len(explicit) > 0 {
+			if err := tx.Model(&contest).Updates(explicit).Error; err != nil {
+				return err
+			}
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "Authors", fullList(req.AuthorIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "Curators", fullList(req.CuratorIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "Testers", fullList(req.TesterIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.ContestTag](tx, &contest, "Tags", fullList(req.TagIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Organization](tx, &contest, "Organizations", fullList(req.OrganizationIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "BannedUsers", fullList(req.BannedUserIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "PrivateContestants", fullList(req.PrivateContestantIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "ViewContestScoreboard", fullList(req.ViewScoreboardUserIDs), nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Organization](tx, &contest, "JoinOrganizations", fullList(req.JoinOrganizationIDs), nil, nil); err != nil {
+			return err
+		}
+		return relations.Sync[models.Class](tx, &contest, "Classes", fullList(req.ClassIDs), nil, nil)
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// Handle many-to-many relations
-	if len(req.AuthorIDs) > 0 {
-		var authors []models.Profile
-		db.DB.Where("id IN ?", req.AuthorIDs).Find(&authors)
-		db.DB.Model(&contest).Association("Authors").Append(&authors)
-	}
-	if len(req.CuratorIDs) > 0 {
-		var curators []models.Profile
-		db.DB.Where("id IN ?", req.CuratorIDs).Find(&curators)
-		db.DB.Model(&contest).Association("Curators").Append(&curators)
-	}
-	if len(req.TesterIDs) > 0 {
-		var testers []models.Profile
-		db.DB.Where("id IN ?", req.TesterIDs).Find(&testers)
-		db.DB.Model(&contest).Association("Testers").Append(&testers)
-	}
 	if len(req.ProblemIDs) > 0 {
 		// Use problem service to add problems
 		if err := s.problems.AddProblemsToContest(contest.ID, req.ProblemIDs); err != nil {
 			return nil, err
 		}
-	}
-	if len(req.TagIDs) > 0 {
-		var tags []models.ContestTag
-		db.DB.Where("id IN ?", req.TagIDs).Find(&tags)
-		db.DB.Model(&contest).Association("Tags").Append(&tags)
 	}
 
 	profile := contestToProfile(contest)
@@ -219,6 +296,69 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 	}
 	if req.IsOrganizationPrivate != nil {
 		updates["is_organization_private"] = *req.IsOrganizationPrivate
+	}
+	if req.LimitJoinOrganizations != nil {
+		updates["limit_join_organizations"] = *req.LimitJoinOrganizations
+	}
+	if req.ScoreboardVisibility != nil {
+		if !validScoreboardVisibility(*req.ScoreboardVisibility) {
+			return nil, ErrInvalidScoreboardVisibility
+		}
+		updates["scoreboard_visibility"] = *req.ScoreboardVisibility
+	}
+	if req.ScoreboardCacheTimeout != nil {
+		updates["scoreboard_cache_timeout"] = *req.ScoreboardCacheTimeout
+	}
+	if req.UseClarifications != nil {
+		updates["use_clarifications"] = *req.UseClarifications
+	}
+	if req.PushAnnouncements != nil {
+		updates["push_announcements"] = *req.PushAnnouncements
+	}
+	if req.HideProblemAuthors != nil {
+		updates["hide_problem_authors"] = *req.HideProblemAuthors
+	}
+	if req.ShowShortDisplay != nil {
+		updates["show_short_display"] = *req.ShowShortDisplay
+	}
+	if req.RateAll != nil {
+		updates["rate_all"] = *req.RateAll
+	}
+	if req.PointsPrecision != nil {
+		if !validPointsPrecision(*req.PointsPrecision) {
+			return nil, ErrInvalidPointsPrecision
+		}
+		updates["points_precision"] = *req.PointsPrecision
+	}
+	if req.ClearRatingFloor {
+		updates["rating_floor"] = nil
+	} else if req.RatingFloor != nil {
+		updates["rating_floor"] = *req.RatingFloor
+	}
+	if req.ClearRatingCeiling {
+		updates["rating_ceiling"] = nil
+	} else if req.RatingCeiling != nil {
+		updates["rating_ceiling"] = *req.RatingCeiling
+	}
+	if req.ClearPerformanceCeilingOverride {
+		updates["performance_ceiling_override"] = nil
+	} else if req.PerformanceCeilingOverride != nil {
+		updates["performance_ceiling_override"] = *req.PerformanceCeilingOverride
+	}
+	if req.OgImage != nil {
+		if err := checkFieldLength(*req.OgImage, 150, "og_image"); err != nil {
+			return nil, err
+		}
+		updates["og_image"] = *req.OgImage
+	}
+	if req.LogoOverrideImage != nil {
+		if err := checkFieldLength(*req.LogoOverrideImage, 150, "logo_override_image"); err != nil {
+			return nil, err
+		}
+		updates["logo_override_image"] = *req.LogoOverrideImage
+	}
+	if req.ProblemLabelScript != nil {
+		updates["problem_label_script"] = *req.ProblemLabelScript
 	}
 	if req.TimeLimit != nil {
 		if *req.TimeLimit <= 0 {
@@ -300,6 +440,24 @@ func (s *ContestService) UpdateContest(req UpdateContestRequest) (*ContestProfil
 			return err
 		}
 		if err := relations.Sync[models.ContestTag](tx, &contest, "Tags", req.TagIDs, req.AddTagIDs, req.RemoveTagIDs); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Organization](tx, &contest, "Organizations", req.OrganizationIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "BannedUsers", req.BannedUserIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "PrivateContestants", req.PrivateContestantIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Profile](tx, &contest, "ViewContestScoreboard", req.ViewScoreboardUserIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Organization](tx, &contest, "JoinOrganizations", req.JoinOrganizationIDs, nil, nil); err != nil {
+			return err
+		}
+		if err := relations.Sync[models.Class](tx, &contest, "Classes", req.ClassIDs, nil, nil); err != nil {
 			return err
 		}
 		return s.applyProblems(tx, contest.ID, req)
@@ -560,48 +718,60 @@ func contestToProfile(c models.Contest) ContestProfile {
 	orgIDs := getOrgIDs(c.Organizations)
 
 	return ContestProfile{
-		ID:                     c.ID,
-		Key:                    c.Key,
-		Name:                   c.Name,
-		Description:            c.Description,
-		Summary:                c.Summary,
-		StartTime:              c.StartTime,
-		EndTime:                c.EndTime,
-		TimeLimit:              c.TimeLimit,
-		TimeLimitSeconds:       microsToSeconds(c.TimeLimit),
-		IsVisible:              c.IsVisible,
-		IsRated:                c.IsRated,
-		ScoreboardVisibility:   c.ScoreboardVisibility,
-		ScoreboardCacheTimeout: c.ScoreboardCacheTimeout,
-		UseClarifications:      c.UseClarifications,
-		PushAnnouncements:      c.PushAnnouncements,
-		RatingFloor:            c.RatingFloor,
-		RatingCeiling:          c.RatingCeiling,
-		RateAll:                c.RateAll,
-		IsPrivate:              c.IsPrivate,
-		HideProblemTags:        c.HideProblemTags,
-		HideProblemAuthors:     c.HideProblemAuthors,
-		RunPretestsOnly:        c.RunPretestsOnly,
-		ShowShortDisplay:       c.ShowShortDisplay,
-		IsOrganizationPrivate:  c.IsOrganizationPrivate,
-		OgImage:                c.OgImage,
-		LogoOverrideImage:      c.LogoOverrideImage,
-		UserCount:              c.UserCount,
-		VirtualCount:           c.VirtualCount,
-		AccessCode:             c.AccessCode,
-		FormatName:             c.FormatName,
-		FormatConfig:           c.FormatConfig,
-		ProblemLabelScript:     c.ProblemLabelScript,
-		LockedAfter:            c.LockedAfter,
-		PointsPrecision:        c.PointsPrecision,
-		AuthorIDs:              authorIDs,
-		CuratorIDs:             curatorIDs,
-		TesterIDs:              testerIDs,
-		TagIDs:                 tagIDs,
-		OrganizationIDs:        orgIDs,
-		Authors:                relations.UserRefs(c.Authors),
-		Curators:               relations.UserRefs(c.Curators),
-		Testers:                relations.UserRefs(c.Testers),
+		ID:                         c.ID,
+		Key:                        c.Key,
+		Name:                       c.Name,
+		Description:                c.Description,
+		Summary:                    c.Summary,
+		StartTime:                  c.StartTime,
+		EndTime:                    c.EndTime,
+		TimeLimit:                  c.TimeLimit,
+		TimeLimitSeconds:           microsToSeconds(c.TimeLimit),
+		IsVisible:                  c.IsVisible,
+		IsRated:                    c.IsRated,
+		ScoreboardVisibility:       c.ScoreboardVisibility,
+		ScoreboardCacheTimeout:     c.ScoreboardCacheTimeout,
+		UseClarifications:          c.UseClarifications,
+		PushAnnouncements:          c.PushAnnouncements,
+		RatingFloor:                c.RatingFloor,
+		RatingCeiling:              c.RatingCeiling,
+		PerformanceCeilingOverride: c.PerformanceCeilingOverride,
+		RateAll:                    c.RateAll,
+		IsPrivate:                  c.IsPrivate,
+		HideProblemTags:            c.HideProblemTags,
+		HideProblemAuthors:         c.HideProblemAuthors,
+		RunPretestsOnly:            c.RunPretestsOnly,
+		ShowShortDisplay:           c.ShowShortDisplay,
+		IsOrganizationPrivate:      c.IsOrganizationPrivate,
+		LimitJoinOrganizations:     c.LimitJoinOrganizations,
+		OgImage:                    c.OgImage,
+		LogoOverrideImage:          c.LogoOverrideImage,
+		UserCount:                  c.UserCount,
+		VirtualCount:               c.VirtualCount,
+		AccessCode:                 c.AccessCode,
+		FormatName:                 c.FormatName,
+		FormatConfig:               c.FormatConfig,
+		ProblemLabelScript:         c.ProblemLabelScript,
+		LockedAfter:                c.LockedAfter,
+		PointsPrecision:            c.PointsPrecision,
+		AuthorIDs:                  authorIDs,
+		CuratorIDs:                 curatorIDs,
+		TesterIDs:                  testerIDs,
+		TagIDs:                     tagIDs,
+		OrganizationIDs:            orgIDs,
+		BannedUserIDs:              getProfileIDs(c.BannedUsers),
+		PrivateContestantIDs:       getProfileIDs(c.PrivateContestants),
+		ViewScoreboardUserIDs:      getProfileIDs(c.ViewContestScoreboard),
+		JoinOrganizationIDs:        getOrgIDs(c.JoinOrganizations),
+		ClassIDs:                   getClassIDs(c.Classes),
+		Authors:                    relations.UserRefs(c.Authors),
+		Curators:                   relations.UserRefs(c.Curators),
+		Testers:                    relations.UserRefs(c.Testers),
+		BannedUsers:                relations.UserRefs(c.BannedUsers),
+		PrivateContestants:         relations.UserRefs(c.PrivateContestants),
+		ViewScoreboardUsers:        relations.UserRefs(c.ViewContestScoreboard),
+		JoinOrganizations:          orgRefs(c.JoinOrganizations),
+		Classes:                    classRefs(c.Classes),
 	}
 }
 
@@ -627,6 +797,56 @@ func getOrgIDs(orgs []models.Organization) []uint {
 		ids[i] = o.ID
 	}
 	return ids
+}
+
+func getClassIDs(classes []models.Class) []uint {
+	ids := make([]uint, len(classes))
+	for i, c := range classes {
+		ids[i] = c.ID
+	}
+	return ids
+}
+
+func orgRefs(orgs []models.Organization) []NamedRef {
+	refs := make([]NamedRef, len(orgs))
+	for i, o := range orgs {
+		refs[i] = NamedRef{ID: o.ID, Name: o.Name}
+	}
+	return refs
+}
+
+func classRefs(classes []models.Class) []NamedRef {
+	refs := make([]NamedRef, len(classes))
+	for i, c := range classes {
+		refs[i] = NamedRef{ID: c.ID, Name: c.Name}
+	}
+	return refs
+}
+
+func validScoreboardVisibility(v string) bool {
+	return v == "V" || v == "C" || v == "P"
+}
+
+// validPointsPrecision mirrors v1's 0..10 validators on points_precision.
+func validPointsPrecision(v int) bool {
+	return v >= 0 && v <= 10
+}
+
+// checkFieldLength rejects values over the model's varchar limit, which MySQL
+// would otherwise surface as a raw driver error.
+func checkFieldLength(value string, max int, field string) error {
+	if utf8.RuneCountInString(value) > max {
+		return fmt.Errorf("%w: %s must be at most %d characters", ErrFieldTooLong, field, max)
+	}
+	return nil
+}
+
+// fullList maps an empty create-time list to nil so relations.Sync is a no-op.
+func fullList(ids []uint) *[]uint {
+	if len(ids) == 0 {
+		return nil
+	}
+	return &ids
 }
 
 func copyAssociations(tx *gorm.DB, sourceID, targetID uint) {

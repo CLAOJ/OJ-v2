@@ -56,6 +56,7 @@ type Contest struct {
 	PushAnnouncements      bool       `gorm:"column:push_announcements;not null;default:0"`
 	RatingFloor            *int       `gorm:"column:rating_floor"`
 	RatingCeiling          *int       `gorm:"column:rating_ceiling"`
+	PerformanceCeilingOverride *int   `gorm:"column:performance_ceiling_override"`
 	RateAll                bool       `gorm:"column:rate_all;not null;default:0"`
 	IsPrivate              bool       `gorm:"column:is_private;not null;default:0"`
 	HideProblemTags        bool       `gorm:"column:hide_problem_tags;not null;default:0"`
@@ -63,6 +64,7 @@ type Contest struct {
 	RunPretestsOnly        bool       `gorm:"column:run_pretests_only;not null;default:0"`
 	ShowShortDisplay       bool       `gorm:"column:show_short_display;not null;default:0"`
 	IsOrganizationPrivate  bool       `gorm:"column:is_organization_private;not null;default:0"`
+	LimitJoinOrganizations bool       `gorm:"column:limit_join_organizations;not null;default:0"`
 	OgImage                string     `gorm:"column:og_image;size:150;not null;default:''"`
 	LogoOverrideImage      string     `gorm:"column:logo_override_image;size:150;not null;default:''"`
 	UserCount              int        `gorm:"column:user_count;not null;default:0"`
@@ -84,6 +86,9 @@ type Contest struct {
 	Organizations      []Organization   `gorm:"many2many:judge_contest_organizations;joinForeignKey:contest_id;joinReferences:organization_id"`
 	BannedUsers        []Profile        `gorm:"many2many:judge_contest_banned_users;joinForeignKey:contest_id;joinReferences:profile_id"`
 	PrivateContestants []Profile        `gorm:"many2many:judge_contest_private_contestants;joinForeignKey:contest_id;joinReferences:profile_id"`
+	ViewContestScoreboard []Profile     `gorm:"many2many:judge_contest_view_contest_scoreboard;joinForeignKey:contest_id;joinReferences:profile_id"`
+	JoinOrganizations  []Organization   `gorm:"many2many:judge_contest_join_organizations;joinForeignKey:contest_id;joinReferences:organization_id"`
+	Classes            []Class          `gorm:"many2many:judge_contest_classes;joinForeignKey:contest_id;joinReferences:class_id"`
 }
 
 func (Contest) TableName() string { return "judge_contest" }
