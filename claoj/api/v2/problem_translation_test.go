@@ -135,3 +135,27 @@ func TestProblemTranslationAdminRoundTrip(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, doRequest(listRouter, http.MethodGet, "/admin/problem/nope/translations", "").Code)
 	})
 }
+
+func TestProblemTranslationDescriptionIsSanitized(t *testing.T) {
+	root, _, _ := setupSmallGapsDB(t)
+	p := models.Problem{Code: "san", Name: "San"}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&p).Error)
+
+	const base = "/admin/problem/:code/translations"
+	createRouter := translationRouter(root.ID, http.MethodPost, base, ProblemTranslationCreate)
+	updateRouter := translationRouter(root.ID, http.MethodPatch, base+"/:id", ProblemTranslationUpdate)
+
+	w := doRequest(createRouter, http.MethodPost, "/admin/problem/san/translations",
+		`{"language":"vi","name":"Tên","description":"<script>alert(1)</script><p>an toàn</p>"}`)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var got models.ProblemTranslation
+	require.NoError(t, db.DB.Where("problem_id = ? AND language = ?", p.ID, "vi").First(&got).Error)
+	require.Equal(t, "<p>an toàn</p>", got.Description)
+
+	w = doRequest(updateRouter, http.MethodPatch, "/admin/problem/san/translations/"+strconv.Itoa(int(got.ID)),
+		`{"language":"vi","name":"Tên","description":"<script>alert(2)</script>mới"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.DB.First(&got, got.ID).Error)
+	require.Equal(t, "mới", got.Description)
+}

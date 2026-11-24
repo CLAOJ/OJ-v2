@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,7 +145,7 @@ func TestAdminProblemUpdate_V1FieldsAndRelations(t *testing.T) {
 	require.Equal(t, "ICPC", got.Source)
 	require.Equal(t, "https://example.com/og.png", got.OgImage)
 	require.Equal(t, "one line", got.Summary)
-	require.False(t, got.ShortCircuit, "short_circuit is derived, never client input")
+	require.False(t, got.ShortCircuit, "short_circuit is derived from partial server-side; the client's true was ignored")
 	require.True(t, got.IsFullMarkup)
 	require.Equal(t, "A", got.SubmissionSourceVisibilityMode)
 	require.Equal(t, "C", got.TestcaseVisibilityMode)
@@ -207,6 +208,48 @@ func TestAdminProblemCreate_UnknownLicenseIs400(t *testing.T) {
 	w := doRequest(authedRouter(1, http.MethodPost, "/admin/problems", AdminProblemCreate),
 		http.MethodPost, "/admin/problems", body)
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+func TestAdminProblem_UnknownSuggesterIs400(t *testing.T) {
+	group := setupAdminProblemDB(t)
+
+	body := `{"code":"sug1","name":"S","description":"d","points":100,"time_limit":1,
+		"memory_limit":262144,"group_id":` + itoa(group.ID) + `,"suggester_id":424242}`
+	w := doRequest(authedRouter(1, http.MethodPost, "/admin/problems", AdminProblemCreate),
+		http.MethodPost, "/admin/problems", body)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	problem := models.Problem{Code: "sug2", Name: "S", GroupID: group.ID}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&problem).Error)
+	w = doRequest(authedRouter(1, http.MethodPatch, "/admin/problem/:code", AdminProblemUpdate),
+		http.MethodPatch, "/admin/problem/sug2", `{"suggester_id":424242}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	var got models.Problem
+	require.NoError(t, db.DB.First(&got, problem.ID).Error)
+	require.Nil(t, got.SuggesterID)
+}
+
+func TestAdminProblem_SourceAndOgImageLengthIs400(t *testing.T) {
+	group := setupAdminProblemDB(t)
+
+	longSource := strings.Repeat("s", 201)
+	longOgImage := strings.Repeat("o", 151)
+	body := `{"code":"len1","name":"L","description":"d","points":100,"time_limit":1,
+		"memory_limit":262144,"group_id":` + itoa(group.ID) + `,"source":"` + longSource + `"}`
+	w := doRequest(authedRouter(1, http.MethodPost, "/admin/problems", AdminProblemCreate),
+		http.MethodPost, "/admin/problems", body)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	problem := models.Problem{Code: "len2", Name: "L", GroupID: group.ID}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&problem).Error)
+	w = doRequest(authedRouter(1, http.MethodPatch, "/admin/problem/:code", AdminProblemUpdate),
+		http.MethodPatch, "/admin/problem/len2", `{"og_image":"`+longOgImage+`"}`)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	var got models.Problem
+	require.NoError(t, db.DB.First(&got, problem.ID).Error)
+	require.Empty(t, got.OgImage)
 }
 
 func TestAdminProblemUpdate_ClearNullableFields(t *testing.T) {

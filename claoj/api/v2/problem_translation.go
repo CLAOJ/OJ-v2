@@ -7,6 +7,7 @@ import (
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/sanitization"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -74,12 +75,14 @@ func translationProblemID(c *gin.Context) (uint, bool) {
 	return problem.ID, true
 }
 
-func translationLanguageTaken(problemID uint, language string, exceptID uint) bool {
+func translationLanguageTaken(problemID uint, language string, exceptID uint) (bool, error) {
 	var n int64
-	db.DB.Model(&models.ProblemTranslation{}).
+	if err := db.DB.Model(&models.ProblemTranslation{}).
 		Where("problem_id = ? AND language = ? AND id <> ?", problemID, language, exceptID).
-		Count(&n)
-	return n > 0
+		Count(&n).Error; err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 
 // ProblemTranslationList – GET /api/v2/admin/problem/:code/translations
@@ -121,7 +124,12 @@ func ProblemTranslationCreate(c *gin.Context) {
 	}
 	// v1 keeps one translation per (problem, language): the admin inline has no
 	// way to add a second row for the same language.
-	if translationLanguageTaken(problemID, req.Language, 0) {
+	taken, err := translationLanguageTaken(problemID, req.Language, 0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if taken {
 		c.JSON(http.StatusConflict, apiUserError("a translation for this language already exists"))
 		return
 	}
@@ -130,7 +138,7 @@ func ProblemTranslationCreate(c *gin.Context) {
 		ProblemID:   problemID,
 		Language:    req.Language,
 		Name:        req.Name,
-		Description: req.Description,
+		Description: sanitization.SanitizeProblemContent(req.Description),
 	}
 	if err := db.DB.Omit("Problem").Create(&translation).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -170,14 +178,19 @@ func ProblemTranslationUpdate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, apiUserError(msg))
 		return
 	}
-	if translationLanguageTaken(problemID, req.Language, translation.ID) {
+	taken, err := translationLanguageTaken(problemID, req.Language, translation.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if taken {
 		c.JSON(http.StatusConflict, apiUserError("a translation for this language already exists"))
 		return
 	}
 
 	translation.Language = req.Language
 	translation.Name = req.Name
-	translation.Description = req.Description
+	translation.Description = sanitization.SanitizeProblemContent(req.Description)
 	if err := db.DB.Model(&translation).
 		Select("language", "name", "description").
 		Updates(&translation).Error; err != nil {

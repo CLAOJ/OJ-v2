@@ -163,6 +163,7 @@ func AdminProblemCreate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problem.ErrInvalidVisibilityMode) || errors.Is(err, problem.ErrInvalidLicense) ||
+			errors.Is(err, problem.ErrInvalidSuggester) || errors.Is(err, problem.ErrFieldTooLong) ||
 			errors.Is(err, relations.ErrUnknownID) {
 			c.JSON(http.StatusBadRequest, apiError(err.Error()))
 			return

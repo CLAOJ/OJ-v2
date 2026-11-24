@@ -86,6 +86,7 @@ export function PublishingSection({
                     type="text"
                     className={fieldClass}
                     placeholder={t('sourcePlaceholder')}
+                    maxLength={200}
                     {...register('source')}
                     value={values.source}
                 />
@@ -141,9 +142,10 @@ export function PublishingSection({
                 </label>
                 <input
                     id="problem-og-image"
-                    type="url"
+                    type="text"
                     className={fieldClass}
                     placeholder="https://example.com/og-image.png"
+                    maxLength={150}
                     {...register('og_image')}
                     value={values.og_image}
                 />

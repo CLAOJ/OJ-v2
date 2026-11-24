@@ -28,7 +28,7 @@ Goal: the admin API accepts and persists every v1 problem field the model alread
    - **People**: suggester + curators + testers pickers (reuse `EntityPicker`, as AuthorsSection does); keep authors.
    - **Publishing**: date of publishing (datetime-local → ISO/null), license select (admin license API), problem source (text), submission source visibility (select), testcase visibility (select), allow full markdown (checkbox).
    - **Access**: private-to-organizations checkbox + organization multi-picker, banned users picker.
-   - **Scoring/limits**: short circuit checkbox; keep points/partial/time/memory; add a link to the problem's Language Limits (`/admin/language-limits` filtered by problem if supported, else the page).
+   - **Scoring/limits**: no short circuit control — `short_circuit` is derived from `partial` server-side (`!partial`) and the client value is ignored; keep points/partial/time/memory; add a link to the problem's Language Limits (`/admin/language-limits` filtered by problem if supported, else the page).
    - **Social**: og_image URL + summary textarea.
    - Types in `src/types/index.ts` and `src/lib/adminApi.ts` updated to match the extended DTO.
 2. `admin/problems/[code]/edit/page.tsx` (+ create page): map the new problem detail fields into `initialData` (including curators/testers/suggester/orgs/banned from the profile shape).

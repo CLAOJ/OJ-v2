@@ -4,6 +4,7 @@ package problem
 import (
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -276,6 +277,12 @@ func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfil
 	if err != nil {
 		return nil, err
 	}
+	if err := checkFieldLength(req.Source, 200, "source"); err != nil {
+		return nil, err
+	}
+	if err := checkFieldLength(req.OgImage, 150, "og_image"); err != nil {
+		return nil, err
+	}
 
 	problem := models.Problem{
 		Code:                           req.Code,
@@ -306,6 +313,9 @@ func (s *ProblemService) CreateProblem(req CreateProblemRequest) (*ProblemProfil
 	// cannot leave an orphan problem row.
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		if err := checkLicenseExists(tx, req.LicenseID); err != nil {
+			return err
+		}
+		if err := checkSuggesterExists(tx, req.SuggesterID); err != nil {
 			return err
 		}
 		if err := tx.Create(&problem).Error; err != nil {
@@ -392,6 +402,9 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 		updates["group_id"] = *req.GroupID
 	}
 	if req.Source != nil {
+		if err := checkFieldLength(*req.Source, 200, "source"); err != nil {
+			return nil, err
+		}
 		updates["source"] = *req.Source
 	}
 	if req.ClearDate {
@@ -408,6 +421,9 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 		updates["license_id"] = *req.LicenseID
 	}
 	if req.OgImage != nil {
+		if err := checkFieldLength(*req.OgImage, 150, "og_image"); err != nil {
+			return nil, err
+		}
 		updates["og_image"] = *req.OgImage
 	}
 	if req.Summary != nil {
@@ -422,6 +438,9 @@ func (s *ProblemService) UpdateProblem(req UpdateProblemRequest) (*ProblemProfil
 	if req.ClearSuggesterID {
 		updates["suggester_id"] = nil
 	} else if req.SuggesterID != nil {
+		if err := checkSuggesterExists(db.DB, req.SuggesterID); err != nil {
+			return nil, err
+		}
 		updates["suggester_id"] = *req.SuggesterID
 	}
 	if req.SubmissionSourceVisibilityMode != nil || req.TestcaseVisibilityMode != nil {
@@ -690,6 +709,30 @@ func checkLicenseExists(tx *gorm.DB, id *uint) error {
 	}
 	if count == 0 {
 		return ErrInvalidLicense
+	}
+	return nil
+}
+
+// checkSuggesterExists rejects a suggester profile id with no row (nil = no change).
+func checkSuggesterExists(tx *gorm.DB, id *uint) error {
+	if id == nil {
+		return nil
+	}
+	var count int64
+	if err := tx.Model(&models.Profile{}).Where("id = ?", *id).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrInvalidSuggester
+	}
+	return nil
+}
+
+// checkFieldLength rejects values over the model's varchar limit, which MySQL
+// would otherwise surface as a raw driver error.
+func checkFieldLength(value string, max int, field string) error {
+	if utf8.RuneCountInString(value) > max {
+		return fmt.Errorf("%w: %s must be at most %d characters", ErrFieldTooLong, field, max)
 	}
 	return nil
 }
