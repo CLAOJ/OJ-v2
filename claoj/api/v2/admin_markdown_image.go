@@ -3,6 +3,7 @@ package v2
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +17,11 @@ import (
 // v2 data volume next to problem data and are served by MarkdownMediaServe.
 
 const maxMarkdownImageBytes = 2 << 20 // 2 MiB
+
+// Cap on the whole multipart body, so FormFile never buffers a huge upload.
+// The slack covers the multipart envelope of a legal 2 MiB image; anything
+// bigger is rejected before the file-size check runs.
+const maxMarkdownUploadBytes = maxMarkdownImageBytes + (64 << 10)
 
 // Files are named by the server (<16 hex>.<ext>), so the serve route can
 // require exactly that shape — anything else (".", "..", slashes) is a 404.
@@ -41,8 +47,14 @@ var markdownMediaDir = filepath.Join("data", "media")
 // AdminMarkdownImageUpload - POST /api/admin/markdown/image
 // Accepts multipart field "image" and returns the public URL of the saved file.
 func AdminMarkdownImageUpload(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxMarkdownUploadBytes)
 	file, err := c.FormFile("image")
 	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			c.JSON(http.StatusRequestEntityTooLarge, apiUserError("image must be at most 2 MB"))
+			return
+		}
 		c.JSON(http.StatusBadRequest, apiUserError("no image uploaded"))
 		return
 	}

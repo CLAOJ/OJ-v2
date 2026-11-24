@@ -63,18 +63,21 @@ type CreateBlogPostRequest struct {
 
 // UpdateBlogPostRequest holds parameters for updating a blog post.
 type UpdateBlogPostRequest struct {
-	BlogPostID   uint
-	Title        *string
-	Slug         *string
-	Content      *string
-	Summary      *string
-	AuthorIDs    []uint // If provided, replaces all authors
-	PublishOn    *time.Time
-	Visible      *bool
-	Sticky       *bool
-	GlobalPost   *bool
-	OgImage      *string
+	BlogPostID     uint
+	Title          *string
+	Slug           *string
+	Content        *string
+	Summary        *string
+	AuthorIDs      []uint // If provided, replaces all authors
+	PublishOn      *time.Time
+	Visible        *bool
+	Sticky         *bool
+	GlobalPost     *bool
+	OgImage        *string
 	OrganizationID *uint
+	// ClearOrganization sets organization_id to NULL; it wins over a nil
+	// OrganizationID, which means "leave unchanged".
+	ClearOrganization bool
 }
 
 // DeleteBlogPostRequest holds parameters for deleting a blog post.

@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -195,7 +196,25 @@ type AdminBlogPostUpdateRequest struct {
 	Sticky         *bool      `json:"sticky"`
 	GlobalPost     *bool      `json:"global_post"`
 	OgImage        *string    `json:"og_image"`
-	OrganizationID *uint      `json:"organization_id"`
+	// Kept raw so an explicit null (detach from organization) differs from an
+	// omitted key (leave it unchanged). A plain *uint collapses both to nil.
+	OrganizationID json.RawMessage `json:"organization_id"`
+}
+
+// parseOrgID maps the raw organization_id of a PATCH body: absent leaves the
+// post's organization alone, null clears it, a non-zero number sets it.
+// ok is false for anything else (a string, 0, an object).
+func parseOrgID(raw json.RawMessage) (id *uint, clear, ok bool) {
+	if len(raw) == 0 {
+		return nil, false, true
+	}
+	if string(raw) == "null" {
+		return nil, true, true
+	}
+	if err := json.Unmarshal(raw, &id); err != nil || id == nil || *id == 0 {
+		return nil, false, false
+	}
+	return id, false, true
 }
 
 // AdminBlogPostUpdate - PATCH /api/v2/admin/blog-post/:id
@@ -224,19 +243,26 @@ func AdminBlogPostUpdate(c *gin.Context) {
 		return
 	}
 
+	organizationID, clearOrganization, validOrg := parseOrgID(req.OrganizationID)
+	if !validOrg {
+		c.JSON(http.StatusBadRequest, apiError("invalid organization_id"))
+		return
+	}
+
 	post, err := getBlogPostService().UpdateBlogPost(blogpost.UpdateBlogPostRequest{
-		BlogPostID:     uint(id),
-		Title:          req.Title,
-		Slug:           req.Slug,
-		Content:        req.Content,
-		Summary:        req.Summary,
-		AuthorIDs:      req.AuthorIDs,
-		PublishOn:      req.PublishOn,
-		Visible:        req.Visible,
-		Sticky:         req.Sticky,
-		GlobalPost:     req.GlobalPost,
-		OgImage:        req.OgImage,
-		OrganizationID: req.OrganizationID,
+		BlogPostID:        uint(id),
+		Title:             req.Title,
+		Slug:              req.Slug,
+		Content:           req.Content,
+		Summary:           req.Summary,
+		AuthorIDs:         req.AuthorIDs,
+		PublishOn:         req.PublishOn,
+		Visible:           req.Visible,
+		Sticky:            req.Sticky,
+		GlobalPost:        req.GlobalPost,
+		OgImage:           req.OgImage,
+		OrganizationID:    organizationID,
+		ClearOrganization: clearOrganization,
 	})
 	if err != nil {
 		if err == blogpost.ErrBlogPostNotFound {

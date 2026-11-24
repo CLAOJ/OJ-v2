@@ -40,8 +40,8 @@ func (s *BlogPostService) ListBlogPosts(req ListBlogPostsRequest) (*ListBlogPost
 		query = query.Where("visible = ?", *req.Visible)
 	}
 	if req.Search != "" {
-		like := "%" + req.Search + "%"
-		query = query.Where("title LIKE ? OR slug LIKE ?", like, like)
+		pattern := db.ContainsPattern(req.Search)
+		query = query.Where("(title LIKE ? ESCAPE '!' OR slug LIKE ? ESCAPE '!')", pattern, pattern)
 	}
 
 	// Get total count
@@ -150,7 +150,7 @@ func (s *BlogPostService) CreateBlogPost(req CreateBlogPostRequest) (*BlogPost, 
 	}
 
 	// Reload post with relations
-	db.DB.Preload("Authors").Preload("Organization").First(&post, post.ID)
+	db.DB.Preload("Authors.User").Preload("Organization").First(&post, post.ID)
 
 	result := blogPostToModel(post)
 	return &result, nil
@@ -203,7 +203,9 @@ func (s *BlogPostService) UpdateBlogPost(req UpdateBlogPostRequest) (*BlogPost, 
 	if req.OgImage != nil {
 		updates["og_image"] = *req.OgImage
 	}
-	if req.OrganizationID != nil {
+	if req.ClearOrganization {
+		updates["organization_id"] = nil
+	} else if req.OrganizationID != nil {
 		updates["organization_id"] = *req.OrganizationID
 	}
 
@@ -225,7 +227,7 @@ func (s *BlogPostService) UpdateBlogPost(req UpdateBlogPostRequest) (*BlogPost, 
 	}
 
 	// Reload post with relations
-	db.DB.Preload("Authors").Preload("Organization").First(&post, post.ID)
+	db.DB.Preload("Authors.User").Preload("Organization").First(&post, post.ID)
 
 	result := blogPostToModel(post)
 	return &result, nil

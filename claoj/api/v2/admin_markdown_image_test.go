@@ -90,6 +90,13 @@ func TestAdminMarkdownImageUpload_RejectsBadInput(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 	})
 
+	t.Run("body over the multipart cap", func(t *testing.T) {
+		huge := make([]byte, maxMarkdownUploadBytes)
+		copy(huge, []byte("\x89PNG\r\n\x1a\n"))
+		w := uploadImage(t, "huge.png", huge)
+		require.Equal(t, http.StatusRequestEntityTooLarge, w.Code, w.Body.String())
+	})
+
 	t.Run("missing field", func(t *testing.T) {
 		body, contentType := multipartUpload(t, "other", "x.png", []byte("\x89PNG\r\n\x1a\n"))
 		req := httptest.NewRequest(http.MethodPost, "/admin/markdown/image", body)

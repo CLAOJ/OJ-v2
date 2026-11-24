@@ -2,6 +2,7 @@ package v2
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -29,6 +30,9 @@ func setupAdminBlogPostDB(t *testing.T) {
 	sqlDB.SetMaxOpenConns(1)
 	require.NoError(t, database.AutoMigrate(
 		&models.AuthUser{}, &models.Profile{}, &models.Organization{}, &models.BlogPost{},
+		// resolveFromDB joins these, so a superuser check needs them to exist.
+		&models.AuthGroup{}, &models.DjangoContentType{}, &models.AuthPermission{},
+		&models.AuthUserGroup{}, &models.AuthGroupPermission{}, &models.AuthUserPermission{},
 	))
 	db.DB = database
 }
@@ -141,4 +145,44 @@ func TestAdminBlogPostList_FiltersAndTotal(t *testing.T) {
 		body := listBlogPosts(t, "?visible=maybe")
 		require.Equal(t, int64(3), body.Total)
 	})
+
+	t.Run("search treats LIKE wildcards literally", func(t *testing.T) {
+		seedBlogPost(t, "Under score", "under_b", true, now.Add(-3*time.Hour), nil, nil)
+		seedBlogPost(t, "Under ex", "underxb", true, now.Add(-4*time.Hour), nil, nil)
+
+		body := listBlogPosts(t, "?search=under_b")
+		require.Equal(t, int64(1), body.Total, "'_' must not act as a wildcard")
+
+		body = listBlogPosts(t, "?search=under")
+		require.Equal(t, int64(2), body.Total)
+	})
+}
+
+// A PATCH may detach a post from its organization with an explicit null; an
+// omitted organization_id must leave the current one alone.
+func TestAdminBlogPostUpdate_OrganizationClear(t *testing.T) {
+	setupAdminBlogPostDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+	org := models.Organization{Name: "Acme", Slug: "acme", ShortName: "AC", CreationDate: time.Now()}
+	require.NoError(t, db.DB.Create(&org).Error)
+	post := seedBlogPost(t, "Hello", "hello", true, time.Now(), nil, &org)
+
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/blog-post/:id", AdminBlogPostUpdate)
+	patch := func(body string) {
+		t.Helper()
+		w := doRequest(router, http.MethodPatch, fmt.Sprintf("/admin/blog-post/%d", post.ID), body)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	}
+	storedOrgID := func() *uint {
+		t.Helper()
+		var got models.BlogPost
+		require.NoError(t, db.DB.First(&got, post.ID).Error)
+		return got.OrganizationID
+	}
+
+	patch(`{"title":"Hello again"}`)
+	require.NotNil(t, storedOrgID(), "omitting organization_id must not detach the post")
+
+	patch(`{"organization_id":null}`)
+	require.Nil(t, storedOrgID(), "an explicit null must clear organization_id")
 }

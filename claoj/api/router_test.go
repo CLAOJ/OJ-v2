@@ -82,4 +82,11 @@ func TestAdminRoutes_PermissionGates(t *testing.T) {
 		require.NoError(t, db.DB.Model(m).Count(&n).Error)
 		require.Equal(t, int64(1), n, "a forbidden delete must leave the row")
 	}
+
+	// The markdown image upload is admin-only: an anonymous caller is stopped by
+	// AdminRequiredMiddleware before the handler reads the body.
+	anon := httptest.NewRequest(http.MethodPost, "/api/admin/markdown/image", nil)
+	anonW := httptest.NewRecorder()
+	router.ServeHTTP(anonW, anon)
+	require.Equal(t, http.StatusUnauthorized, anonW.Code, anonW.Body.String())
 }
