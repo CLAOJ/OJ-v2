@@ -305,6 +305,12 @@ export interface AdminContestTagUpdateRequest {
     description?: string;
 }
 
+export interface AdminUserGroupRef {
+    id: number;
+    name: string;
+}
+
+/** Row shape of GET /admin/users. */
 export interface AdminUser {
     id: number;
     username: string;
@@ -321,8 +327,59 @@ export interface AdminUser {
     is_muted: boolean;
     date_joined: string;
     last_access: string;
+    last_login: string | null;
     display_rank: string;
     ban_reason: string | null;
+    groups: AdminUserGroupRef[];
+}
+
+export interface AdminUserPermissionRef {
+    id: number;
+    /** "app_label.codename", e.g. "judge.change_profile". */
+    codename: string;
+}
+
+/** Detail shape of GET /admin/user/:id (no secrets). */
+export interface AdminUserDetail {
+    id: number;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    display_name: string;
+    about: string;
+    timezone: string;
+    language_id: number | null;
+    ace_theme: string;
+    site_theme: string;
+    notes: string;
+    user_script: string;
+    username_display_override: string;
+    points: number;
+    performance_points: number;
+    contribution_points: number;
+    rating: number | null;
+    problem_count: number;
+    display_rank: string;
+    is_staff: boolean;
+    is_super_user: boolean;
+    is_superuser: boolean;
+    is_active: boolean;
+    is_unlisted: boolean;
+    mute: boolean;
+    is_muted: boolean;
+    ban_reason: string | null;
+    is_totp_enabled: boolean;
+    is_webauthn_enabled: boolean;
+    webauthn_credential_count: number;
+    groups: AdminUserGroupRef[];
+    group_ids: number[];
+    permissions: AdminUserPermissionRef[];
+    permission_ids: number[];
+    organizations: { id: number; name?: string }[];
+    last_access: string;
+    last_login: string | null;
+    date_joined: string;
 }
 
 export interface AdminContest {
@@ -674,12 +731,23 @@ export interface AdminSubmission {
 }
 
 export interface AdminUserUpdateRequest {
+    username?: string;
     email?: string;
-    display_name?: string;
-    about?: string;
+    first_name?: string;
+    last_name?: string;
     is_active?: boolean;
+    is_staff?: boolean;
+    is_superuser?: boolean;
+    username_display_override?: string;
+    about?: string;
+    notes?: string;
+    user_script?: string;
+    timezone?: string;
+    language_id?: number;
+    ace_theme?: string;
+    site_theme?: string;
+    mute?: boolean;
     is_unlisted?: boolean;
-    is_muted?: boolean;
     display_rank?: string;
     ban_reason?: string;
     remove_organization_ids?: number[];

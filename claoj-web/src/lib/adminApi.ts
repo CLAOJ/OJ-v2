@@ -1,7 +1,7 @@
 import api from './api';
-import type { ContestSort, ProblemSort, SortOrder } from './listSort';
+import type { ContestSort, ProblemSort, SortOrder, UserSort } from './listSort';
 import type {
-    AdminUser,
+    AdminUserDetail,
     AdminUserUpdateRequest,
     AdminContest,
     AdminContestCreateRequest,
@@ -155,14 +155,37 @@ export const adminProblemDataApi = {
 
 
 export const adminUserApi = {
-    list: (page: number = 1, pageSize: number = 50, search?: string) =>
-        api.get<AdminUserListResponse>(`/admin/users?${qs({ page, page_size: pageSize, search })}`),
+    list: (page: number = 1, pageSize: number = 50, filters: {
+        search?: string;
+        staff?: 'true' | 'false';
+        superuser?: 'true' | 'false';
+        active?: 'true' | 'false';
+        group_id?: number;
+        sort?: UserSort;
+        order?: SortOrder;
+    } = {}) =>
+        api.get<AdminUserListResponse>(`/admin/users?${qs({ page, page_size: pageSize, ...filters })}`),
 
     detail: (id: number) =>
-        api.get<AdminUser>(`/admin/user/${id}`),
+        api.get<AdminUserDetail>(`/admin/user/${id}`),
 
     update: (id: number, data: AdminUserUpdateRequest) =>
         api.patch(`/admin/user/${id}`, data),
+
+    replaceGroups: (id: number, groupIds: number[]) =>
+        api.put<{ success: boolean; group_ids: number[] }>(`/admin/user/${id}/groups`, { group_ids: groupIds }),
+
+    replacePermissions: (id: number, permissionIds: number[]) =>
+        api.put<{ success: boolean; permission_ids: number[] }>(`/admin/user/${id}/permissions`, { permission_ids: permissionIds }),
+
+    /** Disable-only: enabling 2FA must go through the user's own setup flow. */
+    setSecurity: (id: number, flags: { totp_enabled?: false; webauthn_enabled?: false }) =>
+        api.post<{
+            success: boolean;
+            is_totp_enabled: boolean;
+            is_webauthn_enabled: boolean;
+            webauthn_credential_count: number;
+        }>(`/admin/user/${id}/security`, flags),
 
     delete: (id: number) =>
         api.delete(`/admin/user/${id}`),

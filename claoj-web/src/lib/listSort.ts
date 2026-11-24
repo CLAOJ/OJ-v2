@@ -5,6 +5,9 @@ export type ProblemSort = 'code' | 'name' | 'points' | 'date' | 'ac_rate' | 'use
 /** Sort keys the admin contest list accepts (see service/contest/contest_service.go). */
 export type ContestSort = 'name' | 'start_time' | 'end_time' | 'user_count';
 
+/** Sort keys the admin user list accepts (see service/user/user_service.go). */
+export type UserSort = 'username' | 'date_joined' | 'last_login' | 'points';
+
 export interface SortState<T extends string = string> {
     sort: T;
     order: SortOrder;

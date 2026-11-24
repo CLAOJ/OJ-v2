@@ -5,7 +5,7 @@ import type { EntityOption } from '@/components/admin/EntityPicker';
 const LIMIT = 20;
 
 export async function searchUsers(term: string): Promise<EntityOption[]> {
-    const res = await adminUserApi.list(1, LIMIT, term);
+    const res = await adminUserApi.list(1, LIMIT, { search: term });
     return res.data.data.map(u => ({ id: u.id, label: u.username }));
 }
 
