@@ -135,6 +135,7 @@ func TicketCreate(c *gin.Context) {
 		contentTypeID, objectID = ctID, problem.ID
 	}
 
+	var ticketID uint
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 
@@ -151,6 +152,7 @@ func TicketCreate(c *gin.Context) {
 		if err := tx.Create(&ticket).Error; err != nil {
 			return err
 		}
+		ticketID = ticket.ID
 
 		message := models.TicketMessage{
 			TicketID: ticket.ID,
@@ -171,7 +173,8 @@ func TicketCreate(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "ticket created successfully"})
+	// The web form redirects straight to the created ticket, so return its id.
+	c.JSON(http.StatusCreated, gin.H{"message": "ticket created successfully", "id": ticketID})
 }
 
 // TicketDetail - GET /api/v2/ticket/:id

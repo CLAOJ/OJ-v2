@@ -360,8 +360,16 @@ func TestTicketCreateWithProblemCodeLinksProblem(t *testing.T) {
 	w := doRequest(router, http.MethodPost, "/tickets", `{"title":"Bug report","body":"The sample is wrong.","problem_code":"p1"}`)
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 
+	var created struct {
+		Message string `json:"message"`
+		ID      uint   `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	require.NotZero(t, created.ID, "the web form needs the new id to redirect to /ticket/<id>")
+
 	var tk models.Ticket
 	require.NoError(t, db.DB.Order("id DESC").First(&tk).Error)
+	require.Equal(t, tk.ID, created.ID)
 	require.Equal(t, f.problemCT.ID, tk.ContentTypeID)
 	require.Equal(t, p.ID, tk.ObjectID)
 	require.Equal(t, f.plainProfile.ID, tk.UserID)
