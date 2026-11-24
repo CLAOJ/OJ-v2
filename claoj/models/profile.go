@@ -111,16 +111,17 @@ func (WebAuthnCredential) TableName() string { return "judge_webauthncredential"
 
 // AuthUser mirrors Django's auth_user table (read-only from Go).
 type AuthUser struct {
-	ID          uint      `gorm:"primaryKey;column:id"`
-	Username    string    `gorm:"column:username;size:150;not null;uniqueIndex"`
-	Password    string    `gorm:"column:password;size:128;not null"`
-	FirstName   string    `gorm:"column:first_name;size:150;not null"`
-	LastName    string    `gorm:"column:last_name;size:150;not null"`
-	Email       string    `gorm:"column:email;size:254;not null"`
-	IsStaff     bool      `gorm:"column:is_staff;not null;default:0"`
-	IsActive    bool      `gorm:"column:is_active;not null;default:1"`
-	IsSuperuser bool      `gorm:"column:is_superuser;not null;default:0"`
-	DateJoined  time.Time `gorm:"column:date_joined;not null"`
+	ID          uint       `gorm:"primaryKey;column:id"`
+	Username    string     `gorm:"column:username;size:150;not null;uniqueIndex"`
+	Password    string     `gorm:"column:password;size:128;not null"`
+	FirstName   string     `gorm:"column:first_name;size:150;not null"`
+	LastName    string     `gorm:"column:last_name;size:150;not null"`
+	Email       string     `gorm:"column:email;size:254;not null"`
+	IsStaff     bool       `gorm:"column:is_staff;not null;default:0"`
+	IsActive    bool       `gorm:"column:is_active;not null;default:1"`
+	IsSuperuser bool       `gorm:"column:is_superuser;not null;default:0"`
+	DateJoined  time.Time  `gorm:"column:date_joined;not null"`
+	LastLogin   *time.Time `gorm:"column:last_login"`
 
 	Groups []AuthGroup `gorm:"many2many:auth_user_groups;joinForeignKey:user_id;joinReferences:group_id"`
 }

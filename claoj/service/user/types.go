@@ -8,10 +8,19 @@ import (
 // UserProfile represents a user profile with associated user data.
 type UserProfile struct {
 	ID                 uint
+	UserID             uint
 	Username           string
+	FirstName          string
+	LastName           string
 	Email              string
 	DisplayName        string
 	About              string
+	Notes              string
+	UserScript         string
+	Timezone           string
+	LanguageID         uint
+	AceTheme           string
+	SiteTheme          string
 	Points             float64
 	PerformancePoints  float64
 	ContributionPoints int
@@ -25,10 +34,18 @@ type UserProfile struct {
 	IsTotpEnabled      bool
 	IsWebauthnEnabled  bool
 	DateJoined         time.Time
+	LastLogin          *time.Time
 	LastAccess         time.Time
 	DisplayRank        string
 	BanReason          *string
 	OrganizationIDs    []uint
+	Groups             []GroupRef
+}
+
+// GroupRef is the id/name pair the admin API shows for a Django group.
+type GroupRef struct {
+	ID   uint
+	Name string
 }
 
 // BanUserRequest holds the parameters for banning a user.
@@ -46,9 +63,18 @@ type UnbanUserRequest struct {
 // UpdateUserRequest holds the parameters for updating a user.
 type UpdateUserRequest struct {
 	UserID                  uint
+	Username                *string
+	FirstName               *string
+	LastName                *string
 	Email                   *string
 	DisplayName             *string
 	About                   *string
+	Notes                   *string
+	UserScript              *string
+	Timezone                *string
+	LanguageID              *uint
+	AceTheme                *string
+	SiteTheme               *string
 	IsActive                *bool
 	IsUnlisted              *bool
 	IsMuted                 *bool
@@ -77,6 +103,16 @@ type ListUsersRequest struct {
 	// Search, when non-empty, filters results to users whose username or
 	// email contains the given term (case-insensitive substring match).
 	Search string
+	// Staff/Superuser/Active filter on the matching auth_user flag when set.
+	Staff     *bool
+	Superuser *bool
+	Active    *bool
+	// GroupID, when non-zero, restricts results to members of that group.
+	GroupID uint
+	// Sort is one of username|date_joined|last_login|points; anything else
+	// falls back to date_joined. Order is asc|desc (default desc).
+	Sort  string
+	Order string
 }
 
 // ListUsersResponse holds the response for listing users.

@@ -2,6 +2,7 @@
 package user
 
 import (
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/db"
@@ -85,6 +86,24 @@ func (s *UserService) UpdateUser(req UpdateUserRequest) error {
 	if req.About != nil {
 		profileUpdates["about"] = *req.About
 	}
+	if req.Notes != nil {
+		profileUpdates["notes"] = *req.Notes
+	}
+	if req.UserScript != nil {
+		profileUpdates["user_script"] = *req.UserScript
+	}
+	if req.Timezone != nil {
+		profileUpdates["timezone"] = *req.Timezone
+	}
+	if req.LanguageID != nil {
+		profileUpdates["language_id"] = *req.LanguageID
+	}
+	if req.AceTheme != nil {
+		profileUpdates["ace_theme"] = *req.AceTheme
+	}
+	if req.SiteTheme != nil {
+		profileUpdates["site_theme"] = *req.SiteTheme
+	}
 	if req.IsUnlisted != nil {
 		profileUpdates["is_unlisted"] = *req.IsUnlisted
 	}
@@ -98,19 +117,48 @@ func (s *UserService) UpdateUser(req UpdateUserRequest) error {
 		profileUpdates["ban_reason"] = *req.BanReason
 	}
 
+	// Validate the auth_user updates (username/email uniqueness) before
+	// writing anything, so a rejected update cannot leave the profile half
+	// changed.
+	userUpdates := make(map[string]interface{})
+	if req.Username != nil && *req.Username != profile.User.Username {
+		var count int64
+		if err := db.DB.Model(&models.AuthUser{}).
+			Where("username = ? AND id <> ?", *req.Username, profile.UserID).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return ErrUsernameTaken
+		}
+		userUpdates["username"] = *req.Username
+	}
+	if req.Email != nil && *req.Email != profile.User.Email {
+		var count int64
+		if err := db.DB.Model(&models.AuthUser{}).
+			Where("email = ? AND id <> ?", *req.Email, profile.UserID).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return ErrEmailTaken
+		}
+		userUpdates["email"] = *req.Email
+	}
+	if req.FirstName != nil {
+		userUpdates["first_name"] = *req.FirstName
+	}
+	if req.LastName != nil {
+		userUpdates["last_name"] = *req.LastName
+	}
+	if req.IsActive != nil {
+		userUpdates["is_active"] = *req.IsActive
+	}
+
 	if len(profileUpdates) > 0 {
 		if err := db.DB.Model(&profile).Updates(profileUpdates).Error; err != nil {
 			return err
 		}
-	}
-
-	// Update user fields
-	userUpdates := make(map[string]interface{})
-	if req.IsActive != nil {
-		userUpdates["is_active"] = *req.IsActive
-	}
-	if req.Email != nil {
-		userUpdates["email"] = *req.Email
 	}
 
 	if len(userUpdates) > 0 {
@@ -219,10 +267,19 @@ func (s *UserService) GetUser(req GetUserRequest) (*UserProfile, error) {
 
 	return &UserProfile{
 		ID:                 profile.ID,
+		UserID:             profile.UserID,
 		Username:           profile.User.Username,
+		FirstName:          profile.User.FirstName,
+		LastName:           profile.User.LastName,
 		Email:              profile.User.Email,
 		DisplayName:        profile.UsernameDisplayOverride,
 		About:              getStringPtr(profile.About),
+		Notes:              getStringPtr(profile.Notes),
+		UserScript:         profile.UserScript,
+		Timezone:           profile.Timezone,
+		LanguageID:         profile.LanguageID,
+		AceTheme:           profile.AceTheme,
+		SiteTheme:          profile.SiteTheme,
 		Points:             profile.Points,
 		PerformancePoints:  profile.PerformancePoints,
 		ContributionPoints: profile.ContributionPoints,
@@ -236,6 +293,7 @@ func (s *UserService) GetUser(req GetUserRequest) (*UserProfile, error) {
 		IsTotpEnabled:      profile.IsTotpEnabled,
 		IsWebauthnEnabled:  profile.IsWebauthnEnabled,
 		DateJoined:         profile.User.DateJoined,
+		LastLogin:          profile.User.LastLogin,
 		LastAccess:         profile.LastAccess,
 		DisplayRank:        profile.DisplayRank,
 		BanReason:          profile.BanReason,
@@ -257,22 +315,54 @@ func (s *UserService) ListUsers(req ListUsersRequest) (*ListUsersResponse, error
 
 	var profiles []struct {
 		models.Profile
-		Username    string    `gorm:"column:username"`
-		Email       string    `gorm:"column:email"`
-		IsActive    bool      `gorm:"column:is_active"`
-		IsStaff     bool      `gorm:"column:is_staff"`
-		IsSuperuser bool      `gorm:"column:is_superuser"`
-		DateJoined  time.Time `gorm:"column:date_joined"`
+		Username    string     `gorm:"column:username"`
+		FirstName   string     `gorm:"column:first_name"`
+		LastName    string     `gorm:"column:last_name"`
+		Email       string     `gorm:"column:email"`
+		IsActive    bool       `gorm:"column:is_active"`
+		IsStaff     bool       `gorm:"column:is_staff"`
+		IsSuperuser bool       `gorm:"column:is_superuser"`
+		DateJoined  time.Time  `gorm:"column:date_joined"`
+		LastLogin   *time.Time `gorm:"column:last_login"`
+	}
+
+	// Sort columns are whitelisted here (never interpolated from input).
+	// "points" and the rest of the judge_profile columns are already
+	// qualified by the judge_profile.* select below.
+	sortColumn, ok := map[string]string{
+		"username":    "auth_user.username",
+		"date_joined": "auth_user.date_joined",
+		"last_login":  "auth_user.last_login",
+		"points":      "judge_profile.points",
+	}[req.Sort]
+	if !ok {
+		sortColumn = "auth_user.date_joined"
+	}
+	direction := "DESC"
+	if strings.EqualFold(req.Order, "asc") {
+		direction = "ASC"
 	}
 
 	query := db.DB.Table("judge_profile").
 		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
-		Select("judge_profile.*, auth_user.username, auth_user.email, auth_user.is_active, auth_user.is_staff, auth_user.is_superuser, auth_user.date_joined").
-		Order("auth_user.date_joined DESC")
+		Select("judge_profile.*, auth_user.username, auth_user.first_name, auth_user.last_name, auth_user.email, auth_user.is_active, auth_user.is_staff, auth_user.is_superuser, auth_user.date_joined, auth_user.last_login").
+		Order(sortColumn + " " + direction)
 
 	if req.Search != "" {
 		searchPattern := "%" + req.Search + "%"
 		query = query.Where("auth_user.username LIKE ? OR auth_user.email LIKE ?", searchPattern, searchPattern)
+	}
+	if req.Staff != nil {
+		query = query.Where("auth_user.is_staff = ?", *req.Staff)
+	}
+	if req.Superuser != nil {
+		query = query.Where("auth_user.is_superuser = ?", *req.Superuser)
+	}
+	if req.Active != nil {
+		query = query.Where("auth_user.is_active = ?", *req.Active)
+	}
+	if req.GroupID != 0 {
+		query = query.Where("EXISTS (SELECT 1 FROM auth_user_groups WHERE auth_user_groups.user_id = judge_profile.user_id AND auth_user_groups.group_id = ?)", req.GroupID)
 	}
 
 	// Get total count
@@ -290,11 +380,17 @@ func (s *UserService) ListUsers(req ListUsersRequest) (*ListUsersResponse, error
 	}
 
 	users := make([]UserProfile, len(profiles))
+	profileIDs := make([]uint, len(profiles))
 	for i, p := range profiles {
+		profileIDs[i] = p.ID
 		users[i] = UserProfile{
 			ID:                p.ID,
+			UserID:            p.UserID,
 			Username:          p.Username,
+			FirstName:         p.FirstName,
+			LastName:          p.LastName,
 			Email:             p.Email,
+			DisplayName:       p.UsernameDisplayOverride,
 			Points:            p.Points,
 			PerformancePoints: p.PerformancePoints,
 			ProblemCount:      p.ProblemCount,
@@ -305,9 +401,39 @@ func (s *UserService) ListUsers(req ListUsersRequest) (*ListUsersResponse, error
 			IsUnlisted:        p.IsUnlisted,
 			IsMuted:           p.Mute,
 			DateJoined:        p.DateJoined,
+			LastLogin:         p.LastLogin,
 			LastAccess:        p.LastAccess,
 			DisplayRank:       p.DisplayRank,
 			BanReason:         p.BanReason,
+			Groups:            []GroupRef{},
+		}
+	}
+
+	// Attach group names for the whole page in one query (no N+1).
+	if len(profileIDs) > 0 {
+		var rows []struct {
+			ProfileID uint
+			ID        uint
+			Name      string
+		}
+		err := db.DB.Table("auth_user_groups").
+			Select("judge_profile.id AS profile_id, auth_group.id AS id, auth_group.name AS name").
+			Joins("JOIN auth_group ON auth_group.id = auth_user_groups.group_id").
+			Joins("JOIN judge_profile ON judge_profile.user_id = auth_user_groups.user_id").
+			Where("judge_profile.id IN ?", profileIDs).
+			Order("auth_group.name ASC").
+			Scan(&rows).Error
+		if err != nil {
+			return nil, err
+		}
+		byProfile := make(map[uint][]GroupRef, len(users))
+		for _, r := range rows {
+			byProfile[r.ProfileID] = append(byProfile[r.ProfileID], GroupRef{ID: r.ID, Name: r.Name})
+		}
+		for i := range users {
+			if gs, ok := byProfile[users[i].ID]; ok {
+				users[i].Groups = gs
+			}
 		}
 	}
 

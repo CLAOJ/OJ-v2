@@ -113,6 +113,9 @@ func NewRouter() *gin.Engine {
 			admin.GET("/admin/permissions", v2.AdminPermissionList)
 			admin.POST("/admin/user/:id/groups", v2.AdminUserAddGroup)
 			admin.DELETE("/admin/user/:id/groups/:groupId", v2.AdminUserRemoveGroup)
+			admin.PUT("/admin/user/:id/groups", v2.AdminUserReplaceGroups)
+			admin.PUT("/admin/user/:id/permissions", v2.AdminUserReplacePermissions)
+			admin.POST("/admin/user/:id/security", v2.AdminUserSecurity)
 
 			// Contests
 			admin.GET("/admin/contests", v2.AdminContestList)

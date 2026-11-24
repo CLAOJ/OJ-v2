@@ -29,6 +29,8 @@ func (s *UserServiceTestSuite) SetupTest() {
 		&models.AuthUser{},
 		&models.Profile{},
 		&models.Organization{},
+		&models.AuthGroup{},
+		&models.AuthUserGroup{},
 	)
 	s.Require().NoError(err)
 
@@ -197,10 +199,10 @@ func (s *UserServiceTestSuite) TestUpdateUser() {
 	isActive := false
 
 	req := UpdateUserRequest{
-		UserID:                testProfile.ID,
-		DisplayName:           &newDisplayName,
-		IsActive:              &isActive,
-		AddOrganizationIDs:    []uint{org.ID},
+		UserID:             testProfile.ID,
+		DisplayName:        &newDisplayName,
+		IsActive:           &isActive,
+		AddOrganizationIDs: []uint{org.ID},
 	}
 
 	err := s.service.UpdateUser(req)
@@ -306,4 +308,86 @@ func (s *UserServiceTestSuite) TestListUsers_Search() {
 	s.Equal(int64(1), resp.Total)
 	s.Require().Len(resp.Users, 1)
 	s.Equal("bob_builder", resp.Users[0].Username)
+}
+
+func (s *UserServiceTestSuite) TestUpdateUser_UsernameUniquenessIsAtomic() {
+	_, _ = s.createTestUser("alice", true)
+	_, bobProfile := s.createTestUser("bob", true)
+
+	taken := "alice"
+	tz := "Europe/Paris"
+	err := s.service.UpdateUser(UpdateUserRequest{UserID: bobProfile.ID, Username: &taken, Timezone: &tz})
+	s.ErrorIs(err, ErrUsernameTaken)
+
+	var unchanged models.Profile
+	s.Require().NoError(s.database.First(&unchanged, bobProfile.ID).Error)
+	s.Equal("UTC", unchanged.Timezone, "a rejected rename must not apply the rest of the patch")
+
+	free := "bobby"
+	first := "Bob"
+	s.Require().NoError(s.service.UpdateUser(UpdateUserRequest{
+		UserID: bobProfile.ID, Username: &free, FirstName: &first, Timezone: &tz,
+	}))
+	var u models.AuthUser
+	s.Require().NoError(s.database.First(&u, bobProfile.UserID).Error)
+	s.Equal("bobby", u.Username)
+	s.Equal("Bob", u.FirstName)
+	s.Require().NoError(s.database.First(&unchanged, bobProfile.ID).Error)
+	s.Equal("Europe/Paris", unchanged.Timezone)
+}
+
+func (s *UserServiceTestSuite) TestListUsers_FiltersSortAndGroups() {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	zed, zedProfile := s.createTestUser("zed", true)
+	amy, amyProfile := s.createTestUser("amy", true)
+	old, _ := s.createTestUser("old", true)
+
+	setUser := func(id uint, values map[string]interface{}) {
+		s.Require().NoError(s.database.Model(&models.AuthUser{}).Where("id = ?", id).Updates(values).Error)
+	}
+	setProfile := func(id uint, values map[string]interface{}) {
+		s.Require().NoError(s.database.Model(&models.Profile{}).Where("id = ?", id).Updates(values).Error)
+	}
+	setUser(zed.ID, map[string]interface{}{"date_joined": base})
+	setUser(amy.ID, map[string]interface{}{"date_joined": base.Add(time.Hour), "is_staff": true})
+	setUser(old.ID, map[string]interface{}{"date_joined": base.Add(-time.Hour), "is_active": false})
+	setProfile(amyProfile.ID, map[string]interface{}{"points": 50})
+	setProfile(zedProfile.ID, map[string]interface{}{"points": 10})
+
+	vip := models.AuthGroup{Name: "vip"}
+	s.Require().NoError(s.database.Create(&vip).Error)
+	s.Require().NoError(s.database.Create(&models.AuthUserGroup{UserID: amy.ID, GroupID: vip.ID}).Error)
+
+	yes := true
+	resp, err := s.service.ListUsers(ListUsersRequest{Page: 1, PageSize: 10, Staff: &yes})
+	s.Require().NoError(err)
+	s.Equal(int64(1), resp.Total)
+	s.Require().Len(resp.Users, 1)
+	s.Equal("amy", resp.Users[0].Username)
+	s.Equal([]GroupRef{{ID: vip.ID, Name: "vip"}}, resp.Users[0].Groups)
+
+	no := false
+	resp, err = s.service.ListUsers(ListUsersRequest{Page: 1, PageSize: 10, Active: &no})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Users, 1)
+	s.Equal("old", resp.Users[0].Username)
+
+	resp, err = s.service.ListUsers(ListUsersRequest{Page: 1, PageSize: 10, GroupID: vip.ID})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Users, 1)
+	s.Equal("amy", resp.Users[0].Username)
+
+	resp, err = s.service.ListUsers(ListUsersRequest{Page: 1, PageSize: 10, Sort: "username", Order: "asc"})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Users, 3)
+	s.Equal([]string{"amy", "old", "zed"}, []string{resp.Users[0].Username, resp.Users[1].Username, resp.Users[2].Username})
+
+	resp, err = s.service.ListUsers(ListUsersRequest{Page: 1, PageSize: 10, Sort: "points", Order: "desc"})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Users, 3)
+	s.Equal("amy", resp.Users[0].Username)
+	s.Equal("zed", resp.Users[1].Username)
+	for _, u := range resp.Users {
+		s.NotNil(u.Groups, "every row carries a groups array")
+	}
 }
