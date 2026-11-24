@@ -445,7 +445,12 @@ func AdminOrganizationCreate(c *gin.Context) {
 		c.JSON(http.StatusForbidden, apiUserError("setting administrators, open status or slots requires the judge.organization_admin permission"))
 		return
 	}
-	if missing := missingProfileIDs(input.Admins); len(missing) > 0 {
+	missing, err := missingProfileIDs(input.Admins)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if len(missing) > 0 {
 		c.JSON(http.StatusBadRequest, apiUserError(fmt.Sprintf("unknown profile IDs: %v", missing)))
 		return
 	}
@@ -515,7 +520,12 @@ func AdminOrganizationUpdate(c *gin.Context) {
 		return
 	}
 	if input.Admins != nil {
-		if missing := missingProfileIDs(*input.Admins); len(missing) > 0 {
+		missing, err := missingProfileIDs(*input.Admins)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		if len(missing) > 0 {
 			c.JSON(http.StatusBadRequest, apiUserError(fmt.Sprintf("unknown profile IDs: %v", missing)))
 			return
 		}
@@ -575,12 +585,14 @@ func AdminOrganizationRecalculate(c *gin.Context) {
 }
 
 // missingProfileIDs lists the requested profile ids that have no row.
-func missingProfileIDs(ids []uint) []uint {
+func missingProfileIDs(ids []uint) ([]uint, error) {
 	if len(ids) == 0 {
-		return nil
+		return nil, nil
 	}
 	var found []uint
-	db.DB.Model(&models.Profile{}).Where("id IN ?", ids).Pluck("id", &found)
+	if err := db.DB.Model(&models.Profile{}).Where("id IN ?", ids).Pluck("id", &found).Error; err != nil {
+		return nil, err
+	}
 	seen := make(map[uint]bool, len(found))
 	for _, id := range found {
 		seen[id] = true
@@ -591,7 +603,7 @@ func missingProfileIDs(ids []uint) []uint {
 			missing = append(missing, id)
 		}
 	}
-	return missing
+	return missing, nil
 }
 
 func orgAdminIDs(admins []models.Profile) []uint {

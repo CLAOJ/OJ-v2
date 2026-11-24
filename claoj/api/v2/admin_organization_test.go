@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
@@ -161,6 +162,33 @@ func TestAdminOrganizationUpdate_OmittingAdminsKeepsMembership(t *testing.T) {
 	require.Len(t, detailBody(t, w.Body)["admins"], 2)
 }
 
+// The is_unlisted column has a DB default of 1, so a plain GORM Create would
+// store true even when the request says false. The create form always sends
+// the value, so false must persist as false.
+func TestAdminOrganizationCreate_UnlistedPersists(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	root, _ := seedAccount(t, "root", true, true)
+
+	router := authedRouter(root.ID, http.MethodPost, "/admin/organizations", AdminOrganizationCreate)
+	create := func(body string) map[string]any {
+		w := doRequest(router, http.MethodPost, "/admin/organizations", body)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		return detailBody(t, w.Body)
+	}
+
+	listed := create(`{"name":"Listed","slug":"listed","short_name":"L","is_unlisted":false}`)
+	require.Equal(t, false, listed["is_unlisted"])
+	var listedRow models.Organization
+	require.NoError(t, db.DB.Where("slug = ?", "listed").First(&listedRow).Error)
+	require.False(t, listedRow.IsUnlisted)
+
+	hidden := create(`{"name":"Hidden","slug":"hidden","short_name":"H","is_unlisted":true}`)
+	require.Equal(t, true, hidden["is_unlisted"])
+	var hiddenRow models.Organization
+	require.NoError(t, db.DB.Where("slug = ?", "hidden").First(&hiddenRow).Error)
+	require.True(t, hiddenRow.IsUnlisted)
+}
+
 // v1 keeps admins/is_open/slots readonly on create without
 // judge.organization_admin; the create handler must 403 before inserting.
 func TestAdminOrganizationCreate_RestrictedFieldsGate(t *testing.T) {
@@ -263,6 +291,30 @@ func TestAdminOrganizationUpdate_RestrictedFieldsGate(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	require.NoError(t, db.DB.First(&stored, org.ID).Error)
 	require.Nil(t, stored.Slots)
+}
+
+// GET /user/me exposes can_organization_admin so the FE can disable the
+// admin/slots/open controls; superusers pass through HasPerm, and the flag
+// must follow a granted judge.organization_admin permission.
+func TestCurrentUser_CanOrganizationAdmin(t *testing.T) {
+	setupAdminUserCreateDB(t)
+	superuser, _ := seedAccount(t, "root", true, true)
+	staff, _ := seedAccount(t, "staffer", true, false)
+
+	flag := func(userID uint) any {
+		router := authedRouter(userID, http.MethodGet, "/user/me", CurrentUser)
+		w := doRequest(router, http.MethodGet, "/user/me", "")
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body["can_organization_admin"]
+	}
+
+	require.Equal(t, true, flag(superuser.ID), "superusers hold every permission")
+	require.Equal(t, false, flag(staff.ID))
+
+	grantOrgAdminPerm(t, staff.ID)
+	require.Equal(t, true, flag(staff.ID))
 }
 
 func TestAdminOrganizationUpdate_UnknownAdminIDs(t *testing.T) {

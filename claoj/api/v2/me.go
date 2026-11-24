@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,16 @@ func CurrentUser(c *gin.Context) {
 		return
 	}
 
+	// can_organization_admin gates the organization admin/slots/open fields in
+	// the FE form, matching the judge.organization_admin check on the API.
+	// LoadUserAccess resolves superuser-as-all-perms itself, so no gin context
+	// dependency.
+	access, err := auth.LoadUserAccess(profile.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
 	// We don't expose sensitive info like Password or TOTP keys.
 	// is_staff and is_admin drive the frontend admin surface: the admin gate
 	// (AdminAccessWrapper / AdminSidebar) hides all admin UI unless is_staff is
@@ -62,6 +73,7 @@ func CurrentUser(c *gin.Context) {
 			"about":    profile.About,
 			"timezone": profile.Timezone,
 		},
+		"can_organization_admin": access.HasPerm("judge.organization_admin"),
 	})
 }
 

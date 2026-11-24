@@ -29,6 +29,8 @@ interface EntityPickerProps {
     single?: boolean;
     /** Set false to render no remove button (e.g. a required single value). */
     clearable?: boolean;
+    /** Render the picker read-only (no typing, no removals). */
+    disabled?: boolean;
 }
 
 /**
@@ -36,7 +38,7 @@ interface EntityPickerProps {
  * thousands of users/problems (list endpoints cap a page at 100). Selected
  * items render as removable chips in selection order.
  */
-export function EntityPicker({ id, label, value, onChange, search, queryKey, initialOptions = [], placeholder, single = false, clearable = true }: EntityPickerProps) {
+export function EntityPicker({ id, label, value, onChange, search, queryKey, initialOptions = [], placeholder, single = false, clearable = true, disabled = false }: EntityPickerProps) {
     const t = useTranslations('Admin');
     const [term, setTerm] = useState('');
     const [open, setOpen] = useState(false);
@@ -77,7 +79,7 @@ export function EntityPicker({ id, label, value, onChange, search, queryKey, ini
                             <li key={v} className="inline-flex items-center gap-1 rounded-md border bg-muted/50 pl-2 pr-1 py-0.5 text-sm">
                                 <span>{text}</span>
                                 {o?.detail && <span className="text-xs text-muted-foreground">{o.detail}</span>}
-                                {clearable && (
+                                {clearable && !disabled && (
                                     <button
                                         type="button"
                                         aria-label={t('picker.remove', { label: text })}
@@ -102,6 +104,7 @@ export function EntityPicker({ id, label, value, onChange, search, queryKey, ini
                     autoComplete="off"
                     value={term}
                     placeholder={placeholder ?? t('picker.searchPlaceholder')}
+                    disabled={disabled}
                     onChange={e => { setTerm(e.target.value); setOpen(true); }}
                     onFocus={() => setOpen(true)}
                     onKeyDown={e => {

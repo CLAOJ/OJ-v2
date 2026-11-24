@@ -191,6 +191,11 @@ func (s *OrganizationService) CreateOrganization(req CreateOrganizationRequest) 
 		if err := tx.Omit("Admins", "Members").Create(&org).Error; err != nil {
 			return err
 		}
+		// is_unlisted has a DB default of 1, so GORM substitutes true for the
+		// zero value on Create; persist the requested value explicitly.
+		if err := tx.Model(&org).Update("is_unlisted", req.IsUnlisted).Error; err != nil {
+			return err
+		}
 		if len(req.AdminIDs) > 0 {
 			return relations.Sync[models.Profile](tx, &org, "Admins", &req.AdminIDs, nil, nil)
 		}

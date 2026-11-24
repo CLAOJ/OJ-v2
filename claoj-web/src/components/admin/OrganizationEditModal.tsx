@@ -12,6 +12,7 @@ import {
 } from '@/lib/adminApi';
 import { searchUsers } from '@/lib/adminSearch';
 import { EntityPicker } from '@/components/admin/EntityPicker';
+import { useAuth } from '@/components/providers/AuthProvider';
 import type { AdminOrganizationDetail } from '@/types';
 import { Link } from '@/navigation';
 import { X, Edit, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
@@ -93,6 +94,9 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
     const t = useTranslations('Admin');
     const queryClient = useQueryClient();
     const isEdit = organizationId !== null;
+    // Mirrors the judge.organization_admin gate on the API, which rejects
+    // changes to admins/is_open/slots without it.
+    const canManage = useAuth().user?.can_organization_admin === true;
 
     // Mounted once with the loaded detail, so initial state needs no effect.
     const [form, setForm] = useState<OrgForm>(() => detail ? {
@@ -238,6 +242,7 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
                                 type="checkbox"
                                 className="rounded w-5 h-5"
                                 checked={form.is_open}
+                                disabled={!canManage}
                                 onChange={(e) => setForm({ ...form, is_open: e.target.checked })}
                             />
                             <span className="text-sm font-medium">{t('organizations.openLabel')}</span>
@@ -261,10 +266,14 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
                             min={0}
                             className={inputClass}
                             value={form.slots}
+                            disabled={!canManage}
                             onChange={(e) => setForm({ ...form, slots: e.target.value })}
                         />
                     </div>
                 </div>
+                {!canManage && (
+                    <p className="text-xs text-muted-foreground">{t('organizations.fieldGateHint')}</p>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -301,6 +310,7 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
                     search={searchUsers}
                     queryKey="users"
                     initialOptions={(detail?.admins ?? []).map(a => ({ id: a.id, label: a.username }))}
+                    disabled={!canManage}
                 />
 
                 {isEdit && detail && (
