@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/jobs"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/submission"
 	"github.com/gin-gonic/gin"
@@ -343,6 +345,12 @@ func AdminProblemRescoreAll(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
+	}
+
+	// Refresh the stored judge_profile points columns with the current rules
+	// (the existing recalc path; a rejudge alone does not touch them).
+	if err := jobs.EnqueueRescore(problem.ID); err != nil {
+		log.Printf("rescore-all: enqueue profile points recalc for problem %d: %v", problem.ID, err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

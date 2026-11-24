@@ -2,7 +2,6 @@ package v2
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"os"
 	"time"
@@ -152,6 +151,8 @@ func UserDetail(c *gin.Context) {
 }
 
 // UserSolvedProblems – GET /api/v2/user/:user/solved
+// One row per solved public problem: the best accepted submission's points,
+// date, language and test-case score, in a single join (no N+1).
 func UserSolvedProblems(c *gin.Context) {
 	username := c.Param("user")
 	var profile models.Profile
@@ -162,16 +163,36 @@ func UserSolvedProblems(c *gin.Context) {
 		return
 	}
 
-	var solved []struct {
-		Code   string  `json:"code"`
-		Points float64 `json:"points"`
+	type SolvedRow struct {
+		Code       string    `json:"code"`
+		Name       string    `json:"name"`
+		Points     float64   `json:"points"`
+		Date       time.Time `json:"date"`
+		Language   string    `json:"language"`
+		CasePoints float64   `json:"case_points"`
+		CaseTotal  float64   `json:"case_total"`
 	}
-	db.DB.Table("judge_submission").
-		Select("pr.code, MAX(judge_submission.points) as points").
-		Joins("JOIN judge_problem pr ON pr.id = judge_submission.problem_id").
-		Where("judge_submission.user_id = ? AND judge_submission.result = 'AC'", profile.ID).
-		Group("pr.code").
-		Scan(&solved)
+	var solved []SolvedRow
+	// Same visibility rule as the PP calculation: v1's solved list hides
+	// organization-private problems and archived submissions.
+	db.DB.Raw(`
+		SELECT pr.code, pr.name, COALESCE(s.points, 0) AS points, s.date,
+		       COALESCE(NULLIF(l.short_name, ''), l.key, '') AS language,
+		       s.case_points, s.case_total
+		FROM judge_submission s
+		JOIN judge_problem pr ON pr.id = s.problem_id
+		LEFT JOIN judge_language l ON l.id = s.language_id
+		WHERE s.user_id = ? AND s.result = 'AC' AND s.is_archived = 0
+		  AND pr.is_public = 1 AND pr.is_organization_private = 0
+		  AND s.id = (
+		      SELECT s2.id FROM judge_submission s2
+		      WHERE s2.user_id = s.user_id AND s2.problem_id = s.problem_id
+		        AND s2.result = 'AC' AND s2.is_archived = 0
+		      ORDER BY COALESCE(s2.points, 0) DESC, s2.id ASC
+		      LIMIT 1
+		  )
+		ORDER BY s.date DESC, pr.code ASC
+	`, profile.ID).Scan(&solved)
 
 	c.JSON(http.StatusOK, apiList(solved))
 }
@@ -209,6 +230,8 @@ func UserRatingHistory(c *gin.Context) {
 }
 
 // UserPPBreakdown – GET /api/v2/user/:user/pp-breakdown
+// Uses scoring.CalculatePP, the same calculation that fills the stored
+// judge_profile columns, so the breakdown always matches the profile header.
 func UserPPBreakdown(c *gin.Context) {
 	username := c.Param("user")
 	var profile models.Profile
@@ -219,78 +242,21 @@ func UserPPBreakdown(c *gin.Context) {
 		return
 	}
 
-	// Get max points per public problem, ordered by points DESC
-	type ProblemResult struct {
-		Code        string  `json:"code"`
-		Name        string  `json:"name"`
-		MaxPoints   float64 `json:"points"`
-		Weight      float64 `json:"weight"`
-		Contribution float64 `json:"contribution"`
-	}
-	var problems []ProblemResult
-
-	// First get the raw max points data
-	type RawResult struct {
-		Code        string  `gorm:"column:code"`
-		Name        string  `gorm:"column:name"`
-		MaxPoints   float64 `gorm:"column:max_points"`
-	}
-	var rawData []RawResult
-
-	if err := db.DB.Raw(`
-		SELECT pr.code, pr.name, MAX(s.points) as max_points
-		FROM judge_submission s
-		JOIN judge_problem pr ON s.problem_id = pr.id
-		WHERE s.user_id = ? AND pr.is_public = 1 AND s.points IS NOT NULL
-		GROUP BY pr.id, pr.code, pr.name
-		HAVING max_points > 0
-		ORDER BY max_points DESC
-		LIMIT 100
-	`, profile.ID).Scan(&rawData).Error; err != nil {
+	pp, err := scoring.CalculatePP(db.DB, profile.ID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
-
-	// Calculate weighted contributions
-	problems = make([]ProblemResult, len(rawData))
-	weightedSum := 0.0
-	for i, res := range rawData {
-		weight := math.Pow(0.95, float64(i))
-		contribution := weight * res.MaxPoints
-		weightedSum += contribution
-		problems[i] = ProblemResult{
-			Code:         res.Code,
-			Name:         res.Name,
-			MaxPoints:    res.MaxPoints,
-			Weight:       weight,
-			Contribution: contribution,
-		}
-	}
-
-	// Calculate bonus from solved count
-	var solvedCount int64
-	if err := db.DB.Raw(`
-		SELECT COUNT(DISTINCT s.problem_id)
-		FROM judge_submission s
-		JOIN judge_problem p ON s.problem_id = p.id
-		WHERE s.user_id = ? AND p.is_public = 1 AND s.result = 'AC' AND s.case_points >= s.case_total
-	`, profile.ID).Scan(&solvedCount).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-		return
-	}
-
-	bonusPoints := scoring.PpBonusFunction(int(solvedCount))
-	totalPP := weightedSum + bonusPoints
 
 	c.JSON(http.StatusOK, gin.H{
-		"performance_points": totalPP,
-		"problems":           problems,
+		"performance_points": pp.PerformancePoints,
+		"problems":           pp.Problems,
 		"bonus": gin.H{
-			"solved_count":   solvedCount,
-			"bonus_points":   bonusPoints,
+			"solved_count": pp.SolvedCount,
+			"bonus_points": pp.BonusPoints,
 		},
-		"weighted_sum": weightedSum,
-		"total":        totalPP,
+		"weighted_sum": pp.WeightedSum,
+		"total":        pp.PerformancePoints,
 	})
 }
 
@@ -333,7 +299,9 @@ func UserAnalytics(c *gin.Context) {
 		Order("count DESC").
 		Scan(&langDist)
 
-	// Get submission activity by date (last 30 days)
+	// Get submission activity by date. `activity` keeps the original 30-day
+	// sparse shape for existing consumers; `activity_year` is the dense
+	// 365-day series (one row per day, zero included) the profile heatmap needs.
 	type Activity struct {
 		Date  string `json:"date"`
 		Count int64  `json:"count"`
@@ -341,10 +309,32 @@ func UserAnalytics(c *gin.Context) {
 	var activity []Activity
 	db.DB.Table("judge_submission").
 		Select("DATE(date) as date, COUNT(*) as count").
-		Where("user_id = ? AND date >= DATE_SUB(NOW(), INTERVAL 30 DAY)", profile.ID).
+		Where("user_id = ? AND date >= ?", profile.ID, time.Now().AddDate(0, 0, -30)).
 		Group("DATE(date)").
 		Order("date ASC").
 		Scan(&activity)
+
+	// v1 renders the past year: today and the 364 days before it, in the
+	// database's timezone (DATE() is evaluated there, same as v1's cache).
+	today := time.Now()
+	yearStart := today.AddDate(0, 0, -364)
+	var yearCounts []Activity
+	db.DB.Table("judge_submission").
+		Select("DATE(date) as date, COUNT(*) as count").
+		Where("user_id = ? AND date >= ?", profile.ID, yearStart).
+		Group("DATE(date)").
+		Order("date ASC").
+		Scan(&yearCounts)
+
+	countsByDate := make(map[string]int64, len(yearCounts))
+	for _, row := range yearCounts {
+		countsByDate[row.Date] = row.Count
+	}
+	activityYear := make([]Activity, 0, 365)
+	for day := yearStart; !day.After(today); day = day.AddDate(0, 0, 1) {
+		key := day.Format("2006-01-02")
+		activityYear = append(activityYear, Activity{Date: key, Count: countsByDate[key]})
+	}
 
 	// Get problem group distribution
 	type GroupDist struct {
@@ -381,20 +371,21 @@ func UserAnalytics(c *gin.Context) {
 		Order("jc.start_time DESC").
 		Scan(&contestHistory)
 
-	// Calculate streak (consecutive days with submissions)
+	// Calculate streak (distinct days with submissions in the past year)
 	var streakDays int64
 	db.DB.Raw(`
 		SELECT COUNT(DISTINCT DATE(date))
 		FROM judge_submission
 		WHERE user_id = ?
-		AND date >= DATE_SUB(NOW(), INTERVAL 365 DAY)
-	`, profile.ID).Scan(&streakDays)
+		AND date >= ?
+	`, profile.ID, time.Now().AddDate(0, 0, -365)).Scan(&streakDays)
 
 	c.JSON(http.StatusOK, gin.H{
 		"username":            profile.User.Username,
 		"statistics":          stats,
 		"language_stats":      langDist,
 		"activity":            activity,
+		"activity_year":       activityYear,
 		"group_stats":         groupDist,
 		"contest_history":     contestHistory,
 		"streak_days":         streakDays,
