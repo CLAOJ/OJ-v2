@@ -1017,7 +1017,7 @@ export interface ContestMossResult {
     problem_name: string;
     language: string;
     submission_count: number;
-    url: string | null;
+    report_path: string | null;
 }
 
 export const adminMossApi = {
@@ -1027,6 +1027,8 @@ export const adminMossApi = {
         api.post<{ queued: boolean }>(`/admin/contest/${key}/moss`),
     clear: (key: string) =>
         api.delete<{ deleted: number }>(`/admin/contest/${key}/moss`),
+    reportUrl: (key: string, reportPath: string) =>
+        `${api.defaults.baseURL}/admin/contest/${key}/moss/report/${reportPath}/index.html`,
 };
 
 // Backend messages for 400/403/409 are written for end users; anything else gets the fallback.

@@ -181,8 +181,8 @@ export default function AdminMossPage() {
                                         <td className="px-4 py-2">{r.language}</td>
                                         <td className="px-4 py-2 text-right tabular-nums">{r.submission_count}</td>
                                         <td className="px-4 py-2">
-                                            {r.url ? (
-                                                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline inline-flex items-center gap-1">
+                                            {r.report_path ? (
+                                                <a href={adminMossApi.reportUrl(contestKey, r.report_path)} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline inline-flex items-center gap-1">
                                                     {t('moss.viewReport')} <ExternalLink size={12} />
                                                 </a>
                                             ) : <span className="text-muted-foreground">—</span>}
