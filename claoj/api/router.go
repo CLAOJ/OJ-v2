@@ -340,6 +340,7 @@ func NewRouter() *gin.Engine {
 		// Suggestions awaiting review (judge.suggest_new_problem), and the
 		// public taxonomy the problem-list filters are built from.
 		apiv2.GET("/problems/suggest", v2.SuggestProblemList)
+		apiv2.GET("/license/:key", v2.PublicLicenseDetail)
 		apiv2.GET("/problem-groups", v2.ProblemGroupList)
 		apiv2.GET("/problem-types", v2.ProblemTypeList)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
@@ -446,6 +447,12 @@ func NewRouter() *gin.Engine {
 			// public /auth/password/reset* pair, which is the forgot-password
 			// flow for users who can't sign in.
 			protected.POST("/auth/password/change", authHandlers.PasswordChange)
+			// Self-service email change (settings Account tab): start mails a
+			// one-time link, confirm redeems it for the logged-in account.
+			protected.POST("/auth/email/change", v2.EmailChangeStart)
+			protected.POST("/auth/email/change/confirm", v2.EmailChangeConfirm)
+			// Hidden problem suggestions (v1 ProblemSuggest form).
+			protected.POST("/problems/suggest", auth.RequirePerm("judge.suggest_new_problem"), v2.SuggestProblemCreate)
 
 			// TOTP/2FA management (requires an authenticated session).
 			// Previously mis-registered in the public group before the auth
