@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import 'dayjs/locale/vi';
 
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
@@ -11,22 +12,21 @@ export type DateFormat = 'relative' | 'short' | 'long' | 'datetime' | 'time';
  * Format a date string or Date object using dayjs
  * @param date - The date to format (string or Date object)
  * @param format - The format style: 'relative' (from now), 'short' (MMM D, YYYY), 'long' (full date with time), 'datetime' (YYYY-MM-DD HH:mm:ss), 'time' (HH:mm:ss)
- * @param locale - Optional locale (default: 'en')
+ * @param locale - Optional locale; omitted, the app-wide locale set by DayjsLocale applies
  * @returns Formatted date string
  */
-export function formatDate(date: string | Date | null | undefined, format: DateFormat = 'relative', locale = 'en'): string {
+export function formatDate(date: string | Date | null | undefined, format: DateFormat = 'relative', locale?: string): string {
     if (!date) return '';
 
-    dayjs.locale(locale);
-    const d = dayjs(date);
+    const d = locale ? dayjs(date).locale(locale) : dayjs(date);
 
     switch (format) {
         case 'relative':
             return d.fromNow();
         case 'short':
-            return d.format('MMM D, YYYY');
+            return d.format('ll');
         case 'long':
-            return d.format('MMMM D, YYYY [at] h:mm A');
+            return d.format('LLL');
         case 'datetime':
             return d.format('YYYY-MM-DD HH:mm:ss');
         case 'time':
@@ -70,7 +70,7 @@ export function formatTime(date: string | Date | null | undefined): string {
  */
 export function formatDateTime(date: string | Date | null | undefined): string {
     if (!date) return '';
-    return dayjs(date).format('MMM D, YYYY HH:mm');
+    return dayjs(date).format('ll HH:mm');
 }
 
 /**
@@ -140,4 +140,25 @@ export function getTimeDifferenceBreakdown(date: string | Date): {
         seconds,
         total: diff
     };
+}
+
+type DurationUnit = 'day' | 'hour' | 'minute' | 'second';
+
+/** "3d" in English, "3 ngày" in Vietnamese: a unit count in the app-wide dayjs locale. */
+export function formatUnit(n: number, unit: DurationUnit): string {
+    return new Intl.NumberFormat(dayjs.locale(), { style: 'unit', unit, unitDisplay: 'narrow' }).format(n);
+}
+
+/** Length of a span in its `parts` largest units, from the first non-zero one: "2d 3h", "45m". */
+export function formatDuration(ms: number, parts = 2): string {
+    const total = Number.isFinite(ms) ? Math.max(0, Math.floor(ms / 1000)) : 0;
+    const units: [number, DurationUnit][] = [
+        [Math.floor(total / 86400), 'day'],
+        [Math.floor((total % 86400) / 3600), 'hour'],
+        [Math.floor((total % 3600) / 60), 'minute'],
+        [total % 60, 'second'],
+    ];
+    const first = units.findIndex(([n]) => n > 0);
+    const start = first < 0 ? units.length - 1 : first;
+    return units.slice(start, start + parts).map(([n, u]) => formatUnit(n, u)).join(' ');
 }

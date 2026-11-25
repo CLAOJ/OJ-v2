@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { X } from 'lucide-react';
 
 interface ProblemGroup {
     id: number;
@@ -52,23 +53,44 @@ export function ClassificationSection({
                 </select>
             </div>
 
+            {/* v1 multi-select shape: chosen types as removable tags above one
+                closed "add" select, instead of a wall of ~90 checkboxes. */}
             <div>
                 <label htmlFor="problem-types" className="text-sm font-medium text-muted-foreground block mb-2">
                     {tProblems('problemTypes')}
                 </label>
-                <div id="problem-types" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="problem-types">
-                    {types?.data.map(t => (
-                        <label key={t.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
-                            <input
-                                type="checkbox"
-                                checked={selectedTypes.includes(t.id)}
-                                onChange={(e) => onTypeToggle(t.id, e.target.checked)}
-                                className="rounded"
-                            />
-                            <span className="text-sm">{t.full_name}</span>
-                        </label>
+                {selectedTypes.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                        {selectedTypes.map(id => {
+                            const pt = types?.data.find(x => x.id === id);
+                            if (!pt) return null;
+                            return (
+                                <span key={id} className="inline-flex items-center gap-1 pl-2.5 pr-1 h-7 rounded-md bg-primary/15 text-primary text-xs font-medium">
+                                    {pt.full_name}
+                                    <button
+                                        type="button"
+                                        aria-label={tProblems('removeType', { name: pt.full_name })}
+                                        onClick={() => onTypeToggle(id, false)}
+                                        className="p-0.5 rounded hover:bg-primary/20 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            );
+                        })}
+                    </div>
+                )}
+                <select
+                    id="problem-types"
+                    value=""
+                    onChange={(e) => { const id = Number(e.target.value); if (id) onTypeToggle(id, true); }}
+                    className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                >
+                    <option value="">{tProblems('addTypePlaceholder')}</option>
+                    {types?.data.filter(pt => !selectedTypes.includes(pt.id)).map(pt => (
+                        <option key={pt.id} value={pt.id}>{pt.full_name}</option>
                     ))}
-                </div>
+                </select>
             </div>
         </div>
     );

@@ -34,6 +34,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Eye, EyeOff, Pin } from 'lucide-react';
 import { formatDateTime } from '@/lib/date';
+import type { ApiError } from '@/lib/api';
 
 const emptyForm: AdminBlogPostCreateRequest = {
     title: '',
@@ -147,7 +148,8 @@ export default function BlogPostAdminPage() {
             toast.success(t('blogPosts.createSuccess'));
             setIsCreateDialogOpen(false);
             loadPosts();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('blogPosts.createError'));
         }
     };
@@ -173,7 +175,8 @@ export default function BlogPostAdminPage() {
             toast.success(t('blogPosts.updateSuccess'));
             setIsEditDialogOpen(false);
             loadPosts();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('blogPosts.updateError'));
         }
     };
@@ -184,7 +187,8 @@ export default function BlogPostAdminPage() {
             toast.success(t('blogPosts.deleteSuccess'));
             setDeleteConfirmId(null);
             loadPosts();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('blogPosts.deleteError'));
         }
     };

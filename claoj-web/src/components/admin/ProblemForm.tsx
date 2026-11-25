@@ -186,7 +186,7 @@ export default function ProblemForm({ initialData, initialAuthors, initialOption
                     time_limit: watch('time_limit'),
                     memory_limit: watch('memory_limit')
                 }}
-                errors={errors as any}
+                errors={errors}
                 register={register}
                 onDescriptionChange={(value) => {
                     setDescription(value);

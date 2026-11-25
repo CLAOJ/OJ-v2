@@ -12,8 +12,8 @@ interface ScheduleInfo {
 }
 
 interface ScheduleErrors {
-    start_time?: { message: string };
-    end_time?: { message: string };
+    start_time?: { message?: string };
+    end_time?: { message?: string };
 }
 
 interface ContestFormData {

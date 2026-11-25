@@ -8,6 +8,7 @@ import { Trash2, Edit2, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { WebAuthnCredential } from '@/types';
+import type { ApiError } from '@/lib/api';
 
 interface CredentialListProps {
     credentials: WebAuthnCredential[];
@@ -43,7 +44,7 @@ export function CredentialList({ credentials }: CredentialListProps) {
             setDeletingId(null);
             setDeletePassword('');
         },
-        onError: (error: any) => {
+        onError: (error: ApiError) => {
             alert(error.response?.data?.error || t('deleteFailedError'));
         },
     });

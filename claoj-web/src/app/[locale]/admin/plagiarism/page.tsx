@@ -12,6 +12,7 @@ import { useListParams } from '@/hooks/useListParams';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
+import dayjs from 'dayjs';
 
 const KEYS = ['contest'] as const;
 const LIST_SIZE = 20;
@@ -162,7 +163,7 @@ export default function AdminMossPage() {
                                         <span className={`truncate ${selected ? 'font-semibold text-primary' : 'font-medium'}`}>{c.name}</span>
                                         <span className="shrink-0 font-mono text-xs text-muted-foreground">{c.key}</span>
                                         <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-                                            {c.start_time ? new Date(c.start_time).toLocaleDateString() : '—'}
+                                            {c.start_time ? dayjs(c.start_time).format('L') : '—'}
                                         </span>
                                         <span className={`shrink-0 w-24 text-right text-xs ${phase === 'ongoing' ? 'text-success' : 'text-muted-foreground'}`}>
                                             {t(`moss.phase.${phase}`)}

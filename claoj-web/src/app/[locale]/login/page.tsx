@@ -13,6 +13,7 @@ import { Loader2, Mail, Lock, User as UserIcon, AlertCircle, Shield, Key } from 
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import type { ApiError } from '@/lib/api';
 
 type LoginFormValues = {
     username: string;
@@ -82,7 +83,8 @@ export default function LoginPage() {
                 // Redirect based on user type: admin -> /admin, normal -> previous page or home
                 router.push(getRedirectUrl(result.user.is_staff || !!result.user.is_admin));
             }
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setError(err.response?.data?.error || t('invalidCredentials'));
         } finally {
             setIsLoading(false);
@@ -96,7 +98,8 @@ export default function LoginPage() {
             const user = await loginTotp(totpUsername, code);
             // Redirect based on user type: admin -> /admin, normal -> previous page or home
             router.push(getRedirectUrl(user.is_staff || !!user.is_admin));
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setError(err.response?.data?.error || t('invalidTotpCode'));
         } finally {
             setIsLoading(false);
@@ -114,7 +117,8 @@ export default function LoginPage() {
             const user = await loginWebAuthn(webAuthnUsername);
             // Redirect based on user type: admin -> /admin, normal -> previous page or home
             router.push(getRedirectUrl(user.is_staff || !!user.is_admin));
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setError(err.response?.data?.error || t('webAuthnLoginFailed'));
         } finally {
             setIsLoading(false);

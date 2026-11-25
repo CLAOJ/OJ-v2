@@ -2,7 +2,9 @@
 
 import { UseFormRegister } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import MathRenderer from '@/components/ui/MathRenderer';
 
 interface BasicInfo {
     code: string;
@@ -14,9 +16,9 @@ interface BasicInfo {
 }
 
 interface BasicInfoErrors {
-    code?: { message: string };
-    name?: { message: string };
-    description?: { message: string };
+    code?: { message?: string };
+    name?: { message?: string };
+    description?: { message?: string };
 }
 
 interface ProblemFormData {
@@ -52,6 +54,11 @@ export function BasicInfoSection({
     isEditMode
 }: BasicInfoSectionProps) {
     const t = useTranslations('Admin.problemForm');
+    const [preview, setPreview] = useState(false);
+    const tabClass = (on: boolean) => cn(
+        'px-3 py-1 rounded text-xs font-medium transition-colors',
+        on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+    );
 
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
@@ -99,20 +106,40 @@ export function BasicInfoSection({
             </div>
 
             <div>
-                <label htmlFor="problem-description" className="text-sm font-medium text-muted-foreground block mb-2">
-                    {t('descriptionLabel')}
-                </label>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                    <label htmlFor="problem-description" className="text-sm font-medium text-muted-foreground">
+                        {t('descriptionLabel')}
+                    </label>
+                    <div className="inline-flex rounded-md bg-muted p-0.5">
+                        <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)} className={tabClass(!preview)}>
+                            {t('writeTab')}
+                        </button>
+                        <button type="button" aria-pressed={preview} onClick={() => setPreview(true)} className={tabClass(preview)}>
+                            {t('previewTab')}
+                        </button>
+                    </div>
+                </div>
+                {/* Kept mounted while previewing so the value and validation stay in one place. */}
                 <textarea
                     id="problem-description"
                     className={cn(
                         "w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none min-h-[300px] font-mono text-sm",
-                        errors.description && "border-destructive"
+                        errors.description && "border-destructive",
+                        preview && "hidden"
                     )}
                     placeholder={t('descriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => onDescriptionChange(e.target.value)}
-                    required
+                    required={!preview}
                 />
+                {preview && (
+                    <div className="min-h-[300px] rounded-lg border bg-background px-4 py-3">
+                        {formData.description.trim()
+                            ? <MathRenderer content={formData.description} copyable />
+                            : <p className="text-sm text-muted-foreground">{t('previewEmpty')}</p>}
+                    </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1.5">{t('markdownHint')}</p>
                 {errors.description && (
                     <p className="text-destructive text-xs mt-1">{errors.description.message}</p>
                 )}

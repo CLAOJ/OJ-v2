@@ -1,6 +1,6 @@
 'use client';
 
-import { UseFormRegister } from 'react-hook-form';
+import { UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +39,7 @@ interface FormatSectionProps {
     formData: FormatSettings;
     selectedFormat: string;
     register: UseFormRegister<ContestFormData>;
-    setValue: (field: keyof ContestFormData, value: any) => void;
+    setValue: UseFormSetValue<ContestFormData>;
     formatConfigError?: string;
 }
 

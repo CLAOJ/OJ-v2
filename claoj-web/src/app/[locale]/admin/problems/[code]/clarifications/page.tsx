@@ -28,6 +28,7 @@ import {
     CheckCircle
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import type { ApiError } from '@/lib/api';
 
 export default function ProblemClarificationsPage() {
     const params = useParams();
@@ -56,7 +57,7 @@ export default function ProblemClarificationsPage() {
             setIsCreateOpen(false);
             setDescription('');
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             alert(err.response?.data?.error || 'Failed to create clarification');
         }
     });
@@ -68,7 +69,7 @@ export default function ProblemClarificationsPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['problem-clarifications', code] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             alert(err.response?.data?.error || 'Failed to delete clarification');
         }
     });

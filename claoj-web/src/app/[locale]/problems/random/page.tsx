@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { randomProblemApi } from '@/lib/api';
-import { useRouter } from '@/navigation';
+import { Link, useRouter } from '@/navigation';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Shuffle } from 'lucide-react';
 
@@ -29,12 +29,12 @@ export default function RandomProblemPage() {
                 <Shuffle size={48} className="mx-auto mb-4 text-destructive" />
                 <h1 className="text-2xl font-bold mb-2">{tCommon('error')}</h1>
                 <p className="text-muted-foreground mb-4">{error}</p>
-                <a
+                <Link
                     href="/problems"
                     className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
                     {t('backToProblems')}
-                </a>
+                </Link>
             </div>
         );
     }

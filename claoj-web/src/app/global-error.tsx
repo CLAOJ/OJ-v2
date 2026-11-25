@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { getErrorMessages } from '@/lib/errorBoundaryMessages';
 
 export default function GlobalError({
@@ -52,12 +53,12 @@ export default function GlobalError({
                             >
                                 {t('tryAgain')}
                             </button>
-                            <a
+                            <Link
                                 href="/"
                                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
                                 {t('goHome')}
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </div>

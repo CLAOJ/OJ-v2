@@ -25,6 +25,7 @@ import Comments from '@/components/common/Comments';
 import { toast } from 'sonner';
 import { blogVoteApi } from '@/lib/api';
 import { parseLeadingId } from '@/utils/route';
+import type { ApiError } from '@/lib/api';
 
 export default function BlogPageContent({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
@@ -46,7 +47,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['blog', id] });
         },
-        onError: (error: any) => {
+        onError: (error: ApiError) => {
             toast.error(error.response?.data?.error || t('voteFailed'));
         },
     });

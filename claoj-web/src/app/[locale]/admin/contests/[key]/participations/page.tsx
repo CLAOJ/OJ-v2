@@ -19,6 +19,7 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { ApiError } from '@/lib/api';
 
 export default function ContestParticipationsPage() {
     const t = useTranslations('Admin');
@@ -40,7 +41,7 @@ export default function ContestParticipationsPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contest-ranking', key] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             alert(err.response?.data?.error || t('contests.disqualifyError'));
         }
     });
@@ -51,7 +52,7 @@ export default function ContestParticipationsPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contest-ranking', key] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             alert(err.response?.data?.error || t('contests.undisqualifyError'));
         }
     });

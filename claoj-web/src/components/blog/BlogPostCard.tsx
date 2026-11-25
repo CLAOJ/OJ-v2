@@ -26,7 +26,7 @@ export default function BlogPostCard({ post }: { post: BlogPost }) {
                         )}
                         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             <Calendar size={12} />
-                            {dayjs(post.publish_on).format('MMM D, YYYY')}
+                            {dayjs(post.publish_on).format('ll')}
                         </span>
                     </div>
                     <h2 className="text-2xl md:text-3xl font-semibold group-hover:text-primary transition-colors mb-2">

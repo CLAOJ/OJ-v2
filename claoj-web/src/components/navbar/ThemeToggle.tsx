@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
 import { Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsClient } from '@/hooks/useIsClient';
 
 interface ThemeToggleProps {
     variant?: 'default' | 'mobile';
@@ -16,11 +16,7 @@ export default function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
     // make the first click a no-op. Always key off `resolvedTheme`.
     const t = useTranslations('Navbar');
     const { resolvedTheme, setTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const mounted = useIsClient();
 
     const isDark = resolvedTheme === 'dark';
 

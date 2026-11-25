@@ -6,6 +6,12 @@ interface AxiosRequestConfigWithRetry extends InternalAxiosRequestConfig {
     _skipAuthRedirect?: boolean;
 }
 
+// Shape of an axios error as the UI reads it (status + backend error message).
+export type ApiError = {
+    response?: { status?: number; data?: { error?: string; message?: string; detail?: string } };
+    message?: string;
+};
+
 function getApiBaseUrl(): string {
     if (typeof window === 'undefined') {
         // Server-side (SSR metadata fetchers): reach the backend over the

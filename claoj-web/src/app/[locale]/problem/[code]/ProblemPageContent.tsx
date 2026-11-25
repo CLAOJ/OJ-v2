@@ -50,6 +50,7 @@ import {
     validateSubmissionFile,
     validateTextSourceFile,
 } from '@/lib/submissionFile';
+import dayjs from 'dayjs';
 
 // react-pdf touches browser-only APIs — load it client-side only.
 const PdfStatementViewer = dynamic(() => import('@/components/ui/PdfStatementViewer'), {
@@ -439,7 +440,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                     {/* Problem Statement */}
                     <div className="space-y-4 min-w-0">
                         <header className="space-y-2">
-                            <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">
+                            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight leading-tight text-balance">
                                 {problem.name}
                             </h1>
                             <div className="flex flex-wrap gap-2 pt-2">
@@ -466,41 +467,34 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         )}
                         {problem.pdf_url && <PdfStatementViewer code={code} />}
 
-                        {/* Authors & Group */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-muted/30 border border-dashed rounded-md p-6 flex flex-col gap-2">
-                                <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                                    <UserIcon size={12} /> {t('authors')}
-                                </span>
-                                <div className="flex flex-wrap gap-2 text-sm font-medium">
-                                    {problem.authors.map(a => (
-                                        <Link key={a.username} href={`/user/${a.username}`} className="hover:text-primary transition-colors">
-                                            @{a.username}
+                        {/* Authors, group and license: one metadata line, not three cards. */}
+                        <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                                <dt className="flex items-center gap-1.5 text-muted-foreground"><UserIcon size={14} aria-hidden /> {t('authors')}</dt>
+                                <dd className="flex flex-wrap gap-x-2 font-medium">
+                                    {problem.authors.length ? problem.authors.map(a => (
+                                        <Link key={a.username} href={`/user/${a.username}`} className="hover:text-primary hover:underline underline-offset-4">
+                                            {a.username}
                                         </Link>
-                                    ))}
-                                </div>
+                                    )) : '—'}
+                                </dd>
                             </div>
-                            <div className="bg-muted/30 border border-dashed rounded-md p-6 flex flex-col gap-2">
-                                <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                                    <Tag size={12} /> {t('group')}
-                                </span>
-                                <span className="text-sm font-medium truncate">{problem.group}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <dt className="flex items-center gap-1.5 text-muted-foreground"><Tag size={14} aria-hidden /> {t('group')}</dt>
+                                <dd className="font-medium truncate">{problem.group}</dd>
                             </div>
                             {/* v1 problem.html: license link labelled display or name. */}
                             {problem.license && (
-                                <div className="bg-muted/30 border border-dashed rounded-md p-6 flex flex-col gap-2">
-                                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                                        <Scale size={12} /> {t('license')}
-                                    </span>
-                                    <Link
-                                        href={`/license/${problem.license.key}`}
-                                        className="text-sm font-medium hover:text-primary transition-colors"
-                                    >
-                                        {problem.license.display || problem.license.name}
-                                    </Link>
+                                <div className="flex items-center gap-2">
+                                    <dt className="flex items-center gap-1.5 text-muted-foreground"><Scale size={14} aria-hidden /> {t('license')}</dt>
+                                    <dd>
+                                        <Link href={`/license/${problem.license.key}`} className="font-medium hover:text-primary hover:underline underline-offset-4">
+                                            {problem.license.display || problem.license.name}
+                                        </Link>
+                                    </dd>
                                 </div>
                             )}
-                        </div>
+                        </dl>
 
                         {/* Problem Clarifications */}
                         {clarificationsData && clarificationsData.length > 0 && (
@@ -514,7 +508,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                                         <div key={clar.id} className="bg-card border rounded-md p-6">
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                                                 <Clock className="w-4 h-4" />
-                                                {new Date(clar.date).toLocaleString()}
+                                                {dayjs(clar.date).format('L HH:mm')}
                                             </div>
                                             <p className="text-sm whitespace-pre-wrap">{clar.description}</p>
                                         </div>

@@ -50,6 +50,19 @@ import { Link } from '@/navigation';
 
 dayjs.extend(relativeTime);
 
+const RatingTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: { date: string; rating: number; contest: string } }[] }) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+            <div className="bg-card border p-4 rounded-xl shadow-xl space-y-1">
+                <p className="text-xs font-medium text-muted-foreground ">{dayjs(data.date).format('ll')}</p>
+                <p className="text-lg font-semibold">{data.rating}</p>
+                <p className="text-xs font-medium text-primary max-w-[200px] truncate">{data.contest}</p>
+            </div>
+        );
+    }
+    return null;
+};
 export default function UserProfilePageContent({ params }: { params: Promise<{ username: string }> }) {
     const { username } = use(params);
     const t = useTranslations('Users');
@@ -157,21 +170,6 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
         { label: t('contributionShort'), value: user.contribution_points, icon: Activity, color: 'text-muted-foreground' },
     ];
 
-    const RatingTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            return (
-                <div className="bg-card border p-4 rounded-xl shadow-xl space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground ">{dayjs(data.date).format('MMM D, YYYY')}</p>
-                    <p className="text-lg font-semibold">{data.rating}</p>
-                    <p className="text-xs font-medium text-primary max-w-[200px] truncate">{data.contest}</p>
-                </div>
-            );
-        }
-        return null;
-    };
-
-    const Star = ({ size, className, fill }: any) => <Activity size={size} className={className} />;
 
     return (
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-4 pb-20 mt-4">
@@ -255,7 +253,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
             </aside>
 
             {/* Right Content Area */}
-            <main className="flex-1 space-y-6">
+            <div className="flex-1 space-y-6">
                 {/* Tabs Navigation */}
                 <div className="flex bg-card border p-1 rounded-md shadow-sm sticky top-4 z-10 overflow-x-auto no-scrollbar whitespace-nowrap">
                     {[
@@ -267,8 +265,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                     ].map((tab) => (
                         <button
                             key={tab.id}
-                            //@ts-ignore
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => setActiveTab(tab.id as typeof activeTab)}
                             className={cn(
                                 "flex items-center gap-2 px-6 py-2 rounded text-sm font-medium transition-all",
                                 activeTab === tab.id
@@ -435,7 +432,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                                 <p className="text-xs text-muted-foreground truncate max-w-[260px]">{p.name}</p>
                                                             </td>
                                                             <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                                                                {dayjs(p.date).format('MMM D, YYYY')}
+                                                                {dayjs(p.date).format('ll')}
                                                             </td>
                                                             <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{p.language}</td>
                                                             <td className="px-4 py-3 text-right text-sm text-muted-foreground whitespace-nowrap">
@@ -493,7 +490,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-medium truncate group-hover/post:text-primary transition-colors">{post.title}</p>
                                                         <p className="text-xs text-muted-foreground mt-1">
-                                                            {dayjs(post.publish_on).format('MMM D, YYYY')}
+                                                            {dayjs(post.publish_on).format('ll')}
                                                         </p>
                                                     </div>
                                                     <ArrowUpRight size={18} className="text-muted-foreground shrink-0" />
@@ -622,7 +619,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                         ratingData.slice().reverse().map((entry, idx) => (
                                                             <tr key={idx} className="hover:bg-muted/5 transition-colors">
                                                                 <td className="px-6 py-4 text-sm font-medium">
-                                                                    {dayjs(entry.date).format('MMM D, YYYY')}
+                                                                    {dayjs(entry.date).format('ll')}
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <Link href={`/contest/${entry.contest_key}`} className="text-sm font-medium hover:text-primary transition-colors">
@@ -791,7 +788,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                         )}
                     </AnimatePresence>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

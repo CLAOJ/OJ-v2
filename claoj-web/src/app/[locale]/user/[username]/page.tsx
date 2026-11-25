@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import UserProfilePageContent from './UserProfilePageContent';
 import { PersonJsonLd } from '@/components/seo';
@@ -28,8 +28,10 @@ export async function generateMetadata({
   const user = await fetchUser(username);
 
   if (user) {
-    const title = `${user.username} - ${user.rating || 'N/A'} rating`;
-    const description = `Profile of ${user.username} - Rating: ${user.rating || 'N/A'}, Rank: ${user.rank || 'N/A'}`;
+    const t = await getTranslations({ locale, namespace: 'SEO.user' });
+    const rating = user.rating || t('noRating');
+    const title = `${user.username} (${t('rating')} ${rating})`;
+    const description = t('description', { username: user.username, rating, rank: user.rank || '-' });
 
     return {
       title,

@@ -203,7 +203,7 @@ export default function BlogListPage() {
                                     >
                                         <div className="flex flex-col gap-1">
                                             <span className="text-xs font-medium text-muted-foreground truncate opacity-60">
-                                                {dayjs(ct.start_time).format('MMM DD, HH:mm')}
+                                                {dayjs(ct.start_time).format('D MMM, HH:mm')}
                                             </span>
                                             <span className="text-sm font-medium group-hover:text-primary transition-colors truncate">
                                                 {ct.name}

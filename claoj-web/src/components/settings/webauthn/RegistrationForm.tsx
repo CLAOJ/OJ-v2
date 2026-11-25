@@ -8,6 +8,7 @@ import { Loader2, Key } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
+import type { ApiError } from '@/lib/api';
 
 interface WebAuthnRegistrationFormProps {
     onSuccess?: () => void;
@@ -68,7 +69,7 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
             setPassword('');
             onSuccess?.();
         },
-        onError: (error: any) => {
+        onError: (error: ApiError) => {
             alert(error.response?.data?.error || t('registrationFailedError'));
         },
     });

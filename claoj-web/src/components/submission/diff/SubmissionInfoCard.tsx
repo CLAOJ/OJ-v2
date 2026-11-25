@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FileCode, User, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { getStatusVariant } from '@/lib/utils';
+import dayjs from 'dayjs';
 
 interface SubmissionInfo {
     id: number;
@@ -47,7 +48,7 @@ export function SubmissionInfoCard({ title, submission }: SubmissionInfoCardProp
                 </Link>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar size={16} />
-                    {new Date(submission.date).toLocaleString()}
+                    {dayjs(submission.date).format('L HH:mm')}
                 </div>
                 <div className="text-sm font-mono text-muted-foreground">
                     {submission.language}

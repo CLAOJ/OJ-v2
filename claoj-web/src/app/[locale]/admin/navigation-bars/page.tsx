@@ -23,6 +23,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Link as LinkIcon, Layers } from 'lucide-react';
+import type { ApiError } from '@/lib/api';
 
 export default function NavigationBarsAdminPage() {
     const t = useTranslations('Admin');
@@ -137,7 +138,8 @@ export default function NavigationBarsAdminPage() {
             toast.success(t('navigationBars.createSuccess'));
             setIsCreateDialogOpen(false);
             loadNavBars();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('navigationBars.createError'));
         }
     };
@@ -150,7 +152,8 @@ export default function NavigationBarsAdminPage() {
             toast.success(t('navigationBars.updateSuccess'));
             setIsCreateDialogOpen(false);
             loadNavBars();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('navigationBars.updateError'));
         }
     };
@@ -161,7 +164,8 @@ export default function NavigationBarsAdminPage() {
             toast.success(t('navigationBars.deleteSuccess'));
             setDeleteConfirmId(null);
             loadNavBars();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('navigationBars.deleteError'));
         }
     };

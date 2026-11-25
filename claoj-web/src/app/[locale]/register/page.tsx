@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { ApiError } from '@/lib/api';
 
 type RegisterFormValues = {
     username: string;
@@ -57,7 +58,8 @@ export default function RegisterPage() {
             });
             setRegisteredEmail(data.email);
             setIsRegistered(true);
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setError(err.response?.data?.error || 'Registration failed');
         } finally {
             setIsLoading(false);

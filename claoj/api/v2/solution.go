@@ -10,6 +10,7 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ============================================================
@@ -22,12 +23,24 @@ func AdminSolutionList(c *gin.Context) {
 
 	var solutions []struct {
 		models.Solution
-		ProblemCode string `gorm:"column:code"`
-		ProblemName string `gorm:"column:name"`
+		// Tags must match the SELECT aliases, or GORM leaves these empty.
+		ProblemCode string `gorm:"column:problem_code"`
+		ProblemName string `gorm:"column:problem_name"`
 	}
 
-	if err := db.DB.Table("judge_solution").
-		Joins("JOIN judge_problem ON judge_problem.id = judge_solution.problem_id").
+	q := db.DB.Table("judge_solution").
+		Joins("JOIN judge_problem ON judge_problem.id = judge_solution.problem_id")
+	// ?problem=<code> lets the per-problem editorial editor find its row.
+	if code := c.Query("problem"); code != "" {
+		q = q.Where("judge_problem.code = ?", code)
+	}
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	if err := q.Session(&gorm.Session{}).
 		Select("judge_solution.*, judge_problem.code as problem_code, judge_problem.name as problem_name").
 		Order("judge_solution.id DESC").
 		Offset((page - 1) * pageSize).
@@ -36,8 +49,6 @@ func AdminSolutionList(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
-
-	total, _ := countRecords(models.Solution{})
 
 	type Item struct {
 		ID          uint      `json:"id"`

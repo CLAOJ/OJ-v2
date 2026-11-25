@@ -13,6 +13,7 @@ import { Link } from '@/navigation';
 import { Button } from '@/components/ui/Button';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import dayjs from 'dayjs';
 
 export default function EditContestPage() {
     const t = useTranslations('Admin');
@@ -146,7 +147,7 @@ export default function EditContestPage() {
                 {isLocked && lockedAfter && (
                     <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning text-sm mb-4">
                         <p className="font-medium">{t('contests.currentlyLockedMsg')}</p>
-                        <p>{t('contests.lockedAfterMsg', { time: lockedAfter.toLocaleString() })}</p>
+                        <p>{t('contests.lockedAfterMsg', { time: dayjs(lockedAfter).format('L HH:mm') })}</p>
                     </div>
                 )}
                 <div className="flex gap-3 items-end">

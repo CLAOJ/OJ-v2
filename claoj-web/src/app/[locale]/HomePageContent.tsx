@@ -1,8 +1,10 @@
 'use client';
 
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
+import api, { blogVoteApi } from '@/lib/api';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { toast } from 'sonner';
 import { BlogPost, Contest, UserListItem, Problem } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
@@ -28,11 +30,15 @@ import {
 import { cn, getRankColor } from '@/lib/utils';
 import { RatingCircle } from '@/components/ui/RatingCircle';
 import { formatCountdown } from '@/lib/countdown';
+import { formatDuration } from '@/lib/date';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+
+// GET /comments list item (claoj/api/v2/comment.go).
+type RecentComment = { id: number; author: string; author_name: string; link: string; page_title: string };
 
 dayjs.extend(relativeTime);
 
@@ -41,6 +47,17 @@ const BLOG_PAGE_SIZE = 5;
 export default function HomePageContent() {
     const t = useTranslations('Home');
     const tUsers = useTranslations('Users');
+    const tBlog = useTranslations('Blog');
+    const tContest = useTranslations('Contest');
+    const { user: viewer } = useAuth();
+    const queryClient = useQueryClient();
+    const voteMutation = useMutation({
+        mutationFn: ({ id, delta }: { id: number; delta: 1 | -1 }) => blogVoteApi.vote(id, delta),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['blog-posts'] }),
+        onError: (error: { response?: { data?: { error?: string } } }) => {
+            toast.error(error.response?.data?.error || tBlog('voteFailed'));
+        },
+    });
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'blog' | 'events'>('blog');
     const loaderRef = useRef<HTMLDivElement>(null);
@@ -140,7 +157,7 @@ export default function HomePageContent() {
     const { data: recentComments } = useQuery({
         queryKey: ['recent-comments'],
         queryFn: async () => {
-            const res = await api.get<{ data: any[] }>('/comments?page_type=blog&page_size=10');
+            const res = await api.get<{ data: RecentComment[] }>('/comments?page_type=blog&page_size=10');
             return res.data.data;
         }
     });
@@ -177,22 +194,12 @@ export default function HomePageContent() {
         return () => clearInterval(timer);
     }, []);
 
-    const formatContestTime = (startTime: string, endTime: string) => {
-        const start = dayjs(startTime);
-        const end = dayjs(endTime);
-        const duration = end.diff(start);
-        const days = Math.floor(duration / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-
-        if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-        if (hours > 0) return `${hours}h ${minutes}m`;
-        return `${minutes}m`;
-    };
+    const formatContestTime = (startTime: string, endTime: string) =>
+        formatDuration(dayjs(endTime).diff(dayjs(startTime)), 3);
 
     const getTimeRemaining = (endTime: string) => {
         const diff = dayjs(endTime).diff(now);
-        if (diff <= 0) return 'Ended';
+        if (diff <= 0) return tContest('ended');
 
         return formatCountdown(diff);
     };
@@ -200,6 +207,9 @@ export default function HomePageContent() {
 
     return (
         <div className="flex flex-col gap-6">
+            {/* The home page opens on the feed; the page still needs a top-level
+                heading for screen-reader navigation. */}
+            <h1 className="sr-only">CLAOJ: {t('subtitle')}</h1>
             {/* Admin Welcome Banner - Shown for admin users */}
             <AdminWelcomeBanner />
 
@@ -272,11 +282,25 @@ export default function HomePageContent() {
                                         <div className="flex gap-3">
                                             {/* Vote Section */}
                                             <div className="flex flex-col items-center gap-0.5 pt-0.5">
-                                                <button className="text-muted-foreground hover:text-primary transition-colors">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => viewer ? voteMutation.mutate({ id: post.id, delta: 1 }) : router.push('/login')}
+                                                    disabled={voteMutation.isPending}
+                                                    aria-label={tBlog('upvote')}
+                                                    title={tBlog('upvote')}
+                                                    className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition-colors disabled:opacity-50"
+                                                >
                                                     <ThumbsUp size={18} />
                                                 </button>
                                                 <span className="text-sm font-medium text-muted-foreground">{post.score || 0}</span>
-                                                <button className="text-muted-foreground hover:text-red-400 transition-colors">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => viewer ? voteMutation.mutate({ id: post.id, delta: -1 }) : router.push('/login')}
+                                                    disabled={voteMutation.isPending}
+                                                    aria-label={tBlog('downvote')}
+                                                    title={tBlog('downvote')}
+                                                    className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-muted transition-colors disabled:opacity-50"
+                                                >
                                                     <ThumbsDown size={18} />
                                                 </button>
                                             </div>
@@ -296,7 +320,7 @@ export default function HomePageContent() {
                                                 <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 flex-wrap">
                                                     <span className="flex items-center gap-1">
                                                         <Users size={12} />
-                                                        {post.authors?.map((a: any) => a.username).join(', ')}
+                                                        {post.authors?.map(a => a.username).join(', ')}
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <Clock size={12} />
@@ -618,7 +642,7 @@ export default function HomePageContent() {
                         </h3>
                         <div className="p-4">
                             <ul className="space-y-2 text-sm">
-                                {recentComments.map((comment: any) => (
+                                {recentComments.map(comment => (
                                     <li key={comment.id} className="text-xs">
                                         <Link href={`/user/${comment.author}`} className="text-primary hover:underline font-medium">
                                             {comment.author_name}
@@ -631,12 +655,15 @@ export default function HomePageContent() {
                                 ))}
                             </ul>
                             <div className="mt-3 pt-3 border-t border-muted text-xs flex gap-2">
+                                {/* Feeds are API responses, not pages: a full navigation is intended. */}
+                                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                                 <a href="/api/comments/feed/rss" className="text-muted-foreground hover:text-primary flex items-center gap-1">
                                     <span className="text-muted-foreground"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20S4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18zM4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44zm0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/></svg></span>
                                     RSS
                                 </a>
-                                <span className="text-gray-600">/</span>
-                                <a href="/api/comments/feed/atom" className="text-muted-foreground hover:text-[#009688]">Atom</a>
+                                <span className="text-muted-foreground" aria-hidden="true">/</span>
+                                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                                <a href="/api/comments/feed/atom" className="text-muted-foreground hover:text-primary">Atom</a>
                             </div>
                         </div>
                     </div>

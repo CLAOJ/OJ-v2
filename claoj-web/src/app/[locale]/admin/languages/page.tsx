@@ -31,6 +31,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import type { ApiError } from '@/lib/api';
 
 export default function LanguageAdminPage() {
     const t = useTranslations('Admin');
@@ -136,7 +137,8 @@ export default function LanguageAdminPage() {
             toast.success(t('languages.createSuccess'));
             setIsCreateDialogOpen(false);
             loadLanguages();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('languages.createError'));
         }
     };
@@ -163,7 +165,8 @@ export default function LanguageAdminPage() {
             toast.success(t('languages.updateSuccess'));
             setIsEditDialogOpen(false);
             loadLanguages();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('languages.updateError'));
         }
     };
@@ -174,7 +177,8 @@ export default function LanguageAdminPage() {
             toast.success(t('languages.deleteSuccess'));
             setDeleteConfirmId(null);
             loadLanguages();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('languages.deleteError'));
         }
     };

@@ -27,6 +27,7 @@ import { Select } from '@/components/ui/Select';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Settings2 } from 'lucide-react';
 import { formatLimitSeconds, formatLimitMemory } from '@/lib/utils';
+import type { ApiError } from '@/lib/api';
 
 interface ProblemOption {
     id: number;
@@ -144,7 +145,8 @@ export default function LanguageLimitsAdminPage() {
             toast.success(t('languageLimits.createSuccess'));
             setIsCreateDialogOpen(false);
             loadLimits();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('languageLimits.createError'));
         }
     };
@@ -162,7 +164,8 @@ export default function LanguageLimitsAdminPage() {
             toast.success(t('languageLimits.updateSuccess'));
             setIsEditDialogOpen(false);
             loadLimits();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('languageLimits.updateError'));
         }
     };
@@ -173,7 +176,8 @@ export default function LanguageLimitsAdminPage() {
             toast.success(t('languageLimits.deleteSuccess'));
             setDeleteConfirmId(null);
             loadLimits();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('languageLimits.deleteError'));
         }
     };

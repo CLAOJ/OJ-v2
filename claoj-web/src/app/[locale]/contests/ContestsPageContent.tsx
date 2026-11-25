@@ -30,6 +30,9 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import duration from 'dayjs/plugin/duration';
 import { contestFormatLabel } from '@/lib/utils';
+import { formatDuration as formatSpan } from '@/lib/date';
+import type { LucideIcon } from 'lucide-react';
+import type { ApiError } from '@/lib/api';
 
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
@@ -88,7 +91,7 @@ export default function ContestsPageContent({ initialTag = '' }: { initialTag?: 
         },
         // Without this, React Query absorbed the rejection and a failed join
         // looked identical to no click at all.
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error(err.response?.data?.error || t('joinFailed'));
         }
     });
@@ -100,14 +103,9 @@ export default function ContestsPageContent({ initialTag = '' }: { initialTag?: 
     const upcoming = allContests.filter(c => now.isBefore(dayjs(c.start_time)));
     const past = allContests.filter(c => now.isAfter(dayjs(c.end_time)));
 
-    const formatDuration = (start: string, end: string) => {
-        const diff = dayjs(end).diff(dayjs(start));
-        const d = dayjs.duration(diff);
-        if (d.asDays() >= 1) return `${Math.floor(d.asDays())}d ${d.hours()}h`;
-        return `${d.hours()}h ${d.minutes()}m`;
-    };
+    const formatDuration = (start: string, end: string) => formatSpan(dayjs(end).diff(dayjs(start)));
 
-    const ContestTable = ({ contests, title, icon: Icon, emptyMsg }: { contests: Contest[], title: string, icon: any, emptyMsg: string }) => (
+    const renderContestTable = ({ contests, title, icon: Icon, emptyMsg }: { contests: Contest[], title: string, icon: LucideIcon, emptyMsg: string }) => (
         <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
                 <Icon size={20} className="text-primary" />
@@ -179,7 +177,7 @@ export default function ContestsPageContent({ initialTag = '' }: { initialTag?: 
                                                         {formatDuration(c.start_time, c.end_time)}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
-                                                        {dayjs(c.start_time).format('MMM D, HH:mm')}
+                                                        {dayjs(c.start_time).format('D MMM, HH:mm')}
                                                     </span>
                                                     {countdown && (
                                                         <span className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
@@ -303,35 +301,13 @@ export default function ContestsPageContent({ initialTag = '' }: { initialTag?: 
                 </div>
             ) : (
                 <div className="space-y-12">
-                    {active.length > 0 && (
-                        <ContestTable
-                            contests={active}
-                            title={t('active')}
-                            icon={Timer}
-                            emptyMsg=""
-                        />
-                    )}
+                    {active.length > 0 && renderContestTable({ contests: active, title: t('active'), icon: Timer, emptyMsg: "" })}
 
-                    <ContestTable
-                        contests={ongoing}
-                        title={t('ongoing')}
-                        icon={Play}
-                        emptyMsg={t('noScheduled')}
-                    />
+                    {renderContestTable({ contests: ongoing, title: t('ongoing'), icon: Play, emptyMsg: t('noScheduled') })}
 
-                    <ContestTable
-                        contests={upcoming}
-                        title={t('upcoming')}
-                        icon={Calendar}
-                        emptyMsg={t('noScheduled')}
-                    />
+                    {renderContestTable({ contests: upcoming, title: t('upcoming'), icon: Calendar, emptyMsg: t('noScheduled') })}
 
-                    <ContestTable
-                        contests={past}
-                        title={t('pastContests')}
-                        icon={History}
-                        emptyMsg={t('noPast')}
-                    />
+                    {renderContestTable({ contests: past, title: t('pastContests'), icon: History, emptyMsg: t('noPast') })}
 
                     <PaginationBar
                         page={page}

@@ -106,6 +106,11 @@ export default function AdminDashboardPage() {
 
     const judgeList = judges.data ?? [];
     const onlineCount = judgeList.filter(j => j.online && !j.is_disabled && !j.is_blocked).length;
+    // Plain offline judges (e.g. the idle CONTEST1–8 pool) are noise here: list
+    // the ones that are up or need action, and count the rest in one line.
+    const isPlainOffline = (j: (typeof judgeList)[number]) => !j.online && !j.is_disabled && !j.is_blocked;
+    const shownJudges = judgeList.filter(j => !isPlainOffline(j));
+    const offlineCount = judgeList.length - shownJudges.length;
 
     return (
         <div className="space-y-6">
@@ -204,7 +209,7 @@ export default function AdminDashboardPage() {
                             <Empty>{t('dashboard.noJudges')}</Empty>
                         ) : (
                             <ul className="divide-y text-sm">
-                                {judgeList.map(j => {
+                                {shownJudges.map(j => {
                                     const state = j.is_blocked ? 'blocked' : j.is_disabled ? 'disabled' : j.online ? 'online' : 'offline';
                                     return (
                                         <li key={j.id}>
@@ -226,6 +231,14 @@ export default function AdminDashboardPage() {
                                         </li>
                                     );
                                 })}
+                                {offlineCount > 0 && (
+                                    <li>
+                                        <Link href="/admin/judges" className="flex items-center gap-2.5 px-4 py-2 text-muted-foreground hover:bg-muted/40 hover:text-foreground">
+                                            <span aria-hidden className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/40" />
+                                            <span className="flex-1">{t('dashboard.offlineJudges', { count: offlineCount })}</span>
+                                        </Link>
+                                    </li>
+                                )}
                             </ul>
                         )}
                     </Panel>

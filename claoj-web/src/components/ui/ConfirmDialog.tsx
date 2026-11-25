@@ -82,8 +82,13 @@ export function ConfirmDialog({
     const config = variantConfig[variant];
     const Icon = config.icon;
     const [typed, setTyped] = useState('');
-    // A fresh dialog (or a new target) starts empty.
-    useEffect(() => { setTyped(''); }, [isOpen, confirmPhrase]);
+    // A fresh dialog (or a new target) starts empty (adjusted during render).
+    const typedKey = `${isOpen}|${confirmPhrase ?? ''}`;
+    const [typedFor, setTypedFor] = useState(typedKey);
+    if (typedFor !== typedKey) {
+        setTypedFor(typedKey);
+        setTyped('');
+    }
     const phraseOk = !confirmPhrase || typed.trim() === confirmPhrase;
 
     return (

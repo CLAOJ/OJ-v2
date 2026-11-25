@@ -39,14 +39,14 @@ export default function AdminTicketListPage() {
     const { data, isLoading } = useQuery<AdminTicketListResponse>({
         queryKey: ['admin-tickets', page, search, statusFilter, assignedFilter, contributiveFilter],
         queryFn: async () => {
-            const filters: Record<string, string> = {};
-            if (statusFilter !== 'all') filters.status = statusFilter;
+            const filters: NonNullable<Parameters<typeof adminTicketApi.list>[2]> = {};
+            if (statusFilter !== 'all') filters.status = statusFilter as 'open' | 'closed';
             if (assignedFilter === 'assigned') filters.assigned = 'true';
             if (assignedFilter === 'unassigned') filters.assigned = 'false';
             if (contributiveFilter === 'contributive') filters.is_contributive = 'true';
             if (contributiveFilter === 'non-contributive') filters.is_contributive = 'false';
 
-            const res = await adminTicketApi.list(page, 50, filters as any);
+            const res = await adminTicketApi.list(page, 50, filters);
             return res.data;
         }
     });

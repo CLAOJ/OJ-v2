@@ -278,9 +278,9 @@ export default function ProblemsPageContent() {
                     <div className="pt-6 border-t space-y-2">
                         <button
                             onClick={launchRandomProblem}
-                            className="w-full h-10 rounded-md bg-foreground text-background font-medium flex items-center justify-center gap-2"
+                            className="w-full h-9 rounded-md border bg-card hover:bg-muted text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                         >
-                            <Gamepad2 size={20} />
+                            <Gamepad2 size={16} />
                             <span>{t('surpriseMe')}</span>
                         </button>
                         {/* v1 shows a "Suggest" tab in the problem list header
@@ -298,34 +298,26 @@ export default function ProblemsPageContent() {
                 </div>
 
                 {/* Hot Problems */}
-                <div className="p-4 rounded-md bg-card border border-border space-y-4 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none rotate-12">
-                        <Flame size={120} className="text-muted-foreground" />
-                    </div>
-
-                    <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-3 relative z-10">
-                        <Flame size={16} />
+                <div className="rounded-md bg-card border">
+                    <h3 className="px-4 py-3 border-b text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                        <Flame size={14} />
                         {t('trendingNow')}
                     </h3>
-
-                    <div className="space-y-2 relative z-10">
+                    {/* A plain ranked list: one line per problem, its solver count on the right. */}
+                    <ol className="divide-y text-sm">
                         {hotProblems?.map(hp => (
-                            <Link
-                                key={hp.code}
-                                href={`/problem/${hp.code}`}
-                                className="block p-4 rounded-md bg-muted/50 border border-border hover:bg-muted hover:border-rose-500/30 transition-all group"
-                            >
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-xs font-medium text-rose-500/70 ">{hp.code}</span>
-                                    <span className="text-sm font-medium text-foreground group-hover:text-rose-400 transition-colors truncate">{hp.name}</span>
-                                    <div className="flex items-center justify-between mt-1">
-                                        <span className="text-xs font-medium text-muted-foreground">{t('usersSolved', { count: hp.user_count })}</span>
-                                        <span className="text-xs font-medium text-muted-foreground">{t('acPercent', { rate: Math.round(hp.ac_rate) })}</span>
-                                    </div>
-                                </div>
-                            </Link>
+                            <li key={hp.code}>
+                                <Link
+                                    href={`/problem/${hp.code}`}
+                                    className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors"
+                                    title={`${hp.code} · ${t('acPercent', { rate: Math.round(hp.ac_rate) })}`}
+                                >
+                                    <span className="min-w-0 flex-1 truncate font-medium hover:text-primary">{hp.name}</span>
+                                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{t('usersSolved', { count: hp.user_count })}</span>
+                                </Link>
+                            </li>
                         ))}
-                    </div>
+                    </ol>
                 </div>
             </aside>
 

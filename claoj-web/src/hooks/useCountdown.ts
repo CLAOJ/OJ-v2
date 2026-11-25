@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useIsClient } from './useIsClient';
 
 interface TimeRemaining {
     days: number;
@@ -160,11 +161,7 @@ export function useContestCountdown(
     endTime: Date | string | number | null | undefined,
     options: { onExpire?: () => void } = {}
 ): { formatted: string; isExpired: boolean; timeRemaining: TimeRemaining | null } {
-    const [isClient, setIsClient] = useState(false);
-
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+    const isClient = useIsClient();
 
     const countdown = useCountdown({
         targetDate: endTime || undefined,

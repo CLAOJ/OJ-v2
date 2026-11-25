@@ -10,6 +10,7 @@ import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import Link from 'next/link';
+import type { ApiError } from '@/lib/api';
 
 /**
  * The login page has always linked to /forgot-password, and the backend has
@@ -48,7 +49,8 @@ export default function ForgotPasswordPage() {
             // so that this form can't be used to enumerate accounts. Show the
             // same confirmation either way.
             setSuccess(true);
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setError(err.response?.data?.error || t('resetPasswordErrorDefault'));
         } finally {
             setIsLoading(false);

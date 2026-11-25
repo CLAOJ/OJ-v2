@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { ConfirmProvider } from "@/components/providers/ConfirmProvider";
+import { DayjsLocale } from "@/components/providers/DayjsLocale";
 import Navbar from "@/components/layout/Navbar";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import Footer from "@/components/layout/Footer";
@@ -107,6 +108,7 @@ export default async function RootLayout({
 }) {
   const { locale } = await params;
   const messages = await getMessages({ locale });
+  const tCommon = await getTranslations({ locale, namespace: 'Common' });
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -116,14 +118,21 @@ export default async function RootLayout({
       </head>
       <body className={`${beVietnamPro.variable} font-sans antialiased min-h-screen flex flex-col`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <DayjsLocale locale={locale} />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <QueryProvider>
               <AuthProvider>
                 <WebSocketProvider>
                  <ConfirmProvider>
+                  <a
+                    href="#main-content"
+                    className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+                  >
+                    {tCommon('skipToContent')}
+                  </a>
                   <Navbar />
                   <ImpersonationBanner />
-                  <main className="flex-grow container mx-auto px-4 py-8">
+                  <main id="main-content" tabIndex={-1} className="flex-grow container mx-auto px-4 py-8 focus:outline-none">
                     {children}
                   </main>
                   <Footer />

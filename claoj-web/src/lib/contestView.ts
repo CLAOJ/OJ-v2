@@ -1,3 +1,5 @@
+import { formatUnit } from './date';
+
 /**
  * Pure helpers for the public contest pages: times, countdowns, tab parsing and
  * scoreboard CSV. Kept out of the components so they can be unit-tested.
@@ -31,7 +33,9 @@ export function formatCountdown(ms: number): string {
     const h = Math.floor((total % 86400) / 3600);
     const m = Math.floor((total % 3600) / 60);
     const s = total % 60;
-    return d > 0 ? `${d}d ${h}h ${m}m ${s}s` : `${h}h ${m}m ${s}s`;
+    const parts: [number, 'day' | 'hour' | 'minute' | 'second'][] = [[h, 'hour'], [m, 'minute'], [s, 'second']];
+    if (d > 0) parts.unshift([d, 'day']);
+    return parts.map(([n, u]) => formatUnit(n, u)).join(' ');
 }
 
 /**

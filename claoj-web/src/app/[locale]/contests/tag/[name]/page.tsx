@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import ContestsPageContent from '../../ContestsPageContent';
 
@@ -15,8 +15,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, name } = await params;
   const tag = decodeURIComponent(name);
-  const title = `Contests tagged ${tag}`;
-  const description = `Competitive programming contests tagged ${tag} on CLAOJ.`;
+  const t = await getTranslations({ locale, namespace: 'SEO' });
+  const title = t('contestsTagged.title', { tag });
+  const description = t('contestsTagged.description', { tag });
 
   return {
     title,

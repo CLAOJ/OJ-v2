@@ -7,7 +7,7 @@
       "description": "CLAOJ, web chấm bài tự động trường THPT chuyên Long An: bài tập, kỳ thi và bảng xếp hạng cho học sinh Tin học."
     },
     "problems": {
-      "title": "Bài tập - CLAOJ",
+      "title": "Bài tập",
       "description": "Duyệt và giải các bài tập lập trình thi đấu. Từ cơ bản đến nâng cao, tìm bài phù hợp với trình độ của bạn."
     },
     "problem": {
@@ -17,7 +17,7 @@
       "description": "{code}: {name} - {points} điểm, tỷ lệ chấp nhận {acRate}%. Giải bài tập lập trình thi đấu này trên CLAOJ."
     },
     "contests": {
-      "title": "Kỳ thi - CLAOJ",
+      "title": "Kỳ thi",
       "description": "Tham gia các kỳ thi lập trình thi đấu. Tham gia các kỳ thi đang diễn ra, luyện tập với các kỳ thi đã qua và cải thiện rating của bạn."
     },
     "contest": {
@@ -26,24 +26,26 @@
       "startingIn": "Bắt đầu trong {time}",
       "ongoing": "Đang diễn ra",
       "ended": "Đã kết thúc",
-      "description": "{name} - Kỳ thi {format} trên CLAOJ. {status}"
+      "description": "{name} - Kỳ thi {format} trên CLAOJ. {status}",
+      "upcoming": "Sắp diễn ra"
     },
     "users": {
-      "title": "Người dùng - CLAOJ",
+      "title": "Người dùng",
       "description": "Duyệt hồ sơ các lập trình viên trên CLAOJ."
     },
     "user": {
       "title": "Hồ sơ",
       "rating": "Rating",
       "rank": "Hạng",
-      "description": "{username} - rating {rating}, hạng #{rank}. Xem hồ sơ và bài nộp trên CLAOJ."
+      "description": "{username} - rating {rating}, hạng #{rank}. Xem hồ sơ và bài nộp trên CLAOJ.",
+      "noRating": "chưa có"
     },
     "ratings": {
-      "title": "Bảng xếp hạng Rating - CLAOJ",
+      "title": "Bảng xếp hạng Rating",
       "description": "Top lập trình viên thi đấu được xếp hạng theo Elo-MMR. Xem ai đang dẫn đầu cộng đồng CLAOJ."
     },
     "blog": {
-      "title": "Blog - CLAOJ",
+      "title": "Blog",
       "description": "Đọc các bài chia sẻ, hướng dẫn và cập nhật từ đội ngũ CLAOJ và cộng đồng."
     },
     "blogPost": {
@@ -52,16 +54,20 @@
       "description": "{title} bởi {author}. {summary}"
     },
     "submissions": {
-      "title": "Bài nộp - CLAOJ",
+      "title": "Bài nộp",
       "description": "Xem các bài nộp và lời giải gần đây từ cộng đồng CLAOJ."
     },
     "stats": {
-      "title": "Thống kê - CLAOJ",
+      "title": "Thống kê",
       "description": "Xem thống kê nền tảng CLAOJ bao gồm số lượng người dùng, thống kê bài nộp và hơn thế nữa."
     },
     "organizations": {
-      "title": "Tổ chức - CLAOJ",
+      "title": "Tổ chức",
       "description": "Duyệt các tổ chức và trường học trên CLAOJ."
+    },
+    "contestsTagged": {
+      "title": "Kỳ thi gắn thẻ {tag}",
+      "description": "Các kỳ thi lập trình gắn thẻ {tag} trên CLAOJ."
     }
   },
   "Navbar": {
@@ -846,7 +852,10 @@
     "wsConnecting": "Đang kết nối...",
     "wsError": "Lỗi kết nối",
     "wsDisconnected": "Đã ngắt kết nối",
-    "perPage": "Mỗi trang"
+    "perPage": "Mỗi trang",
+    "pageNotFoundDesc": "Trang có thể đã được chuyển đi hoặc đường dẫn bị gõ sai. Bài tập, kỳ thi và bài nộp vẫn ở ngay đây.",
+    "browseProblems": "Xem bài tập",
+    "skipToContent": "Bỏ qua đến nội dung"
   },
   "Ratings": {
     "title": "Bảng xếp hạng Rating",
@@ -1650,7 +1659,8 @@
       "noOpenTickets": "Không có báo cáo nào đang mở.",
       "unassigned": "chưa phân công",
       "recentChanges": "Thay đổi gần đây",
-      "noChanges": "Chưa ghi nhận thay đổi nào."
+      "noChanges": "Chưa ghi nhận thay đổi nào.",
+      "offlineJudges": "{count} máy chấm đang ngoại tuyến"
     },
     "users": {
       "title": "Thành viên",
@@ -2865,7 +2875,11 @@
       "accessTitle": "Quyền truy cập",
       "privateToOrgLabel": "Riêng tư với tổ chức",
       "organizationsLabel": "Tổ chức",
-      "bannedUsersLabel": "Người dùng bị cấm"
+      "bannedUsersLabel": "Người dùng bị cấm",
+      "writeTab": "Soạn",
+      "previewTab": "Xem trước",
+      "previewEmpty": "Chưa có nội dung để xem trước.",
+      "markdownHint": "Markdown. Công thức: ~x^2~ hoặc $x^2$ trong dòng, $$...$$ cho cả khối. Code: dùng khối ```."
     },
     "moss": {
       "title": "Kiểm tra sao chép code",

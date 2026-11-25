@@ -49,6 +49,7 @@ import MathRenderer from '@/components/ui/MathRenderer';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { toast } from 'sonner';
+import type { ApiError } from '@/lib/api';
 
 dayjs.extend(relativeTime);
 
@@ -84,7 +85,6 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     }
     const queryClient = useQueryClient();
     const { subscribe, unsubscribe, status } = useWebSocketContext();
-    const [lastLiveUpdate, setLastLiveUpdate] = useState<Date | null>(null);
 
     const selectTab = (tab: ContestTab) => {
         setActiveTab(tab);
@@ -102,7 +102,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         }
     });
 
-    const { data: ranking, isLoading: isRankingFetching } = useQuery({
+    const { data: ranking, isLoading: isRankingFetching, dataUpdatedAt: rankingUpdatedAt } = useQuery({
         queryKey: ['contest-ranking', key, includeVirtual],
         queryFn: async () => {
             const res = await api.get<RankingResponse>(`/contest/${key}/ranking`, {
@@ -157,7 +157,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         },
         // Without this, React Query absorbed the rejection and a failed join
         // looked identical to no click at all.
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error(err.response?.data?.error || t('joinFailed'));
         }
     });
@@ -213,11 +213,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         };
     }, [key, subscribe, unsubscribe]);
 
-    useEffect(() => {
-        if (activeTab === 'scoreboard' && status === 'connected') {
-            setLastLiveUpdate(new Date());
-        }
-    }, [ranking, status, activeTab]);
+    // "Updated N ago" only means something while the live socket is feeding the board.
+    const lastLiveUpdate = activeTab === 'scoreboard' && status === 'connected' && rankingUpdatedAt ? new Date(rankingUpdatedAt) : null;
 
     if (isFetching) return <div className="p-8 max-w-7xl mx-auto"><Skeleton className="h-[60vh] w-full rounded-md" /></div>;
     if (!contest) return <div className="p-8 text-center text-muted-foreground">{t('notFound')}</div>;
@@ -352,7 +349,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                                                     <h3 className="text-sm font-semibold">{announcement.title}</h3>
                                                     <time className="text-xs text-muted-foreground">
-                                                        {dayjs(announcement.date).format('MMM D, YYYY HH:mm')}
+                                                        {dayjs(announcement.date).format('ll HH:mm')}
                                                     </time>
                                                 </div>
                                                 <div className="prose prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">

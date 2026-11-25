@@ -41,13 +41,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
         onMessage,
     } = options;
 
-    const [status, setStatus] = useState<WebSocketStatus>('disconnected');
+    const [status, setStatus] = useState<WebSocketStatus>('connecting'); // connect() runs on mount
     const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
 
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const reconnectAttemptsRef = useRef(0);
     const manualCloseRef = useRef(false);
+    // The reconnect timer calls the latest connect, so connect never references itself.
+    const connectRef = useRef<() => void>(() => {});
+    // Read by onopen, which outlives the render that created it.
+    const subscribedRef = useRef(subscribedChannels);
+    useEffect(() => { subscribedRef.current = subscribedChannels; }, [subscribedChannels]);
 
     const cleanup = useCallback(() => {
         if (reconnectTimeoutRef.current) {
@@ -62,7 +67,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
         }
 
         manualCloseRef.current = false;
-        setStatus('connecting');
 
         try {
             const ws = new WebSocket(url);
@@ -72,7 +76,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
                 reconnectAttemptsRef.current = 0;
 
                 // Resubscribe to channels on reconnect
-                subscribedChannels.forEach((channel) => {
+                subscribedRef.current.forEach((channel) => {
                     ws.send(JSON.stringify({ type: 'subscribe', channel }));
                 });
             };
@@ -80,7 +84,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
             ws.onclose = (event) => {
                 wsRef.current = null;
 
-                if (!manualCloseRef.current && status !== 'error') {
+                if (!manualCloseRef.current) {
                     setStatus('disconnected');
 
                     // Attempt to reconnect
@@ -88,7 +92,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
                         reconnectAttemptsRef.current += 1;
 
                         reconnectTimeoutRef.current = setTimeout(() => {
-                            connect();
+                            setStatus('connecting');
+                            connectRef.current();
                         }, reconnectInterval);
                     }
                 }
@@ -111,10 +116,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
             };
 
             wsRef.current = ws;
-        } catch (error) {
-            setStatus('error');
+        } catch {
+            // Only an invalid URL throws here. Report it asynchronously, like onerror,
+            // so connect() never sets state synchronously inside the mount effect.
+            queueMicrotask(() => setStatus('error'));
         }
     }, [url, reconnectInterval, maxReconnectAttempts, onMessage]);
+    useEffect(() => { connectRef.current = connect; }, [connect]);
 
     const disconnect = useCallback(() => {
         manualCloseRef.current = true;

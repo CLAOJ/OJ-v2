@@ -15,6 +15,38 @@ interface NotificationPreferences {
     web_on_ticket_reply?: boolean;
 }
 
+const ToggleSwitch = ({ label, description, checked, onChange }: {
+    label: string;
+    description: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+}) => (
+    <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
+        <div className="space-y-1">
+            <p className="text-sm font-bold">{label}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={label}
+            onClick={() => onChange(!checked)}
+            className={cn(
+                "relative w-12 h-6 rounded-full transition-colors",
+                checked ? "bg-primary" : "bg-muted"
+            )}
+        >
+            <div
+                className={cn(
+                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                    checked ? "left-7" : "left-1"
+                )}
+            />
+        </button>
+    </div>
+);
+
 export default function NotificationSettingsTab() {
     const t = useTranslations('Settings');
     const queryClient = useQueryClient();
@@ -46,34 +78,6 @@ export default function NotificationSettingsTab() {
             alert(error.response?.data?.error || 'Failed to update preferences');
         }
     });
-
-    const ToggleSwitch = ({ label, description, checked, onChange }: {
-        label: string;
-        description: string;
-        checked: boolean;
-        onChange: (checked: boolean) => void;
-    }) => (
-        <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
-            <div className="space-y-1">
-                <p className="text-sm font-bold">{label}</p>
-                <p className="text-xs text-muted-foreground">{description}</p>
-            </div>
-            <button
-                onClick={() => onChange(!checked)}
-                className={cn(
-                    "relative w-12 h-6 rounded-full transition-colors",
-                    checked ? "bg-primary" : "bg-muted"
-                )}
-            >
-                <div
-                    className={cn(
-                        "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
-                        checked ? "left-7" : "left-1"
-                    )}
-                />
-            </button>
-        </div>
-    );
 
     if (isLoading) {
         return (

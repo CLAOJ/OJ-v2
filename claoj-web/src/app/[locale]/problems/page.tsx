@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import ProblemsPageContent from './ProblemsPageContent';
 
@@ -11,9 +11,9 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-
-  const title = `Problems - Practice Competitive Programming`;
-  const description = `Browse hundreds of competitive programming problems sorted by difficulty. Practice algorithms, data structures, and problem-solving skills on CLAOJ.`;
+  const t = await getTranslations({ locale, namespace: 'SEO' });
+  const title = t('problems.title');
+  const description = t('problems.description');
 
   return {
     title,

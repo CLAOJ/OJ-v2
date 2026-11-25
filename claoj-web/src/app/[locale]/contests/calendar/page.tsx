@@ -259,11 +259,11 @@ export default function ContestCalendarPage() {
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                         <span className="font-mono">
-                                            {dayjs(contest.start_time).format('MMM D, YYYY HH:mm')}
+                                            {dayjs(contest.start_time).format('ll HH:mm')}
                                         </span>
                                         <span>-</span>
                                         <span>
-                                            {dayjs(contest.end_time).format('MMM D, HH:mm')}
+                                            {dayjs(contest.end_time).format('D MMM, HH:mm')}
                                         </span>
                                     </div>
                                 </div>

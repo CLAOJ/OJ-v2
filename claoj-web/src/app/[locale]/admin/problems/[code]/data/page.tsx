@@ -10,6 +10,7 @@ import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FilesTab, ConfigTab, PdfTab } from '@/components/admin/problem-data';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { CloneProblemButton } from '@/components/admin/CloneProblemModal';
 
 interface TestCaseWithContent {
@@ -39,6 +40,7 @@ interface NewTestCase {
 
 export default function ProblemDataPage() {
     const t = useTranslations('Admin');
+    const confirm = useConfirm();
     const params = useParams();
     const code = params.code as string;
     const queryClient = useQueryClient();
@@ -109,11 +111,11 @@ export default function ProblemDataPage() {
         enabled: !!selectedTestCase && !!viewingContent
     });
 
-    const handleDelete = useCallback((testCaseId: number) => {
-        if (confirm(t('problemData.deleteConfirm'))) {
+    const handleDelete = useCallback(async (testCaseId: number) => {
+        if (await confirm(t('problemData.deleteConfirm'), { variant: 'danger' })) {
             deleteMutation.mutate(testCaseId);
         }
-    }, [deleteMutation, t]);
+    }, [confirm, deleteMutation, t]);
 
     const handleReorder = useCallback((newOrder: number[]) => {
         if (!problemData?.test_cases) return;
@@ -467,54 +469,46 @@ function TestCasesTab({
                     {t('problemData.testCasesTab', { count: testCases.length })}
                 </div>
                 <div className="divide-y">
-                    <AnimatePresence>
-                        {testCases.map((testCase) => (
-                            <motion.div
-                                key={testCase.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
-                            >
-                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-medium">
-                                    {testCase.order}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-medium">{t('problemData.testCaseNumber', { order: testCase.order })}</span>
-                                        <span className="text-xs text-muted-foreground">{t('problemData.idLabel', { id: testCase.id })}</span>
-                                    </div>
-                                    <div className="text-sm text-muted-foreground mt-1">
-                                        {t('problemData.inputOutputFiles', { input: testCase.input_file, output: testCase.output_file })}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => onView(testCase, 'input')}
-                                        className="p-2 hover:bg-muted rounded-lg transition-colors"
-                                        title={t('problemData.viewEditInputTitle')}
-                                    >
-                                        <Eye size={18} />
-                                    </button>
-                                    <button
-                                        onClick={() => onView(testCase, 'output')}
-                                        className="p-2 hover:bg-muted rounded-lg transition-colors"
-                                        title={t('problemData.viewEditOutputTitle')}
-                                    >
-                                        <FileText size={18} />
-                                    </button>
-                                    <button
-                                        onClick={() => onDelete(testCase.id)}
-                                        disabled={isDeleting}
-                                        className="p-2 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
-                                        title={t('common.delete')}
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                    {/* One compact line per test: real problems carry ~100 tests. */}
+                    {testCases.map((testCase) => (
+                        <div key={testCase.id} className="flex items-center gap-3 h-10 px-4 text-sm hover:bg-muted/30 transition-colors">
+                            <span className="w-8 shrink-0 text-right font-medium tabular-nums text-muted-foreground">{testCase.order}</span>
+                            <span className="min-w-0 flex-1 truncate font-mono text-xs" title={`${testCase.input_file} → ${testCase.output_file}`}>
+                                {testCase.input_file || '—'} <span className="text-muted-foreground">→</span> {testCase.output_file || '—'}
+                            </span>
+                            <span className="hidden sm:inline text-xs text-muted-foreground tabular-nums">#{testCase.id}</span>
+                            <div className="flex items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => onView(testCase, 'input')}
+                                    className="p-1.5 hover:bg-muted rounded transition-colors"
+                                    title={t('problemData.viewEditInputTitle')}
+                                    aria-label={`${t('problemData.viewEditInputTitle')} ${testCase.order}`}
+                                >
+                                    <Eye size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onView(testCase, 'output')}
+                                    className="p-1.5 hover:bg-muted rounded transition-colors"
+                                    title={t('problemData.viewEditOutputTitle')}
+                                    aria-label={`${t('problemData.viewEditOutputTitle')} ${testCase.order}`}
+                                >
+                                    <FileText size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onDelete(testCase.id)}
+                                    disabled={isDeleting}
+                                    className="p-1.5 hover:bg-destructive/10 rounded transition-colors text-destructive disabled:opacity-50"
+                                    title={t('common.delete')}
+                                    aria-label={`${t('common.delete')} ${testCase.order}`}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                     {testCases.length === 0 && (
                         <div className="p-8 text-center text-muted-foreground">
                             <Database size={48} className="mx-auto mb-4 opacity-50" />

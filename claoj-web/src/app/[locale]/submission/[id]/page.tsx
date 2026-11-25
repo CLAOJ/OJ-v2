@@ -39,6 +39,7 @@ import { formatMemoryMb, summarizeTestScore } from '@/lib/submissionDetail';
 import { problemResubmitPath } from '@/lib/submissionFile';
 import dayjs from 'dayjs';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import type { ApiError } from '@/lib/api';
 
 interface TestCase {
     case: number;
@@ -181,7 +182,8 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
             await api.post(`/admin/submission/${id}/rejudge`);
             // Refresh submission data
             queryClient.invalidateQueries({ queryKey: ['submission', id] });
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setRejudgeError(err.response?.data?.error || t('rejudgeError'));
         } finally {
             setIsRejudging(false);
@@ -307,7 +309,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             </Link>
                             <span className="flex items-center gap-1.5 text-muted-foreground">
                                 <Calendar size={16} />
-                                {dayjs(sub.date).format('MMM D, YYYY HH:mm:ss')}
+                                {dayjs(sub.date).format('ll HH:mm:ss')}
                             </span>
                             <span className="flex items-center gap-1.5 text-muted-foreground">
                                 <FileCode size={16} />

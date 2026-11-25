@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Scale } from 'lucide-react';
+import type { ApiError } from '@/lib/api';
 
 export default function LicenseAdminPage() {
     const t = useTranslations('Admin');
@@ -106,7 +107,8 @@ export default function LicenseAdminPage() {
             toast.success(t('licenses.createSuccess'));
             setIsCreateDialogOpen(false);
             loadLicenses();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('licenses.createError'));
         }
     };
@@ -126,7 +128,8 @@ export default function LicenseAdminPage() {
             toast.success(t('licenses.updateSuccess'));
             setIsEditDialogOpen(false);
             loadLicenses();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('licenses.updateError'));
         }
     };
@@ -137,7 +140,8 @@ export default function LicenseAdminPage() {
             toast.success(t('licenses.deleteSuccess'));
             setDeleteConfirmId(null);
             loadLicenses();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('licenses.deleteError'));
         }
     };

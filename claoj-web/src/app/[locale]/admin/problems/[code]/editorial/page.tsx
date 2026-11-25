@@ -6,8 +6,9 @@ import { useTranslations } from 'next-intl';
 import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { toast } from 'sonner';
 import { adminSolutionApi } from '@/lib/adminApi';
-import type { AdminSolutionDetail, SolutionCreateRequest, SolutionUpdateRequest } from '@/types';
+import type { AdminProblemDetail, SolutionCreateRequest, SolutionUpdateRequest } from '@/types';
 import Link from 'next/link';
 import CodeEditor from '@/components/ui/CodeEditor';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -15,8 +16,9 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 export default function AdminSolutionEditorPage() {
     const params = useParams();
     const router = useRouter();
-    const id = params.id as string;
-    const isEdit = id !== 'new';
+    // The route is /admin/problems/<code>/editorial: the page edits that
+    // problem's editorial, or creates it when the problem has none yet.
+    const code = params.code as string;
     const t = useTranslations();
     const confirm = useConfirm();
 
@@ -27,16 +29,28 @@ export default function AdminSolutionEditorPage() {
     const [publishOn, setPublishOn] = useState('');
     const [validUntil, setValidUntil] = useState('');
     const [language, setLanguage] = useState('en');
-    const [problemCode, setProblemCode] = useState('');
 
-    // Fetch solution if editing
-    const { data: solution, isLoading: loadingSolution } = useQuery({
-        queryKey: ['admin-solution', id],
-        queryFn: () => adminSolutionApi.detail(parseInt(id)),
-        enabled: isEdit
+    const { data: problem, isLoading: loadingProblem } = useQuery({
+        queryKey: ['admin-problem', code],
+        queryFn: async () => (await api.get<AdminProblemDetail>(`/admin/problem/${code}`)).data,
     });
+    const { data: existingId, isLoading: loadingLookup } = useQuery({
+        queryKey: ['admin-solution-for', code],
+        queryFn: async () => (await adminSolutionApi.forProblem(code)).data.data[0]?.id ?? null,
+    });
+    const id = existingId ?? null;
+    const isEdit = id !== null;
+    const { data: solution, isLoading: loadingDetail } = useQuery({
+        queryKey: ['admin-solution', id],
+        queryFn: () => adminSolutionApi.detail(id as number),
+        enabled: isEdit,
+    });
+    const loadingSolution = loadingProblem || loadingLookup || (isEdit && loadingDetail);
 
-    useEffect(() => {
+    // Load the fetched editorial into the form once per fetch (adjusted during render).
+    const [loadedSolution, setLoadedSolution] = useState<typeof solution>(undefined);
+    if (solution !== loadedSolution) {
+        setLoadedSolution(solution);
         if (solution?.data) {
             setContent(solution.data.content);
             setSummary(solution.data.summary);
@@ -45,44 +59,43 @@ export default function AdminSolutionEditorPage() {
             setPublishOn(solution.data.publish_on ? new Date(solution.data.publish_on).toISOString().slice(0, 16) : '');
             setValidUntil(solution.data.valid_until ? new Date(solution.data.valid_until).toISOString().slice(0, 16) : '');
             setLanguage(solution.data.language);
-            setProblemCode(solution.data.problem_code);
         }
-    }, [solution]);
+    }
 
     const createMutation = useMutation({
         mutationFn: (data: SolutionCreateRequest) =>
             adminSolutionApi.create(data),
         onSuccess: () => {
-            alert(t('admin.solution_created'));
+            toast.success(t('admin.solution_created'));
             router.push('/admin/problems');
         },
-        onError: (err: any) => {
-            alert(err.response?.data?.error || t('admin.error_creating_solution'));
+        onError: (err: { response?: { data?: { error?: string } } }) => {
+            toast.error(err.response?.data?.error || t('admin.error_creating_solution'));
         }
     });
 
     const updateMutation = useMutation({
         mutationFn: (data: SolutionUpdateRequest) =>
-            adminSolutionApi.update(parseInt(id), data),
+            adminSolutionApi.update(id as number, data),
         onSuccess: () => {
-            alert(t('admin.solution_updated'));
+            toast.success(t('admin.solution_updated'));
         },
-        onError: (err: any) => {
-            alert(err.response?.data?.error || t('admin.error_updating_solution'));
+        onError: (err: { response?: { data?: { error?: string } } }) => {
+            toast.error(err.response?.data?.error || t('admin.error_updating_solution'));
         }
     });
 
     const deleteMutation = useMutation({
-        mutationFn: () => adminSolutionApi.delete(parseInt(id)),
+        mutationFn: () => adminSolutionApi.delete(id as number),
         // The question is asked before deleting (below); it used to be asked
         // only after the editorial was already gone.
         onSuccess: () => router.push('/admin/problems'),
     });
 
     const handleSubmit = () => {
-        const problemId = solution?.data?.problem_id || 0;
+        const problemId = solution?.data?.problem_id || problem?.id || 0;
         if (!problemId && !isEdit) {
-            alert(t('admin.problem_required'));
+            toast.error(t('admin.problem_required'));
             return;
         }
 
@@ -114,7 +127,7 @@ export default function AdminSolutionEditorPage() {
     return (
         <div className="container mx-auto py-8">
             <div className="mb-6">
-                <Link href="/admin/problems" className="text-accent  hover:underline">
+                <Link href="/admin/problems" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-4">
                     &larr; {t('admin.back_to_problems')}
                 </Link>
                 <h1 className="text-3xl font-bold mt-2">
@@ -124,15 +137,13 @@ export default function AdminSolutionEditorPage() {
 
             <div className="space-y-6">
                 {/* Problem Info */}
-                {solution?.data && (
-                    <div className="bg-card border rounded-lg p-4">
-                        <h3 className="font-semibold mb-2">{t('admin.problem')}</h3>
-                        <p className="text-lg">
-                            <Link href={`/problem/${solution.data.problem_code}`} className="text-accent  hover:underline">
-                                {solution.data.problem_code} - {solution.data.problem_name}
-                            </Link>
-                        </p>
-                    </div>
+                {problem && (
+                    <p className="text-sm text-muted-foreground">
+                        {t('admin.problem')}:{' '}
+                        <Link href={`/problem/${problem.code}`} className="font-medium text-foreground hover:text-primary hover:underline underline-offset-4">
+                            {problem.code} – {problem.name}
+                        </Link>
+                    </p>
                 )}
 
                 {/* Summary */}

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Loader2, CheckCircle, Smartphone, Lock, Key, Copy, Download } from 'lucide-react';
 import api from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
+import dayjs from 'dayjs';
 
 type TwoFactorStatus = {
     enabled: boolean;
@@ -43,14 +44,13 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         },
     });
 
-    // Sync twoFactorStep with twoFactorStatus.enabled
-    useEffect(() => {
-        if (twoFactorStatus?.enabled) {
-            setTwoFactorStep('enabled');
-        } else if (twoFactorStatus !== undefined) {
-            setTwoFactorStep('disabled');
-        }
-    }, [twoFactorStatus]);
+    // Each fresh status from the server resets the step (adjusted during render).
+    const [syncedStatus, setSyncedStatus] = useState<TwoFactorStatus | undefined>(undefined);
+    if (twoFactorStatus !== syncedStatus) {
+        setSyncedStatus(twoFactorStatus);
+        if (twoFactorStatus?.enabled) setTwoFactorStep('enabled');
+        else if (twoFactorStatus !== undefined) setTwoFactorStep('disabled');
+    }
 
     const { mutate: setupTwoFactor, isPending: isSettingUpTwoFactor } = useMutation({
         mutationFn: async (password: string) => {
@@ -124,7 +124,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
 
     const downloadBackupCodes = () => {
         if (!backupCodes) return;
-        const content = `${t('backupCodesFileHeader')}\n==================\n\n${t('saveBackupCodesWarning')}\n\n${backupCodes.join('\n')}\n\n${t('backupCodesFileGeneratedOn', { date: new Date().toLocaleString() })}`;
+        const content = `${t('backupCodesFileHeader')}\n==================\n\n${t('saveBackupCodesWarning')}\n\n${backupCodes.join('\n')}\n\n${t('backupCodesFileGeneratedOn', { date: dayjs().format('L HH:mm') })}`;
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

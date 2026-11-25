@@ -18,6 +18,7 @@ import {
 import { Label } from '@/components/ui/Label';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Settings } from 'lucide-react';
+import type { ApiError } from '@/lib/api';
 
 interface FormData {
     key: string;
@@ -87,7 +88,8 @@ export default function MiscConfigsAdminPage() {
             toast.success(t('miscConfigs.createSuccess'));
             setIsCreateDialogOpen(false);
             loadMiscConfigs();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('miscConfigs.createError'));
         }
     };
@@ -103,7 +105,8 @@ export default function MiscConfigsAdminPage() {
             toast.success(t('miscConfigs.updateSuccess'));
             setIsCreateDialogOpen(false);
             loadMiscConfigs();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('miscConfigs.updateError'));
         }
     };
@@ -114,7 +117,8 @@ export default function MiscConfigsAdminPage() {
             toast.success(t('miscConfigs.deleteSuccess'));
             setDeleteConfirmId(null);
             loadMiscConfigs();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('miscConfigs.deleteError'));
         }
     };

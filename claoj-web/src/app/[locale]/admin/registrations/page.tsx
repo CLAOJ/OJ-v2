@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { PaginationBar } from '@/components/ui/PaginationBar';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { Search, UserCheck, Send, Mail, KeyRound, UserX } from 'lucide-react';
+import dayjs from 'dayjs';
 
 const FILTER_KEYS = ['search', 'status', 'order'] as const;
 const PAGE_SIZE = 50;
@@ -205,7 +206,7 @@ export default function AdminRegistrationsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                                {row.date_joined ? new Date(row.date_joined).toLocaleDateString() : t('common.notAvailable')}
+                                                {row.date_joined ? dayjs(row.date_joined).format('L') : t('common.notAvailable')}
                                             </td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground">
                                                 {registrationState(row)}

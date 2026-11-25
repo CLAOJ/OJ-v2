@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
 import Link from 'next/link';
+import type { ApiError } from '@/lib/api';
 
 export default function VerifyEmailPage() {
     const searchParams = useSearchParams();
@@ -33,7 +34,8 @@ export default function VerifyEmailPage() {
                 setTimeout(() => {
                     router.push('/login');
                 }, 3000);
-            } catch (err: any) {
+            } catch (caught) {
+                const err = caught as ApiError;
                 setStatus('error');
                 setMessage(err.response?.data?.error || t('verifyEmailErrorDefault'));
             }

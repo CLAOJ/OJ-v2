@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import ContestPageContent from './ContestPageContent';
 import { ContestJsonLd } from '@/components/seo';
@@ -33,10 +33,12 @@ export async function generateMetadata({
     const now = Date.now();
     const isRunning = now > Date.parse(contest.start_time) && now < Date.parse(contest.end_time);
     const isPast = now > Date.parse(contest.end_time);
-    const status = isPast ? 'Ended' : isRunning ? 'Running' : 'Upcoming';
+    const t = await getTranslations({ locale, namespace: 'SEO.contest' });
+    const status = t(isPast ? 'ended' : isRunning ? 'ongoing' : 'upcoming');
+    const format = contestFormatLabel(contest.format);
 
-    const title = `${contest.name} - ${contestFormatLabel(contest.format)} ${status}`;
-    const description = `${contest.summary || contest.description || ''} | ${contestFormatLabel(contest.format)} format, ${isRunning ? 'Currently Running' : status}`;
+    const title = `${contest.name} - ${format}`;
+    const description = contest.summary || t('description', { name: contest.name, format, status });
 
     return {
       title,

@@ -28,6 +28,7 @@ import {
     Eye,
     EyeOff
 } from 'lucide-react';
+import dayjs from 'dayjs';
 
 export default function AdminJudgeDetailPage() {
     const t = useTranslations('Admin');
@@ -239,7 +240,7 @@ export default function AdminJudgeDetailPage() {
                         <div>
                             <div className="text-sm text-muted-foreground">{t('judgeDetail.startTimeLabel')}</div>
                             <div className="font-semibold text-sm">
-                                {judge.start_time ? new Date(judge.start_time).toLocaleString() : t('common.notAvailable')}
+                                {judge.start_time ? dayjs(judge.start_time).format('L HH:mm') : t('common.notAvailable')}
                             </div>
                         </div>
                     </div>

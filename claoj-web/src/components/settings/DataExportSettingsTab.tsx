@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Loader2, Info, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import dayjs from 'dayjs';
 
 export default function DataExportSettingsTab() {
     const t = useTranslations('Settings');
@@ -72,7 +73,7 @@ export default function DataExportSettingsTab() {
                             <span className="text-sm text-muted-foreground">{t('lastExportLabel')}</span>
                             <span className="text-sm font-medium">
                                 {exportStatus.last_export
-                                    ? new Date(exportStatus.last_export).toLocaleDateString()
+                                    ? dayjs(exportStatus.last_export).format('L')
                                     : t('exportNever')}
                             </span>
                         </div>

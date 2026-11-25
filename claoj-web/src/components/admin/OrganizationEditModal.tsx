@@ -17,6 +17,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import type { AdminOrganizationDetail } from '@/types';
 import { Link } from '@/navigation';
 import { X, Edit, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import dayjs from 'dayjs';
 
 interface OrganizationEditModalProps {
     /** null creates a new organization; an id edits that organization. */
@@ -338,7 +339,7 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">{t('organizations.creationDateLabel')}</span>
-                            <span className="font-medium">{new Date(detail.creation_date).toLocaleString()}</span>
+                            <span className="font-medium">{dayjs(detail.creation_date).format('L HH:mm')}</span>
                         </div>
                         <Link
                             href={`/organization/${detail.id}`}

@@ -13,9 +13,9 @@ interface BasicInfo {
 }
 
 interface BasicInfoErrors {
-    key?: { message: string };
-    name?: { message: string };
-    description?: { message: string };
+    key?: { message?: string };
+    name?: { message?: string };
+    description?: { message?: string };
 }
 
 interface ContestFormData {

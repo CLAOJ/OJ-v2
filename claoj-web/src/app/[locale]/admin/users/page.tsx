@@ -32,6 +32,7 @@ import {
     KeyRound,
     LogIn
 } from 'lucide-react';
+import dayjs from 'dayjs';
 
 const FILTER_KEYS = ['search', 'role', 'status', 'group_id', 'sort', 'order'] as const;
 const PAGE_SIZE = 50;
@@ -288,10 +289,10 @@ export default function AdminUserPage() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                                {user.date_joined ? new Date(user.date_joined).toLocaleDateString() : t('common.notAvailable')}
+                                                {user.date_joined ? dayjs(user.date_joined).format('L') : t('common.notAvailable')}
                                             </td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                                {user.last_login ? new Date(user.last_login).toLocaleDateString() : t('users.never')}
+                                                {user.last_login ? dayjs(user.last_login).format('L') : t('users.never')}
                                             </td>
                                             <td className="px-4 py-2">
                                                 <div className="flex flex-wrap items-center gap-1">

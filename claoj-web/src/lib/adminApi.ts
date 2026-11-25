@@ -641,6 +641,10 @@ export const adminSolutionApi = {
     list: (page: number = 1, pageSize: number = 50) =>
         api.get<AdminSolutionListResponse>(`/admin/solutions?page=${page}&page_size=${pageSize}`),
 
+    /** The editorial row of one problem (v1 allows at most one per problem). */
+    forProblem: (code: string) =>
+        api.get<AdminSolutionListResponse>(`/admin/solutions?problem=${encodeURIComponent(code)}&page_size=1`),
+
     detail: (id: number) =>
         api.get<AdminSolutionDetail>(`/admin/solution/${id}`),
 

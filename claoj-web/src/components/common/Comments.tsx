@@ -64,7 +64,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
         postComment.mutate({ body, parent_id: replyTo });
     };
 
-    const ContextHeader = () => {
+    const renderContextHeader = () => {
         if (commentType !== 'problem' && commentType !== 'editorial') return null;
 
         return (
@@ -122,7 +122,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
 
             {user ? (
                 <div className="space-y-4">
-                    <ContextHeader />
+                    {renderContextHeader()}
                     <div className="p-8 rounded-md bg-card border border-dashed hover:border-primary/50 transition-colors space-y-4">
                         <textarea
                             value={commentBody}

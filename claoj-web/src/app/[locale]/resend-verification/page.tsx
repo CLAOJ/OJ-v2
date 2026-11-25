@@ -10,6 +10,7 @@ import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import Link from 'next/link';
+import type { ApiError } from '@/lib/api';
 
 export default function ResendVerificationPage() {
     const t = useTranslations('Auth');
@@ -37,7 +38,8 @@ export default function ResendVerificationPage() {
         try {
             await api.post('/auth/resend-verification', { email: data.email });
             setSuccess(true);
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             setError(err.response?.data?.error || t('resendVerificationErrorDefault'));
         } finally {
             setIsLoading(false);

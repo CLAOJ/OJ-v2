@@ -26,14 +26,20 @@ export default function PdfStatementViewer({ code, variant = 'inline' }: PdfStat
 
     const downloadUrl = problemPdfApi.getPdfUrl(code);
 
+    // Another problem: start over (adjusted during render, before the fetch effect).
+    const [pdfFor, setPdfFor] = useState(code);
+    if (pdfFor !== code) {
+        setPdfFor(code);
+        setStatus('loading');
+        setNumPages(0);
+        setObjectUrl(null);
+    }
+
     // Fetch through the authenticated axios client (cookie session + CSRF/refresh
     // interceptors); the backend enforces CanViewProblem and caps at 10 MB.
     useEffect(() => {
         let created: string | null = null;
         let cancelled = false;
-        setStatus('loading');
-        setNumPages(0);
-        setObjectUrl(null);
         api.get(`/problem/${code}/pdf`, { responseType: 'blob' })
             .then((res) => {
                 if (cancelled) return;

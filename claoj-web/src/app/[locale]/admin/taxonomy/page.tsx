@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/Label';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Folder, Tag } from 'lucide-react';
+import type { ApiError } from '@/lib/api';
 
 type TabType = 'groups' | 'types';
 
@@ -136,7 +137,8 @@ export default function ProblemTaxonomyAdminPage() {
             toast.success(t('taxonomy.groupCreated'));
             setIsCreateGroupDialogOpen(false);
             loadGroups();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('taxonomy.groupCreateFailed'));
         }
     };
@@ -148,7 +150,8 @@ export default function ProblemTaxonomyAdminPage() {
             toast.success(t('taxonomy.groupUpdated'));
             setIsEditGroupDialogOpen(false);
             loadGroups();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('taxonomy.groupUpdateFailed'));
         }
     };
@@ -159,7 +162,8 @@ export default function ProblemTaxonomyAdminPage() {
             toast.success(t('taxonomy.groupDeleted'));
             setDeleteGroupConfirmId(null);
             loadGroups();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('taxonomy.groupDeleteFailed'));
         }
     };
@@ -195,7 +199,8 @@ export default function ProblemTaxonomyAdminPage() {
             toast.success(t('taxonomy.typeCreated'));
             setIsCreateTypeDialogOpen(false);
             loadTypes();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('taxonomy.typeCreateFailed'));
         }
     };
@@ -210,7 +215,8 @@ export default function ProblemTaxonomyAdminPage() {
             toast.success(t('taxonomy.typeUpdated'));
             setIsEditTypeDialogOpen(false);
             loadTypes();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('taxonomy.typeUpdateFailed'));
         }
     };
@@ -221,7 +227,8 @@ export default function ProblemTaxonomyAdminPage() {
             toast.success(t('taxonomy.typeDeleted'));
             setDeleteTypeConfirmId(null);
             loadTypes();
-        } catch (error: any) {
+        } catch (caught) {
+            const error = caught as ApiError;
             toast.error(error.response?.data?.error || t('taxonomy.typeDeleteFailed'));
         }
     };

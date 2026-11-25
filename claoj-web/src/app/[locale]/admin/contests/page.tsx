@@ -26,6 +26,7 @@ import {
     Play,
     Copy as CopyIcon
 } from 'lucide-react';
+import dayjs from 'dayjs';
 
 const FILTER_KEYS = ['search', 'status', 'sort', 'order'] as const;
 const PAGE_SIZE = 50;
@@ -184,10 +185,10 @@ export default function AdminContestPage() {
                                                 <div className="text-xs text-muted-foreground font-mono">{contest.key}</div>
                                             </td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                                {contest.start_time && new Date(contest.start_time).toLocaleDateString()}
+                                                {contest.start_time && dayjs(contest.start_time).format('L')}
                                             </td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                                {contest.end_time && new Date(contest.end_time).toLocaleDateString()}
+                                                {contest.end_time && dayjs(contest.end_time).format('L')}
                                             </td>
                                             <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{contest.user_count}</td>
                                             <td className="px-4 py-2">

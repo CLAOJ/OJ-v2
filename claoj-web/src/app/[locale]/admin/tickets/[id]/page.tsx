@@ -237,7 +237,7 @@ function MessageBubble({ ticketId, message, isOP, onDelete, onChanged }: Message
                             </>
                         )}
                         <span className="text-xs text-muted-foreground font-mono ml-2">
-                            {dayjs(message.time).format('MMM D, YYYY [at] HH:mm')}
+                            {dayjs(message.time).format('ll HH:mm')}
                         </span>
                     </div>
                 </div>

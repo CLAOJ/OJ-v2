@@ -130,7 +130,7 @@ export default function TicketDetailPage() {
                         </Badge>
                     )}
                     <span className="text-xs text-muted-foreground font-mono ml-auto">
-                        {dayjs(message.time).format('MMM D, YYYY [at] HH:mm')}
+                        {dayjs(message.time).format('ll HH:mm')}
                     </span>
                 </div>
                 <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">

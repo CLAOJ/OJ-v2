@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { MessageSquare, MessageSquarePlus, ChevronDown, ChevronUp, Send, Loader2 } from 'lucide-react';
+import dayjs from 'dayjs';
 
 export interface ContestClarification {
     id: number;
@@ -160,7 +161,7 @@ export function ContestClarificationList({ contestKey, canCreate, isAdmin, onCla
                                         {clarification.is_answered ? t('answered') : t('pending')}
                                     </Badge>
                                     <span className="text-muted-foreground text-sm">
-                                        {new Date(clarification.create_time).toLocaleString()}
+                                        {dayjs(clarification.create_time).format('L HH:mm')}
                                     </span>
                                     {clarification.author && (
                                         <span className="text-muted-foreground text-sm">

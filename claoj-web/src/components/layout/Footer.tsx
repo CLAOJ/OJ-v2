@@ -3,7 +3,21 @@
 import { Link, usePathname } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import { Heart } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+
+const QR_KEY = 'qrWidgetClosed';
+const readQrHidden = () => {
+    try {
+        const until = localStorage.getItem(QR_KEY);
+        return !!until && Date.now() < parseInt(until);
+    } catch {
+        return false;
+    }
+};
+const subscribeStorage = (onChange: () => void) => {
+    window.addEventListener('storage', onChange);
+    return () => window.removeEventListener('storage', onChange);
+};
 
 export default function Footer() {
     const currentYear = new Date().getFullYear();
@@ -13,25 +27,20 @@ export default function Footer() {
     const onHome = usePathname() === '/';
 
     // Donation QR widget. Collapsed by default to a small floating button so it
-    // never covers page content; expands to the QR panel on tap. `dismissed`
-    // starts true to avoid a flash before the localStorage check runs.
-    const [dismissed, setDismissed] = useState(true);
+    // never covers page content; expands to the QR panel on tap. The server
+    // snapshot reports "hidden" so it never flashes in during hydration.
+    const storedHidden = useSyncExternalStore(subscribeStorage, readQrHidden, () => true);
+    const [closed, setClosed] = useState(false);
+    const dismissed = storedHidden || closed;
     const [expanded, setExpanded] = useState(false);
 
-    useEffect(() => {
-        const hideUntil = localStorage.getItem('qrWidgetClosed');
-        const now = new Date().getTime();
-        if (!hideUntil || now >= parseInt(hideUntil)) {
-            setDismissed(false);
-        }
-    }, []);
 
     const handleCloseQr = () => {
-        setDismissed(true);
+        setClosed(true);
         setExpanded(false);
         const DAYS_TO_WAIT = 1;
         const expiryTime = new Date().getTime() + (DAYS_TO_WAIT * 24 * 60 * 60 * 1000);
-        localStorage.setItem('qrWidgetClosed', expiryTime.toString());
+        try { localStorage.setItem(QR_KEY, expiryTime.toString()); } catch { /* private mode */ }
     };
 
     return (

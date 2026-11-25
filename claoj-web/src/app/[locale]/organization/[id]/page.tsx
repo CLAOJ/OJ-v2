@@ -575,7 +575,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
 
             {/* Tabs */}
             <div className="flex bg-card border p-1 rounded-md shadow-sm sticky top-4 z-10 overflow-x-auto">
-                {tabButton('members', <Users size={16} />, t('membersCount', { count: org.members?.length || 0 }))}
+                {tabButton('members', <Users size={16} />, t('members'))}
                 {tabButton('admins', <Crown size={16} />, t('adminsCount', { count: org.admins?.length || 0 }))}
                 {tabButton('problems', <Puzzle size={16} />, t('problems'))}
                 {tabButton('contests', <Trophy size={16} />, t('contests'))}

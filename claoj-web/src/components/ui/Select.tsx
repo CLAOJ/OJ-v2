@@ -28,7 +28,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 );
 Select.displayName = 'Select';
 
-export interface SelectOptionProps extends React.OptionHTMLAttributes<HTMLOptionElement> {}
+export type SelectOptionProps = React.OptionHTMLAttributes<HTMLOptionElement>;
 
 const SelectOption = React.forwardRef<HTMLOptionElement, SelectOptionProps>(
     ({ className, ...props }, ref) => {

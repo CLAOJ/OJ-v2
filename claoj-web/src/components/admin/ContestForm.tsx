@@ -190,7 +190,7 @@ export default function ContestForm({ initialData, initialOptions, search, onSub
                     description: watch('description'),
                     summary: watch('summary')
                 }}
-                errors={errors as any}
+                errors={errors}
                 register={register}
                 onDescriptionChange={(value) => {
                     setDescription(value);
@@ -205,7 +205,7 @@ export default function ContestForm({ initialData, initialOptions, search, onSub
                     end_time: watch('end_time'),
                     time_limit: watch('time_limit')
                 }}
-                errors={errors as any}
+                errors={errors}
                 register={register}
             />
 

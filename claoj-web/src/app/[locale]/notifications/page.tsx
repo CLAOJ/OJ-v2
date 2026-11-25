@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import Link from 'next/link';
 import { useState } from 'react';
+import dayjs from 'dayjs';
 
 interface Notification {
     id: number;
@@ -113,7 +114,7 @@ export default function NotificationsPage() {
         if (minutes < 60) return t('minutesAgo', { minutes });
         if (hours < 24) return t('hoursAgo', { hours });
         if (days < 7) return t('daysAgo', { days });
-        return date.toLocaleDateString();
+        return dayjs(date).format('L');
     };
 
     return (
