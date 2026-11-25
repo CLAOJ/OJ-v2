@@ -98,7 +98,8 @@ func RuntimeList(c *gin.Context) {
 		query = query.Where("id IN ?", onlineLanguageIDs())
 	}
 	var languages []models.Language
-	if err := query.Order("key").Find(&languages).Error; err != nil {
+	// `key` is reserved in MySQL; qualify it so the ORDER BY is legal there.
+	if err := query.Order("judge_language.key").Find(&languages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
 	}
