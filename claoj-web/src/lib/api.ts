@@ -344,6 +344,40 @@ export const blogVoteApi = {
 };
 
 // ============================================================
+// PUBLIC BLOG AUTHORING API (v1 /post/new, /post/<id>/edit)
+// ============================================================
+
+import type { BlogPostCreateRequest, BlogPostUpdateRequest } from '@/types';
+
+export const blogAuthoringApi = {
+    create: (data: BlogPostCreateRequest) =>
+        api.post<{ message: string; blog_post: { id: number; slug: string } }>('/blogs', data),
+
+    update: (id: number, data: BlogPostUpdateRequest) =>
+        api.patch<{ message: string; blog_post: { id: number; slug: string } }>(`/blog/${id}`, data),
+};
+
+// ============================================================
+// PUBLIC ORGANIZATION CREATION API (v1 /organizations/create)
+// ============================================================
+
+export interface OrganizationCreateRequest {
+    name: string;
+    slug: string;
+    short_name?: string;
+    about?: string;
+    logo_override_image?: string;
+}
+
+export const organizationsApi = {
+    create: (data: OrganizationCreateRequest) =>
+        api.post<{ message: string; organization: { id: number; name: string; slug: string } }>(
+            '/organizations',
+            data
+        ),
+};
+
+// ============================================================
 // PERFORMANCE POINTS BREAKDOWN API (Task #42)
 // ============================================================
 

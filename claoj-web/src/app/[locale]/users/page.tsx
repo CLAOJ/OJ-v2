@@ -29,12 +29,16 @@ const RANKINGS: { key: RankBy; icon: typeof Trophy; labelKey: 'points' | 'rating
     { key: 'contribution', icon: ThumbsUp, labelKey: 'contributors' },
 ];
 
-/** `?sort=` values the ranking bar knows; anything else is the points ranking. */
-function rankFromUrl(value: string | null): RankBy {
-    return value === 'rating' || value === 'contribution' ? value : 'points';
+/** `?sort=` values the ranking bar knows; anything else is the fallback ranking. */
+function rankFromUrl(value: string | null, fallback: RankBy): RankBy {
+    return value === 'rating' || value === 'contribution' ? value : value === 'points' ? 'points' : fallback;
 }
 
-export default function UsersListPage() {
+/**
+ * The leaderboard. `/contributors` renders the same table with the contribution
+ * ranking preselected (v1 had Leaderboard | Contributors tabs over one list).
+ */
+export default function UsersListPage({ initialRank = 'points' }: { initialRank?: RankBy } = {}) {
     const t = useTranslations('Users');
     const tCommon = useTranslations('Common');
     const searchParams = useSearchParams();
@@ -47,11 +51,11 @@ export default function UsersListPage() {
     // during render (React's documented pattern) so the first query already
     // uses the new value.
     const urlSort = searchParams.get('sort');
-    const [rankBy, setRankBy] = useState<RankBy>(rankFromUrl(urlSort));
+    const [rankBy, setRankBy] = useState<RankBy>(rankFromUrl(urlSort, initialRank));
     const [seenUrlSort, setSeenUrlSort] = useState(urlSort);
     if (urlSort !== seenUrlSort) {
         setSeenUrlSort(urlSort);
-        setRankBy(rankFromUrl(urlSort));
+        setRankBy(rankFromUrl(urlSort, initialRank));
         setPage(1);
     }
 
@@ -91,12 +95,19 @@ export default function UsersListPage() {
                 <header className="space-y-2">
                     <h1 className="text-4xl md:text-5xl font-semibold tracking-tighter flex items-center gap-4">
                         <Users className="text-primary" size={48} />
-                        {t('title') || 'Users'}
+                        {initialRank === 'contribution' ? t('contributors') : (t('title') || 'Users')}
                     </h1>
                     <p className="text-muted-foreground font-medium opacity-80">{t('subtitle')}</p>
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    <Link
+                        href={initialRank === 'contribution' ? '/users' : '/contributors'}
+                        className="h-9 px-6 rounded-md bg-muted/30 border hover:bg-muted font-medium text-xs flex items-center gap-2"
+                    >
+                        <ThumbsUp size={14} />
+                        {initialRank === 'contribution' ? t('points') : t('contributors')}
+                    </Link>
                     <button
                         onClick={() => {
                             setSearch('');

@@ -13,7 +13,8 @@ import {
     Building2,
     RefreshCw,
     Shield,
-    TrendingUp
+    TrendingUp,
+    Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPoints } from '@/lib/organizationView';
@@ -66,6 +67,16 @@ export default function OrganizationsListPage() {
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    {user && (
+                        (user.is_superuser === true || (user.permissions ?? []).includes('judge.add_organization')) && (
+                            <Link
+                                href="/organizations/create"
+                                className="h-9 px-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs flex items-center gap-2"
+                            >
+                                <Plus size={14} /> {t('createTitle')}
+                            </Link>
+                        )
+                    )}
                     <button
                         onClick={() => {
                             setSearch('');

@@ -126,6 +126,16 @@ export interface User {
     impersonator_username?: string;
     rating?: number | null;
     performance_points?: number;
+    /** GET /user/me: the caller's own profile stats (blog gate, etc.). */
+    profile?: {
+        points?: number;
+        rating?: number | null;
+        about?: string | null;
+        timezone?: string;
+        problem_count?: number;
+    };
+    /** GET /user/me: organizations the caller administers (post-as choices). */
+    admin_of?: { id: number; name: string; slug: string }[];
 }
 
 export interface UserDetail {
@@ -277,6 +287,29 @@ export interface BlogPost {
 
 export interface BlogPostDetail extends BlogPost {
     content: string;
+    /** Publish state + owning organization, for the author's edit form. */
+    organization_id?: number | null;
+    organization_name?: string;
+    /** True when the viewer may edit (author, org admin, or staff). */
+    can_edit?: boolean;
+}
+
+/** POST /blogs — v1 BlogPostForm fields. */
+export interface BlogPostCreateRequest {
+    title: string;
+    content: string;
+    publish_on?: string;
+    visible?: boolean;
+    organization_id?: number | null;
+}
+
+/** PATCH /blog/:id — null detaches the post from its organization. */
+export interface BlogPostUpdateRequest {
+    title?: string;
+    content?: string;
+    publish_on?: string;
+    visible?: boolean;
+    organization_id?: number | null;
 }
 
 export interface BlogFeedItem {
