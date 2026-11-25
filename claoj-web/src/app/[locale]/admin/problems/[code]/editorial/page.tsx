@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { adminSolutionApi } from '@/lib/adminApi';
@@ -17,6 +18,7 @@ export default function AdminSolutionEditorPage() {
     const id = params.id as string;
     const isEdit = id !== 'new';
     const t = useTranslations();
+    const confirm = useConfirm();
 
     const [content, setContent] = useState('');
     const [summary, setSummary] = useState('');
@@ -72,11 +74,9 @@ export default function AdminSolutionEditorPage() {
 
     const deleteMutation = useMutation({
         mutationFn: () => adminSolutionApi.delete(parseInt(id)),
-        onSuccess: () => {
-            if (confirm(t('admin.confirm_delete'))) {
-                router.push('/admin/problems');
-            }
-        }
+        // The question is asked before deleting (below); it used to be asked
+        // only after the editorial was already gone.
+        onSuccess: () => router.push('/admin/problems'),
     });
 
     const handleSubmit = () => {
@@ -228,7 +228,9 @@ export default function AdminSolutionEditorPage() {
                     </button>
                     {isEdit && (
                         <button
-                            onClick={() => deleteMutation.mutate()}
+                            onClick={async () => {
+                                if (await confirm(t('admin.confirm_delete'), { variant: 'danger' })) deleteMutation.mutate();
+                            }}
                             className="px-6 py-2 bg-destructive text-white rounded-lg hover:bg-destructive"
                         >
                             {t('admin.delete')}

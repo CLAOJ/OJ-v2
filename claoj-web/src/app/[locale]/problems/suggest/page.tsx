@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import SuggestProblemsContent from './SuggestProblemsContent';
 
 export const metadata: Metadata = {
-  title: 'Suggested Problems | CLAOJ',
+  title: 'Suggested Problems',
   description: 'Problems suggested by users and still awaiting review.',
   // Staff-visible list: keep it out of search indexes.
   robots: { index: false, follow: false },

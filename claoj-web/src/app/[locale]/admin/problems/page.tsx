@@ -23,6 +23,7 @@ import {
     Copy
 } from 'lucide-react';
 import { CloneProblemModal } from '@/components/admin/CloneProblemModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const FILTER_KEYS = ['search', 'is_public', 'group_id', 'creator', 'year', 'sort', 'order'] as const;
 const PAGE_SIZE = 50;
@@ -32,6 +33,7 @@ export default function AdminProblemPage() {
     const t = useTranslations('Admin');
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [problemToClone, setProblemToClone] = useState<{code: string; name: string} | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const queryClient = useQueryClient();
 
@@ -68,6 +70,7 @@ export default function AdminProblemPage() {
     const deleteMutation = useMutation({
         mutationFn: (code: string) => adminProblemApi.delete(code),
         onSuccess: () => {
+            setDeleteTarget(null);
             queryClient.invalidateQueries({ queryKey: ['admin-problems'] });
         }
     });
@@ -193,7 +196,7 @@ export default function AdminProblemPage() {
                                     />
                                     <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('problems.colAuthors')}</th>
                                     <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('problems.colGroup')}</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right sticky right-0 bg-muted">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -210,24 +213,25 @@ export default function AdminProblemPage() {
                                                 <div className="flex items-center gap-2">
                                                     <Link
                                                         href={`/problem/${problem.code}`}
-                                                        className="font-semibold text-sm hover:text-primary transition-colors"
+                                                        className="font-semibold text-sm hover:text-primary transition-colors truncate max-w-[22rem]"
+                                                        title={problem.name}
                                                     >
                                                         {problem.name}
                                                     </Link>
                                                     {problem.partial && (
-                                                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{t('problems.partialBadge')}</Badge>
+                                                        <Badge variant="secondary" className="text-xs py-0 px-1.5">{t('problems.partialBadge')}</Badge>
                                                     )}
                                                     {problem.is_public ? (
-                                                        <Badge variant="success" className="text-[10px] py-0 px-1.5">{t('problems.publicBadge')}</Badge>
+                                                        <Badge variant="success" className="text-xs py-0 px-1.5">{t('problems.publicBadge')}</Badge>
                                                     ) : (
-                                                        <Badge variant="destructive" className="text-[10px] py-0 px-1.5">{t('problems.privateBadge')}</Badge>
+                                                        <Badge variant="destructive" className="text-xs py-0 px-1.5">{t('problems.privateBadge')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">{problem.code}</td>
                                             <td className="px-4 py-2 text-sm text-right whitespace-nowrap">{problem.points.toFixed(1)}</td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{formatShortDate(problem.date)}</td>
-                                            <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{Math.round(problem.ac_rate * 100)}%</td>
+                                            <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{Math.round(problem.ac_rate)}%</td>
                                             <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{problem.user_count}</td>
                                             <td className="px-4 py-2 text-xs text-muted-foreground">
                                                 <span
@@ -240,7 +244,7 @@ export default function AdminProblemPage() {
                                             <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
                                                 {problem.group_name || t('problems.uncategorized')} · {problem.is_manually_managed ? t('problems.manuallyManaged') : t('problems.autoManaged')}
                                             </td>
-                                            <td className="px-4 py-2 text-right">
+                                            <td className="px-4 py-2 text-right sticky right-0 bg-card">
                                                 <div className="flex justify-end gap-1">
                                                     <Link
                                                         href={`/admin/problems/${problem.code}/edit`}
@@ -267,7 +271,7 @@ export default function AdminProblemPage() {
                                                         <Copy size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => deleteMutation.mutate(problem.code)}
+                                                        onClick={() => setDeleteTarget(problem.code)}
                                                         disabled={deleteMutation.isPending}
                                                         className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
                                                         title={t('problems.deleteTitle')}
@@ -297,6 +301,19 @@ export default function AdminProblemPage() {
             )}
 
             <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={PAGE_SIZE} />
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
+                title={t('problems.deleteTitle')}
+                description={t('common.deleteConfirmDescription', { name: deleteTarget ?? '' })}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                confirmPhrase={deleteTarget ?? undefined}
+                confirmPhraseLabel={t('common.typeToConfirm', { phrase: deleteTarget ?? '' })}
+                isLoading={deleteMutation.isPending}
+            />
         </div>
     );
 }

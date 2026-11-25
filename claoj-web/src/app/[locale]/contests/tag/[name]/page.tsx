@@ -15,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, name } = await params;
   const tag = decodeURIComponent(name);
-  const title = `Contests tagged ${tag} | CLAOJ`;
+  const title = `Contests tagged ${tag}`;
   const description = `Competitive programming contests tagged ${tag} on CLAOJ.`;
 
   return {

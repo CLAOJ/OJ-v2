@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import SuggestProblemForm from '@/components/problems/SuggestProblemForm';
 
 export const metadata: Metadata = {
-  title: 'Suggest a problem | CLAOJ',
+  title: 'Suggest a problem',
   description: 'Propose a new problem for reviewers to consider.',
   robots: { index: false, follow: false },
 };

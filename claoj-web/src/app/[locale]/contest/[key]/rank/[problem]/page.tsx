@@ -143,7 +143,7 @@ export default function ContestProblemRankPage() {
                                                 {row.language}
                                             </Link>
                                             {row.result && (
-                                                <Badge variant={getStatusVariant(row.result)} className="text-[10px] px-2">
+                                                <Badge variant={getStatusVariant(row.result)} className="text-xs px-2">
                                                     {row.result}
                                                 </Badge>
                                             )}

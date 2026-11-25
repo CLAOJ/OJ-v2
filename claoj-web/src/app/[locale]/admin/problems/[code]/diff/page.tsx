@@ -169,11 +169,11 @@ export default function ProblemDiffMatrixPage() {
                                                 <td key={c} className="px-2 py-2 text-center">
                                                     {cell ? (
                                                         <div className="flex flex-col items-center gap-0.5">
-                                                            <Badge variant={getStatusVariant(cell.status)} className="text-[10px]">
+                                                            <Badge variant={getStatusVariant(cell.status)} className="text-xs">
                                                                 {cell.status}
                                                             </Badge>
                                                             {cell.points !== null && cell.total !== null && (
-                                                                <span className="text-[10px] font-mono text-muted-foreground">
+                                                                <span className="text-xs font-mono text-muted-foreground">
                                                                     {cell.points}/{cell.total}
                                                                 </span>
                                                             )}

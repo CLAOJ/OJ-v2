@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { UserListItem, PaginatedList } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Badge } from '@/components/ui/Badge';
 import { Link } from '@/navigation';
 import { useState } from 'react';
 import {
@@ -19,6 +18,7 @@ import {
     Building2
 } from 'lucide-react';
 import { cn, getRankColor } from '@/lib/utils';
+import { RatingCircle } from '@/components/ui/RatingCircle';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -223,9 +223,10 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
                                             )}
                                             {rankBy === 'rating' && (
                                                 user.rating ? (
-                                                    <Badge className={cn("px-4 py-2 text-xs font-medium ", getRankColor(user.rating))}>
+                                                    <span className={cn("inline-flex items-center gap-1.5 font-semibold tabular-nums", getRankColor(user.rating))}>
+                                                        <RatingCircle rating={user.rating} />
                                                         {Math.round(user.rating)}
-                                                    </Badge>
+                                                    </span>
                                                 ) : (
                                                     <span className="text-muted-foreground text-xs font-medium">-</span>
                                                 )

@@ -1,6 +1,6 @@
 'use client';
 
-import { Link } from '@/navigation';
+import { Link, usePathname } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import { Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -8,6 +8,9 @@ import { useState, useEffect } from 'react';
 export default function Footer() {
     const currentYear = new Date().getFullYear();
     const t = useTranslations('Footer');
+    // The floating button covers editor and statement controls, so it only
+    // appears on the home page; the footer link stays everywhere.
+    const onHome = usePathname() === '/';
 
     // Donation QR widget. Collapsed by default to a small floating button so it
     // never covers page content; expands to the QR panel on tap. `dismissed`
@@ -85,7 +88,7 @@ export default function Footer() {
             </footer>
 
             {/* Donation QR widget — collapsed button by default, expands on tap */}
-            {!dismissed && !expanded && (
+            {onHome && !dismissed && !expanded && (
                 <button
                     onClick={() => setExpanded(true)}
                     aria-label={t('supportTitle')}
@@ -96,7 +99,7 @@ export default function Footer() {
                 </button>
             )}
 
-            {!dismissed && expanded && (
+            {onHome && !dismissed && expanded && (
                 <div className="fixed bottom-5 right-5 z-40 w-[180px] rounded-lg border border-border bg-background shadow-xl print:hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">

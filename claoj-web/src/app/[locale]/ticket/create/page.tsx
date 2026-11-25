@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
@@ -49,7 +49,7 @@ function CreateTicketForm() {
         problem_code: z.string().optional(),
     });
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const [problemSearch, setProblemSearch] = useState('');
     const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
     const [problemCleared, setProblemCleared] = useState(false);
@@ -104,8 +104,13 @@ function CreateTicketForm() {
         resolver: zodResolver(ticketSchema),
     });
 
+    // Wait for the session check; redirecting before `user` arrives bounced
+    // signed-in users to /login (same fix as TicketListContent).
+    useEffect(() => {
+        if (!loading && !user) router.push('/login');
+    }, [loading, user, router]);
+
     if (!isAuthenticated) {
-        router.push('/login');
         return null;
     }
 

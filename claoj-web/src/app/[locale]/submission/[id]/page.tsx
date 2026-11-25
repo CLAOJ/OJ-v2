@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import api from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -53,6 +54,7 @@ interface SubmissionDetail {
     id: number;
     problem: string;
     problem_name?: string;
+    problem_points?: number;
     user: string;
     date: string;
     language: string;
@@ -124,6 +126,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const resolvedParams = use(params);
     const id = resolvedParams.id;
     const t = useTranslations('Submissions');
+    const confirm = useConfirm();
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const { subscribe, unsubscribe } = useWebSocketContext();
@@ -170,7 +173,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     }, [sub]);
 
     const handleRejudge = async () => {
-        if (!confirm(t('rejudgeConfirm'))) return;
+        if (!(await confirm(t('rejudgeConfirm')))) return;
 
         setIsRejudging(true);
         setRejudgeError(null);
@@ -195,7 +198,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const canResubmit = !!sub && (isOwner || !!user?.permissions?.includes('judge.resubmit_other'));
 
     const handleAbort = async () => {
-        if (!confirm(t('abortConfirm'))) return;
+        if (!(await confirm(t('abortConfirm')))) return;
         setIsAborting(true);
         setAbortError(null);
         try {
@@ -341,8 +344,11 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             <div className="text-2xl font-semibold text-primary">
                                 {testScore ? `${testScore.passed}/${testScore.total}` : (sub.points !== null ? sub.points.toFixed(0) : '-')}
                                 {testScore ? (
-                                    <span className="text-sm text-muted-foreground font-medium block">
-                                        {testScore.points.toFixed(3)}/{testScore.maxPoints.toFixed(3)} {t('points')}
+                                    <span className="text-sm text-muted-foreground font-medium block tabular-nums">
+                                        {/* Problem points (1.5/1.5) as in v1; test-case point sums only when the API predates problem_points. */}
+                                        {sub.points !== null && sub.problem_points != null
+                                            ? `${+sub.points.toFixed(2)}/${+sub.problem_points.toFixed(2)}`
+                                            : `${+testScore.points.toFixed(2)}/${+testScore.maxPoints.toFixed(2)}`} {t('points')}
                                     </span>
                                 ) : (
                                     sub.case_total > 0 && (

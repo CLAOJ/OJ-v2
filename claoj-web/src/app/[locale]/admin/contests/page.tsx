@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CloneContestModal } from '@/components/admin/CloneContestModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -34,6 +35,7 @@ export default function AdminContestPage() {
     const t = useTranslations('Admin');
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [selectedContest, setSelectedContest] = useState<{ key: string; name: string } | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const queryClient = useQueryClient();
     const router = useRouter();
@@ -61,6 +63,7 @@ export default function AdminContestPage() {
     const deleteMutation = useMutation({
         mutationFn: (key: string) => adminContestApi.delete(key),
         onSuccess: () => {
+            setDeleteTarget(null);
             queryClient.invalidateQueries({ queryKey: ['admin-contests'] });
         }
     });
@@ -155,7 +158,7 @@ export default function AdminContestPage() {
                                         className="text-right"
                                     />
                                     <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('contests.colSettings')}</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right sticky right-0 bg-muted">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -172,10 +175,10 @@ export default function AdminContestPage() {
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-semibold text-sm">{contest.name}</span>
                                                     {contest.is_rated && (
-                                                        <Badge variant="warning" className="text-[10px] py-0 px-1.5">{t('contests.rated')}</Badge>
+                                                        <Badge variant="warning" className="text-xs py-0 px-1.5">{t('contests.rated')}</Badge>
                                                     )}
                                                     {contest.is_organization_private && (
-                                                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{t('contests.private')}</Badge>
+                                                        <Badge variant="secondary" className="text-xs py-0 px-1.5">{t('contests.private')}</Badge>
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground font-mono">{contest.key}</div>
@@ -189,12 +192,12 @@ export default function AdminContestPage() {
                                             <td className="px-4 py-2 text-xs text-right whitespace-nowrap">{contest.user_count}</td>
                                             <td className="px-4 py-2">
                                                 {contest.is_visible ? (
-                                                    <Badge variant="success" className="text-[10px] py-0 px-1.5">{t('contests.visible')}</Badge>
+                                                    <Badge variant="success" className="text-xs py-0 px-1.5">{t('contests.visible')}</Badge>
                                                 ) : (
-                                                    <Badge variant="destructive" className="text-[10px] py-0 px-1.5">{t('contests.hidden')}</Badge>
+                                                    <Badge variant="destructive" className="text-xs py-0 px-1.5">{t('contests.hidden')}</Badge>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-2 text-right">
+                                            <td className="px-4 py-2 text-right sticky right-0 bg-card">
                                                 <div className="flex justify-end gap-1">
                                                     <button
                                                         onClick={() => {
@@ -214,7 +217,7 @@ export default function AdminContestPage() {
                                                         <Edit size={16} />
                                                     </Link>
                                                     <button
-                                                        onClick={() => deleteMutation.mutate(contest.key)}
+                                                        onClick={() => setDeleteTarget(contest.key)}
                                                         disabled={deleteMutation.isPending}
                                                         className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
                                                         title={t('contests.deleteTitle')}
@@ -247,6 +250,19 @@ export default function AdminContestPage() {
                     }}
                 />
             )}
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
+                title={t('contests.deleteTitle')}
+                description={t('common.deleteConfirmDescription', { name: deleteTarget ?? '' })}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                confirmPhrase={deleteTarget ?? undefined}
+                confirmPhraseLabel={t('common.typeToConfirm', { phrase: deleteTarget ?? '' })}
+                isLoading={deleteMutation.isPending}
+            />
         </div>
     );
 }

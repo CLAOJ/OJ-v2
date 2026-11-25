@@ -20,7 +20,7 @@ import api from '@/lib/api';
 // ticket shortcut live outside it, as they did before the navbar port.
 
 export default function Navbar() {
-    const { user, logout } = useAuth();
+    const { user, loading, logout } = useAuth();
     const t = useTranslations('Navbar');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -106,7 +106,7 @@ export default function Navbar() {
                                         onLogout={logout}
                                     />
                                 </>
-                            ) : (
+                            ) : loading ? null : (
                                 <div className="hidden xl:flex items-center gap-2">
                                     <button
                                         onClick={handleLoginRedirect}

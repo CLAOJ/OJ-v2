@@ -19,7 +19,7 @@ interface MobileMenuProps {
 }
 
 export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps) {
-    const { user, logout } = useAuth();
+    const { user, loading, logout } = useAuth();
     const pathname = usePathname();
     const t = useTranslations('Navbar');
     const reduceMotion = useReducedMotion();
@@ -157,7 +157,9 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                     {/* Theme Toggle */}
                                     <ThemeToggle variant="mobile" />
 
-                                    {!user ? (
+                                    {/* Nothing until the session check settles, so a signed-in
+                                        visitor never sees Login flash in the drawer. */}
+                                    {loading ? null : !user ? (
                                         <div className="grid grid-cols-2 gap-4 mt-2">
                                             <Link
                                                 href="/login"

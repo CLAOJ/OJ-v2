@@ -7,6 +7,8 @@ export interface PaginatedList<T> {
     data: T[];
     /** Total matching rows. Absent on endpoints that don't report a count. */
     total?: number;
+    /** Set instead of `total` by endpoints that skip the count. */
+    has_more?: boolean;
 }
 
 export interface Problem {
@@ -97,6 +99,9 @@ export interface Submission {
     time: number | null;
     memory: number | null;
     date: string;
+    // v1 row score: test-case points earned / available.
+    case_points: number;
+    case_total: number;
 }
 
 export interface SubmissionDetail {
@@ -161,6 +166,8 @@ export interface User {
 export interface UserDetail {
     username: string;
     display_name: string;
+    /** auth_user.first_name, shown by v1 as the full name. */
+    full_name?: string;
     about: string | null;
     avatar_url: string;
     points: number;
@@ -171,7 +178,6 @@ export interface UserDetail {
     display_rank: string;
     rank: number;
     rating_rank: number | null;
-    email_hash: string;
     organizations: { id: number; name: string }[];
     last_access: string;
     date_joined: string;

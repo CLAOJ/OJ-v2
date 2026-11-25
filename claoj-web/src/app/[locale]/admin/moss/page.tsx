@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { toast } from 'sonner';
 import { ScanSearch, Play, Trash2, ExternalLink, Search } from 'lucide-react';
 import { adminContestApi, adminMossApi, type ContestMossResult } from '@/lib/adminApi';
@@ -20,6 +21,7 @@ const errorText = (e: unknown) => (e as ApiError)?.response?.data?.error ?? Stri
 
 export default function AdminMossPage() {
     const t = useTranslations('Admin');
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
     const { filters, setFilters } = useListParams(KEYS);
     const contestKey = filters.contest ?? '';
@@ -143,7 +145,7 @@ export default function AdminMossPage() {
                                 <Play size={14} /> {t('moss.run')}
                             </button>
                             <button
-                                onClick={() => { if (confirm(t('moss.clearConfirm'))) clear.mutate(); }}
+                                onClick={async () => { if (await confirm(t('moss.clearConfirm'), { variant: 'danger' })) clear.mutate(); }}
                                 disabled={clear.isPending || !data?.results.length}
                                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border text-sm hover:bg-muted disabled:opacity-50"
                             >

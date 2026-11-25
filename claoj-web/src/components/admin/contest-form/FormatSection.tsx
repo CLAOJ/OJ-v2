@@ -43,7 +43,11 @@ interface FormatSectionProps {
     formatConfigError?: string;
 }
 
+// Mirrors claoj/contest_format/registry.go. An empty format_name is stored as
+// "default" by the backend, so the select must show that, not ICPC.
 const CONTEST_FORMATS = [
+    { value: 'default', label: 'Default (DMOJ)' },
+    { value: 'ioi16', label: 'IOI 2016' },
     { value: 'icpc', label: 'ICPC' },
     { value: 'ioi', label: 'IOI' },
     { value: 'atcoder', label: 'AtCoder' },
@@ -63,9 +67,12 @@ export function FormatSection({ formData, selectedFormat, register, setValue, fo
                     </label>
                     <select
                         className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                        value={selectedFormat || 'icpc'}
+                        value={selectedFormat || 'default'}
                         onChange={(e) => setValue('format_name', e.target.value)}
                     >
+                        {selectedFormat && !CONTEST_FORMATS.some(f => f.value === selectedFormat) && (
+                            <option value={selectedFormat}>{selectedFormat}</option>
+                        )}
                         {CONTEST_FORMATS.map(f => (
                             <option key={f.value} value={f.value}>{f.label}</option>
                         ))}

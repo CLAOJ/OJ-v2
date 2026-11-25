@@ -181,8 +181,10 @@ func UserDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"username":            profile.User.Username,
-		"display_name":        profile.UsernameDisplayOverride,
+		"username":     profile.User.Username,
+		"display_name": profile.UsernameDisplayOverride,
+		// v1 user-about.html shows auth_user.first_name as the full name.
+		"full_name":           profile.User.FirstName,
 		"about":               profile.About,
 		"points":              profile.Points,
 		"performance_points":  profile.PerformancePoints,

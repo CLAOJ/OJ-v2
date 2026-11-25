@@ -28,7 +28,7 @@ export async function generateMetadata({
   const user = await fetchUser(username);
 
   if (user) {
-    const title = `${user.username} - ${user.rating || 'N/A'} rating | CLAOJ`;
+    const title = `${user.username} - ${user.rating || 'N/A'} rating`;
     const description = `Profile of ${user.username} - Rating: ${user.rating || 'N/A'}, Rank: ${user.rank || 'N/A'}`;
 
     return {
@@ -47,7 +47,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `User ${username} | CLAOJ`,
+    title: `User ${username}`,
     description: 'Competitive programmer profile on CLAOJ',
   };
 }

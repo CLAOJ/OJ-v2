@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import api from '@/lib/api';
 import { searchContests } from '@/lib/adminSearch';
 import { EntityPicker } from '@/components/admin/EntityPicker';
@@ -20,6 +21,7 @@ import {
 
 export default function AdminContestTagsPage() {
     const t = useTranslations('Admin');
+    const confirm = useConfirm();
     const [search, setSearch] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingTag, setEditingTag] = useState<AdminContestTag | null>(null);
@@ -180,8 +182,8 @@ export default function AdminContestTagsPage() {
                                             <Edit size={18} />
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                if (confirm(t('contestTags.deleteConfirm', { name: tag.name }))) {
+                                            onClick={async () => {
+                                                if (await confirm(t('contestTags.deleteConfirm', { name: tag.name }), { variant: 'danger' })) {
                                                     deleteMutation.mutate(tag.id);
                                                 }
                                             }}

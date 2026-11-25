@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -90,13 +91,38 @@ func TestSubmissionList_MultiValueAndOrganizationFilters(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			code, rows, total := listSubmissions(t, tc.query)
 			require.Equal(t, http.StatusOK, code)
-			require.Equal(t, tc.total, total, "total must match the filtered count")
 			require.Equal(t, int(tc.total), len(rows))
+			if strings.Contains(tc.query, "organization") {
+				require.Equal(t, tc.total, total, "scoped lists keep the exact total")
+			} else {
+				require.Zero(t, total, "unscoped lists never count (v1 InfinitePaginationMixin)")
+			}
 		})
 	}
 
 	code, _, _ := listSubmissions(t, "?organization=abc")
 	require.Equal(t, http.StatusBadRequest, code)
+
+	t.Run("unscoped list pages with has_more", func(t *testing.T) {
+		router := authedRouter(0, http.MethodGet, "/submissions", SubmissionList)
+		for _, tc := range []struct {
+			query   string
+			rows    int
+			hasMore bool
+		}{
+			{"?page_size=2", 2, true},
+			{"?page_size=2&page=2", 1, false},
+			{"?page_size=3", 3, false},
+		} {
+			w := doRequest(router, http.MethodGet, "/submissions"+tc.query, "")
+			require.Equal(t, http.StatusOK, w.Code)
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+			require.NotContains(t, body, "total", tc.query)
+			require.Len(t, body["data"], tc.rows, tc.query)
+			require.Equal(t, tc.hasMore, body["has_more"], tc.query)
+		}
+	})
 }
 
 // TestSubmissionList_BestMode covers v1's RankedSubmissions: one row per user,

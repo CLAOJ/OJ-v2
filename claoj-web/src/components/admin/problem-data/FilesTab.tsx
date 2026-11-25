@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { adminProblemDataApi } from '@/lib/adminApi';
 import { FolderOpen, FileText, Trash2, Loader2 } from 'lucide-react';
 
@@ -17,6 +18,7 @@ interface ProblemFile {
 
 export function FilesTab({ code }: FilesTabProps) {
     const t = useTranslations('Admin');
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
 
     const { data: filesData, isLoading } = useQuery({
@@ -65,8 +67,8 @@ export function FilesTab({ code }: FilesTabProps) {
                         </div>
                         {file.type === 'file' && (
                             <button
-                                onClick={() => {
-                                    if (confirm(t('problemData.deleteFileConfirm'))) {
+                                onClick={async () => {
+                                    if (await confirm(t('problemData.deleteFileConfirm'), { variant: 'danger' })) {
                                         deleteFileMutation.mutate(file.path);
                                     }
                                 }}

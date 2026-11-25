@@ -3,6 +3,7 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import api from '@/lib/api';
 import { OrganizationDetail, OrganizationMember, OrganizationRequest } from '@/types';
 import { Link } from '@/navigation';
@@ -35,6 +36,7 @@ import dayjs from 'dayjs';
 
 export default function OrganizationManagePage() {
     const t = useTranslations('Organization');
+    const confirm = useConfirm();
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -99,8 +101,8 @@ export default function OrganizationManagePage() {
         }
     });
 
-    const handleKick = (member: OrganizationMember) => {
-        if (confirm(t('kickConfirm', { username: member.username }))) {
+    const handleKick = async (member: OrganizationMember) => {
+        if (await confirm(t('kickConfirm', { username: member.username }), { variant: 'danger' })) {
             kickMutation.mutate(member.username);
         }
     };

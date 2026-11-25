@@ -74,26 +74,50 @@ export function getStatusVariant(status: string): 'success' | 'destructive' | 'w
     }
 }
 
-export function getRankColor(rating: number | null): string {
-    if (rating === null) return 'text-zinc-500';
-    if (rating < 1200) return 'text-zinc-500';
-    if (rating < 1400) return 'text-emerald-500';
-    if (rating < 1600) return 'text-blue-500';
-    if (rating < 1900) return 'text-purple-500';
-    if (rating < 2100) return 'text-amber-500';
-    if (rating < 2400) return 'text-orange-500';
-    return 'text-red-600';
+// Rating tiers exactly as v1 (OJ/judge/ratings.py RATING_VALUES/RATING_LEVELS),
+// so a student's colour is the same on both sites. Hues follow v1's
+// vars-default.scss / vars-dark.scss, darkened or lightened only as far as
+// needed for 4.5:1 text contrast (light on #fff, dark on #263238 cards).
+const RATING_VALUES = [1200, 1400, 1600, 1900, 2200, 2300, 2400, 2600, 2900];
+const RATING_TIERS = [
+    { title: 'Newbie', text: 'text-[#737373] dark:text-[#a89f92]', bg: 'bg-[#737373]' },
+    { title: 'Pupil', text: 'text-[#008000] dark:text-[#72ff72]', bg: 'bg-[#008000]' },
+    { title: 'Specialist', text: 'text-[#037d75] dark:text-[#57fcf2]', bg: 'bg-[#037d75]' },
+    { title: 'Expert', text: 'text-[#0000ff] dark:text-[#7aa7ff]', bg: 'bg-[#0000ff]' },
+    { title: 'Candidate Master', text: 'text-[#aa00aa] dark:text-[#ff55ff]', bg: 'bg-[#aa00aa]' },
+    { title: 'Master', text: 'text-[#b85600] dark:text-[#ff981a]', bg: 'bg-[#b85600]' },
+    { title: 'International Master', text: 'text-[#b85600] dark:text-[#ff981a]', bg: 'bg-[#b85600]' },
+    { title: 'Grandmaster', text: 'text-[#d10000] dark:text-[#ff6b6b]', bg: 'bg-[#d10000]' },
+    { title: 'International Grandmaster', text: 'text-[#d10000] dark:text-[#ff6b6b]', bg: 'bg-[#d10000]' },
+    { title: 'Legendary Grandmaster', text: 'text-[#d10000] dark:text-[#ff6b6b]', bg: 'bg-[#d10000]' },
+];
+const UNRATED = { title: 'Unrated', text: 'text-zinc-500 dark:text-zinc-400', bg: 'bg-zinc-500' };
+
+/** v1 rating_level: bisect_right over RATING_VALUES. */
+export function ratingLevel(rating: number): number {
+    let level = 0;
+    while (level < RATING_VALUES.length && rating >= RATING_VALUES[level]) level++;
+    return level;
 }
 
-export function getRankBadgeColor(rating: number | null): string {
-    if (rating === null) return 'bg-zinc-500';
-    if (rating < 1200) return 'bg-zinc-500';
-    if (rating < 1400) return 'bg-emerald-500';
-    if (rating < 1600) return 'bg-blue-500';
-    if (rating < 1900) return 'bg-purple-500';
-    if (rating < 2100) return 'bg-amber-500';
-    if (rating < 2400) return 'bg-orange-500';
-    return 'bg-red-600';
+function ratingTier(rating: number | null | undefined) {
+    return rating == null ? UNRATED : RATING_TIERS[ratingLevel(rating)];
+}
+
+/** v1 rating_progress: how far through the current tier (0..1), for the rating circle. */
+export function ratingProgress(rating: number): number {
+    const level = ratingLevel(rating);
+    if (level === RATING_VALUES.length) return 1;
+    const prev = level ? RATING_VALUES[level - 1] : 0;
+    return (rating - prev) / (RATING_VALUES[level] - prev);
+}
+
+export function getRankColor(rating: number | null | undefined): string {
+    return ratingTier(rating).text;
+}
+
+export function getRankBadgeColor(rating: number | null | undefined): string {
+    return ratingTier(rating).bg;
 }
 
 export function getRatingChangeColor(change: number): string {
@@ -107,13 +131,18 @@ export function formatRatingChange(change: number): string {
     return `${change}`;
 }
 
-export function getRankTitle(rating: number | null): string {
-    if (rating === null) return 'Newbie';
-    if (rating < 1200) return 'Newbie';
-    if (rating < 1400) return 'Pupil';
-    if (rating < 1600) return 'Specialist';
-    if (rating < 1900) return 'Expert';
-    if (rating < 2100) return 'Candidate Master';
-    if (rating < 2400) return 'Master';
-    return 'Grandmaster';
+/** v1 rating_name (English, as v1 shows it). */
+export function getRankTitle(rating: number | null | undefined): string {
+    return ratingTier(rating).title;
+}
+
+// Readable contest format names (keys from claoj/contest_format/registry.go).
+// "default" is DMOJ's scoring, the format almost every CLAOJ contest uses.
+const CONTEST_FORMAT_LABELS: Record<string, string> = {
+    default: 'DMOJ', ioi: 'IOI', ioi16: 'IOI', icpc: 'ICPC', atcoder: 'AtCoder', ecoo: 'ECOO',
+};
+
+export function contestFormatLabel(format: string | null | undefined): string {
+    if (!format) return CONTEST_FORMAT_LABELS.default;
+    return CONTEST_FORMAT_LABELS[format] ?? format;
 }

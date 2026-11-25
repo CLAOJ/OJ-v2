@@ -1,10 +1,10 @@
 {
   "SEO": {
     "siteName": "CLAOJ - Online Judge",
-    "siteDescription": "Modern, high-performance competitive programming platform.",
+    "siteDescription": "Long An HSGS Online Judge: where students from Long An and beyond practise informatics for HSG, Tin học trẻ and Olympic 30/4.",
     "home": {
       "title": "CLAOJ - Online Judge",
-      "description": "Welcome to CLAOJ - Modern competitive programming platform with contests, problems, and community."
+      "description": "CLAOJ, the online judge of THPT chuyên Long An: problems, contests and rankings for informatics students."
     },
     "problems": {
       "title": "Problems - CLAOJ",
@@ -117,7 +117,7 @@
     }
   },
   "Footer": {
-    "description": "Modern, high-performance competitive programming platform.",
+    "description": "Long An HSGS Online Judge",
     "platform": "Platform",
     "support": "Support",
     "builtBy": "IT-CLA Productions",
@@ -139,7 +139,7 @@
   },
   "Home": {
     "welcome": "Welcome to CLAOJ",
-    "subtitle": "Modern, high-performance competitive programming platform",
+    "subtitle": "Online judge of THPT chuyên Long An",
     "blogTab": "Blog",
     "eventsTab": "Events",
     "latestPosts": "Latest Blog Posts",
@@ -503,7 +503,7 @@
     "closeDiffViewer": "Close diff viewer",
     "deletionsCount": "{count} deletions",
     "additionsCount": "{count} additions",
-    "subtitle": "Real-time judging results from the globally distributed nodes.",
+    "subtitle": "Latest submissions on CLAOJ, updated live as the judges return results.",
     "bestModeBadge": "Best solutions",
     "bestModeHint": "One submission per user: highest score, then fastest time.",
     "contestModeBadge": "Contest submissions",
@@ -751,7 +751,7 @@
     "noOrganizations": "No organizations joined yet.",
     "aboutUser": "About {username}",
     "noAboutInfo": "This user hasn't shared anything about themselves yet.",
-    "subtitle": "Competitive programmers from around the world.",
+    "subtitle": "CLAOJ members: students from Long An and beyond.",
     "user": "User",
     "solved": "Solved",
     "moreOrganizations": "+{count} more",
@@ -1129,7 +1129,7 @@
   "Organizations": {
     "title": "Organizations",
     "searchPlaceholder": "Organization name or short name...",
-    "subtitle": "Universities, schools, and competitive programming communities.",
+    "subtitle": "Schools, classes and teams on CLAOJ.",
     "open": "Open",
     "unlisted": "Unlisted",
     "members": "Members",
@@ -1469,7 +1469,10 @@
       "notAvailable": "N/A",
       "showingRange": "Showing {from} to {to} of {total}",
       "saving": "Saving...",
-      "close": "Close"
+      "close": "Close",
+      "deleteConfirmDescription": "This permanently deletes {name}. It cannot be undone.",
+      "typeToConfirm": "Type {phrase} to confirm",
+      "deleteUserTitle": "Delete user"
     },
     "nav": {
       "users": "Users",
@@ -2917,7 +2920,9 @@
         "CREATE": "Created",
         "UPDATE": "Updated",
         "DELETE": "Deleted",
-        "VIEW": "Viewed"
+        "VIEW": "Viewed",
+        "impersonate_start": "Started impersonation",
+        "impersonate_exit": "Ended impersonation"
       },
       "statuses": {
         "success": "Succeeded",

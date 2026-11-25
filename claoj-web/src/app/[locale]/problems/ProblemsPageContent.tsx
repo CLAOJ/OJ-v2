@@ -19,7 +19,6 @@ import {
     Gamepad2,
     RefreshCw,
     SlidersHorizontal,
-    HelpCircle,
     Lightbulb,
     X
 } from 'lucide-react';
@@ -44,8 +43,8 @@ export default function ProblemsPageContent() {
     const [hasEditorial, setHasEditorial] = useState(false);
     const [pointsMin, setPointsMin] = useState<number>(0);
     const [pointsMax, setPointsMax] = useState<number>(POINTS_MAX);
-    const [sort, setSort] = useState<string>('code');
-    const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+    const [sort, setSort] = useState<string>('date');
+    const [order, setOrder] = useState<'asc' | 'desc'>('desc');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
 
@@ -334,83 +333,61 @@ export default function ProblemsPageContent() {
             <div className="flex-grow flex flex-col gap-6 min-w-0">
                 <div className="bg-card border rounded-md overflow-hidden shadow-sm">
                     <div className="overflow-x-auto selection:bg-primary/10">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse text-sm tabular-nums">
                             <thead>
-                                <tr className="bg-muted/30 border-b">
-                                    <th className="px-10 py-6 text-xs font-medium text-muted-foreground w-20 text-center">{tCommon('status')}</th>
-                                    <th className="px-6 py-6 text-xs font-medium text-muted-foreground cursor-pointer group" onClick={() => toggleSort('code')}>
-                                        <div className="flex items-center gap-2">
+                                <tr className="bg-muted/30 border-b text-xs font-medium text-muted-foreground">
+                                    <th className="w-10 px-3 py-2 text-center"><span className="sr-only">{tCommon('status')}</span></th>
+                                    <th className="px-3 py-2 cursor-pointer whitespace-nowrap" onClick={() => toggleSort('code')}>
+                                        <span className="inline-flex items-center gap-1">
                                             {t('code')} {sort === 'code' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                                        </div>
+                                        </span>
                                     </th>
-                                    <th className="px-6 py-6 text-xs font-medium text-muted-foreground cursor-pointer group" onClick={() => toggleSort('name')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="px-3 py-2 cursor-pointer" onClick={() => toggleSort('name')}>
+                                        <span className="inline-flex items-center gap-1">
                                             {t('name')} {sort === 'name' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                                        </div>
+                                        </span>
                                     </th>
-                                    <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center cursor-pointer group" onClick={() => toggleSort('points')}>
-                                        <div className="flex items-center gap-2 justify-center">
+                                    <th className="hidden md:table-cell px-3 py-2">{t('problemGroup')}</th>
+                                    <th className="px-3 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => toggleSort('points')}>
+                                        <span className="inline-flex items-center gap-1">
                                             {t('points')} {sort === 'points' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                                        </div>
+                                        </span>
                                     </th>
-                                    <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center cursor-pointer group" onClick={() => toggleSort('ac_rate')}>
-                                        <div className="flex items-center gap-2 justify-center">
+                                    <th className="hidden sm:table-cell px-3 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => toggleSort('ac_rate')}>
+                                        <span className="inline-flex items-center gap-1">
                                             {t('acRate')} {sort === 'ac_rate' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                                        </div>
+                                        </span>
                                     </th>
-                                    <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center cursor-pointer group" onClick={() => toggleSort('user_count')}>
-                                        <div className="flex items-center gap-2 justify-center">
+                                    <th className="hidden sm:table-cell px-3 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => toggleSort('user_count')}>
+                                        <span className="inline-flex items-center gap-1">
                                             {t('acCount')} {sort === 'user_count' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                                        </div>
+                                        </span>
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-muted/50">
+                            <tbody className="divide-y divide-border">
                                 {isLoading ? (
                                     Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
-                                        <tr key={i}><td colSpan={6} className="px-10 py-6"><Skeleton className="h-10 w-full rounded-md" /></td></tr>
+                                        <tr key={i}><td colSpan={7} className="px-3 py-2"><Skeleton className="h-5 w-full rounded" /></td></tr>
                                     ))
                                 ) : (
                                     problemData?.data.map(p => (
-                                        <tr key={p.code} className="group hover:bg-muted/5 transition-colors">
-                                            <td className="px-10 py-8 text-center">
-                                                {p.is_solved ? (
-                                                    <div className="inline-flex items-center justify-center p-2 rounded-full bg-emerald-500/10 text-emerald-500 shadow-sm border border-emerald-500/20">
-                                                        <CheckCircle2 size={24} />
-                                                    </div>
-                                                ) : (
-                                                    <div className="inline-flex items-center justify-center p-2 rounded-full bg-muted/30 text-muted-foreground/10 border border-muted-foreground/5">
-                                                        <HelpCircle size={24} />
-                                                    </div>
+                                        <tr key={p.code} className="h-10 hover:bg-muted/40 transition-colors">
+                                            <td className="px-3 text-center">
+                                                {p.is_solved && (
+                                                    <CheckCircle2 size={16} className="inline text-emerald-600 dark:text-emerald-400" aria-label={t('solved')} />
                                                 )}
                                             </td>
-                                            <td className="px-6 py-8 font-medium font-mono text-sm text-primary tracking-tighter">{p.code}</td>
-                                            <td className="px-6 py-8">
-                                                <Link
-                                                    href={`/problem/${p.code}`}
-                                                    className="font-semibold text-lg hover:text-primary transition-colors underline-offset-4 decoration-primary/20 hover:underline"
-                                                >
+                                            <td className="px-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{p.code}</td>
+                                            <td className="px-3 max-w-0 w-full">
+                                                <Link href={`/problem/${p.code}`} className="block truncate font-medium hover:text-primary hover:underline underline-offset-4">
                                                     {p.name}
                                                 </Link>
-                                                <div className="text-xs font-medium text-muted-foreground mt-1 opacity-40">{p.group}</div>
                                             </td>
-                                            <td className="px-6 py-8 text-center">
-                                                <span className="px-3 py-1.5 rounded-xl bg-primary/5 text-primary text-sm font-medium border border-primary/10">
-                                                    {p.points}
-                                                </span>
-                                            </td>
-                                            <td className="px-10 py-8 text-center">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <span className="text-xs font-medium text-muted-foreground">{Math.round(p.ac_rate)}%</span>
-                                                    <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden shadow-inner">
-                                                        <div
-                                                            className="h-full bg-emerald-500"
-                                                            style={{ width: `${p.ac_rate}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-10 py-8 text-center text-sm font-medium text-muted-foreground">{p.user_count}</td>
+                                            <td className="hidden md:table-cell px-3 text-xs text-muted-foreground whitespace-nowrap">{p.group}</td>
+                                            <td className="px-3 text-right font-medium">{p.points}</td>
+                                            <td className="hidden sm:table-cell px-3 text-right text-muted-foreground">{Math.round(p.ac_rate)}%</td>
+                                            <td className="hidden sm:table-cell px-3 text-right text-muted-foreground">{p.user_count}</td>
                                         </tr>
                                     ))
                                 )}

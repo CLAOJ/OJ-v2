@@ -23,7 +23,7 @@ export default function PersonJsonLd({ user }: PersonJsonLdProps) {
     knowsAbout: ['competitive programming', 'algorithms', 'problem solving', 'computer science'],
     image: {
       '@type': 'ImageObject',
-      url: `https://www.gravatar.com/avatar/${user.email_hash}?s=400&d=identicon`,
+      url: user.avatar_url.replace(/([?&])s=\d+/, '$1s=400'),
     },
   };
 

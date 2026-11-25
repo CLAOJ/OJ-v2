@@ -302,7 +302,7 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                                                 onChange={() => togglePermission(perm.id)}
                                             />
                                             <span className="truncate" title={perm.codename}>{perm.name}</span>
-                                            <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{perm.app_label}</span>
+                                            <span className="ml-auto text-xs text-muted-foreground shrink-0">{perm.app_label}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -494,7 +494,7 @@ function SecurityRow({ title, enabled, enabledText, disabledText, actionLabel, b
             <div className="flex items-center gap-2 text-sm">
                 {enabled ? <ShieldCheck size={16} className="text-emerald-500" /> : <ShieldOff size={16} className="text-muted-foreground" />}
                 <span className="font-medium">{title}</span>
-                <Badge variant={enabled ? 'success' : 'secondary'} className="text-[10px] py-0 px-1.5">
+                <Badge variant={enabled ? 'success' : 'secondary'} className="text-xs py-0 px-1.5">
                     {enabled ? enabledText : disabledText}
                 </Badge>
             </div>

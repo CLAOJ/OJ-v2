@@ -236,7 +236,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
     return (
         <div className="flex flex-col lg:flex-row gap-4 min-h-[calc(100vh-12rem)] mt-4">
             {/* Left Sidebar: Problem Metadata & Status */}
-            <aside className="w-full lg:w-72 flex flex-col gap-6 shrink-0 h-fit lg:sticky lg:top-4">
+            <aside className="order-last lg:order-none w-full lg:w-72 flex flex-col gap-6 shrink-0 h-fit lg:sticky lg:top-4">
                 {/* Status Card */}
                 <div className={cn(
                     "relative overflow-hidden rounded-md border p-6 flex flex-col items-center gap-4 transition-all shadow-sm",

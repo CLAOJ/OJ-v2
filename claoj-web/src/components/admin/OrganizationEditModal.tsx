@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { toast } from 'sonner';
 import {
     adminOrganizationApi,
@@ -92,6 +93,7 @@ interface OrganizationFormProps {
 
 function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormProps) {
     const t = useTranslations('Admin');
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
     const isEdit = organizationId !== null;
     // Mirrors the judge.organization_admin gate on the API, which rejects
@@ -176,8 +178,8 @@ function OrganizationForm({ organizationId, detail, onClose }: OrganizationFormP
         onError: (error) => toast.error(adminErrorMessage(error, t('organizations.deleteFailed'))),
     });
 
-    const handleDelete = () => {
-        if (confirm(t('organizations.deleteConfirm'))) {
+    const handleDelete = async () => {
+        if (await confirm(t('organizations.deleteConfirm'), { variant: 'danger' })) {
             deleteMutation.mutate();
         }
     };

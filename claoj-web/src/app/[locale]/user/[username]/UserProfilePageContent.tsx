@@ -31,6 +31,7 @@ import {
     Newspaper
 } from 'lucide-react';
 import { cn, getRankColor, getRankBadgeColor, getRankTitle } from '@/lib/utils';
+import { RatingCircle } from '@/components/ui/RatingCircle';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -180,7 +181,9 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                 <div className="bg-card border rounded-md overflow-hidden shadow-sm flex flex-col items-center p-4 space-y-4">
                     <div className="relative group">
                         <img
-                            src={`https://www.gravatar.com/avatar/${user.email_hash}?s=200&d=identicon`}
+                            // The API sends avatar_url, not email_hash; the old URL asked
+                            // Gravatar for "undefined", so every profile got the same image.
+                            src={user.avatar_url.replace(/([?&])s=\d+/, '$1s=200')}
                             alt={user.username}
                             className="w-40 h-40 rounded-md border"
                         />
@@ -189,9 +192,13 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                     <div className="text-center space-y-1">
                         <h1 className="text-2xl font-semibold tracking-tight">{user.display_name || user.username}</h1>
                         <p className="text-sm font-mono text-muted-foreground">@{user.username}</p>
-                        <Badge variant="outline" className={cn("mt-2 text-xs font-medium px-3 py-1", getRankColor(user.rating))}>
-                            {user.display_rank}
-                        </Badge>
+                        {user.full_name && <p className="text-sm font-medium">{user.full_name}</p>}
+                        {user.rating != null && (
+                            <p className={cn("mt-2 inline-flex items-center gap-1.5 text-sm font-semibold tabular-nums", getRankColor(user.rating))}>
+                                <RatingCircle rating={user.rating} />
+                                {user.rating} · {getRankTitle(user.rating)}
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -722,7 +729,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                 role="img"
                                                 aria-label={t('activitySummary', { count: activityTotal })}
                                             >
-                                                <div className="flex flex-col gap-1 pr-1 text-[10px] font-medium text-muted-foreground">
+                                                <div className="flex flex-col gap-1 pr-1 text-xs font-medium text-muted-foreground">
                                                     {weekdayLabels.map((label, i) => (
                                                         <span key={i} className="h-3 leading-3">{label}</span>
                                                     ))}
@@ -751,7 +758,7 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                                     ))}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 pt-3 text-[10px] font-medium text-muted-foreground">
+                                            <div className="flex items-center gap-2 pt-3 text-xs font-medium text-muted-foreground">
                                                 <span>{t('less')}</span>
                                                 {[0, 1, 2, 3, 4].map((level) => (
                                                     <span

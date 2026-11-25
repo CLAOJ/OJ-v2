@@ -80,16 +80,16 @@ export default function EditProblemPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <Link
                     href="/admin/problems"
                     className="p-2 hover:bg-muted rounded-xl transition-colors"
                 >
                     <ArrowLeft size={20} />
                 </Link>
-                <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <Code2 className="text-primary" size={32} />
+                <div className="min-w-0 flex-1 basis-60">
+                    <h1 className="text-2xl lg:text-3xl font-bold flex items-center gap-3">
+                        <Code2 className="text-primary shrink-0" size={28} />
                         {t('problems.editProblemTitle')}
                     </h1>
                     <p className="text-muted-foreground mt-1">
@@ -98,35 +98,35 @@ export default function EditProblemPage() {
                 </div>
                 <Link
                     href={`/admin/problems/${code}/data`}
-                    className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium whitespace-nowrap text-sm"
                 >
                     <Database size={18} />
                     {t('problems.manageDataLink')}
                 </Link>
                 <Link
                     href={`/admin/problems/${code}/clarifications`}
-                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium whitespace-nowrap text-sm"
                 >
                     <MessageSquare size={18} />
                     {t('problems.clarificationsLink')}
                 </Link>
                 <Link
                     href={`/admin/problems/${code}/editorial`}
-                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium whitespace-nowrap text-sm"
                 >
                     <BookOpen size={18} />
                     {t('problems.editorialLink')}
                 </Link>
                 <Link
                     href={`/admin/problems/${code}/translations`}
-                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium whitespace-nowrap text-sm"
                 >
                     <Languages size={18} />
                     {t('problems.translationsLink')}
                 </Link>
                 <Link
                     href={`/admin/language-limits?problem=${encodeURIComponent(code)}`}
-                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 font-medium whitespace-nowrap text-sm"
                 >
                     <SlidersHorizontal size={18} />
                     {t('problems.languageLimitsLink')}

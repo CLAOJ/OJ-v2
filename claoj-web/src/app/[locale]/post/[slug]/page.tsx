@@ -30,7 +30,7 @@ export async function generateMetadata({
   const post = await fetchBlogPost(id);
 
   if (post) {
-    const title = `${post.title} | CLAOJ Blog`;
+    const title = post.title;
     const description = post.summary || post.content.slice(0, 200) + '...';
     const authorNames = post.authors?.map((a: { username: string }) => a.username).join(', ') || 'CLAOJ';
 
@@ -52,7 +52,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `Blog Post | CLAOJ`,
+    title: `Blog Post`,
     description: 'Competitive programming blog post on CLAOJ',
   };
 }

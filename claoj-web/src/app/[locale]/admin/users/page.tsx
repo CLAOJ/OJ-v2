@@ -19,6 +19,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '
 import { PaginationBar } from '@/components/ui/PaginationBar';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { UserEditorModal } from '@/components/admin/UserEditorModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
     Search,
     Ban,
@@ -48,6 +49,7 @@ export default function AdminUserPage() {
     const [banTarget, setBanTarget] = useState<AdminUser | null>(null);
     const [banReason, setBanReason] = useState('');
     const [loginAsTarget, setLoginAsTarget] = useState<AdminUser | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
     const queryClient = useQueryClient();
     const router = useRouter();
@@ -124,7 +126,10 @@ export default function AdminUserPage() {
 
     const deleteMutation = useMutation({
         mutationFn: (id: number) => adminUserApi.delete(id),
-        onSuccess: invalidateUsers,
+        onSuccess: () => {
+            setDeleteTarget(null);
+            invalidateUsers();
+        },
     });
 
     const impersonateMutation = useMutation({
@@ -252,7 +257,7 @@ export default function AdminUserPage() {
                                     />
                                     <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('users.colStatus')}</th>
                                     <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground">{t('users.colRole')}</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right">{t('common.actions')}</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold uppercase text-muted-foreground text-right sticky right-0 bg-muted">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -291,42 +296,42 @@ export default function AdminUserPage() {
                                             <td className="px-4 py-2">
                                                 <div className="flex flex-wrap items-center gap-1">
                                                     {user.is_active ? (
-                                                        <Badge variant="success" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="success" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <UserCheck size={10} /> {t('users.active')}
                                                         </Badge>
                                                     ) : (
-                                                        <Badge variant="destructive" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="destructive" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <Ban size={10} /> {t('users.deactivated')}
                                                         </Badge>
                                                     )}
                                                     {user.is_unlisted && (
-                                                        <Badge variant="warning" className="text-[10px] py-0 px-1.5">{t('users.hidden')}</Badge>
+                                                        <Badge variant="warning" className="text-xs py-0 px-1.5">{t('users.hidden')}</Badge>
                                                     )}
                                                     {user.is_muted && (
-                                                        <Badge variant="destructive" className="text-[10px] py-0 px-1.5">{t('users.muted')}</Badge>
+                                                        <Badge variant="destructive" className="text-xs py-0 px-1.5">{t('users.muted')}</Badge>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2">
                                                 <div className="flex flex-wrap items-center gap-1">
                                                     {user.is_staff && (
-                                                        <Badge variant="secondary" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="secondary" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <Shield size={10} /> {t('users.staff')}
                                                         </Badge>
                                                     )}
                                                     {user.is_super_user && (
-                                                        <Badge variant="warning" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="warning" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <Shield size={10} /> {t('users.superuser')}
                                                         </Badge>
                                                     )}
                                                     {(user.groups ?? []).map(group => (
-                                                        <Badge key={group.id} variant="outline" className="text-[10px] py-0 px-1.5">
+                                                        <Badge key={group.id} variant="outline" className="text-xs py-0 px-1.5">
                                                             {group.name}
                                                         </Badge>
                                                     ))}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-2 text-right">
+                                            <td className="px-4 py-2 text-right sticky right-0 bg-card">
                                                 <div className="flex justify-end gap-1">
                                                     <button
                                                         onClick={() => setEditorUserId(user.id)}
@@ -378,7 +383,7 @@ export default function AdminUserPage() {
                                                     ))}
                                                     {canManageAccount(user) && (
                                                         <button
-                                                            onClick={() => deleteMutation.mutate(user.id)}
+                                                            onClick={() => setDeleteTarget(user)}
                                                             disabled={deleteMutation.isPending}
                                                             className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
                                                             title={t('common.delete')}
@@ -526,6 +531,19 @@ export default function AdminUserPage() {
                     </DialogFooter>
                 </form>
             </Dialog>
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+                title={t('common.deleteUserTitle')}
+                description={t('common.deleteConfirmDescription', { name: deleteTarget?.username ?? '' })}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                confirmPhrase={deleteTarget?.username}
+                confirmPhraseLabel={t('common.typeToConfirm', { phrase: deleteTarget?.username ?? '' })}
+                isLoading={deleteMutation.isPending}
+            />
         </div>
     );
 }

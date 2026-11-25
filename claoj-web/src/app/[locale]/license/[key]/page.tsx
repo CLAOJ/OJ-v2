@@ -17,10 +17,10 @@ export async function generateMetadata({ params }: { params: Promise<{ key: stri
   const { key } = await params;
   const license = await fetchLicense(key);
   if (!license) {
-    return { title: `License ${key} | CLAOJ` };
+    return { title: `License ${key}` };
   }
   return {
-    title: `${license.name || key} | CLAOJ`,
+    title: `${license.name || key}`,
     description: license.text?.slice(0, 160),
   };
 }

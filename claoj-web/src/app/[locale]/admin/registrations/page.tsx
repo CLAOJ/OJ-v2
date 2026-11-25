@@ -189,16 +189,16 @@ export default function AdminRegistrationsPage() {
                                             <td className="px-4 py-2">
                                                 <div className="flex flex-wrap items-center gap-1">
                                                     {row.is_active ? (
-                                                        <Badge variant="success" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="success" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <UserCheck size={10} /> {t('registrations.active')}
                                                         </Badge>
                                                     ) : (
-                                                        <Badge variant="warning" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="warning" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <UserX size={10} /> {t('registrations.pending')}
                                                         </Badge>
                                                     )}
                                                     {row.has_pending_token && (
-                                                        <Badge variant="outline" className="flex items-center gap-1 text-[10px] py-0 px-1.5">
+                                                        <Badge variant="outline" className="flex items-center gap-1 text-xs py-0 px-1.5">
                                                             <KeyRound size={10} /> {t('registrations.tokenSent')}
                                                         </Badge>
                                                     )}

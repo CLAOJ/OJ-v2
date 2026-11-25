@@ -12,7 +12,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
 
-  const title = `Contests - Competitive Programming Challenges | CLAOJ`;
+  const title = `Contests - Competitive Programming Challenges`;
   const description = `Participate in live competitive programming contests, join upcoming challenges, and practice with past contests on CLAOJ.`;
 
   return {

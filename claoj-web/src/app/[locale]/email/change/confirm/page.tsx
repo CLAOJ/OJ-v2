@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import EmailChangeConfirmContent from './EmailChangeConfirmContent';
 
 export const metadata: Metadata = {
-  title: 'Confirm email change | CLAOJ',
+  title: 'Confirm email change',
   robots: { index: false, follow: false },
 };
 

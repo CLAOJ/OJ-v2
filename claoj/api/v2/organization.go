@@ -960,7 +960,7 @@ func OrganizationSubmissionList(c *gin.Context) {
 			"V", time.Now(), "C", "P")
 	}
 
-	writeSubmissionList(c, q, page, pageSize, false)
+	writeSubmissionList(c, q, page, pageSize, false, true)
 }
 
 // helpers

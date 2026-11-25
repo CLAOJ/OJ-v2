@@ -29,6 +29,7 @@ import {
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import duration from 'dayjs/plugin/duration';
+import { contestFormatLabel } from '@/lib/utils';
 
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
@@ -156,7 +157,7 @@ export default function ContestsPageContent({ initialTag = '' }: { initialTag?: 
                                                     </Link>
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         {c.is_rated && <Badge variant="warning" className="text-xs h-4 ">{t('rated')}</Badge>}
-                                                        {c.format && <Badge variant="outline" className="text-xs h-4 ">{c.format}</Badge>}
+                                                        {c.format && c.format !== 'default' && <Badge variant="outline" className="text-xs h-4 ">{contestFormatLabel(c.format)}</Badge>}
                                                         {c.tags && c.tags.map(tag => (
                                                             <Link key={tag.id} href={contestTagPath(tag.name)}>
                                                                 <Badge

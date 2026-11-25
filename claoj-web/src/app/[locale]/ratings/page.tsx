@@ -12,7 +12,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
 
-  const title = `Ratings - User Leaderboard | CLAOJ`;
+  const title = `Ratings - User Leaderboard`;
   const description = `View the competitive programming user ratings leaderboard on CLAOJ. Track top performers and contest rankings.`;
 
   return {

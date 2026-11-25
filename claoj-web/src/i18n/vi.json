@@ -1,10 +1,10 @@
 {
   "SEO": {
     "siteName": "CLAOJ - Nền tảng Lập trình Thi đấu",
-    "siteDescription": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao.",
+    "siteDescription": "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh trong và ngoài tỉnh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
     "home": {
       "title": "CLAOJ - Nền tảng Lập trình Thi đấu",
-      "description": "Chào mừng đến với CLAOJ - Nền tảng lập trình thi đấu hiện đại với các kỳ thi, bài tập và cộng đồng."
+      "description": "CLAOJ, web chấm bài tự động trường THPT chuyên Long An: bài tập, kỳ thi và bảng xếp hạng cho học sinh Tin học."
     },
     "problems": {
       "title": "Bài tập - CLAOJ",
@@ -117,7 +117,7 @@
     }
   },
   "Footer": {
-    "description": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao.",
+    "description": "Web chấm bài tự động trường THPT chuyên Long An",
     "platform": "Nền tảng",
     "support": "Hỗ trợ",
     "builtBy": "IT-CLA Productions",
@@ -139,7 +139,7 @@
   },
   "Home": {
     "welcome": "Chào mừng đến với CLAOJ",
-    "subtitle": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao",
+    "subtitle": "Web chấm bài tự động trường THPT chuyên Long An",
     "blogTab": "Blog",
     "eventsTab": "Sự kiện",
     "latestPosts": "Bài đăng mới nhất",
@@ -503,7 +503,7 @@
     "closeDiffViewer": "Đóng cửa sổ so sánh",
     "deletionsCount": "{count} dòng bị xóa",
     "additionsCount": "{count} dòng được thêm",
-    "subtitle": "Kết quả chấm bài theo thời gian thực từ các máy chấm phân tán toàn cầu.",
+    "subtitle": "Bài nộp mới nhất trên CLAOJ, cập nhật ngay khi máy chấm trả kết quả.",
     "bestModeBadge": "Bài nộp tốt nhất",
     "bestModeHint": "Mỗi người một bài: điểm cao nhất, sau đó thời gian nhanh nhất.",
     "contestModeBadge": "Bài nộp trong kỳ thi",
@@ -751,7 +751,7 @@
     "noOrganizations": "Chưa tham gia tổ chức nào.",
     "aboutUser": "Giới thiệu về {username}",
     "noAboutInfo": "Người dùng này chưa chia sẻ thông tin nào về bản thân.",
-    "subtitle": "Các lập trình viên thi đấu từ khắp nơi trên thế giới.",
+    "subtitle": "Thành viên CLAOJ, học sinh trong và ngoài tỉnh Long An.",
     "user": "Người dùng",
     "solved": "Đã giải",
     "moreOrganizations": "+{count} nữa",
@@ -1129,7 +1129,7 @@
   "Organizations": {
     "title": "Tổ chức",
     "searchPlaceholder": "Tên tổ chức hoặc tên viết tắt...",
-    "subtitle": "Các trường đại học, trường học và cộng đồng lập trình thi đấu.",
+    "subtitle": "Các trường, lớp và đội tuyển trên CLAOJ.",
     "open": "Mở",
     "unlisted": "Không công khai",
     "members": "Thành viên",
@@ -1469,7 +1469,10 @@
       "notAvailable": "N/A",
       "showingRange": "Hiển thị {from} đến {to} trong tổng số {total}",
       "saving": "Đang lưu...",
-      "close": "Đóng"
+      "close": "Đóng",
+      "deleteConfirmDescription": "Thao tác này xóa vĩnh viễn {name} và không thể hoàn tác.",
+      "typeToConfirm": "Gõ {phrase} để xác nhận",
+      "deleteUserTitle": "Xóa người dùng"
     },
     "nav": {
       "users": "Thành viên",
@@ -2917,7 +2920,9 @@
         "CREATE": "Tạo",
         "UPDATE": "Cập nhật",
         "DELETE": "Xóa",
-        "VIEW": "Xem"
+        "VIEW": "Xem",
+        "impersonate_start": "Bắt đầu đăng nhập thay",
+        "impersonate_exit": "Kết thúc đăng nhập thay"
       },
       "statuses": {
         "success": "Thành công",

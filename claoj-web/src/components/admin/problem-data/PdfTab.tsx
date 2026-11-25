@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProblemDataApi, adminProblemApi } from '@/lib/adminApi';
 import { FileText, Check, Trash2, Eye, Upload, Loader2 } from 'lucide-react';
@@ -16,6 +17,7 @@ interface ProblemData {
 
 export function PdfTab({ code }: PdfTabProps) {
     const t = useTranslations('Admin.problemData');
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -98,7 +100,7 @@ export function PdfTab({ code }: PdfTabProps) {
                                 {t('pdfView')}
                             </a>
                             <button
-                                onClick={() => deleteMutation.mutate()}
+                                onClick={async () => { if (await confirm(t('deleteFileConfirm'), { variant: 'danger' })) deleteMutation.mutate(); }}
                                 disabled={deleteMutation.isPending}
                                 className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
                             >

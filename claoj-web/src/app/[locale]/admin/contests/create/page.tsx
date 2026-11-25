@@ -30,7 +30,7 @@ export default function CreateContestPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <Link
                     href="/admin/contests"
                     className="p-2 hover:bg-muted rounded-xl transition-colors"

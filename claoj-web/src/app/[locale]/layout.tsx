@@ -7,6 +7,7 @@ import QueryProvider from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
+import { ConfirmProvider } from "@/components/providers/ConfirmProvider";
 import Navbar from "@/components/layout/Navbar";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import Footer from "@/components/layout/Footer";
@@ -24,10 +25,10 @@ const siteUrl = process.env.SITE_URL || "https://beta.claoj.edu.vn";
 
 export const metadata: Metadata = {
   title: {
-    default: "CLAOJ - Online Judge",
+    default: "CLAOJ: Long An HSGS Online Judge",
     template: "%s | CLAOJ",
   },
-  description: "Modern, high-performance competitive programming platform.",
+  description: "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
   metadataBase: new URL(siteUrl),
   // NOTE: no blanket `alternates.canonical` here — a site-wide root canonical
   // makes every page look like a duplicate of the homepage. Each page sets its
@@ -35,8 +36,8 @@ export const metadata: Metadata = {
 
   // Open Graph
   openGraph: {
-    title: "CLAOJ - Online Judge",
-    description: "Modern, high-performance competitive programming platform.",
+    title: "CLAOJ: Long An HSGS Online Judge",
+    description: "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
     siteName: "CLAOJ",
     images: [
       {
@@ -46,15 +47,15 @@ export const metadata: Metadata = {
         alt: "CLAOJ",
       },
     ],
-    locale: "en_US",
+    locale: "vi_VN",
     type: "website",
   },
 
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "CLAOJ - Online Judge",
-    description: "Modern, high-performance competitive programming platform.",
+    title: "CLAOJ: Long An HSGS Online Judge",
+    description: "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
     images: ["/static/icons/og_img.png"],
   },
 
@@ -119,6 +120,7 @@ export default async function RootLayout({
             <QueryProvider>
               <AuthProvider>
                 <WebSocketProvider>
+                 <ConfirmProvider>
                   <Navbar />
                   <ImpersonationBanner />
                   <main className="flex-grow container mx-auto px-4 py-8">
@@ -130,6 +132,7 @@ export default async function RootLayout({
                       every one of those notifications rendered nowhere —
                       failed actions looked like nothing had happened. */}
                   <Toaster position="top-right" richColors closeButton />
+                 </ConfirmProvider>
                 </WebSocketProvider>
               </AuthProvider>
             </QueryProvider>

@@ -111,6 +111,8 @@ func ProblemList(c *gin.Context) {
 		"points":     "points",
 		"ac_rate":    "ac_rate",
 		"user_count": "user_count",
+		// v1's problem list opens newest first.
+		"date": "date",
 	}
 	dbField, ok := validSorts[sortField]
 	if !ok {
@@ -131,6 +133,7 @@ func ProblemList(c *gin.Context) {
 		Preload("Group").
 		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.partial, judge_problem.is_public, judge_problem.user_count, judge_problem.ac_rate, judge_problem.group_id, judge_problem.date").
 		Order("judge_problem." + dbField + " " + order).
+		Order("judge_problem.id " + order). // stable pages when dates tie or are NULL
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&problems).Error; err != nil {

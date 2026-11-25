@@ -177,7 +177,7 @@ export default function ProblemDataPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <Link
                     href="/admin/problems"
                     className="p-2 hover:bg-muted rounded-xl transition-colors"

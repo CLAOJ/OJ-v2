@@ -48,11 +48,11 @@ func getGravatarURL(email string, size int) string {
 	hash := sha256.Sum256([]byte(email))
 	hashStr := hex.EncodeToString(hash[:])
 
-	// Use gravatar.com with d=mp (mystery person) as default
+	// d=identicon, as v1 (DMOJ gravatar filter) renders it: each user gets a distinct pattern.
 	if size > 0 {
-		return "https://www.gravatar.com/avatar/" + hashStr + "?s=" + strconv.Itoa(size) + "&d=mp"
+		return "https://www.gravatar.com/avatar/" + hashStr + "?s=" + strconv.Itoa(size) + "&d=identicon"
 	}
-	return "https://www.gravatar.com/avatar/" + hashStr + "?d=mp"
+	return "https://www.gravatar.com/avatar/" + hashStr + "?d=identicon"
 }
 
 // getAvatarURL returns the avatar URL for a profile (Gravatar-based)

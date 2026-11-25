@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import api from '@/lib/api';
 import { ContestDetail, RankingResponse, ContestParticipation } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -38,7 +39,7 @@ import {
     FileText,
     LogOut
 } from 'lucide-react';
-import { cn, getRankColor, getRankBadgeColor, getRatingChangeColor, formatRatingChange } from '@/lib/utils';
+import { cn, getRankColor, getRankBadgeColor, getRatingChangeColor, formatRatingChange, contestFormatLabel } from '@/lib/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,6 +57,7 @@ const PARTICIPATION_PAGE_SIZE = 50;
 export default function ContestPageContent({ params }: { params: Promise<{ key: string }> }) {
     const { key } = use(params);
     const t = useTranslations('Contest');
+    const confirm = useConfirm();
     const tAuth = useTranslations('Auth');
     const tCommon = useTranslations('Common');
     const { requireAuth } = useRequireAuth();
@@ -178,7 +180,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     useEffect(() => {
         if (!contest) return;
 
-        const interval = setInterval(() => {
+        let interval: ReturnType<typeof setInterval> | undefined;
+        const tick = () => {
             const now = dayjs();
             const start = dayjs(contest.start_time);
             const end = dayjs(contest.end_time);
@@ -191,7 +194,10 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                 setTimeLeft(t('ended'));
                 clearInterval(interval);
             }
-        }, 1000);
+        };
+        // Fill the badge right away; it used to stay empty for the first second.
+        tick();
+        if (dayjs().isBefore(dayjs(contest.end_time))) interval = setInterval(tick, 1000);
 
         return () => clearInterval(interval);
     }, [contest, t]);
@@ -252,7 +258,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                     <div className="space-y-4">
                         <div className="flex flex-wrap items-center gap-4">
                             <Badge variant="outline" className="px-4 py-1.5 rounded border-primary/20 bg-primary/5 text-primary text-xs font-medium shadow-sm">
-                                {t('formatBadge', { format: contest.format ?? '' })}
+                                {t('formatBadge', { format: contestFormatLabel(contest.format) })}
                             </Badge>
                             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/30 px-4 py-1.5 rounded border border-dashed">
                                 <Clock size={14} className="text-primary" />
@@ -267,8 +273,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                     <div className="flex flex-wrap items-center gap-4 pt-4">
                         {contest.is_in_contest ? (
                             <button
-                                onClick={() => requireAuth(() => {
-                                    if (confirm(t('leaveConfirm'))) leaveContest();
+                                onClick={() => requireAuth(async () => {
+                                    if (await confirm(t('leaveConfirm'))) leaveContest();
                                 }, tAuth('loginToJoinContest'))}
                                 disabled={isLeaving}
                                 className="px-4 h-10 rounded-md font-medium transition-all flex items-center gap-3 bg-muted/40 border hover:bg-muted disabled:opacity-50"
@@ -370,13 +376,31 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     </div>
                                 )}
 
-                                <div className="prose prose-zinc dark:prose-invert max-w-none leading-relaxed">
-                                    {contest.description?.trim() ? (
+                                {contest.description?.trim() && (
+                                    <div className="prose prose-zinc dark:prose-invert max-w-none leading-relaxed">
                                         <MathRenderer content={contest.description} />
-                                    ) : (
-                                        <span className="text-muted-foreground">{t('descriptionPlaceholder')}</span>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+
+                                {/* v1 shows the problem list on the contest page itself;
+                                    a placeholder sentence used to stand in for it. */}
+                                {contest.problems.length > 0 && (
+                                    <ol className="divide-y border rounded-md">
+                                        {contest.problems.map((prob, idx) => (
+                                            <li key={prob.code}>
+                                                <Link
+                                                    href={`/problem/${prob.code}?contest=${key}`}
+                                                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+                                                >
+                                                    <span className="w-6 font-mono text-sm text-muted-foreground">{String.fromCharCode(65 + idx)}</span>
+                                                    <span className="flex-1 font-medium">{prob.name}</span>
+                                                    {prob.is_solved && <CheckCircle2 size={16} className="text-emerald-600" aria-label={t('solved')} />}
+                                                    <span className="text-sm tabular-nums text-muted-foreground">{prob.points}</span>
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
                             </section>
 
                             <section className="pt-4">
@@ -393,7 +417,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <p className="text-xs font-medium text-muted-foreground ">{t('contestSystem')}</p>
-                                        <p className="text-sm font-medium">{contest.format} (DMOJ)</p>
+                                        <p className="text-sm font-medium">{contestFormatLabel(contest.format)}</p>
                                     </div>
                                     <div className="space-y-1.5">
                                         <p className="text-xs font-medium text-muted-foreground ">{t('timeConstraint')}</p>

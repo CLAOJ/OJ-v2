@@ -47,7 +47,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `Problem ${code} | CLAOJ`,
+    title: `Problem ${code}`,
     description: 'Solve competitive programming problems on CLAOJ',
   };
 }

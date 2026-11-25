@@ -59,7 +59,7 @@ export default function ContestParticipationsPage() {
     return (
         <div className="container mx-auto py-8">
             <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <Link
                         href={`/admin/contests/${key}/edit`}
                         className="p-2 hover:bg-muted rounded-xl transition-colors"

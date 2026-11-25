@@ -11,6 +11,7 @@ import {
 import { Button } from './Button';
 import { Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 export type ConfirmVariant = 'danger' | 'warning' | 'info';
 
@@ -25,6 +26,10 @@ interface ConfirmDialogProps {
     variant?: ConfirmVariant;
     isLoading?: boolean;
     children?: React.ReactNode;
+    /** When set, confirm stays disabled until this exact text is typed. */
+    confirmPhrase?: string;
+    /** Label above the phrase input, e.g. "Type dct05 to confirm". */
+    confirmPhraseLabel?: string;
 }
 
 const variantConfig = {
@@ -71,9 +76,15 @@ export function ConfirmDialog({
     variant = 'danger',
     isLoading = false,
     children,
+    confirmPhrase,
+    confirmPhraseLabel,
 }: ConfirmDialogProps) {
     const config = variantConfig[variant];
     const Icon = config.icon;
+    const [typed, setTyped] = useState('');
+    // A fresh dialog (or a new target) starts empty.
+    useEffect(() => { setTyped(''); }, [isOpen, confirmPhrase]);
+    const phraseOk = !confirmPhrase || typed.trim() === confirmPhrase;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -95,6 +106,23 @@ export function ConfirmDialog({
                     <div className="py-4">{children}</div>
                 )}
 
+                {confirmPhrase && (
+                    <label className="flex flex-col gap-2 text-sm">
+                        <span className="text-muted-foreground">
+                            {confirmPhraseLabel ?? confirmPhrase}
+                        </span>
+                        <input
+                            value={typed}
+                            onChange={e => setTyped(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && phraseOk && !isLoading) onConfirm(); }}
+                            autoFocus
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="h-10 rounded-md border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-destructive/40"
+                        />
+                    </label>
+                )}
+
                 <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                         variant="outline"
@@ -106,7 +134,7 @@ export function ConfirmDialog({
                     <Button
                         variant={config.buttonVariant}
                         onClick={onConfirm}
-                        disabled={isLoading}
+                        disabled={isLoading || !phraseOk}
                     >
                         {isLoading && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

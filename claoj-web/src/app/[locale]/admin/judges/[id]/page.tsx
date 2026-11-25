@@ -159,7 +159,7 @@ export default function AdminJudgeDetailPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <button
                     onClick={() => router.back()}
                     className="p-2 rounded-lg hover:bg-card border"

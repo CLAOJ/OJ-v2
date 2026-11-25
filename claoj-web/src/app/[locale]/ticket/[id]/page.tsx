@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
@@ -58,8 +58,13 @@ export default function TicketDetailPage() {
         }
     });
 
+    // Wait for the session check; redirecting before `user` arrives bounced
+    // signed-in users to /login (same fix as TicketListContent).
+    useEffect(() => {
+        if (!loading && !user) router.push('/login');
+    }, [loading, user, router]);
+
     if (!isAuthenticated) {
-        router.push('/login');
         return null;
     }
 

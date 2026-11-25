@@ -25,7 +25,8 @@ import {
     Lock,
     MessageCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getRankColor } from '@/lib/utils';
+import { RatingCircle } from '@/components/ui/RatingCircle';
 import { formatCountdown } from '@/lib/countdown';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -196,17 +197,6 @@ export default function HomePageContent() {
         return formatCountdown(diff);
     };
 
-    const getRatingClass = (rating?: number | null) => {
-        if (!rating) return '';
-        if (rating < 1000) return 'text-[#988f81]';
-        if (rating < 1200) return 'text-[#72ff72]';
-        if (rating < 1400) return 'text-[#57fcf2]';
-        if (rating < 1600) return 'text-[#337dff]';
-        if (rating < 1800) return 'text-[#ff55ff]';
-        if (rating < 2000) return 'text-[#ff981a]';
-        if (rating < 2200) return 'text-[#ff1a1a]';
-        return 'text-[#ff1a1a] font-bold';
-    };
 
     return (
         <div className="flex flex-col gap-6">
@@ -225,7 +215,7 @@ export default function HomePageContent() {
                                 "flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
                                 activeTab === 'blog'
                                     ? "bg-primary text-white"
-                                    : "text-gray-400 hover:bg-white/5"
+                                    : "text-muted-foreground hover:bg-white/5"
                             )}
                         >
                             <BookOpen size={16} />
@@ -237,7 +227,7 @@ export default function HomePageContent() {
                                 "flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
                                 activeTab === 'events'
                                     ? "bg-primary text-white"
-                                    : "text-gray-400 hover:bg-white/5"
+                                    : "text-muted-foreground hover:bg-white/5"
                             )}
                         >
                             <Flame size={16} />
@@ -282,11 +272,11 @@ export default function HomePageContent() {
                                         <div className="flex gap-3">
                                             {/* Vote Section */}
                                             <div className="flex flex-col items-center gap-0.5 pt-0.5">
-                                                <button className="text-gray-400 hover:text-primary transition-colors">
+                                                <button className="text-muted-foreground hover:text-primary transition-colors">
                                                     <ThumbsUp size={18} />
                                                 </button>
-                                                <span className="text-sm font-medium text-gray-400">{post.score || 0}</span>
-                                                <button className="text-gray-400 hover:text-red-400 transition-colors">
+                                                <span className="text-sm font-medium text-muted-foreground">{post.score || 0}</span>
+                                                <button className="text-muted-foreground hover:text-red-400 transition-colors">
                                                     <ThumbsDown size={18} />
                                                 </button>
                                             </div>
@@ -303,7 +293,7 @@ export default function HomePageContent() {
                                                     {post.sticky && <Star size={16} className="text-yellow-500 fill-yellow-500" />}
                                                 </div>
 
-                                                <div className="flex items-center gap-4 text-xs text-gray-400 mb-3 flex-wrap">
+                                                <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 flex-wrap">
                                                     <span className="flex items-center gap-1">
                                                         <Users size={12} />
                                                         {post.authors?.map((a: any) => a.username).join(', ')}
@@ -351,10 +341,10 @@ export default function HomePageContent() {
                             {/* Infinite Scroll Loader */}
                             <div ref={loaderRef} className="py-8 text-center">
                                 {isFetchingNextPage && (
-                                    <div className="flex items-center justify-center gap-2 text-gray-400">
-                                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                                        <div className="w-2 h-2 rounded-full bg-primary motion-safe:animate-pulse" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-2 h-2 rounded-full bg-primary motion-safe:animate-pulse" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-2 h-2 rounded-full bg-primary motion-safe:animate-pulse" style={{ animationDelay: '300ms' }} />
                                         <span className="text-sm font-medium">{t('loadingMorePosts')}</span>
                                     </div>
                                 )}
@@ -366,7 +356,7 @@ export default function HomePageContent() {
                             </div>
                         </>
                     ) : (
-                        <div className="bg-card border border-dashed rounded-lg p-4 text-center text-gray-400">
+                        <div className="bg-card border border-dashed rounded-lg p-4 text-center text-muted-foreground">
                             {t('noPosts')}
                         </div>
                     )}
@@ -395,7 +385,7 @@ export default function HomePageContent() {
                                         >
                                             {contest.name}
                                         </Link>
-                                        <div className="flex items-center justify-between text-xs text-gray-400">
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
                                             <span className="flex items-center gap-2">
                                                 <Clock size={14} />
                                                 {t('startsRelative', { time: dayjs(contest.start_time).fromNow() })}
@@ -430,7 +420,7 @@ export default function HomePageContent() {
                                     >
                                         {contest.name}
                                     </Link>
-                                    <div className="text-xs text-gray-400">
+                                    <div className="text-xs text-muted-foreground">
                                         {t.rich('endsInCountdown', {
                                             countdown: getTimeRemaining(contest.end_time),
                                             highlight: (chunks) => <span className="text-yellow-400 font-mono">{chunks}</span>
@@ -458,7 +448,7 @@ export default function HomePageContent() {
                                     >
                                         {contest.name}
                                     </Link>
-                                    <div className="text-xs text-gray-400">
+                                    <div className="text-xs text-muted-foreground">
                                         {t('startingRelative', { time: dayjs(contest.start_time).fromNow() })}
                                     </div>
                                 </div>
@@ -477,7 +467,7 @@ export default function HomePageContent() {
                         <div className="p-2">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-xs text-gray-400 border-b border-muted">
+                                    <tr className="text-xs text-muted-foreground border-b border-muted">
                                         <th className="px-3 py-2 text-left">#</th>
                                         <th className="px-3 py-2 text-left">{tUsers('username')}</th>
                                         <th className="px-3 py-2 text-right">{tUsers('rating')}</th>
@@ -486,20 +476,22 @@ export default function HomePageContent() {
                                 <tbody>
                                     {topRatingUsers.map((user, i) => (
                                         <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
-                                            <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Link href={`/user/${user.username}`} className={cn("font-medium hover:text-primary", getRatingClass(user.rating))}>
+                                                <Link href={`/user/${user.username}`} className={cn("font-medium hover:text-primary", getRankColor(user.rating))}>
                                                     {user.username}
                                                 </Link>
                                             </td>
-                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">{user.rating}</td>
+                                            <td className={cn("px-3 py-2 text-right font-semibold tabular-nums whitespace-nowrap", getRankColor(user.rating))}>
+                                                <RatingCircle rating={user.rating} className="mr-1" />{user.rating}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
-                                <Link href="/organizations" className="text-gray-400 hover:text-primary">{t('organizations')}</Link>
-                                <Link href="/users?sort=rating" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
+                                <Link href="/organizations" className="text-muted-foreground hover:text-primary">{t('organizations')}</Link>
+                                <Link href="/users?sort=rating" className="text-muted-foreground hover:text-primary">{t('viewAllArrow')}</Link>
                             </div>
                         </div>
                     </div>
@@ -515,7 +507,7 @@ export default function HomePageContent() {
                         <div className="p-2">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-xs text-gray-400 border-b border-muted">
+                                    <tr className="text-xs text-muted-foreground border-b border-muted">
                                         <th className="px-3 py-2 text-left">#</th>
                                         <th className="px-3 py-2 text-left">{tUsers('username')}</th>
                                         <th className="px-3 py-2 text-right">{tUsers('points')}</th>
@@ -524,13 +516,13 @@ export default function HomePageContent() {
                                 <tbody>
                                     {topScorers.map((user, i) => (
                                         <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
-                                            <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Link href={`/user/${user.username}`} className="font-medium text-[#72ff72] hover:text-primary">
+                                                <Link href={`/user/${user.username}`} className={cn("font-medium hover:text-primary", getRankColor(user.rating))}>
                                                     {user.username}
                                                 </Link>
                                             </td>
-                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">
+                                            <td className="px-3 py-2 text-right text-muted-foreground font-mono">
                                                 {user.performance_points?.toFixed(2) || '0.00'}
                                             </td>
                                         </tr>
@@ -538,8 +530,8 @@ export default function HomePageContent() {
                                 </tbody>
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
-                                <Link href="/organizations" className="text-gray-400 hover:text-primary">{t('organizations')}</Link>
-                                <Link href="/users?sort=points" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
+                                <Link href="/organizations" className="text-muted-foreground hover:text-primary">{t('organizations')}</Link>
+                                <Link href="/users?sort=points" className="text-muted-foreground hover:text-primary">{t('viewAllArrow')}</Link>
                             </div>
                         </div>
                     </div>
@@ -555,7 +547,7 @@ export default function HomePageContent() {
                         <div className="p-2">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-xs text-gray-400 border-b border-muted">
+                                    <tr className="text-xs text-muted-foreground border-b border-muted">
                                         <th className="px-3 py-2 text-left">#</th>
                                         <th className="px-3 py-2 text-left">{tUsers('username')}</th>
                                         <th className="px-3 py-2 text-right">{tUsers('contribution')}</th>
@@ -564,13 +556,13 @@ export default function HomePageContent() {
                                 <tbody>
                                     {topContributors.map((user, i) => (
                                         <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
-                                            <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                                             <td className="px-3 py-2">
                                                 <Link href={`/user/${user.username}`} className="font-medium hover:text-primary">
                                                     {user.display_name || user.username}
                                                 </Link>
                                             </td>
-                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">
+                                            <td className="px-3 py-2 text-right text-muted-foreground font-mono">
                                                 {user.contribution_points}
                                             </td>
                                         </tr>
@@ -578,8 +570,8 @@ export default function HomePageContent() {
                                 </tbody>
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
-                                <Link href="/organizations" className="text-gray-400 hover:text-primary">{t('organizations')}</Link>
-                                <Link href="/users?sort=contribution" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
+                                <Link href="/organizations" className="text-muted-foreground hover:text-primary">{t('organizations')}</Link>
+                                <Link href="/users?sort=contribution" className="text-muted-foreground hover:text-primary">{t('viewAllArrow')}</Link>
                             </div>
                         </div>
                     </div>
@@ -639,12 +631,12 @@ export default function HomePageContent() {
                                 ))}
                             </ul>
                             <div className="mt-3 pt-3 border-t border-muted text-xs flex gap-2">
-                                <a href="/api/comments/feed/rss" className="text-gray-400 hover:text-primary flex items-center gap-1">
+                                <a href="/api/comments/feed/rss" className="text-muted-foreground hover:text-primary flex items-center gap-1">
                                     <span className="text-muted-foreground"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20S4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18zM4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44zm0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/></svg></span>
                                     RSS
                                 </a>
                                 <span className="text-gray-600">/</span>
-                                <a href="/api/comments/feed/atom" className="text-gray-400 hover:text-[#009688]">Atom</a>
+                                <a href="/api/comments/feed/atom" className="text-muted-foreground hover:text-[#009688]">Atom</a>
                             </div>
                         </div>
                     </div>

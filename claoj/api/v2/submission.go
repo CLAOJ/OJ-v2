@@ -114,8 +114,12 @@ func SubmissionList(c *gin.Context) {
 			Where("best_rows.best_rank = 1")
 	}
 
-	// Branch the filtered statement: one COUNT for the pager, one page fetch.
-	writeSubmissionList(c, q, page, pageSize, best)
+	// v1 AllSubmissions uses InfinitePaginationMixin: the unscoped list never
+	// counts, because COUNT(*) over every submission with these joins costs
+	// seconds. Lists scoped to a user/problem/contest/organization stay small
+	// and keep the exact total, as v1's DiggPaginator lists did.
+	countTotal := userFilter != "" || problemFilter != "" || contestFilter != "" || orgFilter != "" || best
+	writeSubmissionList(c, q, page, pageSize, best, countTotal)
 }
 
 // submissionListRow is the public submission row shape, shared by the global
@@ -132,16 +136,26 @@ type submissionListRow struct {
 	Points      *float64  `json:"points"`
 	Time        *float64  `json:"time"`
 	Memory      *float64  `json:"memory"`
+	CasePoints  float64   `json:"case_points"`
+	CaseTotal   float64   `json:"case_total"`
 }
 
 // writeSubmissionList pages a submission query (which must already carry the
 // judge_profile/ auth_user / judge_problem / judge_language joins) and writes
 // the list response. `best` switches the order to v1's best-solutions ranking.
-func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int, best bool) {
+// countTotal=false skips the COUNT and answers {data, has_more} instead of
+// {data, total}, fetching one extra row to learn whether a next page exists.
+func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int, best, countTotal bool) {
 	var total int64
-	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-		return
+	if countTotal {
+		if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+	}
+	limit := pageSize
+	if !countTotal {
+		limit++
 	}
 
 	var rows []struct {
@@ -161,10 +175,14 @@ func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int, best bo
 		Select("judge_submission.*, au.username, pr.code as problem_code, pr.name as problem_name, l.key as lang_key").
 		Order(order).
 		Offset((page - 1) * pageSize).
-		Limit(pageSize).
+		Limit(limit).
 		Find(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
+	}
+	hasMore := len(rows) > pageSize
+	if hasMore {
+		rows = rows[:pageSize]
 	}
 
 	items := make([]submissionListRow, len(rows))
@@ -181,7 +199,13 @@ func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int, best bo
 			Points:      r.Submission.Points,
 			Time:        r.Submission.Time,
 			Memory:      r.Submission.Memory,
+			CasePoints:  r.Submission.CasePoints,
+			CaseTotal:   r.Submission.CaseTotal,
 		}
+	}
+	if !countTotal {
+		c.JSON(http.StatusOK, gin.H{"data": items, "has_more": hasMore})
+		return
 	}
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
@@ -251,20 +275,24 @@ func SubmissionDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":          sub.ID,
-		"problem":     sub.Problem.Code,
-		"user":        username,
-		"date":        sub.Date,
-		"language":    sub.Language.Key,
-		"status":      sub.Status,
-		"result":      sub.Result,
-		"points":      sub.Points,
-		"time":        sub.Time,
-		"memory":      sub.Memory,
-		"source":      source,
-		"case_points": sub.CasePoints,
-		"case_total":  sub.CaseTotal,
-		"test_cases":  testCases,
+		"id":           sub.ID,
+		"problem":      sub.Problem.Code,
+		"problem_name": sub.Problem.Name,
+		// The problem's full score, so the page can show 1.5/1.5 like v1
+		// instead of the test-case point totals.
+		"problem_points": sub.Problem.Points,
+		"user":           username,
+		"date":           sub.Date,
+		"language":       sub.Language.Key,
+		"status":         sub.Status,
+		"result":         sub.Result,
+		"points":         sub.Points,
+		"time":           sub.Time,
+		"memory":         sub.Memory,
+		"source":         source,
+		"case_points":    sub.CasePoints,
+		"case_total":     sub.CaseTotal,
+		"test_cases":     testCases,
 	})
 }
 

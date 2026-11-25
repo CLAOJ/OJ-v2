@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import ContestPageContent from './ContestPageContent';
 import { ContestJsonLd } from '@/components/seo';
 import api from '@/lib/api';
+import { contestFormatLabel } from '@/lib/utils';
 
 const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 
@@ -28,12 +29,14 @@ export async function generateMetadata({
   const contest = await fetchContest(key);
 
   if (contest) {
-    const isRunning = new Date() > contest.start_time && new Date() < contest.end_time;
-    const isPast = new Date() > contest.end_time;
+    // start_time/end_time arrive as ISO strings; comparing a Date with a string is always false.
+    const now = Date.now();
+    const isRunning = now > Date.parse(contest.start_time) && now < Date.parse(contest.end_time);
+    const isPast = now > Date.parse(contest.end_time);
     const status = isPast ? 'Ended' : isRunning ? 'Running' : 'Upcoming';
 
-    const title = `${contest.name} - ${contest.format} ${status} | CLAOJ`;
-    const description = `${contest.summary || contest.description || ''} | ${contest.format} format, ${isRunning ? 'Currently Running' : status}`;
+    const title = `${contest.name} - ${contestFormatLabel(contest.format)} ${status}`;
+    const description = `${contest.summary || contest.description || ''} | ${contestFormatLabel(contest.format)} format, ${isRunning ? 'Currently Running' : status}`;
 
     return {
       title,
@@ -51,7 +54,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `Contest ${key} | CLAOJ`,
+    title: `Contest ${key}`,
     description: 'Competitive programming contest on CLAOJ',
   };
 }

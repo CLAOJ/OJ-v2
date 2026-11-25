@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { adminSubmissionApi, adminErrorMessage } from '@/lib/adminApi';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Badge } from '@/components/ui/Badge';
@@ -32,6 +33,7 @@ const STATUS_CODES = ['QU', 'P', 'G'];
 
 export default function AdminSubmissionPage() {
     const t = useTranslations('Admin');
+    const confirm = useConfirm();
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [batchPreview, setBatchPreview] = useState<{ count: number; message: string } | null>(null);
     const [isExecutingBatch, setIsExecutingBatch] = useState(false);
@@ -148,7 +150,7 @@ export default function AdminSubmissionPage() {
     // Execute batch rejudge
     const handleBatchExecute = async () => {
         if (!batchPreview || batchPreview.count === 0) return;
-        if (!confirm(t('submissions.batchRejudgeConfirm', { count: batchPreview.count }))) return;
+        if (!(await confirm(t('submissions.batchRejudgeConfirm', { count: batchPreview.count })))) return;
 
         setIsExecutingBatch(true);
         const batch: Record<string, string> = {};
@@ -187,8 +189,8 @@ export default function AdminSubmissionPage() {
 
                 <div className="flex flex-wrap items-center gap-2">
                     <button
-                        onClick={() => {
-                            if (confirm(t('submissions.rescoreAllConfirm', { problem: problemFilter }))) {
+                        onClick={async () => {
+                            if (await confirm(t('submissions.rescoreAllConfirm', { problem: problemFilter }))) {
                                 rescoreAllMutation.mutate(problemFilter);
                             }
                         }}
@@ -345,10 +347,10 @@ export default function AdminSubmissionPage() {
             {/* Submission Table */}
             <div className="bg-card rounded-md border overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full text-left text-sm tabular-nums">
                         <thead>
                             <tr className="bg-muted/30 border-b">
-                                <th className="px-3 py-4 w-10">
+                                <th className="px-3 py-2 w-10">
                                     <input
                                         type="checkbox"
                                         aria-label={t('submissions.selectAll')}
@@ -357,28 +359,28 @@ export default function AdminSubmissionPage() {
                                         onChange={(e) => setSelected(e.target.checked ? deletable.map(s => s.id) : [])}
                                     />
                                 </th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground w-20">{t('submissions.colId')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground w-40">{t('submissions.colUser')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground">{t('submissions.colProblem')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground">{t('submissions.languageLabel')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center">{t('submissions.colScore')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colMemory')}</th>
-                                <th className="px-3 py-4 text-xs font-medium text-muted-foreground text-right">{t('common.actions')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground w-20">{t('submissions.colId')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground w-40">{t('submissions.colUser')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground">{t('submissions.colProblem')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground">{t('submissions.languageLabel')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground text-center w-32">{t('submissions.colStatus')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground text-center">{t('submissions.colScore')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colTime')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground text-center w-24">{t('submissions.colMemory')}</th>
+                                <th className="px-3 py-2 text-xs font-medium text-muted-foreground text-right sticky right-0 bg-muted">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
                             {isLoading ? (
                                 Array.from({ length: 15 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={10} className="px-6 py-6"><Skeleton className="h-10 w-full rounded-xl" /></td>
+                                        <td colSpan={10} className="px-3 py-2"><Skeleton className="h-5 w-full rounded" /></td>
                                     </tr>
                                 ))
                             ) : (
                                 submissions.map((s) => (
-                                    <tr key={s.id} className="hover:bg-muted/10 transition-colors">
-                                        <td className="px-3 py-4">
+                                    <tr key={s.id} className="h-10 hover:bg-muted/40 transition-colors">
+                                        <td className="px-3 py-2">
                                             <input
                                                 type="checkbox"
                                                 aria-label={t('submissions.selectRow', { id: s.id })}
@@ -387,49 +389,41 @@ export default function AdminSubmissionPage() {
                                                 onChange={() => toggleSelected(s.id)}
                                             />
                                         </td>
-                                        <td className="px-3 py-4 font-mono text-xs text-muted-foreground">
+                                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
                                             <Link href={`/admin/submissions/${s.id}`} className="hover:text-primary hover:underline outline-none">#{s.id}</Link>
                                         </td>
-                                        <td className="px-3 py-4">
-                                            <Link href={`/user/${s.user}`} className="flex items-center gap-3 group outline-none">
-                                                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground font-medium text-xs">
-                                                    {s.user[0]?.toUpperCase()}
-                                                </div>
-                                                <span className="font-medium text-sm">{s.user}</span>
+                                        <td className="px-3 py-2">
+                                            <Link href={`/user/${s.user}`} className="font-medium whitespace-nowrap hover:text-primary hover:underline underline-offset-4">{s.user}</Link>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <Link href={`/submission/${s.id}`} className="block max-w-[22rem] truncate hover:text-primary hover:underline underline-offset-4" title={s.problem_name || s.problem}>
+                                                <span className="font-mono text-xs text-muted-foreground">{s.problem}</span> {s.problem_name}
                                             </Link>
                                         </td>
-                                        <td className="px-3 py-4">
-                                            <Link href={`/submission/${s.id}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
-                                                <span className="font-medium text-sm tracking-tight">{s.problem}</span>
-                                                <span className="text-xs text-muted-foreground">{s.problem_name || t('submissions.problemCodeLabel')}</span>
-                                            </Link>
-                                        </td>
-                                        <td className="px-3 py-4 font-mono text-xs">{s.language}</td>
-                                        <td className="px-3 py-4 text-center">
-                                            <Badge variant={getStatusVariant(s.result || s.status)} className="px-4 py-1.5 rounded text-xs font-medium uppercase shadow-sm">
+                                        <td className="px-3 py-2 font-mono text-xs">{s.language}</td>
+                                        <td className="px-3 py-2 text-center">
+                                            <Badge variant={getStatusVariant(s.result || s.status)} className="min-w-10 justify-center px-1.5 py-0.5 rounded text-xs font-semibold">
                                                 {s.result || s.status}
                                             </Badge>
                                         </td>
-                                        <td className="px-3 py-4 text-center">
-                                            <div className="inline-flex items-center justify-center w-12 h-8 rounded-xl font-medium text-xs border">
-                                                {s.score !== null ? Math.round(s.score) : '-'}
-                                            </div>
+                                        <td className="px-3 py-2 text-center">
+                                            {s.score !== null ? Math.round(s.score) : '-'}
                                         </td>
-                                        <td className="px-3 py-4 text-center">
+                                        <td className="px-3 py-2 text-center">
                                             {s.time !== null ? (
                                                 <span className="text-xs font-mono">{(s.time * 1000).toFixed(0)}ms</span>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">-</span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-4 text-center text-xs font-mono">
+                                        <td className="px-3 py-2 text-center text-xs font-mono">
                                             {formatMemoryMb(s.memory)}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-3 py-2 text-right sticky right-0 bg-card">
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm(t('submissions.rejudgeConfirm'))) {
+                                                    onClick={async () => {
+                                                        if (await confirm(t('submissions.rejudgeConfirm'))) {
                                                             rejudgeMutation.mutate(s.id);
                                                         }
                                                     }}
@@ -450,8 +444,8 @@ export default function AdminSubmissionPage() {
                                                 </button>
                                                 {(s.status === 'QU' || s.status === 'P' || s.status === 'G') && (
                                                     <button
-                                                        onClick={() => {
-                                                            if (confirm(t('submissions.abortConfirm'))) {
+                                                        onClick={async () => {
+                                                            if (await confirm(t('submissions.abortConfirm'))) {
                                                                 abortMutation.mutate(s.id);
                                                             }
                                                         }}

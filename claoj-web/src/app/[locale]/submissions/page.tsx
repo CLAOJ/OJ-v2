@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -15,6 +15,7 @@ import {
     Building2,
     BrainCircuit,
     RefreshCw,
+    Shield,
     X
 } from 'lucide-react';
 import { cn, getStatusVariant } from '@/lib/utils';
@@ -22,6 +23,9 @@ import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar'
 import { buildSubmissionListParams, addFilterValue, removeFilterValue } from '@/lib/submissionFilters';
 import { VERDICT_CODES } from '@/lib/submissionStatus';
 import { formatMemoryMb } from '@/lib/submissionDetail';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { useConfirm } from '@/components/providers/ConfirmProvider';
+import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -40,6 +44,11 @@ function submissionTime(s: Submission): string {
     return `${(s.time * 1000).toFixed(0)}ms`;
 }
 
+/** Case score as v1 prints it: integers bare, fractions to two places. */
+function formatScore(n: number): string {
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
 function submissionMemory(s: Submission): string {
     return NO_USAGE_STATUSES.includes(s.status) ? '-' : formatMemoryMb(s.memory);
 }
@@ -48,6 +57,23 @@ export default function SubmissionListPage() {
     const t = useTranslations('Submissions');
     const tCommon = useTranslations('Common');
     const searchParams = useSearchParams();
+    const { user } = useAuth();
+    const confirm = useConfirm();
+    const queryClient = useQueryClient();
+    const isAdmin = !!(user?.is_admin || user?.is_staff);
+    const [rejudging, setRejudging] = useState<number | null>(null);
+    const rejudge = async (id: number) => {
+        if (!(await confirm(t('rejudgeConfirm')))) return;
+        setRejudging(id);
+        try {
+            await api.post(`/admin/submission/${id}/rejudge`);
+            queryClient.invalidateQueries({ queryKey: ['submissions'] });
+        } catch {
+            toast.error(t('rejudgeError'));
+        } finally {
+            setRejudging(null);
+        }
+    };
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     // The profile's "View submissions" link deep-links into a prefiltered list.
@@ -316,89 +342,83 @@ export default function SubmissionListPage() {
 
             <div className="bg-card border rounded-md overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse text-sm tabular-nums">
                         <thead>
-                            <tr className="bg-muted/30 border-b">
-                                <th className="px-10 py-6 text-xs font-medium text-muted-foreground w-40">{t('user')}</th>
-                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground">{t('problem')}</th>
-                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground w-40 text-center">{tCommon('status')}</th>
-                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-24">{t('score')}</th>
-                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-28">{t('time')}</th>
-                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-28">{t('memory')}</th>
-                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-32">{t('language')}</th>
-                                <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-right w-40">{t('date')}</th>
+                            <tr className="bg-muted/30 border-b text-xs font-medium text-muted-foreground">
+                                <th className="px-3 py-2">{tCommon('status')}</th>
+                                <th className="px-3 py-2">{t('problem')}</th>
+                                <th className="px-3 py-2">{t('user')}</th>
+                                <th className="hidden sm:table-cell px-3 py-2 text-right">{t('time')}</th>
+                                <th className="hidden md:table-cell px-3 py-2 text-right">{t('memory')}</th>
+                                <th className="px-3 py-2 text-right">{t('date')}</th>
+                                {isAdmin && <th className="px-3 py-2 text-right"><span className="sr-only">{t('adminActions')}</span></th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-muted/50">
+                        <tbody className="divide-y divide-border">
                             {isLoading ? (
                                 Array.from({ length: 15 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={8} className="px-10 py-6"><Skeleton className="h-10 w-full rounded-md" /></td>
+                                        <td colSpan={isAdmin ? 7 : 6} className="px-3 py-2"><Skeleton className="h-5 w-full rounded" /></td>
                                     </tr>
                                 ))
                             ) : (
-                                submissions.map((s) => (
-                                    <tr key={s.id} className="hover:bg-muted/10 transition-colors group">
-                                        <td className="px-10 py-8">
-                                            <Link href={`/user/${s.user}`} className="flex items-center gap-3 group/user outline-none">
-                                                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground font-medium text-xs group-hover/user:bg-primary/10 group-hover/user:text-primary transition-all">
-                                                    {s.user[0]?.toUpperCase()}
-                                                </div>
-                                                <span className="font-medium text-sm group-hover/user:text-primary transition-colors">{s.user}</span>
-                                            </Link>
-                                        </td>
-                                        <td className="px-6 py-8">
-                                            <Link href={`/problem/${s.problem}`} className="inline-flex flex-col gap-0.5 outline-none hover:text-primary transition-colors">
-                                                <span className="font-medium text-sm tracking-tight">{s.problem_name || s.problem}</span>
-                                                <span className="text-xs uppercase font-mono font-medium text-muted-foreground opacity-40">{s.problem}</span>
-                                            </Link>
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <Link href={`/submission/${s.id}`} className="outline-none">
-                                                <Badge
-                                                    variant={getStatusVariant(s.result || s.status)}
-                                                    className="px-4 py-1.5 rounded text-xs font-medium uppercase shadow-sm"
-                                                >
-                                                    {s.result || s.status}
-                                                </Badge>
-                                            </Link>
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <div className={cn(
-                                                "inline-flex items-center justify-center min-w-12 h-8 px-2 rounded-xl font-medium text-xs border tracking-tighter",
-                                                s.result === 'AC' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm" :
-                                                    (s.points ?? 0) > 0 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                                                        "bg-muted/50 text-muted-foreground border-transparent"
-                                            )}>
-                                                {s.points != null ? (Number.isInteger(s.points) ? s.points : s.points.toFixed(2)) : '-'}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <span className="text-xs font-mono text-muted-foreground">
-                                                {submissionTime(s)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <span className="text-xs font-mono text-muted-foreground">
-                                                {submissionMemory(s)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-8 text-center">
-                                            <span
-                                                className="text-xs font-medium text-muted-foreground opacity-60"
-                                                title={languageNames.get(s.language)?.name}
-                                            >
-                                                {languageNames.get(s.language)?.short_name || s.language}
-                                            </span>
-                                        </td>
-                                        <td className="px-10 py-8 text-right">
-                                            <div className="flex flex-col items-end gap-0.5">
-                                                <span className="text-xs font-medium text-muted-foreground opacity-80">{dayjs(s.date).fromNow()}</span>
-                                                <span className="text-xs font-mono text-muted-foreground opacity-30">{dayjs(s.date).format('HH:mm:ss')}</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                submissions.map((s) => {
+                                    const verdict = s.result || s.status;
+                                    const lang = languageNames.get(s.language);
+                                    return (
+                                        <tr key={s.id} className="h-10 hover:bg-muted/40 transition-colors">
+                                            {/* v1 row: verdict, case score and language read as one unit. */}
+                                            <td className="px-3 whitespace-nowrap">
+                                                <Link href={`/submission/${s.id}`} className="inline-flex items-center gap-2 hover:underline underline-offset-4">
+                                                    <Badge variant={getStatusVariant(verdict)} className="min-w-10 justify-center px-1.5 py-0.5 rounded text-xs font-semibold">
+                                                        {verdict}
+                                                    </Badge>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {s.case_total ? `${formatScore(s.case_points)}/${formatScore(s.case_total)} · ` : ''}
+                                                        <span title={lang?.name}>{lang?.short_name || s.language}</span>
+                                                    </span>
+                                                </Link>
+                                            </td>
+                                            <td className="px-3 max-w-0 w-full">
+                                                <Link href={`/problem/${s.problem}`} className="block truncate font-medium hover:text-primary hover:underline underline-offset-4" title={s.problem}>
+                                                    {s.problem_name || s.problem}
+                                                </Link>
+                                            </td>
+                                            <td className="px-3 whitespace-nowrap">
+                                                <Link href={`/user/${s.user}`} className="font-medium hover:text-primary hover:underline underline-offset-4">{s.user}</Link>
+                                            </td>
+                                            <td className="hidden sm:table-cell px-3 text-right text-xs text-muted-foreground whitespace-nowrap">{submissionTime(s)}</td>
+                                            <td className="hidden md:table-cell px-3 text-right text-xs text-muted-foreground whitespace-nowrap">{submissionMemory(s)}</td>
+                                            <td className="px-3 text-right text-xs text-muted-foreground whitespace-nowrap" title={dayjs(s.date).format('YYYY-MM-DD HH:mm:ss')}>
+                                                {dayjs(s.date).fromNow()}
+                                            </td>
+                                            {isAdmin && (
+                                                <td className="px-3 text-right whitespace-nowrap">
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => rejudge(s.id)}
+                                                            disabled={rejudging === s.id}
+                                                            aria-label={`${t('rejudge')} #${s.id}`}
+                                                            title={t('rejudge')}
+                                                            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
+                                                        >
+                                                            <RefreshCw size={14} className={cn(rejudging === s.id && 'animate-spin')} />
+                                                        </button>
+                                                        <Link
+                                                            href={`/admin/submissions/${s.id}`}
+                                                            aria-label={`${t('adminActions')} #${s.id}`}
+                                                            title={t('adminActions')}
+                                                            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                        >
+                                                            <Shield size={14} />
+                                                        </Link>
+                                                    </span>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -409,6 +429,7 @@ export default function SubmissionListPage() {
                 page={page}
                 onPageChange={setPage}
                 total={data?.total}
+                hasMore={data?.has_more}
                 pageSize={pageSize}
                 onPageSizeChange={size => { setPageSize(size); setPage(1); }}
             />

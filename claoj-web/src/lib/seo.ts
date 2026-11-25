@@ -12,8 +12,8 @@ export interface JsonLdObj {
 
 // Default SEO metadata template
 export const DEFAULT_SEO = {
-  title: 'CLAOJ - Online Judge',
-  description: 'Modern, high-performance competitive programming platform.',
+  title: 'CLAOJ: Long An HSGS Online Judge',
+  description: 'Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.',
   openGraph: {
     type: 'website' as const,
     locale: 'en_US' as const,
@@ -24,14 +24,14 @@ export const DEFAULT_SEO = {
         url: '/static/icons/og_img.png',
         width: 1200,
         height: 630,
-        alt: 'CLAOJ - Online Judge',
+        alt: 'CLAOJ: Long An HSGS Online Judge',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image' as const,
-    title: 'CLAOJ - Online Judge',
-    description: 'Modern, high-performance competitive programming platform.',
+    title: 'CLAOJ: Long An HSGS Online Judge',
+    description: 'Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.',
     images: ['/static/icons/og_img.png'],
   },
 };
@@ -229,7 +229,7 @@ export function generateWebSiteJsonLd(): JsonLdObj {
     '@type': 'WebSite',
     name: SITE_NAME,
     url: SITE_URL,
-    description: 'Modern, high-performance competitive programming platform.',
+    description: 'Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.',
     inLanguage: 'en-US',
     potentialAction: {
       '@type': 'SearchAction',
