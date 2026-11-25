@@ -133,6 +133,33 @@ func TestParticipationList_ScopedToURLContest(t *testing.T) {
 	require.Equal(t, "carol", legacy.Results[0].User)
 }
 
+// v1 /contest/<c>/participations/<user>: one competitor's rows only.
+func TestParticipationList_UserFilter(t *testing.T) {
+	setupParticipationDB(t)
+	now := time.Now()
+	c := createParticipationContest(t, "c1", "V", now.Add(-time.Hour), now.Add(time.Hour))
+	createParticipant(t, c.ID, "alice", "Alice Liddell", 0, now)
+	createParticipant(t, c.ID, "bob", "", 0, now)
+
+	router := participationRouter()
+
+	alice := getParticipations(t, router, "/contest/c1/participations?user=alice")
+	require.Equal(t, 1, alice.Total)
+	require.Len(t, alice.Results, 1)
+	require.Equal(t, "alice", alice.Results[0].User)
+
+	// An unknown username matches nothing rather than falling back to everyone.
+	missing := getParticipations(t, router, "/contest/c1/participations?user=nobody")
+	require.Zero(t, missing.Total)
+	require.Empty(t, missing.Results)
+
+	// The filter still respects include_virtual.
+	createParticipant(t, c.ID, "carol", "", 1, now)
+	virtual := getParticipations(t, router, "/contest/c1/participations?user=carol&include_virtual=true")
+	require.Equal(t, 1, virtual.Total)
+	require.True(t, virtual.Results[0].IsVirtual)
+}
+
 // scoreboard_visibility hides the participant list with the standings.
 func TestParticipationList_HiddenByScoreboardVisibility(t *testing.T) {
 	setupParticipationDB(t)

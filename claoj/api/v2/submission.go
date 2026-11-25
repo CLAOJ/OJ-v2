@@ -268,6 +268,47 @@ func SubmissionDetail(c *gin.Context) {
 	})
 }
 
+// SubmissionResubmitSource – GET /api/v2/submission/:id/resubmit
+// The prefill for v1's /problem/<p>/resubmit/<submission>: source + language
+// of an earlier submission. Only the owner may copy it; judge.resubmit_other
+// may copy anyone's (v1 ProblemSubmit.dispatch). File-only languages have no
+// source to prefill and 404 like v1.
+func SubmissionResubmitSource(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission id"))
+		return
+	}
+	_, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	var sub models.Submission
+	if err := db.DB.Preload("Source").Preload("Language").First(&sub, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if sub.Language.FileOnly {
+		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+	if sub.UserID != profile.ID && !auth.HasPerm(c, "judge.resubmit_other") {
+		c.JSON(http.StatusForbidden, apiError("not allowed to resubmit this submission"))
+		return
+	}
+	source := ""
+	if sub.Source != nil {
+		source = sub.Source.Source
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"submission": sub.ID,
+		"problem":    sub.ProblemID,
+		"language":   sub.Language.Key,
+		"source":     source,
+	})
+}
+
 // SubmissionAbort - POST /api/v2/submission/:id/abort
 // The owner may abort their own queued/running submission (v1
 // /submission/<id>/abort); holders of judge.abort_any_submission may abort

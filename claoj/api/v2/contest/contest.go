@@ -3,6 +3,8 @@ package contest
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -45,6 +47,22 @@ func parseInt(s string) (int, error) {
 	return n, err
 }
 
+// tagFilter builds the contest-tag predicate for ?tag=. v1 addresses tags by
+// name (/contests/tag/<name>); a numeric value is also accepted as an id.
+// Returns an empty condition when no tag is requested.
+func tagFilter(raw string) (string, []any) {
+	tag := strings.TrimSpace(raw)
+	if tag == "" {
+		return "", nil
+	}
+	const sub = "id IN (SELECT judge_contest_tags.contest_id FROM judge_contest_tags " +
+		"JOIN judge_contesttag ON judge_contesttag.id = judge_contest_tags.contesttag_id WHERE "
+	if id, err := strconv.ParseUint(tag, 10, 64); err == nil {
+		return sub + "(judge_contesttag.name = ? OR judge_contesttag.id = ?))", []any{tag, id}
+	}
+	return sub + "judge_contesttag.name = ?)", []any{tag}
+}
+
 // ContestList – GET /api/v2/contests
 func ContestList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
@@ -68,6 +86,15 @@ func ContestList(c *gin.Context) {
 		args = append(args, "%"+search+"%", "%"+search+"%")
 		where += " AND (name LIKE ? OR `key` LIKE ?)"
 		whereArgs = append(whereArgs, "%"+search+"%", "%"+search+"%")
+	}
+	// ?tag= mirrors v1's /contests/tag/<name> page (ContestTagDetail): a tag
+	// name, or its numeric id. Keep the visibility predicate above in force —
+	// a tag must never widen a contest's audience.
+	if tagCond, tagArgs := tagFilter(c.Query("tag")); tagCond != "" {
+		sql += " AND " + tagCond
+		args = append(args, tagArgs...)
+		where += " AND " + tagCond
+		whereArgs = append(whereArgs, tagArgs...)
 	}
 
 	// The filtered row count, so the client can page past the page-size cap

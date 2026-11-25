@@ -330,6 +330,12 @@ func ProblemDetail(c *gin.Context) {
 		return
 	}
 
+	// v1 problem.html shows the ticket link to editors ("Manage tickets") and to
+	// users with tickets of their own ("My tickets"); the page decides which
+	// one from these two flags.
+	canEdit := auth.CanEditProblem(c, &p)
+	hasTickets := problemHasTickets(c, &p, canEdit)
+
 	langs := make([]problemLangItem, len(p.AllowedLangs))
 	for i, l := range p.AllowedLangs {
 		langs[i] = problemLangItem{
@@ -404,7 +410,32 @@ func ProblemDetail(c *gin.Context) {
 		"is_attempted":   isAttempted,
 		"pdf_url":        p.PdfURL,
 		"license":        licensePayload,
+		"can_edit":       canEdit,
+		"has_tickets":    hasTickets,
 	})
+}
+
+// problemHasTickets reports whether the request user has any ticket to see on
+// this problem: all of them for editors, otherwise only the ones they opened or
+// are assigned to (v1 Problem.is_editable_by + own_ticket_filter). Anonymous
+// visitors have none.
+func problemHasTickets(c *gin.Context, problem *models.Problem, canEdit bool) bool {
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
+		return false
+	}
+	contentTypeID, ok := ticketContentTypeID("problem")
+	if !ok {
+		return false
+	}
+	q := db.DB.Model(&models.Ticket{}).
+		Where("content_type_id = ? AND object_id = ?", contentTypeID, problem.ID)
+	if !canEdit {
+		q = q.Where("(user_id = ? OR EXISTS (SELECT 1 FROM judge_ticket_assignees a "+
+			"WHERE a.ticket_id = judge_ticket.id AND a.profile_id = ?))", profileID, profileID)
+	}
+	var count int64
+	return q.Count(&count).Error == nil && count > 0
 }
 
 var (
