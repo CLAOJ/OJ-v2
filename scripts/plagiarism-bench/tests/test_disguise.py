@@ -142,6 +142,16 @@ def pas_ok(text):
     return r.returncode == 0
 
 
+def run_py(text):
+    """stdout of exec'ing the program (NameError etc. propagate)."""
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        exec(compile(text, "main.py", "exec"), {"__name__": "__main__"})
+    return buf.getvalue()
+
+
 VALID = {"cpp": cpp_ok, "py": py_ok, "pas": pas_ok}
 
 
@@ -251,6 +261,16 @@ class SwapIntTypes(Base):
         self.assertIn("int main(int argc, char** argv)", out)
         self.assertIn("long long x", out)
         self.assert_valid(out, "cpp")
+
+    def test_cpp_function_pointers_and_qsort_unchanged_or_valid(self):
+        for src in ("int sq(int x){return x*x;}\nint main(){int (*p)(int)=sq; return p(2);}\n",
+                    "int sq(int x){return x*x;}\nint apply(int (*fn)(int), int v){return fn(v);}\n"
+                    "int main(){return apply(sq, 3);}\n",
+                    "#include <cstdlib>\nint cmp(const void*a,const void*b){return *(const int*)a-*(const int*)b;}\n"
+                    "int main(){int v[3]={3,1,2}; qsort(v,3,sizeof(int),cmp); return v[0];}\n"):
+            out = disguise.swap_int_types(src, "cpp", random.Random(1))
+            self.assertEqual(out, src)
+            self.assert_valid(out, "cpp")
 
     def test_pas_widens_only(self):
         out = disguise.swap_int_types(PAS_SRC, "pas", random.Random(1))
@@ -391,19 +411,39 @@ class ReviewFixes(Base):
         self.assert_valid(out, "cpp")
 
     def test_main_params_valid(self):
-        src = "int main(int argc,char**argv){return 0;}\n"
-        self.assert_valid(disguise.rename_identifiers(src, "cpp", random.Random(1)), "cpp")
+        src = ("#include <cstdlib>\nint main(int argc,char**argv){"
+               "return abs(argc) + labs(1) + atoi(argv[0]);}\n")
+        out = disguise.rename_identifiers(src, "cpp", random.Random(1))
+        self.assertIn("labs(1)", out)  # library call not declared here
+        self.assertIn("int main(", out)
+        self.assert_valid(out, "cpp")
 
     def test_py_star_import_renames_nothing(self):
         src = "from math import *\nx=sqrt(4)\nprint(floor(x))\n"
         self.assertEqual(disguise.rename_identifiers(src, "py", random.Random(1)), src)
 
     def test_py_fstring_and_kwarg_names_survive(self):
-        src = "def f(n):\n    k = n * 2\n    return f'{k}'\nprint(sorted(['a'], key=len), f(2))\n"
+        src = ("def f(n):\n    k = n * 2\n    return f'{k}'\nndigits = 1\n"
+               "print(round(2.55, ndigits=ndigits), f(2))\n")
         out = disguise.rename_identifiers(src, "py", random.Random(1))
         self.assert_valid(out, "py")
-        ns = {}
-        exec(compile(out, "x", "exec"), ns)  # f-string must still resolve its name
+        self.assertEqual(run_py(out), run_py(src))  # f-string must still resolve its name
+
+    def test_py_string_literal_names_survive(self):
+        src = "class K:\n    val = 3\nprint(getattr(K, 'val'))\n"
+        out = disguise.rename_identifiers(src, "py", random.Random(1))
+        self.assertEqual(run_py(out), run_py(src))
+
+    def test_py_reorder_ignores_column0_text_in_strings(self):
+        src = ('def b():\n    return 2\ndef a():\n    s = """x\ncol0 text\n"""\n    return s\n'
+               'print(a(), b())')
+        want = run_py(src)
+        moved = False
+        for seed in range(12):
+            out = disguise.reorder_functions(src, "py", random.Random(seed))
+            self.assertEqual(run_py(out), want, out)
+            moved = moved or out != src
+        self.assertTrue(moved)
 
     def test_py_reorder_without_trailing_newline(self):
         for src in ("def a():\n    return 1\ndef b():\n    return a()",
@@ -427,9 +467,10 @@ class ReviewFixes(Base):
         src = ("program P;\ntype R = record\n  case tag: integer of\n    0: (a: integer);\n"
                "    1: (b: integer);\n  end;\nvar x: R;\nbegin\n  x.tag := 0\nend.\n")
         out = disguise.insert_dead_code(src, "pas", random.Random(1))
-        if out != src:  # skipping is acceptable; inserting must land in the main block
-            self.assertGreater(out.lower().index("if false"), out.lower().index("var x"))
-            self.assert_valid(out, "pas")
+        # the record's `case` has no `end`, so the main block is still found and gets the insert
+        self.assertIn("begin if false then begin end;\n  x.tag", out)
+        self.assertEqual(out.lower().count("if false"), 1)
+        self.assert_valid(out, "pas")
 
     def test_cpp_dead_code_skips_main_prototype(self):
         src = "int main();\nint helper(){ return 1; }\nint main(){ return helper(); }\n"

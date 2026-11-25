@@ -264,6 +264,8 @@ def _py_declared(text):
             blocked.add(node.arg)  # f(x=1): the callee may be a library
         elif isinstance(node, ast.ImportFrom) and any(a.name == "*" for a in node.names):
             return set()
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.isidentifier():
+            blocked.add(node.value)  # getattr(K, "val") and friends
         elif isinstance(node, ast.JoinedStr):
             blocked.update(s.id for s in ast.walk(node) if isinstance(s, ast.Name))
     return names - blocked
@@ -513,21 +515,24 @@ def _cpp_items(text):
 
 
 def _py_items(text):
-    blocks = []
-    for line in text.splitlines(keepends=True):
-        if not line[:1].isspace() or not blocks:
-            blocks.append([line])
-        else:
-            blocks[-1].append(line)
-    items, prev_decorated = [], False
-    for lines in blocks:
-        body = "".join(lines)
-        if not body.endswith("\n"):
-            body += "\n"  # a moved block must not glue onto the next line
-        m = re.match(r"def\s+(\w+)", lines[0])
-        movable = bool(m) and not prev_decorated
-        items.append((movable, m.group(1) if movable else None, _refs(body, "py"), body))
-        prev_decorated = lines[0].startswith("@")
+    """Top-level statements by ast line ranges (never splits strings or brackets). None = no reorder."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return None
+    lines = text.split("\n")
+    items, prev_end = [], 0
+    for node in tree.body:
+        start = min([node.lineno] + [d.lineno for d in getattr(node, "decorator_list", [])])
+        if start <= prev_end:
+            return None  # two statements share a line
+        body = "\n".join(lines[prev_end:node.end_lineno]) + "\n"  # gap text rides with the next node
+        movable = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.decorator_list
+        items.append((movable, node.name if movable else None, _refs(body, "py"), body))
+        prev_end = node.end_lineno
+    tail = "\n".join(lines[prev_end:])
+    if tail:
+        items.append((False, None, set(), tail if tail.endswith("\n") else tail + "\n"))
     return items
 
 
@@ -664,7 +669,9 @@ def _swap_cpp(text):
 
 
 # Any of these makes a wider int change meaning or break overload/format matching.
-_SWAP_SKIP = ("printf", "scanf", "max(", "min(", "swap(", "abs(", "gcd(", "lcm(", "%d", "sizeof(int)")
+_SWAP_SKIP = ("printf", "scanf", "max(", "min(", "swap(", "abs(", "gcd(", "lcm(", "%d", "sizeof(",
+              "qsort", "bsearch", "function<")
+_FN_PTR = re.compile(r"\bint\s*\(\s*\*")
 
 
 def _swap_pas(text):
@@ -681,7 +688,9 @@ def _swap_pas(text):
 def swap_int_types(text, lang, rng):
     text = _normalize(text)
     if lang == "cpp":
-        return text if any(s in text for s in _SWAP_SKIP) else _swap_cpp(text)
+        if any(s in text for s in _SWAP_SKIP) or _FN_PTR.search(text):
+            return text
+        return _swap_cpp(text)
     if lang == "pas":
         return _swap_pas(text)
     return text
