@@ -5,13 +5,14 @@ import (
 	"github.com/CLAOJ/claoj/models"
 )
 
-// PublicNavigation returns the navbar as a tree in the order MPTT renders it:
-// roots and siblings by `order`, children nested under their parent. v1 shows
-// every judge_navigationbar row (NavigationBar.objects.all()), so nothing is
+// PublicNavigation returns the navbar as a tree in the order v1 renders it:
+// MPTT tree order (`tree_id`, `lft`), children nested under their parent, as
+// `mptt_tree(nav_bar)` does in templates/base.html. v1 shows every
+// judge_navigationbar row (NavigationBar.objects.all()), so nothing is
 // filtered here.
 func (s *NavigationService) PublicNavigation() ([]PublicNavigationItem, error) {
 	var rows []models.NavigationBar
-	if err := db.DB.Order("`order` ASC, id ASC").Find(&rows).Error; err != nil {
+	if err := db.DB.Order("tree_id ASC, lft ASC, id ASC").Find(&rows).Error; err != nil {
 		return nil, err
 	}
 

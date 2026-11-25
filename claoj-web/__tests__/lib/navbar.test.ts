@@ -1,11 +1,12 @@
 import {
     buildNavLinks,
-    findActiveKey,
+    findActiveKeys,
     isActiveLink,
     normalizeNavPath,
     translateDbLabel,
     FALLBACK_NAV_LINKS,
     type NavigationItem,
+    type NavLink,
 } from '@/lib/navbar';
 
 const item = (over: Partial<NavigationItem>): NavigationItem => ({
@@ -51,27 +52,45 @@ describe('buildNavLinks', () => {
         expect(links.map((l) => l.label)).toEqual(['Home', 'Problems', 'Judges']);
     });
 
-    it('flattens children after their parent', () => {
+    it('keeps children nested under their parent, in API order', () => {
         const links = buildNavLinks([
+            item({ key: 'contest', path: '/contests/' }),
             item({
-                key: 'contest',
-                path: '/contests/',
-                children: [item({ key: 'contest_tag', path: '/contests/tag/' })],
+                key: 'about',
+                label: 'About',
+                path: '/about/',
+                children: [
+                    item({ key: 'ServerStat', path: 'https://status.claoj.edu.vn' }),
+                    item({ key: 'status', path: '/status/' }),
+                    item({ key: 'devlog', path: '/devlog/' }),
+                ],
             }),
         ]);
-        expect(links.map((l) => l.key)).toEqual(['contest', 'contest_tag']);
+        // Children are never lifted into the top-level row.
+        expect(links.map((l) => l.key)).toEqual(['contest', 'about']);
+        expect(links[1].children?.map((l) => l.key)).toEqual(['ServerStat', 'status', 'devlog']);
+        expect(links[1].children?.map((l) => l.href)).toEqual([
+            'https://status.claoj.edu.vn',
+            '/stats',
+            '/devlog',
+        ]);
+        expect(links[0].children).toBeUndefined();
     });
 
-    it('appends extras and drops duplicates by normalized path', () => {
+    it('appends extras top level and drops duplicates by normalized path', () => {
         const links = buildNavLinks(
-            [item({ key: 'problem', path: '/problems/' })],
+            [
+                item({ key: 'problem', path: '/problems/' }),
+                item({ key: 'about', path: '/about/', children: [item({ key: 'status', path: '/status/' })] }),
+            ],
             [
                 { key: 'problems', href: '/problems', tKey: 'problems' },
                 { key: 'ratings', href: '/ratings', tKey: 'ratings' },
             ],
         );
-        expect(links.map((l) => l.href)).toEqual(['/problems', '/ratings']);
-        expect(links[1].tKey).toBe('ratings');
+        expect(links.map((l) => l.key)).toEqual(['problem', 'about', 'ratings']);
+        expect(links[1].children?.map((l) => l.key)).toEqual(['status']);
+        expect(links[2].tKey).toBe('ratings');
     });
 
     it('falls back to the static links when the endpoint is unavailable', () => {
@@ -99,7 +118,12 @@ describe('buildNavLinks', () => {
 describe('translateDbLabel', () => {
     // v1 renders the label through gettext: known labels follow the catalog,
     // arbitrary admin labels stay verbatim.
-    const viLabels = { Problems: 'Bài tập', Organizations: 'Tổ chức' };
+    const viLabels = {
+        Problems: 'Bài tập',
+        Organizations: 'Tổ chức',
+        About: 'Thông tin',
+        Judges: 'Máy chấm',
+    };
 
     it('translates a known DB label', () => {
         expect(translateDbLabel('Problems', viLabels)).toBe('Bài tập');
@@ -117,6 +141,23 @@ describe('translateDbLabel', () => {
         const enLabels = { Problems: 'Problems', Organizations: 'Organizations' };
         expect(translateDbLabel('Problems', enLabels)).toBe('Problems');
         expect(translateDbLabel('Server Status', enLabels)).toBe('Server Status');
+    });
+
+    it('translates parent and child DB labels', () => {
+        const links = buildNavLinks(
+            [
+                item({
+                    key: 'about',
+                    label: 'About',
+                    path: '/about/',
+                    children: [item({ key: 'status', label: 'Judges', path: '/status/' })],
+                }),
+            ],
+            [],
+            viLabels,
+        );
+        expect(links[0].label).toBe('Thông tin');
+        expect(links[0].children?.[0].label).toBe('Máy chấm');
     });
 
     it('is applied to DB rows, never to v2-only entries', () => {
@@ -164,8 +205,34 @@ describe('active item', () => {
             { key: 'all', href: '/all', regex: '^/' },
             { key: 'problem', href: '/problems', regex: '^/problems/' },
         ];
-        expect(findActiveKey(links, '/problems')).toBe('all');
-        expect(findActiveKey(links, '/elsewhere')).toBe('all');
-        expect(findActiveKey([], '/problems')).toBeNull();
+        expect([...findActiveKeys(links, '/problems')]).toEqual(['all']);
+        expect([...findActiveKeys(links, '/elsewhere')]).toEqual(['all']);
+        expect(findActiveKeys([], '/problems').size).toBe(0);
+    });
+
+    it('keeps the parent active when one of its children matches', () => {
+        const links = [
+            {
+                key: 'about',
+                href: '/about',
+                regex: '^/about/$',
+                children: [{ key: 'devlog', href: '/devlog', regex: '^/devlog/' }],
+            } as NavLink,
+        ];
+
+        expect([...findActiveKeys(links, '/devlog')]).toEqual(['about', 'devlog']);
+        expect([...findActiveKeys(links, '/about')]).toEqual(['about']);
+    });
+
+    it('does not activate a parent when no child matches', () => {
+        const links = [
+            {
+                key: 'about',
+                href: '/about',
+                regex: '^/about/$',
+                children: [{ key: 'devlog', href: '/devlog', regex: '^/devlog/' }],
+            } as NavLink,
+        ];
+        expect([...findActiveKeys(links, '/problems')]).toEqual([]);
     });
 });
