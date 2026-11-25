@@ -706,7 +706,8 @@
     "more": "More",
     "language": "Language",
     "tests": "Tests",
-    "viewAllBlogs": "View all"
+    "viewAllBlogs": "View all",
+    "leaderboard": "Leaderboard"
   },
   "Common": {
     "loading": "Loading...",

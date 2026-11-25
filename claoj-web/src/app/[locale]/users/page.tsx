@@ -106,7 +106,7 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
                         className="h-9 px-6 rounded-md bg-muted/30 border hover:bg-muted font-medium text-xs flex items-center gap-2"
                     >
                         <ThumbsUp size={14} />
-                        {initialRank === 'contribution' ? t('points') : t('contributors')}
+                        {initialRank === 'contribution' ? t('leaderboard') : t('contributors')}
                     </Link>
                     <button
                         onClick={() => {
