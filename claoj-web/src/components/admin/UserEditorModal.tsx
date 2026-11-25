@@ -32,7 +32,13 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { cn } from '@/lib/utils';
 import { useNameStyles } from '@/components/providers/NameStyles';
-import { Search, ShieldCheck, ShieldOff } from 'lucide-react';
+import { TagSelect } from '@/components/ui/TagSelect';
+import { EntityPicker, type EntityOption } from '@/components/admin/EntityPicker';
+import { ACE_THEMES, SITE_THEMES, timezones, withCurrent } from '@/lib/profileChoices';
+
+const permissionOption = (p: { id: number; name: string; app_label: string }): EntityOption =>
+    ({ id: p.id, label: p.name, detail: p.app_label });
+import { ShieldCheck, ShieldOff } from 'lucide-react';
 
 interface UserEditorModalProps {
     userId: number;
@@ -78,7 +84,6 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
     const [form, setForm] = useState<UserEditorForm>(() => userDetailToForm(detail));
     const [groupIds, setGroupIds] = useState<number[]>(detail.group_ids);
     const [permissionIds, setPermissionIds] = useState<number[]>(detail.permission_ids);
-    const [permissionSearch, setPermissionSearch] = useState('');
 
     const isSelf = !!viewer.username && viewer.username === detail.username;
     const guard = userFlagGuard(isSelf, viewer.isSuperuser);
@@ -138,10 +143,6 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
         onError: (error) => toast.error(adminErrorMessage(error, t('users.saveError'))),
     });
 
-    const toggleGroup = (id: number) =>
-        setGroupIds(prev => (prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]));
-    const togglePermission = (id: number) =>
-        setPermissionIds(prev => (prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]));
 
     const tabItems: { id: UserEditorTab; label: string }[] = [
         { id: 'identity', label: t('users.editor.tabIdentity') },
@@ -255,25 +256,14 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                                 {groups.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">{t('users.editor.noGroups')}</p>
                                 ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
-                                        {groups.map(group => (
-                                            <label
-                                                key={group.id}
-                                                className={cn(
-                                                    'flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer transition-colors',
-                                                    groupIds.includes(group.id) ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/30'
-                                                )}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    className="rounded w-4 h-4"
-                                                    checked={groupIds.includes(group.id)}
-                                                    onChange={() => toggleGroup(group.id)}
-                                                />
-                                                <span>{group.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
+                                    <TagSelect
+                                        id="user-groups"
+                                        options={groups.map(g => ({ id: g.id, label: g.name }))}
+                                        value={groupIds}
+                                        onChange={setGroupIds}
+                                        placeholder={t('users.editor.addGroupPlaceholder')}
+                                        removeLabel={(name) => t('users.editor.removeItem', { name })}
+                                    />
                                 )}
                             </section>
 
@@ -281,36 +271,16 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                                 <h3 className="text-sm font-semibold">
                                     {t('users.editor.permissionsLabel', { count: permissionIds.length })}
                                 </h3>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                                    <Input
-                                        aria-label={t('users.editor.permissionSearchPlaceholder')}
-                                        placeholder={t('users.editor.permissionSearchPlaceholder')}
-                                        className="pl-9"
-                                        value={permissionSearch}
-                                        onChange={(e) => setPermissionSearch(e.target.value)}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
-                                    {filterPermissions(permissions, permissionSearch).map(perm => (
-                                        <label
-                                            key={perm.id}
-                                            className={cn(
-                                                'flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer transition-colors',
-                                                permissionIds.includes(perm.id) ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/30'
-                                            )}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                className="rounded w-4 h-4"
-                                                checked={permissionIds.includes(perm.id)}
-                                                onChange={() => togglePermission(perm.id)}
-                                            />
-                                            <span className="truncate" title={perm.codename}>{perm.name}</span>
-                                            <span className="ml-auto text-xs text-muted-foreground shrink-0">{perm.app_label}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                                <EntityPicker
+                                    id="user-permissions"
+                                    label={t('users.editor.permissionsPickerLabel')}
+                                    placeholder={t('users.editor.permissionSearchPlaceholder')}
+                                    value={permissionIds}
+                                    onChange={setPermissionIds}
+                                    search={async (term) => filterPermissions(permissions, term).map(permissionOption)}
+                                    queryKey="permissions"
+                                    initialOptions={permissions.map(permissionOption)}
+                                />
                             </section>
                         </div>
                     )}
@@ -326,12 +296,13 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                                     />
                                 </Field>
                                 <Field id="user-timezone" label={t('users.editor.timezoneLabel')}>
-                                    <Input
+                                    <Select
                                         id="user-timezone"
-                                        placeholder={t('users.editor.timezonePlaceholder')}
                                         value={form.timezone}
                                         onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-                                    />
+                                    >
+                                        {withCurrent(timezones(), form.timezone).map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                                    </Select>
                                 </Field>
                                 <Field id="user-language" label={t('users.editor.languageLabel')}>
                                     <Select
@@ -355,18 +326,30 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                                     </Select>
                                 </Field>
                                 <Field id="user-ace-theme" label={t('users.editor.aceThemeLabel')}>
-                                    <Input
+                                    <Select
                                         id="user-ace-theme"
                                         value={form.ace_theme}
                                         onChange={(e) => setForm({ ...form, ace_theme: e.target.value })}
-                                    />
+                                    >
+                                        {withCurrent(ACE_THEMES.map(([v]) => v), form.ace_theme).map(v => (
+                                            <option key={v} value={v}>
+                                                {v === 'auto' ? t('users.editor.aceThemeAuto') : ACE_THEMES.find(([k]) => k === v)?.[1] ?? v}
+                                            </option>
+                                        ))}
+                                    </Select>
                                 </Field>
                                 <Field id="user-site-theme" label={t('users.editor.siteThemeLabel')}>
-                                    <Input
+                                    <Select
                                         id="user-site-theme"
                                         value={form.site_theme}
                                         onChange={(e) => setForm({ ...form, site_theme: e.target.value })}
-                                    />
+                                    >
+                                        {withCurrent([...SITE_THEMES], form.site_theme).map(v => (
+                                            <option key={v} value={v}>
+                                                {v === 'auto' ? t('users.editor.siteThemeAuto') : v === 'light' ? t('users.editor.siteThemeLight') : v === 'dark' ? t('users.editor.siteThemeDark') : v}
+                                            </option>
+                                        ))}
+                                    </Select>
                                 </Field>
                             </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { TagSelect } from '@/components/ui/TagSelect';
 
 interface ContestTag {
     id: number;
@@ -23,26 +24,17 @@ export function TagsSection({ tags, selectedTags, onTagToggle }: TagsSectionProp
             <p className="text-sm text-muted-foreground">
                 {t('contestForm.tagsDesc')}
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                {tags?.data.map(tag => (
-                    <label key={tag.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
-                        <input
-                            type="checkbox"
-                            checked={selectedTags.includes(tag.id)}
-                            onChange={(e) => onTagToggle(tag.id, e.target.checked)}
-                            className="rounded"
-                        />
-                        <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate" style={{ color: tag.color }}>{tag.name}</div>
-                        </div>
-                    </label>
-                ))}
-            </div>
-            {selectedTags.length > 0 && (
-                <div className="text-sm text-muted-foreground">
-                    {t('contestForm.selectedTagsCount', { count: selectedTags.length })}
-                </div>
-            )}
+            <TagSelect
+                id="contest-tags"
+                options={(tags?.data ?? []).map(tag => ({ id: tag.id, label: tag.name, color: tag.color }))}
+                value={selectedTags}
+                onChange={(ids) => {
+                    ids.filter(id => !selectedTags.includes(id)).forEach(id => onTagToggle(id, true));
+                    selectedTags.filter(id => !ids.includes(id)).forEach(id => onTagToggle(id, false));
+                }}
+                placeholder={t('contestForm.addTagPlaceholder')}
+                removeLabel={(name) => t('contestForm.removeTag', { name })}
+            />
         </div>
     );
 }

@@ -1763,7 +1763,14 @@
         "disabled": "Disabled",
         "disable2fa": "Disable",
         "securityHint": "Enabling 2FA must go through the user's own setup flow; admins can only disable it.",
-        "saved": "User updated."
+        "saved": "User updated.",
+        "addGroupPlaceholder": "+ Add a group...",
+        "removeItem": "Remove {name}",
+        "permissionsPickerLabel": "Add permission",
+        "siteThemeAuto": "Follow system default",
+        "siteThemeLight": "Light",
+        "siteThemeDark": "Dark",
+        "aceThemeAuto": "Follow site theme"
       }
     },
     "impersonation": {
@@ -2820,7 +2827,9 @@
       "pushAnnouncementsLabel": "Push announcements",
       "hideProblemAuthorsLabel": "Hide problem authors",
       "showShortDisplayLabel": "Show short display",
-      "noCommentsLabel": "No comments"
+      "noCommentsLabel": "No comments",
+      "addTagPlaceholder": "+ Add a tag...",
+      "removeTag": "Remove {name}"
     },
     "testcaseUpload": {
       "singleModeButton": "Single Test Case",

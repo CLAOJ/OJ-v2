@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { X } from 'lucide-react';
+import { TagSelect } from '@/components/ui/TagSelect';
 
 interface ProblemGroup {
     id: number;
@@ -59,38 +59,17 @@ export function ClassificationSection({
                 <label htmlFor="problem-types" className="text-sm font-medium text-muted-foreground block mb-2">
                     {tProblems('problemTypes')}
                 </label>
-                {selectedTypes.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                        {selectedTypes.map(id => {
-                            const pt = types?.data.find(x => x.id === id);
-                            if (!pt) return null;
-                            return (
-                                <span key={id} className="inline-flex items-center gap-1 pl-2.5 pr-1 h-7 rounded-md bg-primary/15 text-primary text-xs font-medium">
-                                    {pt.full_name}
-                                    <button
-                                        type="button"
-                                        aria-label={tProblems('removeType', { name: pt.full_name })}
-                                        onClick={() => onTypeToggle(id, false)}
-                                        className="p-0.5 rounded hover:bg-primary/20 transition-colors"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </span>
-                            );
-                        })}
-                    </div>
-                )}
-                <select
+                <TagSelect
                     id="problem-types"
-                    value=""
-                    onChange={(e) => { const id = Number(e.target.value); if (id) onTypeToggle(id, true); }}
-                    className="w-full px-3 py-2 rounded-lg bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
-                >
-                    <option value="">{tProblems('addTypePlaceholder')}</option>
-                    {types?.data.filter(pt => !selectedTypes.includes(pt.id)).map(pt => (
-                        <option key={pt.id} value={pt.id}>{pt.full_name}</option>
-                    ))}
-                </select>
+                    options={(types?.data ?? []).map(pt => ({ id: pt.id, label: pt.full_name }))}
+                    value={selectedTypes}
+                    onChange={(ids) => {
+                        ids.filter(id => !selectedTypes.includes(id)).forEach(id => onTypeToggle(id, true));
+                        selectedTypes.filter(id => !ids.includes(id)).forEach(id => onTypeToggle(id, false));
+                    }}
+                    placeholder={tProblems('addTypePlaceholder')}
+                    removeLabel={(name) => tProblems('removeType', { name })}
+                />
             </div>
         </div>
     );

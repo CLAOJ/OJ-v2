@@ -1763,7 +1763,14 @@
         "disabled": "Đang tắt",
         "disable2fa": "Tắt",
         "securityHint": "Chỉ người dùng có thể tự bật 2FA qua quy trình thiết lập của họ; quản trị viên chỉ có thể tắt.",
-        "saved": "Đã cập nhật người dùng."
+        "saved": "Đã cập nhật người dùng.",
+        "addGroupPlaceholder": "+ Thêm nhóm...",
+        "removeItem": "Bỏ {name}",
+        "permissionsPickerLabel": "Thêm quyền",
+        "siteThemeAuto": "Theo hệ thống",
+        "siteThemeLight": "Sáng",
+        "siteThemeDark": "Tối",
+        "aceThemeAuto": "Theo giao diện trang"
       }
     },
     "impersonation": {
@@ -2820,7 +2827,9 @@
       "pushAnnouncementsLabel": "Gửi thông báo đẩy",
       "hideProblemAuthorsLabel": "Ẩn tác giả bài tập",
       "showShortDisplayLabel": "Hiển thị dạng rút gọn",
-      "noCommentsLabel": "Không bình luận"
+      "noCommentsLabel": "Không bình luận",
+      "addTagPlaceholder": "+ Thêm thẻ...",
+      "removeTag": "Bỏ {name}"
     },
     "testcaseUpload": {
       "singleModeButton": "Một test",
