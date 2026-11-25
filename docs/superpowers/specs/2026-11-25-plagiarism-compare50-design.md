@@ -8,7 +8,7 @@ v2's contest plagiarism check (admin → MOSS) depends on Stanford's remote MOSS
 server. We want no dependency on any outside server, while still checking
 (nearly) every language CLAOJ judges, with detection as good as MOSS or better.
 
-The chosen tool is **compare50** (CS50, GPLv3), forked into the repo and tuned
+The chosen tool is **compare50** (CS50, GPLv3), forked to `github.com/CLAOJ/compare50` (used here as a submodule) and tuned
 on its source for competitive-programming code.
 
 ## Evidence (spike, 2026-11-25)
@@ -66,7 +66,8 @@ Run on prod data (read-only), scratch only, nothing committed:
 
 - Backend image `ghcr.io/claoj/claoj-go` (alpine, Go binary) runs the asynq
   worker that executes the job (`jobs/server.go`). Docker build context is
-  `OJ-v2/claoj`, so the fork must live inside it.
+  `OJ-v2/claoj`, so the fork is mounted inside it as a submodule
+  (`claoj/plagiarism`).
 - `v2_data` volume is already mounted at `/app/data` in `v2_backend`.
 - DB schema is shared with v1, and **v1's MOSS feature is still in use**
   (user, 2026-11-25). v1's run deletes and rewrites all `judge_contestmoss` rows
@@ -96,7 +97,7 @@ Tool:
 Tuning:
 - A. Wrapper script registering a custom pass, compare50 stock — rejected by
   the user in favour of B.
-- **B. Fork compare50 into the repo and tune its source (chosen by the user)** —
+- **B. Fork compare50 (own repo, submodule in OJ-v2) and tune its source (chosen by the user)** —
   full control over preprocessors, winnowing, scoring and report.
 - C. Ship stock, tune later — rejected: short solutions stay weak.
 
@@ -107,16 +108,28 @@ imported essentially as-is; Part 2 tunes it, gated by the benchmark.
 
 ### Part 1 — replace MOSS with the fork
 
-**Fork location.** `claoj/plagiarism/compare50/` — the upstream
-compare50 1.2.15 source, plus `LICENSE`, `UPSTREAM.md` (upstream version/commit
-and a running list of our changes). First change: drop the `lib50`
+**Fork location.** The fork lives in its own repository,
+`github.com/CLAOJ/compare50` (a GitHub fork of `cs50/compare50`; its `main` =
+upstream 1.2.15). All our changes go on the branch `claoj` (never `main`: its
+CI publishes to PyPI and cuts releases on `main`). OJ-v2 mounts it as a **git
+submodule at `claoj/plagiarism`** (`.gitmodules`: https URL, `branch = claoj`),
+so the Docker build context `claoj/` contains it and the pinned gitlink commit
+is exactly what ships; bumping the submodule commit is how tuning reaches OJ-v2.
+`UPSTREAM.md` in the fork lists our changes. First change: drop the `lib50`
 dependency (replace its file-glob use with stdlib, its error types with our
-own), so it runs on any OS including the dev's Windows box.
+own), so it runs on any OS including Windows.
 
-**Image.** Runtime stage adds `python3` and the fork's remaining deps
-(attrs, intervaltree, numpy, pygments, jinja2, termcolor, tqdm) and installs
-the fork. Builder picks apk packages vs pip/venv; keep the size growth modest
-(spike estimate ≈ +60 MB) and report the actual number.
+Considered and deferred: running compare50 as its own container behind an HTTP
+API. It keeps Python out of the backend image, but needs a new compose service
+(in the separate claoj-docker repo), a published image, an authenticated API
+for contestants' code and shared storage for reports. The `Checker` interface
+in the job makes that a drop-in replacement later.
+
+**Image.** The Dockerfile copies `plagiarism/` and builds a venv at
+`/opt/compare50` (`pip install /opt/compare50-src`), with no network access to
+GitHub needed at build time. CI's image-build checkout and local builds must
+fetch submodules (`submodules: true`; `git submodule update --init`). Keep the
+size growth modest (spike estimate ~ +60 MB) and report the actual number.
 
 **Job** (`jobs/moss.go`, keep names/table; internals change):
 - For each contest problem × **each `judge_language.common_name` present** in

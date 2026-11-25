@@ -1488,7 +1488,7 @@
       "languageLimits": "Giới hạn ngôn ngữ",
       "licenses": "Giấy phép",
       "taxonomy": "Phân loại",
-      "moss": "MOSS",
+      "moss": "Kiểm tra sao chép code",
       "groups": "Nhóm",
       "navigationBars": "Điều hướng",
       "flatPages": "Trang tĩnh",
@@ -2868,7 +2868,7 @@
       "bannedUsersLabel": "Người dùng bị cấm"
     },
     "moss": {
-      "title": "MOSS",
+      "title": "Kiểm tra sao chép code",
       "subtitle": "Báo cáo sao chép code theo từng bài tập và ngôn ngữ của kỳ thi.",
       "contestLabel": "Kỳ thi",
       "contestPlaceholder": "Tìm kỳ thi theo mã hoặc tên",
@@ -2879,19 +2879,28 @@
         "ongoing": "Đang diễn ra",
         "past": "Đã kết thúc"
       },
-      "pickContest": "Chọn một kỳ thi để xem hoặc chạy MOSS.",
-      "run": "Chạy MOSS",
+      "pickContest": "Chọn một kỳ thi để xem hoặc chạy kiểm tra sao chép code.",
+      "run": "Chạy kiểm tra sao chép code",
       "running": "Đang chạy… kết quả tự cập nhật",
-      "queued": "Đã đưa MOSS vào hàng đợi",
+      "queued": "Đã đưa kiểm tra sao chép code vào hàng đợi",
       "clear": "Xóa kết quả",
-      "clearConfirm": "Xóa toàn bộ kết quả MOSS của kỳ thi này?",
-      "noResults": "Chưa có kết quả MOSS. Hãy chạy MOSS để tạo.",
+      "clearConfirm": "Xóa toàn bộ kết quả kiểm tra sao chép code của kỳ thi này?",
+      "noResults": "Chưa có kết quả kiểm tra sao chép code. Hãy chạy kiểm tra để tạo.",
       "colProblem": "Bài tập",
       "colLanguage": "Ngôn ngữ",
       "colSubmissions": "Thí sinh",
       "colReport": "Báo cáo",
       "viewReport": "Mở báo cáo",
-      "errorLabel": "Lỗi lần chạy gần nhất:"
+      "errorLabel": "Lỗi lần chạy gần nhất:",
+      "colLlm": "Đánh giá AI",
+      "llmSummary": "{copied} nghi sao chép / {total} cặp đã xét",
+      "verdict": {
+        "likely_copied": "Nghi sao chép",
+        "shared_template": "Dùng chung template",
+        "independent": "Độc lập",
+        "unclear": "Chưa rõ",
+        "error": "Lỗi"
+      }
     },
     "navGroups": {
       "content": "Nội dung",

@@ -6,65 +6,31 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strings"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
 	"time"
 
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
-	"github.com/CLAOJ/claoj/moss"
 	"github.com/hibiken/asynq"
 	"gorm.io/gorm"
 )
 
 const TypeContestMoss = "contest_moss"
 
-// MossLanguages is v1's ContestMoss.LANG_MAPPING: Language.common_name →
-// MOSS language.
-var MossLanguages = []struct{ CommonName, Moss string }{
-	{"C", "c"},
-	{"C++", "cc"},
-	{"Java", "java"},
-	{"Python", "python"},
-	{"Pascal", "pascal"},
-}
+var safeProblemCode = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
-var (
-	ErrMossNotConfigured  = errors.New(`moss: set misc config "moss_user_id" to your MOSS account id`)
-	ErrMossAlreadyRunning = errors.New("moss: a run for this contest is already queued or running")
-)
+var ErrMossAlreadyRunning = errors.New("moss: a run for this contest is already queued or running")
 
-// MossSubmitter is the part of moss.Client the job needs (faked in tests).
-type MossSubmitter interface {
-	Submit(lang, comment string, files []moss.File) (string, error)
-}
-
-// MossUserID reads the MOSS account id from judge_miscconfig.
-func MossUserID(tx *gorm.DB) (string, error) {
-	var cfg models.MiscConfig
-	err := tx.Where("`key` = ?", "moss_user_id").First(&cfg).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", ErrMossNotConfigured
-	}
-	if err != nil {
-		return "", err
-	}
-	id := strings.TrimSpace(cfg.Value)
-	if id == "" {
-		return "", ErrMossNotConfigured
-	}
-	return id, nil
-}
-
-// RunContestMoss mirrors v1 judge.tasks.contest.run_moss: for every contest
-// problem × MOSS language, send each live/spectating contestant's
-// best-scored source and record the report. Rows are replaced only after
-// every call succeeded, so a failed run keeps the previous results.
-func RunContestMoss(tx *gorm.DB, contestID uint, sub MossSubmitter) (int, error) {
-	var contest models.Contest
-	if err := tx.First(&contest, contestID).Error; err != nil {
-		return 0, err
-	}
+// RunContestMoss runs compare50 for every contest problem × language that has
+// submissions, and records one plagiarism_result row per problem × language.
+// Each live/spectating contestant's best-scored source is used. Reports and
+// rows are replaced only after every check succeeded, so a failed run keeps
+// the previous results.
+func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checker) (int, error) {
 	var problems []models.Problem
 	if err := tx.Table("judge_problem").
 		Select("judge_problem.*").
@@ -75,64 +41,130 @@ func RunContestMoss(tx *gorm.DB, contestID uint, sub MossSubmitter) (int, error)
 		return 0, err
 	}
 
-	results := make([]models.ContestMoss, 0, len(problems)*len(MossLanguages))
+	if err := os.MkdirAll(PlagiarismDir, 0o755); err != nil {
+		return 0, err
+	}
+	tmp := filepath.Join(PlagiarismDir, fmt.Sprintf(".tmp-%d-%d", contestID, time.Now().UnixNano()))
+	defer os.RemoveAll(tmp)
+	subsRoot := filepath.Join(tmp, "subs")
+	reportRoot := filepath.Join(tmp, "report")
+
+	now := time.Now()
+	var rows []models.PlagiarismResult
 	for _, p := range problems {
-		for _, lang := range MossLanguages {
-			row := models.ContestMoss{ContestID: contestID, ProblemID: p.ID, Language: lang.CommonName}
-
-			var subs []struct {
-				Username string
-				Source   string
-			}
-			if err := tx.Table("judge_submission s").
-				Select("u.username AS username, src.source AS source").
-				Joins("JOIN judge_submissionsource src ON src.submission_id = s.id").
-				Joins("JOIN judge_language l ON l.id = s.language_id").
-				Joins("JOIN judge_profile pr ON pr.id = s.user_id").
-				Joins("JOIN auth_user u ON u.id = pr.user_id").
-				Joins("JOIN judge_contestsubmission cs ON cs.submission_id = s.id").
-				Joins("JOIN judge_contestparticipation part ON part.id = cs.participation_id").
-				Where("s.contest_object_id = ? AND s.problem_id = ? AND l.common_name = ?", contestID, p.ID, lang.CommonName).
-				Where("part.virtual IN ?", []int{0, -1}). // LIVE, SPECTATE
-				Order("s.points DESC").
-				Scan(&subs).Error; err != nil {
-				return 0, err
-			}
-
-			seen := make(map[string]bool, len(subs))
-			files := make([]moss.File, 0, len(subs))
-			for _, s := range subs {
-				if seen[s.Username] {
-					continue
-				}
-				seen[s.Username] = true
-				files = append(files, moss.File{Name: s.Username, Content: []byte(s.Source)})
-			}
-			if len(files) > 0 {
-				url, err := sub.Submit(lang.Moss, fmt.Sprintf("%s - %s", contest.Key, p.Code), files)
-				if err != nil {
-					return 0, fmt.Errorf("moss %s/%s: %w", p.Code, lang.CommonName, err)
-				}
-				row.URL = &url
-				row.SubmissionCount = uint(len(files))
-			}
-			results = append(results, row)
+		if !safeProblemCode.MatchString(p.Code) {
+			log.Printf("jobs: plagiarism: skipping problem with unsafe code %q", p.Code)
+			continue
 		}
+		var subs []struct {
+			Language string
+			Username string
+			Source   string
+		}
+		if err := tx.Table("judge_submission s").
+			Select("l.common_name AS language, u.username AS username, src.source AS source").
+			Joins("JOIN judge_submissionsource src ON src.submission_id = s.id").
+			Joins("JOIN judge_language l ON l.id = s.language_id").
+			Joins("JOIN judge_profile pr ON pr.id = s.user_id").
+			Joins("JOIN auth_user u ON u.id = pr.user_id").
+			Joins("JOIN judge_contestsubmission cs ON cs.submission_id = s.id").
+			Joins("JOIN judge_contestparticipation part ON part.id = cs.participation_id").
+			Where("s.contest_object_id = ? AND s.problem_id = ?", contestID, p.ID).
+			Where("part.virtual IN ?", []int{0, -1}). // LIVE, SPECTATE
+			Order("s.points DESC, s.id ASC").
+			Scan(&subs).Error; err != nil {
+			return 0, err
+		}
+
+		// subs is ordered by points, so the first entry per (language, user) is the best one.
+		type entry struct{ user, source string }
+		byLang := map[string][]entry{}
+		var langs []string
+		seen := map[[2]string]bool{}
+		for _, s := range subs {
+			k := [2]string{s.Language, s.Username}
+			if seen[k] {
+				continue
+			}
+			seen[k] = true
+			if _, ok := byLang[s.Language]; !ok {
+				langs = append(langs, s.Language)
+			}
+			byLang[s.Language] = append(byLang[s.Language], entry{s.Username, s.Source})
+		}
+		sort.Strings(langs)
+
+		for _, lang := range langs {
+			ents := byLang[lang]
+			slug := LanguageSlug(lang)
+			subsDir := filepath.Join(subsRoot, p.Code, slug)
+			for _, e := range ents {
+				dir := filepath.Join(subsDir, SubmissionFolder(e.user))
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					return 0, err
+				}
+				if err := os.WriteFile(filepath.Join(dir, "main."+LanguageExt(lang)), []byte(e.source), 0o644); err != nil {
+					return 0, err
+				}
+			}
+			row := models.PlagiarismResult{ContestID: contestID, ProblemID: p.ID, Language: lang, SubmissionCount: uint(len(ents)), CreatedAt: now}
+			if len(ents) >= 2 {
+				if err := chk.Check(ctx, subsDir, filepath.Join(reportRoot, p.Code, slug)); err != nil {
+					return 0, fmt.Errorf("plagiarism %s/%s: %w", p.Code, lang, err)
+				}
+				// compare50 exits 0 without creating -o when there are no similar pairs.
+				if _, err := os.Stat(filepath.Join(reportRoot, p.Code, slug, "index.html")); err == nil {
+					reportPath := p.Code + "/" + slug
+					row.ReportPath = &reportPath
+				}
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	// Swap the new report dir in. The old one is moved aside first because
+	// Windows cannot rename onto an existing directory.
+	final := ContestReportDir(contestID)
+	var oldDir string
+	if _, err := os.Stat(final); err == nil {
+		oldDir = filepath.Join(PlagiarismDir, fmt.Sprintf(".old-%d-%d", contestID, time.Now().UnixNano()))
+		if err := os.Rename(final, oldDir); err != nil {
+			return 0, err
+		}
+	}
+	movedIn := false
+	rollback := func(err error) (int, error) {
+		if movedIn {
+			_ = os.Rename(final, reportRoot)
+		}
+		if oldDir != "" {
+			_ = os.Rename(oldDir, final)
+		}
+		return 0, err
+	}
+	if _, err := os.Stat(reportRoot); err == nil {
+		if err := os.Rename(reportRoot, final); err != nil {
+			return rollback(err)
+		}
+		movedIn = true
 	}
 
 	err := tx.Transaction(func(t *gorm.DB) error {
-		if err := t.Where("contest_id = ?", contestID).Delete(&models.ContestMoss{}).Error; err != nil {
+		if err := t.Where("contest_id = ?", contestID).Delete(&models.PlagiarismResult{}).Error; err != nil {
 			return err
 		}
-		if len(results) == 0 {
+		if len(rows) == 0 {
 			return nil
 		}
-		return t.Create(&results).Error
+		return t.Create(&rows).Error
 	})
 	if err != nil {
-		return 0, err
+		return rollback(err)
 	}
-	return len(results), nil
+	if oldDir != "" {
+		_ = os.RemoveAll(oldDir)
+	}
+	return len(rows), nil
 }
 
 type contestMossPayload struct {
@@ -218,7 +250,7 @@ func EnqueueContestMoss(contestID uint) error {
 	return nil
 }
 
-// HandleContestMossTask runs a queued contest MOSS job.
+// HandleContestMossTask runs a queued contest plagiarism job.
 func HandleContestMossTask(ctx context.Context, t *asynq.Task) error {
 	var p contestMossPayload
 	if err := json.Unmarshal(t.Payload(), &p); err != nil {
@@ -230,17 +262,12 @@ func HandleContestMossTask(ctx context.Context, t *asynq.Task) error {
 		}
 	}()
 	clearMossRunError(p.ContestID)
-	userID, err := MossUserID(db.DB)
+	n, err := RunContestMoss(ctx, db.DB, p.ContestID, Compare50{})
 	if err != nil {
+		log.Printf("jobs: plagiarism check for contest %d failed: %v", p.ContestID, err)
 		setMossRunError(p.ContestID, err.Error())
 		return err
 	}
-	n, err := RunContestMoss(db.DB, p.ContestID, &moss.Client{UserID: userID, Show: 200})
-	if err != nil {
-		log.Printf("jobs: MOSS for contest %d failed: %v", p.ContestID, err)
-		setMossRunError(p.ContestID, err.Error())
-		return err
-	}
-	log.Printf("jobs: MOSS for contest %d wrote %d rows", p.ContestID, n)
+	log.Printf("jobs: plagiarism check for contest %d wrote %d rows", p.ContestID, n)
 	return nil
 }

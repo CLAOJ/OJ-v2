@@ -1488,7 +1488,7 @@
       "languageLimits": "Language Limits",
       "licenses": "Licenses",
       "taxonomy": "Taxonomy",
-      "moss": "MOSS",
+      "moss": "Plagiarism check",
       "groups": "Groups",
       "navigationBars": "Navigation",
       "flatPages": "Flat Pages",
@@ -2868,8 +2868,8 @@
       "bannedUsersLabel": "Banned users"
     },
     "moss": {
-      "title": "MOSS",
-      "subtitle": "Plagiarism reports per contest problem and language, as in v1.",
+      "title": "Plagiarism check",
+      "subtitle": "Plagiarism reports per contest problem and language.",
       "contestLabel": "Contest",
       "contestPlaceholder": "Search a contest by key or name",
       "contestList": "Contests",
@@ -2879,19 +2879,28 @@
         "ongoing": "Ongoing",
         "past": "Ended"
       },
-      "pickContest": "Pick a contest to see or run its MOSS reports.",
-      "run": "Run MOSS",
+      "pickContest": "Pick a contest to see or run its plagiarism check reports.",
+      "run": "Run plagiarism check",
       "running": "Running… results refresh automatically",
-      "queued": "MOSS run queued",
+      "queued": "Plagiarism check queued",
       "clear": "Clear results",
-      "clearConfirm": "Delete every MOSS result for this contest?",
-      "noResults": "No MOSS results yet. Run MOSS to create them.",
+      "clearConfirm": "Delete every plagiarism check result for this contest?",
+      "noResults": "No plagiarism check results yet. Run a plagiarism check to create them.",
       "colProblem": "Problem",
       "colLanguage": "Language",
       "colSubmissions": "Contestants",
       "colReport": "Report",
       "viewReport": "Open report",
-      "errorLabel": "Last run error:"
+      "errorLabel": "Last run error:",
+      "colLlm": "AI review",
+      "llmSummary": "{copied} likely copied / {total} reviewed",
+      "verdict": {
+        "likely_copied": "Likely copied",
+        "shared_template": "Shared template",
+        "independent": "Independent",
+        "unclear": "Unclear",
+        "error": "Failed"
+      }
     },
     "navGroups": {
       "content": "Content",

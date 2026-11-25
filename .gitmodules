@@ -1,0 +1,4 @@
+[submodule "claoj/plagiarism"]
+	path = claoj/plagiarism
+	url = https://github.com/CLAOJ/compare50
+	branch = claoj

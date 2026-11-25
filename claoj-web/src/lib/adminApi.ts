@@ -1017,17 +1017,39 @@ export interface ContestMossResult {
     problem_name: string;
     language: string;
     submission_count: number;
-    url: string | null;
+    report_path: string | null;
 }
 
 export const adminMossApi = {
     list: (key: string) =>
-        api.get<{ running: boolean; results: ContestMossResult[]; error: string }>(`/admin/contest/${key}/moss`),
+        api.get<{ running: boolean; results: ContestMossResult[]; error: string }>(`/admin/contest/${key}/plagiarism`),
     run: (key: string) =>
-        api.post<{ queued: boolean }>(`/admin/contest/${key}/moss`),
+        api.post<{ queued: boolean }>(`/admin/contest/${key}/plagiarism`),
     clear: (key: string) =>
-        api.delete<{ deleted: number }>(`/admin/contest/${key}/moss`),
+        api.delete<{ deleted: number }>(`/admin/contest/${key}/plagiarism`),
+    reportUrl: (key: string, reportPath: string, file = 'index.html') =>
+        `${api.defaults.baseURL}/admin/contest/${key}/plagiarism/report/${reportPath}/${file}`,
+    // Optional LLM second opinion written next to the report; 404 when the LLM is off.
+    llmReview: (key: string, reportPath: string) =>
+        api.get<LLMReview>(`/admin/contest/${key}/plagiarism/report/${reportPath}/llm.json`),
 };
+
+export interface LLMReviewPair {
+    match: number; // match_<n>.html
+    a: string;
+    b: string;
+    score: number;
+    verdict: 'likely_copied' | 'shared_template' | 'independent' | 'unclear' | 'error';
+    confidence: number;
+    reasons: string[] | null;
+    error?: string;
+}
+
+export interface LLMReview {
+    model: string;
+    generated_at: string;
+    pairs: LLMReviewPair[];
+}
 
 // Backend messages for 400/403/409 are written for end users; anything else gets the fallback.
 export function adminErrorMessage(err: unknown, fallback: string): string {

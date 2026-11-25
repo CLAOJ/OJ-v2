@@ -152,10 +152,11 @@ func NewRouter() *gin.Engine {
 			admin.PATCH("/admin/contest/:key/announcements/:id", auth.RequireContestEdit(), v2.AdminContestAnnouncementUpdate)
 			admin.DELETE("/admin/contest/:key/announcements/:id", auth.RequireContestEdit(), v2.AdminContestAnnouncementDelete)
 
-			// Contest MOSS
-			admin.GET("/admin/contest/:key/moss", auth.RequireContestEdit(), v2.AdminContestMossList)
-			admin.POST("/admin/contest/:key/moss", auth.RequireContestEdit(), v2.AdminContestMossRun)
-			admin.DELETE("/admin/contest/:key/moss", auth.RequireContestEdit(), v2.AdminContestMossDelete)
+			// Contest plagiarism check (compare50; was /moss)
+			admin.GET("/admin/contest/:key/plagiarism", auth.RequireContestEdit(), v2.AdminContestMossList)
+			admin.POST("/admin/contest/:key/plagiarism", auth.RequireContestEdit(), v2.AdminContestMossRun)
+			admin.DELETE("/admin/contest/:key/plagiarism", auth.RequireContestEdit(), v2.AdminContestMossDelete)
+			admin.GET("/admin/contest/:key/plagiarism/report/*path", auth.RequireContestEdit(), v2.AdminContestMossReport)
 
 			// Contest Tags
 			admin.GET("/admin/contest-tags", v2.AdminContestTagList)

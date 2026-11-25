@@ -108,6 +108,7 @@ on a Django-migrated database for a side-by-side OJ-v2 deployment.
 | `backup_code` | table | 2FA backup codes (`models/runtime.go`) | additive table | none — not `judge_`-prefixed |
 | `oauth_user_link` | table | Google/GitHub OAuth login linking (`api/v2/auth/oauth_helpers.go`, routes `GET/POST /auth/oauth/:provider[/callback]`) | additive table | none — not `judge_`-prefixed |
 | `moss_result` | table | Cached MOSS plagiarism-check results (`api/v2/moss.go`, routes `POST/GET /admin/submission/:id/moss`) | additive table | none — not `judge_`-prefixed. Distinct from Django's own `judge_contestmoss` (`ContestMoss` model), which OJ-v2 does not use |
+| `plagiarism_result` | table | Compare50 plagiarism-check results (`models/plagiarism.go`, `jobs/moss.go`). v2-only; v1 MOSS uses `judge_contestmoss` | additive table | none — not `judge_`-prefixed |
 | `judge_commentrevision` | table | Comment edit-history (`models/comment.go` `CommentRevision`, route `GET /comment/:id/revisions`, written on every comment edit in `api/v2/comment.go:356`) | additive table | **yes** — uses the `judge_` prefix Django reserves for its own migrations. Django's real edit-history mechanism is the generic `django-reversion` package (`reversion_version`/`reversion_revision`), not a per-app table; this name is not currently claimed by any Django migration, but a future Django migration could theoretically claim it. Kept as-is per explicit decision (not renamed) |
 | `judge_contestclarification` | table | Contest clarification Q&A (`models/contest.go` `ContestClarification`, routes `GET/POST /contest/:key/clarifications`, `POST /contest/:key/clarification/:id/answer`) | additive table | **yes** — same `judge_` prefix caveat as above. Django's own contest "clarifications" concept is just `ProblemClarification` rows filtered by the contest's problems (`use_clarifications` is only a display toggle in `views/contests.py`); `ContestClarification` is a separate, v2-only, contest-scoped Q&A feature. Kept as-is per explicit decision (not renamed) |
 | `judge_solution.is_official` | column (ALTER on Django table) | Editorial "official" badge (`api/v2/solution.go`) | additive column on Django-owned table | table is Django-owned; column itself does not collide with any current Django migration |
@@ -140,8 +141,8 @@ general code cleanup.
 - **OK:** 44 Django-table models (auth: 7, profile: 5, problem: 8, contest: 7,
   submission: 3, comment: 3, interface: 4, ticket: 3, runtime: 3) + the base
   columns of `Solution` (counted above).
-- **RETAINED-V2:** 8 tables (`notification`, `notification_preference`,
+- **RETAINED-V2:** 9 tables (`notification`, `notification_preference`,
   `totp_device`, `backup_code`, `oauth_user_link`, `moss_result`,
-  `judge_commentrevision`, `judge_contestclarification`) + 4 additive columns
+  `plagiarism_result`, `judge_commentrevision`, `judge_contestclarification`) + 4 additive columns
   on `judge_solution`.
 - **DRIFT:** 0.
