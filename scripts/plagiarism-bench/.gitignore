@@ -1,3 +1,4 @@
 data/
 dumps/
 results/raw/
+__pycache__/

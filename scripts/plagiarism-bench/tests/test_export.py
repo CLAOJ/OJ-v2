@@ -28,7 +28,8 @@ def make_db():
     conn.executescript(SCHEMA)
     conn.executemany("INSERT INTO judge_language VALUES (?,?,?,?)", [
         (1, "CPP17", "C++17", "C++"), (2, "PY3", "Python 3", "Python")])
-    conn.executemany("INSERT INTO judge_problem VALUES (?,?,?)", [(1, "knap", "Knapsack"), (2, "sum", "Sum")])
+    conn.executemany("INSERT INTO judge_problem VALUES (?,?,?)", [
+        (1, "knap", "Knapsack"), (2, "sum", "Sum"), (3, "hidden", "Not In Contest")])
     conn.executemany("INSERT INTO judge_contest VALUES (?,?,?)", [(1, "tik25", "TiK25"), (2, "other", "Other")])
     conn.executemany("INSERT INTO judge_contestproblem VALUES (?,?,?,?,?)", [(1, 1, 1, 100, 1), (2, 1, 2, 100, 2)])
     # profile id == auth_user id for simplicity
@@ -58,16 +59,17 @@ def make_db():
         (9, 1, 2, 1, 1, 5),     # alice sum cpp
         (10, 1, 1, 1, 2, 999),  # alice knap cpp in the other contest
         (11, 5, 1, 1, 1, 20),   # con knap cpp (reserved name)
+        (12, 1, 3, 1, 1, 60),   # alice, problem 3 not in contest 1
     ]
     conn.executemany("INSERT INTO judge_submission VALUES (?,?,?,?,?,?)", subs)
     # contestsubmission: submission id, problem_id (unused), participation id
     links = [(1, 1, 1), (2, 1, 1), (3, 1, 2), (4, 1, 3), (5, 1, 4), (6, 1, 1),
-             (7, 1, 6), (8, 1, 6), (9, 2, 1), (10, 1, 7), (11, 1, 5)]
+             (7, 1, 6), (8, 1, 6), (9, 2, 1), (10, 1, 7), (11, 1, 5), (12, 3, 1)]
     conn.executemany("INSERT INTO judge_contestsubmission VALUES (?,?,?,?)",
                      [(sid, sid, pid, part) for sid, pid, part in links])
     sources = {1: "best alice", 2: "worse alice", 3: "bob code", 4: "virtual carol",
                5: "dave code", 6: "print(1)", 7: "erin first", 8: "erin second",
-               9: "sum alice", 10: "other contest", 11: "con code"}
+               9: "sum alice", 10: "other contest", 11: "con code", 12: "hidden problem"}
     conn.executemany("INSERT INTO judge_submissionsource VALUES (?,?,?)",
                      [(sid, sid, src) for sid, src in sources.items()])
     return conn
@@ -102,6 +104,7 @@ class SelectionAndLayoutTest(unittest.TestCase):
         self.assertEqual(got[("knap", "C++", "alice")], "best alice")
         self.assertNotIn(("knap", "C++", "carol"), got)
         self.assertEqual(len(rows), 7)
+        self.assertNotIn("hidden", [code for code, _, _, _ in rows])  # problem not in contest
 
     def test_unknown_contest_is_empty(self):
         self.assertEqual(export.select_rows(make_db(), "nope", ph="?"), [])

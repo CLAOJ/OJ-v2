@@ -37,6 +37,7 @@ JOIN auth_user u ON u.id = pr.user_id
 JOIN judge_contestsubmission cs ON cs.submission_id = s.id
 JOIN judge_contestparticipation part ON part.id = cs.participation_id
 JOIN judge_contest c ON c.id = s.contest_object_id
+JOIN judge_contestproblem cp ON cp.contest_id = c.id AND cp.problem_id = s.problem_id
 WHERE c.`key` = {ph} AND part.virtual IN (0, -1)
 ORDER BY s.points DESC, s.id ASC
 """
