@@ -22,7 +22,7 @@ var PlagiarismDir = filepath.Join("data", "plagiarism") // swapped in tests
 var Compare50Python = "/opt/compare50/bin/python" // swapped in tests
 
 const (
-	compare50DefaultPairs = 250
+	compare50DefaultPairs = 100 // one match page each; 250 gave ~1100 pages / 760 MB for tet26
 	compare50StderrTail   = 2048
 )
 
