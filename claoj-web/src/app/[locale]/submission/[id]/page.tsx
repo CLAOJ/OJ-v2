@@ -49,6 +49,10 @@ interface TestCase {
     points: number | null;
     total: number | null;
     feedback: string;
+    extended_feedback?: string;
+    input?: string;
+    answer?: string;
+    output?: string;
 }
 
 interface SubmissionDetail {
@@ -138,8 +142,10 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [compareId, setCompareId] = useState<string>('');
 
-    const { data: sub, isLoading } = useQuery({
+    const { data: sub, isLoading, error: loadError } = useQuery({
         queryKey: ['submission', id],
+        // 403 = not allowed to see it (v1 can_see_detail); retrying will not help.
+        retry: (count, err) => (err as ApiError).response?.status !== 403 && count < 3,
         queryFn: async () => {
             const res = await api.get<SubmissionDetail>(`/submission/${id}`);
             return res.data;
@@ -230,12 +236,13 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
         );
     }
 
+    const forbidden = (loadError as ApiError | null)?.response?.status === 403;
     if (!sub) return (
         <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-4 max-w-md">
                 <AlertCircle size={48} className="mx-auto text-muted-foreground" />
-                <h2 className="text-2xl font-semibold">{t('notFound')}</h2>
-                <p className="text-muted-foreground">{t('notFoundDesc')}</p>
+                <h2 className="text-2xl font-semibold">{t(forbidden ? 'noPermission' : 'notFound')}</h2>
+                <p className="text-muted-foreground">{t(forbidden ? 'noPermissionDesc' : 'notFoundDesc')}</p>
                 <Link
                     href="/submissions"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"

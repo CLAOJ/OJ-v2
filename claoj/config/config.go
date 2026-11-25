@@ -72,6 +72,7 @@ type AppConfig struct {
 	RequireTotpForAdmins bool   `mapstructure:"require_totp_for_admins"`
 	SiteFullURL          string `mapstructure:"site_full_url"`
 	DefaultLanguage      string `mapstructure:"default_language"`
+	ProblemDataRoot      string `mapstructure:"problem_data_root"` // read-only mount of the judges' problem data (<code>/init.yml + archive); feeds the submission test-case view
 	V1MediaRoot          string `mapstructure:"v1_media_root"` // read-only mount of the v1 Django media dir; resolves v1-migrated /pdf/<uuid>.pdf statements
 }
 
@@ -143,6 +144,7 @@ func Load() {
 	v.SetDefault("app.site_full_url", "http://localhost:8081")
 	v.SetDefault("app.default_language", "py3")
 	v.SetDefault("app.v1_media_root", "")
+	v.SetDefault("app.problem_data_root", "")
 	v.SetDefault("email.smtp_host", "")
 	v.SetDefault("email.smtp_port", 587)
 	v.SetDefault("email.smtp_user", "")
@@ -178,6 +180,7 @@ func Load() {
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
 	v.BindEnv("app.v1_media_root", "V1_MEDIA_ROOT", "CLAOJ_APP_V1_MEDIA_ROOT")
+	v.BindEnv("app.problem_data_root", "PROBLEM_DATA_ROOT", "CLAOJ_APP_PROBLEM_DATA_ROOT")
 	v.BindEnv("judge.name", "JUDGE_NAME", "CLAOJ_JUDGE_NAME")
 	for _, k := range []string{"account_id", "access_key_id", "secret_access_key", "bucket", "public_url", "pdf_bucket"} {
 		v.BindEnv("r2."+k, "R2_"+strings.ToUpper(k))

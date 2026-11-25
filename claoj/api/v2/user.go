@@ -114,6 +114,11 @@ func UserList(c *gin.Context) {
 		Organizations      []userListOrg `json:"organizations"`
 	}
 	items := make([]Item, len(profiles))
+	ids := make([]uint, len(profiles))
+	for i, p := range profiles {
+		ids[i] = p.ID
+	}
+	avatars := avatarOverrides(ids)
 	for i, p := range profiles {
 		orgs := orgsByProfile[p.ID]
 		if orgs == nil {
@@ -129,7 +134,7 @@ func UserList(c *gin.Context) {
 			ProblemCount:       p.ProblemCount,
 			ContributionPoints: p.ContributionPoints,
 			DisplayRank:        p.DisplayRank,
-			AvatarURL:          getAvatarURL(&p),
+			AvatarURL:          avatarURLFrom(&p, avatars),
 			Organizations:      orgs,
 		}
 	}

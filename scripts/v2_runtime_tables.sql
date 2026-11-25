@@ -168,3 +168,14 @@ ALTER TABLE judge_solution
   ADD COLUMN IF NOT EXISTS valid_until DATETIME(6) NULL,
   ADD COLUMN IF NOT EXISTS summary LONGTEXT NULL,
   ADD COLUMN IF NOT EXISTS `language` VARCHAR(7) NOT NULL DEFAULT 'en';
+
+-- ---------------------------------------------------------------------
+-- Uploaded avatars (models/profile_avatar.go). One row per profile that
+-- uploaded an image to R2; no row = Gravatar identicon, as in v1.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS profile_avatar (
+  profile_id BIGINT UNSIGNED NOT NULL,
+  url VARCHAR(255) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  PRIMARY KEY (profile_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

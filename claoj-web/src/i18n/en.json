@@ -534,7 +534,16 @@
     "diffRemoved": "Removed",
     "diffAdded": "Added",
     "unifiedDiff": "Unified Diff",
-    "resubmit": "Resubmit"
+    "resubmit": "Resubmit",
+    "caseInput": "Input",
+    "caseOutput": "Participant's output",
+    "caseAnswer": "Jury's answer",
+    "checkerLog": "Checker log",
+    "emptyOutput": "(empty)",
+    "truncatedNote": "Test data is cut to the first 64 bytes.",
+    "toggleCase": "Test case {n} details",
+    "noPermission": "You can't view this submission",
+    "noPermissionDesc": "Submissions are visible to their author, and to others once they have fully solved the problem."
   },
   "Auth": {
     "loginTitle": "Welcome Back",
@@ -1380,7 +1389,15 @@
     "connect": "Connect",
     "webauthnTitle": "WebAuthn / Passkey Authentication",
     "webauthnDesc": "Manage your WebAuthn credentials for passwordless login",
-    "webauthnEnabledMsg": "WebAuthn is enabled on your account. You can use your registered credentials to log in without a password."
+    "webauthnEnabledMsg": "WebAuthn is enabled on your account. You can use your registered credentials to log in without a password.",
+    "uploadAvatar": "Upload photo",
+    "removeAvatar": "Remove photo",
+    "avatarHint": "PNG, JPEG, GIF or WebP, up to 1 MB. Without a photo, your Gravatar is shown.",
+    "avatarUpdated": "Photo updated",
+    "avatarRemoved": "Photo removed; your Gravatar is shown again",
+    "avatarTooLarge": "The photo must be 1 MB or smaller",
+    "avatarUploadUnavailable": "Photo upload is not available on this server",
+    "avatarUploadError": "Could not upload the photo. Please try again."
   },
   "Notification": {
     "title": "Notifications",

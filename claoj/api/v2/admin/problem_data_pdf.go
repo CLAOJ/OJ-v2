@@ -1,6 +1,9 @@
 package admin
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +39,42 @@ func AdminProblemPdfUpload(c *gin.Context) {
 		return
 	}
 
+	if storage.PDFEnabled() {
+		f, err := file.Open()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read upload"})
+			return
+		}
+		defer f.Close()
+		head := make([]byte, 512)
+		n, _ := io.ReadFull(f, head)
+		if http.DetectContentType(head[:n]) != "application/pdf" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "only PDF files are allowed"})
+			return
+		}
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read upload"})
+			return
+		}
+		random := make([]byte, 8)
+		_, _ = rand.Read(random)
+		name := "statement-" + hex.EncodeToString(random) + ".pdf"
+		if err := storage.PutPDF(c.Request.Context(), storage.PDFKey(name, problemCode), f); err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to store PDF"})
+			return
+		}
+		if err := db.DB.Model(&problem).Update("pdf_url", name).Error; err != nil {
+			_ = storage.DeletePDF(c.Request.Context(), storage.PDFKey(name, problemCode))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update problem"})
+			return
+		}
+		if old := problem.PdfURL; old != "" && !strings.HasPrefix(old, "/") {
+			_ = storage.DeletePDF(c.Request.Context(), storage.PDFKey(old, problemCode))
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "PDF uploaded successfully", "pdf_url": name})
+		return
+	}
+
 	// Create problem data directory if it doesn't exist
 	dataDir := filepath.Join("data", "problems", problemCode)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
@@ -49,19 +88,6 @@ func AdminProblemPdfUpload(c *gin.Context) {
 	if err := c.SaveUploadedFile(file, pdfPath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save PDF file"})
 		return
-	}
-
-	if storage.PDFEnabled() {
-		f, err := os.Open(pdfPath)
-		if err == nil {
-			err = storage.PutPDF(c.Request.Context(), storage.PDFKey(pdfFilename, problemCode), f)
-			f.Close()
-		}
-		if err != nil {
-			os.Remove(pdfPath)
-			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to store PDF"})
-			return
-		}
 	}
 
 	// Update the problem's pdf_url field

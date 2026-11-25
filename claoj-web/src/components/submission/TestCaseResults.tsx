@@ -15,6 +15,9 @@ interface TestCase {
     total: number | null;
     feedback: string;
     extended_feedback?: string;
+    // Present only when the viewer may see test data (v1 is_testcase_accessible_by).
+    input?: string;
+    answer?: string;
     output?: string;
 }
 
@@ -35,17 +38,37 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
     'IE': <AlertCircle size={16} className="text-zinc-500" />,
 };
 
+// One labelled block of the Codeforces-style case view.
+function CaseBlock({ label, value, emptyLabel }: { label: string; value: string; emptyLabel: string }) {
+    return (
+        <div>
+            <h5 className="text-xs font-medium text-muted-foreground mb-1">{label}</h5>
+            <pre className="text-sm bg-background border p-3 rounded-md overflow-x-auto max-h-60 font-mono whitespace-pre">
+                {value === '' ? <span className="italic text-muted-foreground">{emptyLabel}</span> : value}
+            </pre>
+        </div>
+    );
+}
+
+function hasCaseDetails(tc: TestCase) {
+    return Boolean(tc.feedback || tc.extended_feedback || tc.input !== undefined || tc.output);
+}
+
 function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded: boolean; onToggle: () => void; t: ReturnType<typeof useTranslations> }) {
-    const hasDetails = tc.feedback || tc.extended_feedback || tc.output;
+    const hasDetails = hasCaseDetails(tc);
+    const hasData = tc.input !== undefined;
 
     return (
         <div className="border-b last:border-b-0">
-            <div
-                onClick={() => hasDetails && onToggle()}
+            <button
+                type="button"
+                onClick={onToggle}
+                disabled={!hasDetails}
+                aria-expanded={hasDetails ? isExpanded : undefined}
+                aria-label={t('toggleCase', { n: tc.case })}
                 className={cn(
-                    "grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm transition-colors",
-                    hasDetails && "cursor-pointer hover:bg-muted/50",
-                    !hasDetails && "cursor-default"
+                    "grid w-full grid-cols-12 gap-2 px-4 py-3 items-center text-left text-sm transition-colors",
+                    hasDetails ? "cursor-pointer hover:bg-muted/50" : "cursor-default"
                 )}
             >
                 {/* Case Number */}
@@ -91,7 +114,7 @@ function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded
                         isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />
                     )}
                 </div>
-            </div>
+            </button>
 
             {/* Expanded Details */}
             {isExpanded && hasDetails && (
@@ -103,17 +126,17 @@ function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded
                                 <p className="text-sm whitespace-pre-wrap">{tc.feedback}</p>
                             </div>
                         )}
+                        {hasData ? (
+                            <>
+                                <CaseBlock label={t('caseInput')} value={tc.input ?? ''} emptyLabel={t('emptyOutput')} />
+                                <CaseBlock label={t('caseOutput')} value={tc.output ?? ''} emptyLabel={t('emptyOutput')} />
+                                <CaseBlock label={t('caseAnswer')} value={tc.answer ?? ''} emptyLabel={t('emptyOutput')} />
+                            </>
+                        ) : tc.output ? (
+                            <CaseBlock label={t('output')} value={tc.output} emptyLabel={t('emptyOutput')} />
+                        ) : null}
                         {tc.extended_feedback && (
-                            <div>
-                                <h5 className="text-xs font-medium text-muted-foreground mb-1">{t('extendedFeedback')}</h5>
-                                <pre className="text-sm bg-background p-3 rounded-lg overflow-x-auto">{tc.extended_feedback}</pre>
-                            </div>
-                        )}
-                        {tc.output && (
-                            <div>
-                                <h5 className="text-xs font-medium text-muted-foreground mb-1">{t('output')}</h5>
-                                <pre className="text-sm bg-background p-3 rounded-lg overflow-x-auto font-mono">{tc.output}</pre>
-                            </div>
+                            <CaseBlock label={t('checkerLog')} value={tc.extended_feedback} emptyLabel={t('emptyOutput')} />
                         )}
                     </div>
                 </div>
@@ -124,7 +147,11 @@ function TestCaseRow({ tc, isExpanded, onToggle, t }: { tc: TestCase; isExpanded
 
 export default function TestCaseResults({ testCases, className }: TestCaseResultsProps) {
     const t = useTranslations('Submissions');
-    const [expandedCases, setExpandedCases] = useState<Set<number>>(new Set());
+    // Open the first failing case that has something to show, as Codeforces does.
+    const [expandedCases, setExpandedCases] = useState<Set<number>>(() => {
+        const first = testCases.find(tc => tc.status !== 'AC' && hasCaseDetails(tc));
+        return new Set(first ? [first.case] : []);
+    });
 
     const toggleCase = (caseNum: number) => {
         const newExpanded = new Set(expandedCases);
@@ -181,6 +208,10 @@ export default function TestCaseResults({ testCases, className }: TestCaseResult
                 <div className="col-span-3 text-right">{t('scoreHeader')}</div>
                 <div className="col-span-1"></div>
             </div>
+
+            {testCases.some(tc => tc.input !== undefined) && (
+                <p className="px-4 py-2 border-b text-xs text-muted-foreground">{t('truncatedNote')}</p>
+            )}
 
             {/* Test Cases */}
             <div className="divide-y">

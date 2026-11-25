@@ -220,7 +220,9 @@ func SubmissionDetail(c *gin.Context) {
 
 	var sub models.Submission
 	if err := db.DB.
-		Preload("Problem").
+		Preload("Problem.Authors").
+		Preload("Problem.Curators").
+		Preload("Problem.Testers").
 		Preload("Language").
 		Preload("Source").
 		Preload("TestCases", "1=1 ORDER BY `case` ASC").
@@ -232,6 +234,13 @@ func SubmissionDetail(c *gin.Context) {
 	// Check problem is public
 	if !sub.Problem.IsPublic {
 		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		return
+	}
+
+	// v1 (SubmissionDetailBase) shows nothing of a submission (source, test
+	// cases) to someone who fails Submission.can_see_detail.
+	if !auth.CanSeeSubmissionDetail(c, &sub) {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to view this submission"))
 		return
 	}
 
@@ -268,10 +277,32 @@ func SubmissionDetail(c *gin.Context) {
 		Points   *float64 `json:"points"`
 		Total    *float64 `json:"total"`
 		Feedback string   `json:"feedback"`
+		// Test data, only when the viewer may see it (v1 status-testcases.html):
+		// input/answer cut to 64 bytes, the program's output, the checker log.
+		Input            *string `json:"input,omitempty"`
+		Answer           *string `json:"answer,omitempty"`
+		Output           *string `json:"output,omitempty"`
+		ExtendedFeedback string  `json:"extended_feedback,omitempty"`
 	}
+	canViewTest := auth.CanViewTestcases(c, &sub.Problem)
+	var data map[int]caseData
+	var prefix *int
+	if canViewTest {
+		data = problemCaseData(&sub.Problem)
+		prefix = viewerOutputPrefix(c, &sub)
+	}
+	showData := prefix == nil || *prefix > 0
 	testCases := make([]TestCaseItem, len(sub.TestCases))
 	for i, tc := range sub.TestCases {
-		testCases[i] = TestCaseItem{tc.Case, tc.Status, tc.Time, tc.Memory, tc.Points, tc.Total, tc.Feedback}
+		item := TestCaseItem{Case: tc.Case, Status: tc.Status, Time: tc.Time, Memory: tc.Memory, Points: tc.Points, Total: tc.Total, Feedback: tc.Feedback}
+		if canViewTest {
+			item.ExtendedFeedback = tc.ExtendedFeedback
+			if d, ok := data[tc.Case]; ok && showData {
+				in, ans, out := d.Input, truncatePrefix(d.Answer, prefix), truncatePrefix(tc.Output, prefix)
+				item.Input, item.Answer, item.Output = &in, &ans, &out
+			}
+		}
+		testCases[i] = item
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -280,20 +311,43 @@ func SubmissionDetail(c *gin.Context) {
 		"problem_name": sub.Problem.Name,
 		// The problem's full score, so the page can show 1.5/1.5 like v1
 		// instead of the test-case point totals.
-		"problem_points": sub.Problem.Points,
-		"user":           username,
-		"date":           sub.Date,
-		"language":       sub.Language.Key,
-		"status":         sub.Status,
-		"result":         sub.Result,
-		"points":         sub.Points,
-		"time":           sub.Time,
-		"memory":         sub.Memory,
-		"source":         source,
-		"case_points":    sub.CasePoints,
-		"case_total":     sub.CaseTotal,
-		"test_cases":     testCases,
+		"problem_points":     sub.Problem.Points,
+		"user":               username,
+		"date":               sub.Date,
+		"language":           sub.Language.Key,
+		"status":             sub.Status,
+		"result":             sub.Result,
+		"points":             sub.Points,
+		"time":               sub.Time,
+		"memory":             sub.Memory,
+		"source":             source,
+		"case_points":        sub.CasePoints,
+		"case_total":         sub.CaseTotal,
+		"test_cases":         testCases,
+		"can_view_testcases": canViewTest,
 	})
+}
+
+// viewerOutputPrefix is v1's prefix_length: a contest submission viewed by
+// someone currently in a contest shows only output_prefix_override bytes of
+// answer/output (0 hides the data). nil = no limit.
+func viewerOutputPrefix(c *gin.Context, sub *models.Submission) *int {
+	if sub.ContestObjectID == nil {
+		return nil
+	}
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
+		return nil
+	}
+	var profile models.Profile
+	if db.DB.Select("current_contest_id").First(&profile, profileID).Error != nil || profile.CurrentContestID == nil {
+		return nil
+	}
+	var cp models.ContestProblem
+	if db.DB.Where("contest_id = ? AND problem_id = ?", *sub.ContestObjectID, sub.ProblemID).First(&cp).Error != nil {
+		return nil
+	}
+	return cp.OutputPrefixOverride
 }
 
 // SubmissionResubmitSource – GET /api/v2/submission/:id/resubmit

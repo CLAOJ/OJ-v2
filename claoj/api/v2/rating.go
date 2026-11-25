@@ -63,6 +63,11 @@ func RatingLeaderboard(c *gin.Context) {
 	}
 
 	entries := make([]RatingEntry, len(profiles))
+	ids := make([]uint, len(profiles))
+	for i, p := range profiles {
+		ids[i] = p.ID
+	}
+	avatars := avatarOverrides(ids)
 	for i, p := range profiles {
 		// Calculate global rank
 		var rank int64
@@ -94,7 +99,7 @@ func RatingLeaderboard(c *gin.Context) {
 			Rating:           *p.Rating,
 			ContestsAttended: int(contestCount),
 			HighestRating:    highestRating,
-			AvatarURL:        getAvatarURL(&p),
+			AvatarURL:        avatarURLFrom(&p, avatars),
 		}
 	}
 

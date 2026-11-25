@@ -55,13 +55,34 @@ func getGravatarURL(email string, size int) string {
 	return "https://www.gravatar.com/avatar/" + hashStr + "?d=identicon"
 }
 
-// getAvatarURL returns the avatar URL for a profile (Gravatar-based)
+// getAvatarURL returns a profile's uploaded avatar, else its Gravatar identicon.
 func getAvatarURL(profile *models.Profile) string {
 	if profile == nil {
 		return ""
 	}
-	// Check for logo override from organization
-	// For now, just use Gravatar
+	return avatarURLFrom(profile, avatarOverrides([]uint{profile.ID}))
+}
+
+// avatarOverrides loads uploaded avatars for many profiles in one query (list
+// endpoints). Errors (e.g. the v2 table not provisioned) mean "none".
+func avatarOverrides(profileIDs []uint) map[uint]string {
+	out := map[uint]string{}
+	if len(profileIDs) == 0 {
+		return out
+	}
+	var rows []models.ProfileAvatar
+	if db.DB.Where("profile_id IN ?", profileIDs).Find(&rows).Error == nil {
+		for _, r := range rows {
+			out[r.ProfileID] = r.URL
+		}
+	}
+	return out
+}
+
+func avatarURLFrom(profile *models.Profile, overrides map[uint]string) string {
+	if url, ok := overrides[profile.ID]; ok {
+		return url
+	}
 	return getGravatarURL(profile.User.Email, 80)
 }
 

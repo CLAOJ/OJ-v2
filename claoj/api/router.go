@@ -190,7 +190,8 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataDeleteTestCase)
 		// Problem PDF
 		admin.POST("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfUpload)
-		admin.DELETE("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfDelete)
+		admin.POST("/admin/problem/:code/pdf/commit", auth.RequireProblemEdit(), v2.AdminProblemPdfCommit)
+			admin.DELETE("/admin/problem/:code/pdf", auth.RequireProblemEdit(), adminHandlers.AdminProblemPdfDelete)
 			// Problem Data - Reorder & File Operations
 			admin.PATCH("/admin/problem/:code/data/reorder", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataReorder)
 			admin.GET("/admin/problem/:code/data/files", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFiles)
@@ -285,6 +286,9 @@ func NewRouter() *gin.Engine {
 
 			// Shared markdown image upload (blog posts, license text)
 			admin.POST("/admin/markdown/image", v2.AdminMarkdownImageUpload)
+			// Direct-to-R2 uploads: sign, browser PUTs to R2, then commit.
+			admin.POST("/admin/uploads/sign", v2.AdminUploadSign)
+			admin.POST("/admin/markdown/image/commit", v2.AdminMarkdownImageCommit)
 
 			// Licenses Admin
 			admin.GET("/admin/licenses", v2.AdminLicenseList)
@@ -494,6 +498,9 @@ func NewRouter() *gin.Engine {
 			protected.POST("/problem/:code/submit", v2.Submit)
 			protected.GET("/user/me", v2.CurrentUser)
 			protected.PATCH("/user/me", v2.UpdateProfile)
+			protected.POST("/user/avatar/sign", v2.AvatarUploadSign)
+			protected.PUT("/user/avatar", v2.AvatarSet)
+			protected.DELETE("/user/avatar", v2.AvatarDelete)
 			protected.POST("/admin/impersonate/:userId", auth.AdminRequiredMiddleware(), middleware.Audit(), v2.AdminImpersonateStart)
 			protected.POST("/admin/impersonate/exit", v2.AdminImpersonateExit)
 

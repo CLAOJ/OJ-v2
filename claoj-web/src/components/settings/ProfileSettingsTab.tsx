@@ -4,10 +4,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
-import { useState, useEffect } from 'react';
+import api, { type ApiError } from '@/lib/api';
+import { uploadDirect } from '@/lib/directUpload';
+import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { CheckCircle, Info } from 'lucide-react';
+import { CheckCircle, Info, Loader2, Trash2, Upload } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserDetail } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -15,7 +17,6 @@ import { useAuth } from '@/components/providers/AuthProvider';
 const settingsSchema = z.object({
     display_name: z.string().max(100).optional(),
     about: z.string().max(500).optional(),
-    avatar_url: z.string().url().optional().or(z.literal('')),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -54,7 +55,6 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
             reset({
                 display_name: profile.display_name,
                 about: profile.about || '',
-                avatar_url: profile.avatar_url || '',
             });
         }
     }, [profile, reset]);
@@ -75,6 +75,47 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
         }
     });
 
+    // Avatar: the photo goes from the browser straight to R2, then PUT /user/avatar
+    // verifies and keeps it. No photo = the Gravatar identicon, as in v1.
+    const fileInput = useRef<HTMLInputElement>(null);
+    const hasUploadedAvatar = !!profile?.avatar_url && !profile.avatar_url.includes('gravatar.com');
+    const refreshProfile = () => queryClient.invalidateQueries({ queryKey: ['user', user?.username] });
+    const avatarError = (err: unknown) =>
+        toast.error((err as ApiError).response?.data?.error || t('avatarUploadError'));
+
+    const uploadAvatar = useMutation({
+        mutationFn: (file: File) => uploadDirect('/user/avatar/sign', file, key => api.put('/user/avatar', { key })),
+        onSuccess: (res) => {
+            if (res === null) {
+                toast.error(t('avatarUploadUnavailable'));
+                return;
+            }
+            toast.success(t('avatarUpdated'));
+            refreshProfile();
+        },
+        onError: avatarError,
+    });
+    const removeAvatar = useMutation({
+        mutationFn: () => api.delete('/user/avatar'),
+        onSuccess: () => {
+            toast.success(t('avatarRemoved'));
+            refreshProfile();
+        },
+        onError: avatarError,
+    });
+    const avatarBusy = uploadAvatar.isPending || removeAvatar.isPending;
+
+    const onAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // the same file can be picked again after an error
+        if (!file) return;
+        if (file.size > 1 << 20) {
+            toast.error(t('avatarTooLarge'));
+            return;
+        }
+        uploadAvatar.mutate(file);
+    };
+
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">{tc('loading')}</div>;
     }
@@ -91,20 +132,45 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
                     <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
                         <img
                             src={profile?.avatar_url || `https://www.gravatar.com/avatar/${user?.username}?s=80&d=mp`}
+                            width={64}
+                            height={64}
                             alt={t('avatar')}
                             className="w-16 h-16 rounded-full object-cover border-2 border-primary/20"
                         />
-                        <div>
+                        <div className="min-w-0 space-y-2">
                             <p className="text-sm font-medium">{t('avatar')}</p>
-                            <p className="text-xs text-muted-foreground">{t('avatarManagedGravatar')}</p>
-                            <a
-                                href="https://gravatar.com"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-primary hover:underline"
-                            >
-                                {t('manageAtGravatar')}
-                            </a>
+                            <div className="flex flex-wrap gap-2">
+                                <input
+                                    ref={fileInput}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/gif,image/webp"
+                                    className="sr-only"
+                                    tabIndex={-1}
+                                    aria-hidden="true"
+                                    onChange={onAvatarFile}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInput.current?.click()}
+                                    disabled={avatarBusy}
+                                    className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                                >
+                                    {uploadAvatar.isPending ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                    {t('uploadAvatar')}
+                                </button>
+                                {hasUploadedAvatar && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeAvatar.mutate()}
+                                        disabled={avatarBusy}
+                                        className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                                    >
+                                        {removeAvatar.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                        {t('removeAvatar')}
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{t('avatarHint')}</p>
                         </div>
                     </div>
 
@@ -115,16 +181,6 @@ export default function ProfileSettingsTab({ onSuccess }: ProfileSettingsTabProp
                             className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium"
                         />
                         {errors.display_name && <p className="text-xs text-destructive">{errors.display_name.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">{t('avatarUrlLabel')}</label>
-                        <input
-                            {...register('avatar_url')}
-                            placeholder={t('avatarUrlPlaceholder')}
-                            className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-medium"
-                        />
-                        {errors.avatar_url && <p className="text-xs text-destructive">{errors.avatar_url.message}</p>}
                     </div>
 
                     <div className="space-y-2">

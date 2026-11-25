@@ -534,7 +534,16 @@
     "diffRemoved": "Đã xóa",
     "diffAdded": "Đã thêm",
     "unifiedDiff": "Diff hợp nhất",
-    "resubmit": "Nộp lại"
+    "resubmit": "Nộp lại",
+    "caseInput": "Dữ liệu vào",
+    "caseOutput": "Output của bạn",
+    "caseAnswer": "Đáp án",
+    "checkerLog": "Nhật ký trình chấm",
+    "emptyOutput": "(trống)",
+    "truncatedNote": "Dữ liệu test chỉ hiện 64 byte đầu.",
+    "toggleCase": "Chi tiết test {n}",
+    "noPermission": "Bạn không thể xem bài nộp này",
+    "noPermissionDesc": "Bài nộp chỉ hiện với người nộp, và với người khác khi họ đã giải được toàn bộ bài."
   },
   "Auth": {
     "loginTitle": "Chào mừng trở lại",
@@ -1380,7 +1389,15 @@
     "connect": "Liên kết",
     "webauthnTitle": "Xác thực WebAuthn / Passkey",
     "webauthnDesc": "Quản lý thông tin xác thực WebAuthn để đăng nhập không cần mật khẩu",
-    "webauthnEnabledMsg": "WebAuthn đã được bật cho tài khoản của bạn. Bạn có thể dùng thông tin xác thực đã đăng ký để đăng nhập mà không cần mật khẩu."
+    "webauthnEnabledMsg": "WebAuthn đã được bật cho tài khoản của bạn. Bạn có thể dùng thông tin xác thực đã đăng ký để đăng nhập mà không cần mật khẩu.",
+    "uploadAvatar": "Tải ảnh lên",
+    "removeAvatar": "Xoá ảnh",
+    "avatarHint": "PNG, JPEG, GIF hoặc WebP, tối đa 1 MB. Nếu không có ảnh, ảnh Gravatar sẽ được dùng.",
+    "avatarUpdated": "Đã cập nhật ảnh",
+    "avatarRemoved": "Đã xoá ảnh, ảnh Gravatar sẽ được dùng lại",
+    "avatarTooLarge": "Ảnh phải nhỏ hơn hoặc bằng 1 MB",
+    "avatarUploadUnavailable": "Máy chủ này chưa hỗ trợ tải ảnh lên",
+    "avatarUploadError": "Không tải được ảnh lên. Vui lòng thử lại."
   },
   "Notification": {
     "title": "Thông báo",

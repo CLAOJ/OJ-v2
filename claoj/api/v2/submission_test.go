@@ -47,6 +47,19 @@ func TestSubmissionDetail_FileOnlySourceOnlyForOwnerAndSuperuser(t *testing.T) {
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&textSub).Error)
 	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.SubmissionSource{SubmissionID: textSub.ID, Source: "int main(){}"}).Error)
 
+	status := func(user *models.AuthUser, id uint) int {
+		var router *gin.Engine
+		if user == nil {
+			gin.SetMode(gin.TestMode)
+			router = gin.New()
+			router.GET("/submission/:id", SubmissionDetail)
+		} else {
+			router = authedRouter(user.ID, http.MethodGet, "/submission/:id", SubmissionDetail)
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/submission/"+itoa(id), nil))
+		return w.Code
+	}
 	detail := func(user *models.AuthUser, id uint) map[string]any {
 		var router *gin.Engine
 		if user == nil {
@@ -64,11 +77,21 @@ func TestSubmissionDetail_FileOnlySourceOnlyForOwnerAndSuperuser(t *testing.T) {
 		return body
 	}
 
-	// Anonymous: no file URL at all.
-	anon := detail(nil, fileSub.ID)
-	require.Equal(t, "", anon["source"])
+	// v1 Submission.can_see_detail: anonymous viewers, and logged-in users who
+	// have not fully solved the problem (default "all-solved" visibility), see
+	// nothing of someone else's submission.
+	for _, id := range []uint{fileSub.ID, textSub.ID} {
+		require.Equal(t, http.StatusForbidden, status(nil, id))
+		require.Equal(t, http.StatusForbidden, status(&other, id))
+	}
 
-	// An unrelated logged-in user gets the same blank view.
+	// Once the other user has a full-points AC on the problem they may look.
+	var otherProfile models.Profile
+	require.NoError(t, db.DB.Where("user_id = ?", other.ID).First(&otherProfile).Error)
+	ac, full := "AC", problem.Points
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&models.Submission{UserID: otherProfile.ID, ProblemID: problem.ID, LanguageID: textLang.ID, Date: time.Now(), Status: "D", Result: &ac, Points: &full}).Error)
+
+	// Even then a file-only submission's URL stays with its submitter.
 	stranger := detail(&other, fileSub.ID)
 	require.Equal(t, "", stranger["source"])
 
@@ -78,9 +101,6 @@ func TestSubmissionDetail_FileOnlySourceOnlyForOwnerAndSuperuser(t *testing.T) {
 		require.Equal(t, testSubmissionFileSource, body["source"])
 	}
 
-	// Text sources keep their existing behaviour: public problem, public source.
-	for _, user := range []*models.AuthUser{nil, &other} {
-		body := detail(user, textSub.ID)
-		require.Equal(t, "int main(){}", body["source"])
-	}
+	// A text source is visible to the solver.
+	require.Equal(t, "int main(){}", detail(&other, textSub.ID)["source"])
 }

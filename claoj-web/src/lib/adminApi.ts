@@ -1,4 +1,5 @@
 import api from './api';
+import { uploadDirect } from './directUpload';
 import type { ContestSort, ProblemSort, SortOrder, UserSort } from './listSort';
 import type {
     AdminUserDetail,
@@ -158,10 +159,13 @@ export const adminProblemDataApi = {
         api.patch<{ success: boolean }>(`/admin/problem/${code}/data/testcase/${testCaseId}`, data),
 
     // PDF Statement endpoints
-    uploadPdf: (code: string, file: File) => {
+    uploadPdf: async (code: string, file: File) => {
+        const direct = await uploadDirect(`/admin/uploads/sign?purpose=pdf&problem=${encodeURIComponent(code)}`, file,
+            key => api.post<{ message: string; pdf_url: string; pdf_path?: string }>(`/admin/problem/${code}/pdf/commit`, { key }));
+        if (direct) return direct;
         const formData = new FormData();
         formData.append('pdf_file', file);
-        return api.post<{ message: string; pdf_url: string; pdf_path: string }>(`/admin/problem/${code}/pdf`, formData, {
+        return api.post<{ message: string; pdf_url: string; pdf_path?: string }>(`/admin/problem/${code}/pdf`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },
@@ -791,7 +795,10 @@ export const adminBlogPostApi = {
 // ============================================================
 
 export const adminMediaApi = {
-    uploadImage: (file: File) => {
+    uploadImage: async (file: File) => {
+        const direct = await uploadDirect('/admin/uploads/sign?purpose=image', file,
+            key => api.post<{ url: string }>('/admin/markdown/image/commit', { key }));
+        if (direct) return direct;
         const formData = new FormData();
         formData.append('image', file);
         return api.post<{ url: string }>('/admin/markdown/image', formData, {
