@@ -184,6 +184,8 @@ export interface ContestDetail extends Contest {
     description: string;
     summary: string;
     is_joined: boolean;
+    /** v1 profile.current_contest points at this contest (join/leave session). */
+    is_in_contest?: boolean;
     problems: {
         code: string;
         name: string;
@@ -227,9 +229,34 @@ export interface BreakdownItem {
 
 export interface RankingResponse {
     contest: string;
-    problems: { label: string; points: number }[];
+    problems: { code?: string; label: string; points: number }[];
     rankings: RankingRow[];
     /** Set when scoreboard_visibility hides the standings for now. */
+    scoreboard_hidden?: boolean;
+}
+
+/** One row of GET /contest/:key/rank/:problem (v1 ContestRankedSubmission). */
+export interface ContestProblemRankRow {
+    rank: number;
+    id: number;
+    user: string;
+    display_name: string;
+    points: number;
+    time: number | null;
+    memory: number | null;
+    language: string;
+    date: string;
+    result: string | null;
+    status: string;
+}
+
+/** GET /contest/:key/rank/:problem: best submission per user for one problem. */
+export interface ContestProblemRankResponse {
+    contest: string;
+    contest_name?: string;
+    problem: { code: string; label: string; points: number; name?: string };
+    data: ContestProblemRankRow[];
+    total: number;
     scoreboard_hidden?: boolean;
 }
 
