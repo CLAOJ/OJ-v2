@@ -134,7 +134,7 @@ func AdminContestMossReport(c *gin.Context) {
 		c.JSON(http.StatusNotFound, apiError("report not found"))
 		return
 	}
-	c.Header("Content-Security-Policy", "sandbox allow-scripts")
+	c.Header("Content-Security-Policy", "sandbox allow-scripts allow-popups")
 	c.Header("X-Content-Type-Options", "nosniff")
 	// ServeContent rather than c.File: http.ServeFile redirects any request
 	// ending in /index.html, which is exactly what report pages are.

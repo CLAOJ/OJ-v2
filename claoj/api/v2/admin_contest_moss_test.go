@@ -141,7 +141,7 @@ func TestContestMoss_ReportServesWithSandbox(t *testing.T) {
 	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/moss/report/knap/cpp/index.html", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	require.Contains(t, w.Body.String(), "<html>knap</html>")
-	require.Equal(t, "sandbox allow-scripts", w.Header().Get("Content-Security-Policy"))
+	require.Equal(t, "sandbox allow-scripts allow-popups", w.Header().Get("Content-Security-Policy"))
 	require.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
 }
 

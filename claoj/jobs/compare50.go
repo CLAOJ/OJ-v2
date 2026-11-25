@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Checker writes one HTML report for the submission folders under subsDir into outDir.
@@ -41,22 +42,33 @@ func (c Compare50) Check(ctx context.Context, subsDir, outDir string) error {
 	if maxPairs == 0 {
 		maxPairs = compare50DefaultPairs
 	}
+	// The cwd changes to subsDir so report labels are the bare "./<user>"; the
+	// "./" keeps usernames starting with "-" from being parsed as flags.
+	absOut, err := filepath.Abs(outDir)
+	if err != nil {
+		return err
+	}
 	args := []string{"-m", "compare50"}
 	for _, e := range entries {
 		if e.IsDir() {
-			args = append(args, filepath.Join(subsDir, e.Name()))
+			args = append(args, "./"+e.Name())
 		}
 	}
-	args = append(args, "-o", outDir, "-n", strconv.Itoa(maxPairs))
+	args = append(args, "-o", absOut, "-n", strconv.Itoa(maxPairs))
 
 	// ponytail: buffers all of stderr; fine at compare50's output size.
 	var stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, Compare50Python, args...)
+	cmd.Dir = subsDir
+	cmd.WaitDelay = 10 * time.Second
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		tail := stderr.Bytes()
 		if len(tail) > compare50StderrTail {
 			tail = tail[len(tail)-compare50StderrTail:]
+		}
+		if ctx.Err() != nil {
+			err = fmt.Errorf("%w: %v", ctx.Err(), err)
 		}
 		return fmt.Errorf("compare50: %w: %s", err, strings.TrimSpace(string(tail)))
 	}

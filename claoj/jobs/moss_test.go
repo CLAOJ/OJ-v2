@@ -21,8 +21,9 @@ import (
 // fakeChecker records, per Check call, every "folder/file" under subsDir with
 // its content, then writes outDir/index.html (or returns err).
 type fakeChecker struct {
-	calls []map[string]string
-	err   error
+	calls    []map[string]string
+	err      error
+	noReport bool // like compare50 with no similar pairs: exit 0, no -o dir
 }
 
 func (f *fakeChecker) Check(_ context.Context, subsDir, outDir string) error {
@@ -47,6 +48,9 @@ func (f *fakeChecker) Check(_ context.Context, subsDir, outDir string) error {
 	f.calls = append(f.calls, got)
 	if f.err != nil {
 		return f.err
+	}
+	if f.noReport {
+		return nil
 	}
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return err
@@ -209,6 +213,89 @@ func TestRunContestMoss_FailureKeepsOldRowsAndFiles(t *testing.T) {
 	tmps, err := filepath.Glob(filepath.Join(PlagiarismDir, ".tmp-*"))
 	require.NoError(t, err)
 	require.Empty(t, tmps)
+}
+
+func TestRunContestMoss_NoPairsLeavesReportPathNil(t *testing.T) {
+	useTempPlagiarismDir(t)
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	py := addLanguage(t, database, "PY3", "Python 3", "Python")
+	addSubmission(t, database, f, py, "alice", 0, 10, "print(1)")
+	addSubmission(t, database, f, py, "bob", 0, 10, "print(2)")
+
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, &fakeChecker{noReport: true})
+	require.NoError(t, err)
+
+	var nullPaths, count int64
+	require.NoError(t, database.Model(&models.PlagiarismResult{}).
+		Where("contest_id = ? AND report_path IS NULL AND submission_count = 2", f.contest.ID).Count(&nullPaths).Error)
+	require.NoError(t, database.Model(&models.PlagiarismResult{}).Where("contest_id = ?", f.contest.ID).Count(&count).Error)
+	require.Equal(t, int64(1), count)
+	require.Equal(t, int64(1), nullPaths)
+}
+
+func TestRunContestMoss_TieOnPointsPicksLowestID(t *testing.T) {
+	useTempPlagiarismDir(t)
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	cpp := addLanguage(t, database, "CPP17", "C++17", "C++")
+	addSubmission(t, database, f, cpp, "alice", 0, 100, "first")
+	addSubmission(t, database, f, cpp, "alice", 0, 100, "second")
+	addSubmission(t, database, f, cpp, "bob", 0, 50, "bob")
+	chk := &fakeChecker{}
+
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, chk)
+	require.NoError(t, err)
+	require.Equal(t, "first", chk.calls[0]["alice/main.cpp"])
+}
+
+func TestRunContestMoss_SkipsUnsafeProblemCodes(t *testing.T) {
+	useTempPlagiarismDir(t)
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	cpp := addLanguage(t, database, "CPP17", "C++17", "C++")
+	addSubmission(t, database, f, cpp, "alice", 0, 100, "a")
+	addSubmission(t, database, f, cpp, "bob", 0, 100, "b")
+	bad := models.Problem{Code: "../evil", Name: "Evil"}
+	require.NoError(t, database.Omit(clause.Associations).Create(&bad).Error)
+	require.NoError(t, database.Omit(clause.Associations).Create(&models.ContestProblem{ContestID: f.contest.ID, ProblemID: bad.ID, Points: 1, Order: 2}).Error)
+	badF := f
+	badF.problem = bad
+	badF.cp = models.ContestProblem{}
+	require.NoError(t, database.Where("problem_id = ?", bad.ID).First(&badF.cp).Error)
+	addSubmission(t, database, badF, cpp, "alice", 0, 100, "a")
+	addSubmission(t, database, badF, cpp, "bob", 0, 100, "b")
+	chk := &fakeChecker{}
+
+	n, err := RunContestMoss(context.Background(), database, f.contest.ID, chk)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.Len(t, chk.calls, 1)
+	_, statErr := os.Stat(filepath.Join(PlagiarismDir, "evil"))
+	require.True(t, os.IsNotExist(statErr))
+}
+
+func TestRunContestMoss_DBFailureRollsBackSwap(t *testing.T) {
+	useTempPlagiarismDir(t)
+	database := setupMossDB(t)
+	c := seed(t, database)
+	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{})
+	require.NoError(t, err)
+	marker := filepath.Join(ContestReportDir(c.ID), "knap", "cpp", "marker.txt")
+	require.NoError(t, os.WriteFile(marker, []byte("old"), 0o644))
+
+	require.NoError(t, database.Migrator().DropTable(&models.PlagiarismResult{}))
+	_, err = RunContestMoss(context.Background(), database, c.ID, &fakeChecker{})
+	require.Error(t, err)
+
+	b, readErr := os.ReadFile(marker)
+	require.NoError(t, readErr, "old report must be restored")
+	require.Equal(t, "old", string(b))
+	for _, pat := range []string{".old-*", ".tmp-*"} {
+		m, globErr := filepath.Glob(filepath.Join(PlagiarismDir, pat))
+		require.NoError(t, globErr)
+		require.Empty(t, m, pat)
+	}
 }
 
 func TestRunContestMoss_LeavesV1TableAlone(t *testing.T) {

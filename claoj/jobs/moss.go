@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 )
 
 const TypeContestMoss = "contest_moss"
+
+var safeProblemCode = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
 var ErrMossAlreadyRunning = errors.New("moss: a run for this contest is already queued or running")
 
@@ -49,6 +52,10 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 	now := time.Now()
 	var rows []models.PlagiarismResult
 	for _, p := range problems {
+		if !safeProblemCode.MatchString(p.Code) {
+			log.Printf("jobs: plagiarism: skipping problem with unsafe code %q", p.Code)
+			continue
+		}
 		var subs []struct {
 			Language string
 			Username string
@@ -64,7 +71,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			Joins("JOIN judge_contestparticipation part ON part.id = cs.participation_id").
 			Where("s.contest_object_id = ? AND s.problem_id = ?", contestID, p.ID).
 			Where("part.virtual IN ?", []int{0, -1}). // LIVE, SPECTATE
-			Order("s.points DESC").
+			Order("s.points DESC, s.id ASC").
 			Scan(&subs).Error; err != nil {
 			return 0, err
 		}
@@ -105,8 +112,11 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 				if err := chk.Check(ctx, subsDir, filepath.Join(reportRoot, p.Code, slug)); err != nil {
 					return 0, fmt.Errorf("plagiarism %s/%s: %w", p.Code, lang, err)
 				}
-				reportPath := p.Code + "/" + slug
-				row.ReportPath = &reportPath
+				// compare50 exits 0 without creating -o when there are no similar pairs.
+				if _, err := os.Stat(filepath.Join(reportRoot, p.Code, slug, "index.html")); err == nil {
+					reportPath := p.Code + "/" + slug
+					row.ReportPath = &reportPath
+				}
 			}
 			rows = append(rows, row)
 		}
