@@ -10,6 +10,7 @@ import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { ConfirmProvider } from "@/components/providers/ConfirmProvider";
 import { DayjsLocale } from "@/components/providers/DayjsLocale";
 import Navbar from "@/components/layout/Navbar";
+import { NameStyles } from "@/components/providers/NameStyles";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import Footer from "@/components/layout/Footer";
 import { DEFAULT_SEO, SITE_URL, generateWebSiteJsonLd, generateOrganizationJsonLd } from '@/lib/seo';
@@ -130,6 +131,7 @@ export default async function RootLayout({
                   >
                     {tCommon('skipToContent')}
                   </a>
+                  <NameStyles />
                   <Navbar />
                   <ImpersonationBanner />
                   <main id="main-content" tabIndex={-1} className="flex-grow container mx-auto px-4 py-8 focus:outline-none">

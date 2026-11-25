@@ -1527,7 +1527,8 @@
       "classes": "Classes",
       "organizationRequests": "Organization Requests",
       "commentLocks": "Comment Locks",
-      "pointsVotes": "Point Votes"
+      "pointsVotes": "Point Votes",
+      "nameStylesNav": "Name styles"
     },
     "classes": {
       "title": "Classes",
@@ -2974,6 +2975,25 @@
       "unavailable": "The audit log could not be loaded. Check that the audit store is running, then refresh.",
       "empty": "No entries match these filters.",
       "toggleDetails": "Show request details"
+    },
+    "nameStyles": {
+      "title": "Name styles",
+      "description": "How usernames look for each display rank (staff, teacher, admin…), everywhere on the site.",
+      "rank": "Rank",
+      "color": "Colour",
+      "bold": "Bold",
+      "strike": "Strikethrough",
+      "prefix": "Prefix",
+      "preview": "Preview",
+      "remove": "Remove rank",
+      "clearColor": "Rating colour",
+      "addRank": "Add rank",
+      "save": "Save",
+      "saved": "Name styles saved",
+      "saveFailed": "Could not save name styles",
+      "loading": "Loading…",
+      "userCount": "{count, plural, =0 {no users} one {# user} other {# users}}",
+      "hint": "Rank must match a user's display rank (set in the user editor). No colour keeps the rating colour."
     }
   }
 }

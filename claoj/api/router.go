@@ -348,6 +348,7 @@ func NewRouter() *gin.Engine {
 		admin.POST("/admin/misc-configs", v2.AdminMiscConfigCreate)
 		admin.PATCH("/admin/misc-config/:id", v2.AdminMiscConfigUpdate)
 		admin.DELETE("/admin/misc-config/:id", v2.AdminMiscConfigDelete)
+		admin.PUT("/admin/name-styles", auth.RequirePerm("judge.change_miscconfig"), v2.AdminNameStylesUpdate)
 
 		// Audit Logs
 		admin.GET("/audit-logs", v2.AdminAuditLogList)
@@ -439,6 +440,7 @@ func NewRouter() *gin.Engine {
 
 		// Blogs
 		apiv2.GET("/blogs", v2.BlogList)
+		apiv2.GET("/name-styles", v2.NameStyles)
 		apiv2.GET("/blog/:id", v2.BlogDetail)
 		apiv2.GET("/blogs/feed/rss", v2.BlogFeedRSS)
 		apiv2.GET("/blogs/feed/atom", v2.BlogFeedAtom)

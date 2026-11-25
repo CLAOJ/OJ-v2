@@ -44,8 +44,15 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
         }
     }, [onOpenChange]);
 
+    // A DialogTrigger must stay visible while the dialog is closed; everything
+    // else is the modal body.
+    const all = React.Children.toArray(children);
+    const triggers = all.filter((c) => React.isValidElement(c) && c.type === DialogTrigger);
+    const body = all.filter((c) => !(React.isValidElement(c) && c.type === DialogTrigger));
+
     return (
         <DialogContext.Provider value={{ open, onOpenChange, titleId, descriptionId, setTitleId, setDescriptionId }}>
+            {triggers}
             <AnimatePresence>
                 {open && (
                     <>
@@ -75,7 +82,7 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
                             )}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {children}
+                            {body}
                         </motion.div>
                     </>
                 )}

@@ -1527,7 +1527,8 @@
       "classes": "Lớp học",
       "organizationRequests": "Yêu cầu vào tổ chức",
       "commentLocks": "Khóa bình luận",
-      "pointsVotes": "Bình chọn điểm"
+      "pointsVotes": "Bình chọn điểm",
+      "nameStylesNav": "Kiểu tên"
     },
     "classes": {
       "title": "Lớp học",
@@ -2974,6 +2975,25 @@
       "unavailable": "Không tải được nhật ký. Hãy kiểm tra kho lưu nhật ký đang chạy rồi tải lại trang.",
       "empty": "Không có mục nào khớp bộ lọc.",
       "toggleDetails": "Xem chi tiết yêu cầu"
+    },
+    "nameStyles": {
+      "title": "Kiểu tên người dùng",
+      "description": "Cách hiển thị tên người dùng theo từng cấp (staff, giáo viên, admin…) trên toàn trang.",
+      "rank": "Cấp",
+      "color": "Màu",
+      "bold": "In đậm",
+      "strike": "Gạch ngang",
+      "prefix": "Tiền tố",
+      "preview": "Xem trước",
+      "remove": "Xóa cấp",
+      "clearColor": "Màu theo rating",
+      "addRank": "Thêm cấp",
+      "save": "Lưu",
+      "saved": "Đã lưu kiểu tên",
+      "saveFailed": "Không lưu được kiểu tên",
+      "loading": "Đang tải…",
+      "userCount": "{count, plural, =0 {chưa có ai} other {# người}}",
+      "hint": "Cấp phải trùng với cấp hiển thị của người dùng (đặt trong trình sửa người dùng). Không chọn màu sẽ giữ màu theo rating."
     }
   }
 }

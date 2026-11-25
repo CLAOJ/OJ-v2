@@ -117,7 +117,22 @@ func AdminContestAnnouncementCreate(c *gin.Context) {
 		return
 	}
 
+	notifyContestAnnouncement(&announcement)
 	c.JSON(http.StatusCreated, newContestAnnouncementItem(announcement))
+}
+
+// notifyContestAnnouncement is v1 ContestAnnouncement.send: when the contest
+// pushes announcements, every participant gets it (v2: a bell notification).
+// Best effort: the announcement itself is already saved.
+func notifyContestAnnouncement(a *models.ContestAnnouncement) {
+	var contest models.Contest
+	if db.DB.Select("id", "key", "push_announcements").First(&contest, a.ContestID).Error != nil || !contest.PushAnnouncements {
+		return
+	}
+	db.DB.Exec("INSERT INTO notification (user_id, type, title, message, link, `read`, created_at) "+
+		"SELECT DISTINCT p.user_id, 'contest', ?, ?, ?, 0, ? FROM judge_contestparticipation cp "+
+		"JOIN judge_profile p ON p.id = cp.user_id WHERE cp.contest_id = ?",
+		a.Title, a.Description, "/contest/"+contest.Key, time.Now(), contest.ID)
 }
 
 // AdminContestAnnouncementUpdate – PATCH /api/v2/admin/contest/:key/announcements/:id

@@ -38,6 +38,7 @@ import {
     Lock,
     ThumbsUp,
     type LucideIcon,
+    Palette,
 } from 'lucide-react';
 
 type NavItem = { href: string; key: string; icon: LucideIcon };
@@ -87,6 +88,7 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
             { href: '/admin/navigation-bars', key: 'navigationBars', icon: PanelTop },
             { href: '/admin/flat-pages', key: 'flatPages', icon: Files },
             { href: '/admin/redirects', key: 'redirects', icon: Shuffle },
+            { href: '/admin/name-styles', key: 'nameStylesNav', icon: Palette },
             { href: '/admin/misc-configs', key: 'miscConfigs', icon: Settings },
             { href: '/admin/audit-logs', key: 'auditLog', icon: History },
         ],
