@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { APIResponse, Submission, PaginatedList } from '@/types';
+import { APIResponse, Submission, PaginatedList, ContestDetail } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
@@ -60,17 +60,47 @@ export default function SubmissionListPage() {
     // adjustment runs during render (React's documented pattern) so the first
     // query already uses the new value.
     const urlUser = searchParams.get('user');
+    const urlBest = searchParams.get('best') === '1';
+    const urlContest = searchParams.get('contest') ?? '';
+    const urlProblem = searchParams.get('problem') ?? '';
     const [userFilter, setUserFilter] = useState(urlUser ?? '');
-    const [problemFilter, setProblemFilter] = useState('');
+    const [problemFilter, setProblemFilter] = useState(urlProblem);
     const [resultFilters, setResultFilters] = useState<string[]>([]);
     const [langFilters, setLangFilters] = useState<string[]>([]);
     const [orgFilter, setOrgFilter] = useState('');
+    // `best=1` comes from the problem page's "Best solutions" link; it is a
+    // mode, not a filter the visitor edits here.
+    const [bestOnly, setBestOnly] = useState(urlBest);
     const [seenUrlUser, setSeenUrlUser] = useState(urlUser);
     if (urlUser !== seenUrlUser) {
         setSeenUrlUser(urlUser);
         setUserFilter(urlUser ?? '');
         setPage(1);
     }
+    const [seenUrlProblem, setSeenUrlProblem] = useState(urlProblem);
+    if (urlProblem !== seenUrlProblem) {
+        setSeenUrlProblem(urlProblem);
+        setProblemFilter(urlProblem);
+        setPage(1);
+    }
+    const [seenUrlBest, setSeenUrlBest] = useState(urlBest);
+    if (urlBest !== seenUrlBest) {
+        setSeenUrlBest(urlBest);
+        setBestOnly(urlBest);
+        setPage(1);
+    }
+    // `?contest=<key>` scopes the list to one contest (v1's contest submission
+    // pages). It is a mode like best: the visitor cannot edit it here.
+    const contestFilter = urlContest;
+
+    const { data: contest } = useQuery({
+        queryKey: ['contest', contestFilter],
+        queryFn: async () => {
+            const res = await api.get<ContestDetail>(`/contest/${contestFilter}`);
+            return res.data;
+        },
+        enabled: !!contestFilter,
+    });
 
     const { data: languages } = useQuery({
         queryKey: ['languages'],
@@ -93,7 +123,7 @@ export default function SubmissionListPage() {
     });
 
     const { data, isLoading } = useQuery({
-        queryKey: ['submissions', page, pageSize, userFilter, problemFilter, resultFilters, langFilters, orgFilter],
+        queryKey: ['submissions', page, pageSize, userFilter, problemFilter, resultFilters, langFilters, orgFilter, bestOnly, contestFilter],
         queryFn: async () => {
             const res = await api.get<PaginatedList<Submission>>('/submissions', {
                 params: buildSubmissionListParams({
@@ -102,6 +132,8 @@ export default function SubmissionListPage() {
                     results: resultFilters,
                     languages: langFilters,
                     organization: orgFilter,
+                    contest: contestFilter,
+                    best: bestOnly,
                     page,
                     pageSize,
                 })
@@ -137,6 +169,24 @@ export default function SubmissionListPage() {
                         {t('title')}
                     </h1>
                     <p className="text-muted-foreground font-medium opacity-80">{t('subtitle')}</p>
+                    {bestOnly && (
+                        <Badge variant="warning" title={t('bestModeHint')}>
+                            {t('bestModeBadge')}
+                        </Badge>
+                    )}
+                    {contestFilter && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" title={t('contestModeHint')}>
+                                {t('contestModeBadge')}
+                            </Badge>
+                            <Link
+                                href={`/contest/${contestFilter}`}
+                                className="text-sm font-medium text-primary hover:underline"
+                            >
+                                {contest?.name ?? contestFilter}
+                            </Link>
+                        </div>
+                    )}
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3">

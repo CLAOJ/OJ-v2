@@ -23,9 +23,12 @@ import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 import { blogFeedApi } from '@/lib/api';
+import { FilePlus2 } from 'lucide-react';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function BlogListPage() {
     const t = useTranslations('Blog');
+    const { user } = useAuth();
 
     const { data: blogData, isLoading: isBlogsLoading } = useQuery({
         queryKey: ['blogs'],
@@ -56,10 +59,21 @@ export default function BlogListPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-12 pb-20 mt-4">
             <header className="space-y-4">
-                <h1 className="text-5xl md:text-6xl font-semibold tracking-tighter flex items-center gap-6">
-                    <Newspaper className="text-primary" size={60} />
-                    {t('title')}
-                </h1>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h1 className="text-5xl md:text-6xl font-semibold tracking-tighter flex items-center gap-6">
+                        <Newspaper className="text-primary" size={60} />
+                        {t('title')}
+                    </h1>
+                    {user && (
+                        <Link
+                            href="/post/new"
+                            className="inline-flex items-center gap-2 h-10 px-5 rounded-md bg-primary text-primary-foreground font-medium"
+                        >
+                            <FilePlus2 size={18} />
+                            {t('newPost')}
+                        </Link>
+                    )}
+                </div>
                 <p className="text-xl text-muted-foreground font-semibold opacity-80 max-w-2xl">
                     {t('subtitle')}
                 </p>

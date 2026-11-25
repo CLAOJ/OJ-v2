@@ -8,6 +8,7 @@ import { adminOrganizationApi, adminProblemApi, adminUserApi } from '@/lib/admin
 import { problemFormToUpdate, problemToFormData } from '@/lib/adminForms';
 import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
+import { CloneProblemButton } from '@/components/admin/CloneProblemModal';
 import { Code2, ArrowLeft, Database, MessageSquare, BookOpen, SlidersHorizontal, Languages } from 'lucide-react';
 import { Link } from '@/navigation';
 
@@ -130,6 +131,7 @@ export default function EditProblemPage() {
                     <SlidersHorizontal size={18} />
                     {t('problems.languageLimitsLink')}
                 </Link>
+                <CloneProblemButton code={code} name={problemData?.name ?? code} />
             </div>
 
             {/* Form */}

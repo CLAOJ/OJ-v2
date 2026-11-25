@@ -4,12 +4,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { adminProblemDataApi, adminProblemApi } from '@/lib/adminApi';
-import { ArrowLeft, Database, Upload, Trash2, Edit2, FileText, Check, X, Loader2, Eye } from 'lucide-react';
+import { ArrowLeft, Database, Upload, Trash2, Edit2, FileText, Check, X, Loader2, Eye, GitCompare } from 'lucide-react';
 import { Link } from '@/navigation';
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FilesTab, ConfigTab, PdfTab } from '@/components/admin/problem-data';
+import { CloneProblemButton } from '@/components/admin/CloneProblemModal';
 
 interface TestCaseWithContent {
     id: number;
@@ -193,12 +194,20 @@ export default function ProblemDataPage() {
                     </p>
                 </div>
                 <Link
+                    href={`/admin/problems/${code}/diff`}
+                    className="px-4 py-2 rounded-xl border hover:bg-muted transition-colors flex items-center gap-2"
+                >
+                    <GitCompare size={18} />
+                    {t('problems.diffLink')}
+                </Link>
+                <Link
                     href={`/admin/problems/${code}/edit`}
                     className="px-4 py-2 rounded-xl border hover:bg-muted transition-colors flex items-center gap-2"
                 >
                     <Edit2 size={18} />
                     {t('problems.editProblemTitle')}
                 </Link>
+                <CloneProblemButton code={code} name={problem?.name ?? code} />
             </div>
 
             {/* Tabs */}

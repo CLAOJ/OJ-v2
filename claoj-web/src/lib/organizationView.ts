@@ -24,6 +24,16 @@ export const DEFAULT_MEMBER_SORT: { sort: OrgMemberSort; order: 'desc' } = {
     order: 'desc',
 };
 
+/** v1 OrganizationRequestView (pending) + OrganizationRequestLog (log). */
+export type OrgRequestTab = 'P' | 'A' | 'R' | 'log';
+
+const ORG_REQUEST_TABS: OrgRequestTab[] = ['P', 'A', 'R', 'log'];
+
+/** `?state=` value → a known request tab; anything else is pending. */
+export function parseOrgRequestTab(value: string | null | undefined): OrgRequestTab {
+    return ORG_REQUEST_TABS.includes(value as OrgRequestTab) ? (value as OrgRequestTab) : 'P';
+}
+
 /** v1's default problem order is -date (newest first). */
 export const DEFAULT_PROBLEM_SORT: { sort: OrgProblemSort; order: 'desc' } = {
     sort: 'date',

@@ -3,6 +3,7 @@
 import React from 'react';
 import { PasswordChangeForm } from './account/PasswordChangeForm';
 import { EmailVerificationSection } from './account/EmailVerificationSection';
+import { EmailChangeSection } from './account/EmailChangeSection';
 import { TwoFactorSection } from './account/TwoFactorSection';
 import { DangerZone } from './account/DangerZone';
 
@@ -12,6 +13,8 @@ export default function AccountSettingsTab() {
             <PasswordChangeForm />
             <hr className="border-border" />
             <EmailVerificationSection />
+            <hr className="border-border" />
+            <EmailChangeSection />
             <hr className="border-border" />
             <TwoFactorSection />
             <hr className="border-destructive/50" />

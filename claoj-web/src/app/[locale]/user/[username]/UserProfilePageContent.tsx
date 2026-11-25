@@ -456,12 +456,21 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                                 className="space-y-6"
                             >
                                 <div className="bg-card border rounded-md p-4 shadow-sm">
-                                    <h3 className="text-xl font-semibold tracking-tight mb-6 flex items-center gap-2">
-                                        {t('blogs')}
-                                        {typeof blogData?.total === 'number' && (
-                                            <Badge variant="secondary" className="font-medium">{blogData.total}</Badge>
-                                        )}
-                                    </h3>
+                                    <div className="flex items-center justify-between gap-2 mb-6">
+                                        <h3 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                                            {t('blogs')}
+                                            {typeof blogData?.total === 'number' && (
+                                                <Badge variant="secondary" className="font-medium">{blogData.total}</Badge>
+                                            )}
+                                        </h3>
+                                        <Link
+                                            href={`/user/${user.username}/blog`}
+                                            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                                        >
+                                            {t('viewAllBlogs')}
+                                            <ArrowUpRight size={14} />
+                                        </Link>
+                                    </div>
                                     {blogsLoading ? (
                                         <div className="space-y-3">
                                             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}

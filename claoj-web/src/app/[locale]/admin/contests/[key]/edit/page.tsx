@@ -7,6 +7,7 @@ import { adminContestApi } from '@/lib/adminApi';
 import { contestToFormData, contestFormToUpdate } from '@/lib/adminForms';
 import { type ContestFormData } from '@/components/admin/ContestForm';
 import ContestForm from '@/components/admin/ContestForm';
+import { CloneContestButton } from '@/components/admin/CloneContestModal';
 import { Trophy, ArrowLeft, Lock, Unlock, Users, Megaphone } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/Button';
@@ -125,6 +126,7 @@ export default function EditContestPage() {
                         <Megaphone size={18} />
                         {t('contests.announcementsLink')}
                     </Link>
+                    <CloneContestButton contestKey={key} contestName={contestData.name} />
                 </div>
             </div>
 

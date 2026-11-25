@@ -33,6 +33,10 @@ import {
     Shuffle,
     ArrowLeft,
     ChevronRight,
+    GraduationCap,
+    ClipboardList,
+    Lock,
+    ThumbsUp,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -59,8 +63,11 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
             { href: '/admin/registrations', key: 'registrations', icon: MailCheck },
             { href: '/admin/groups', key: 'groups', icon: Shield },
             { href: '/admin/organizations', key: 'organizations', icon: Building2 },
+            { href: '/admin/classes', key: 'classes', icon: GraduationCap },
+            { href: '/admin/organization-requests', key: 'organizationRequests', icon: ClipboardList },
             { href: '/admin/tickets', key: 'tickets', icon: Ticket },
             { href: '/admin/comments', key: 'comments', icon: MessageSquare },
+            { href: '/admin/comment-locks', key: 'commentLocks', icon: Lock },
         ],
     },
     {
@@ -70,6 +77,7 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
             { href: '/admin/judges', key: 'judges', icon: Server },
             { href: '/admin/languages', key: 'languages', icon: Terminal },
             { href: '/admin/language-limits', key: 'languageLimits', icon: Settings2 },
+            { href: '/admin/points-votes', key: 'pointsVotes', icon: ThumbsUp },
             { href: '/admin/moss', key: 'moss', icon: ScanSearch },
         ],
     },

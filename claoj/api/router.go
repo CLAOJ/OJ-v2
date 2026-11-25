@@ -197,6 +197,8 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/problem/:code/data/file/*path", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFileDelete)
 			admin.GET("/admin/problem/:code/data/testcase/:id/content", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseContent)
 			admin.PATCH("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseUpdate)
+			// Problem Submission Diff Matrix
+			admin.GET("/admin/problem/:code/diff", auth.RequireProblemEdit(), v2.AdminProblemSubmissionDiff)
 
 			// Solutions
 			admin.GET("/admin/solutions", v2.AdminSolutionList)
@@ -219,6 +221,18 @@ func NewRouter() *gin.Engine {
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)
 			admin.GET("/admin/classes", v2.AdminClassList)
+			admin.GET("/admin/class/:id", v2.AdminClassDetail)
+			admin.POST("/admin/classes", auth.RequirePerm("judge.add_class"), v2.AdminClassCreate)
+			admin.PATCH("/admin/class/:id", auth.RequirePerm("judge.change_class"), v2.AdminClassUpdate)
+			admin.DELETE("/admin/class/:id", auth.RequirePerm("judge.delete_class"), v2.AdminClassDelete)
+			// Read-only v1 screens (ProblemPointsVoteAdmin / OrganizationRequestAdmin)
+			admin.GET("/admin/points-votes", v2.AdminPointsVoteList)
+			admin.GET("/admin/organization-requests", v2.AdminOrganizationRequestList)
+			// Comment locks (v1 judge_commentlock)
+			admin.GET("/admin/comment-locks", v2.AdminCommentLockList)
+			admin.POST("/admin/comment-locks", v2.AdminCommentLockCreate)
+			admin.PATCH("/admin/comment-lock/:id", v2.AdminCommentLockUpdate)
+			admin.DELETE("/admin/comment-lock/:id", v2.AdminCommentLockDelete)
 			admin.GET("/admin/organization/:id", v2.AdminOrganizationDetail)
 			admin.POST("/admin/organizations", auth.RequirePerm("judge.add_organization"), v2.AdminOrganizationCreate)
 			admin.PATCH("/admin/organization/:id", auth.RequireOrgEdit(), v2.AdminOrganizationUpdate)
@@ -340,8 +354,10 @@ func NewRouter() *gin.Engine {
 		// Suggestions awaiting review (judge.suggest_new_problem), and the
 		// public taxonomy the problem-list filters are built from.
 		apiv2.GET("/problems/suggest", v2.SuggestProblemList)
+		apiv2.GET("/license/:key", v2.PublicLicenseDetail)
 		apiv2.GET("/problem-groups", v2.ProblemGroupList)
 		apiv2.GET("/problem-types", v2.ProblemTypeList)
+		apiv2.GET("/licenses", v2.LicenseList)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
@@ -359,10 +375,12 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/events", events.ServeWS)
 
 		apiv2.GET("/contests", contestHandlers.ContestList)
+		apiv2.GET("/contest-tags", v2.ContestTagList)
 		apiv2.GET("/contests/calendar", v2.ContestCalendar)
 		apiv2.GET("/contest/:key", contestHandlers.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
 		apiv2.GET("/contest/:key/ranking/pdf", v2.ContestRankingPDF)
+		apiv2.GET("/contest/:key/rank/:problem", v2.ContestProblemRank)
 		apiv2.GET("/contest/:key/stats", contestHandlers.ContestStats)
 		apiv2.GET("/contest/:key/stats/public", contestHandlers.ContestPublicStats)
 		apiv2.GET("/contest/:key/participations", contestHandlers.ParticipationList)
@@ -389,6 +407,10 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/organization/:id/submissions", v2.OrganizationSubmissionList)
 		apiv2.GET("/languages", v2.LanguageList)
 		apiv2.GET("/judges", v2.JudgeList)
+		// v1 /runtimes + /runtimes/matrix (public; non-staff see only runtimes
+		// reported by online judges)
+		apiv2.GET("/runtimes", v2.RuntimeList)
+		apiv2.GET("/runtimes/matrix", v2.RuntimeMatrix)
 
 		// Stats
 		apiv2.GET("/stats/languages", v2.LanguageStats)
@@ -446,6 +468,12 @@ func NewRouter() *gin.Engine {
 			// public /auth/password/reset* pair, which is the forgot-password
 			// flow for users who can't sign in.
 			protected.POST("/auth/password/change", authHandlers.PasswordChange)
+			// Self-service email change (settings Account tab): start mails a
+			// one-time link, confirm redeems it for the logged-in account.
+			protected.POST("/auth/email/change", v2.EmailChangeStart)
+			protected.POST("/auth/email/change/confirm", v2.EmailChangeConfirm)
+			// Hidden problem suggestions (v1 ProblemSuggest form).
+			protected.POST("/problems/suggest", auth.RequirePerm("judge.suggest_new_problem"), v2.SuggestProblemCreate)
 
 			// TOTP/2FA management (requires an authenticated session).
 			// Previously mis-registered in the public group before the auth
@@ -477,6 +505,8 @@ func NewRouter() *gin.Engine {
 		protected.GET("/user/export/download/:export_id", v2.UserExportDownload)
 
 			protected.POST("/contest/:key/join", v2.ContestJoin)
+			protected.POST("/contest/:key/leave", v2.ContestLeave)
+			protected.POST("/submission/:id/abort", v2.SubmissionAbort)
 			protected.GET("/user/contests", contestHandlers.UserParticipationList)
 
 			// Tickets
@@ -499,8 +529,12 @@ func NewRouter() *gin.Engine {
 
 			// Blogs
 			protected.POST("/blog/:id/vote", v2.BlogVoteHandler)
+			// Public blog authoring (v1 /post/new, /post/<id>/edit).
+			protected.POST("/blogs", v2.PublicBlogPostCreate)
+			protected.PATCH("/blog/:id", v2.PublicBlogPostUpdate)
 
 			// Organizations
+			protected.POST("/organizations", v2.PublicOrganizationCreate)
 			protected.PATCH("/organization/:id", v2.UpdateOrganization)
 			protected.POST("/organization/:id/join", v2.JoinOrganization)
 			protected.POST("/organization/:id/leave", v2.LeaveOrganization)
@@ -508,6 +542,11 @@ func NewRouter() *gin.Engine {
 			protected.GET("/organization/:id/requests", v2.OrganizationRequestList)
 			protected.POST("/organization/request/:rid/handle", v2.HandleOrganizationRequest)
 			protected.POST("/organization/:id/kick", v2.KickUser)
+			// Org-admin scoped content creation (v1 *CreateOrganization views):
+			// create permission + org-admin membership, organization forced.
+			protected.POST("/organization/:id/problems", v2.OrganizationProblemCreate)
+			protected.POST("/organization/:id/contests", v2.OrganizationContestCreate)
+			protected.POST("/organization/:id/blog-posts", v2.OrganizationBlogPostCreate)
 
 			// Notifications
 			protected.GET("/notifications", v2.NotificationList)

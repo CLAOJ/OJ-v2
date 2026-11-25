@@ -1,17 +1,26 @@
 package v2
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/contribution"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/service/blogpost"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// blogMinProblemCount mirrors v1 settings.CLAOJ_BLOG_MIN_PROBLEM_COUNT: a
+// personal post needs this many solved problems (superusers are exempt).
+const blogMinProblemCount = 10
 
 // BlogList – GET /api/v2/blogs
 // Optional filters: ?organization=<id>, ?author=<username|profile id>.
@@ -133,17 +142,221 @@ func BlogDetail(c *gin.Context) {
 		authorDTOs[i] = AuthorDTO{a.User.Username}
 	}
 
+	// can_edit drives the "edit post" link on the post page; it is the same
+	// gate PublicBlogPostUpdate applies (author, org admin, or staff).
+	canEdit := false
+	if profileID, ok := auth.CurrentProfileID(c); ok && profileID > 0 {
+		canEdit = canEditBlog(db.DB, &post, profileID) || auth.HasPerm(c, "judge.edit_all_post")
+	}
+
+	organizationID := post.OrganizationID
+	organizationName := ""
+	if post.Organization != nil {
+		organizationName = post.Organization.Name
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":         post.ID,
-		"title":      post.Title,
-		"slug":       post.Slug,
-		"content":    post.Content,
-		"publish_on": post.PublishOn,
-		"summary":    post.Summary,
-		"score":      post.Score,
-		"sticky":     post.Sticky,
-		"authors":    authorDTOs,
+		"id":                post.ID,
+		"title":             post.Title,
+		"slug":              post.Slug,
+		"content":           post.Content,
+		"publish_on":        post.PublishOn,
+		"summary":           post.Summary,
+		"score":             post.Score,
+		"sticky":            post.Sticky,
+		"visible":           post.Visible,
+		"organization_id":   organizationID,
+		"organization_name": organizationName,
+		"can_edit":          canEdit,
+		"authors":           authorDTOs,
 	})
+}
+
+// ============================================================
+// PUBLIC BLOG AUTHORING (v1 /post/new, /post/<id>/edit)
+// ============================================================
+
+// PublicBlogPostCreateRequest is the v1 BlogPostForm: title, publish_on,
+// visible, content. The organization is chosen on the form when the author
+// will post as one of their organizations.
+type PublicBlogPostCreateRequest struct {
+	Title          string     `json:"title" binding:"required"`
+	Content        string     `json:"content" binding:"required"`
+	PublishOn      *time.Time `json:"publish_on"`
+	Visible        *bool      `json:"visible"`
+	OrganizationID *uint      `json:"organization_id"`
+}
+
+// PublicBlogPostCreate – POST /api/v2/blogs
+// v1 BlogPostCreate gate: a personal post needs blogMinProblemCount solved
+// problems (or a superuser); posting as an organization needs its admin
+// instead (v1's organization create view skips the problem-count check).
+func PublicBlogPostCreate(c *gin.Context) {
+	_, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	var req PublicBlogPostCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		return
+	}
+
+	if req.OrganizationID != nil {
+		var count int64
+		db.DB.Model(&models.Organization{}).Where("id = ?", *req.OrganizationID).Count(&count)
+		if count == 0 {
+			c.JSON(http.StatusBadRequest, apiUserError("organization not found"))
+			return
+		}
+		if !isOrgAdmin(db.DB, *req.OrganizationID, profile.ID) {
+			c.JSON(http.StatusForbidden, apiUserError("only the organization's administrators can post as it"))
+			return
+		}
+	} else if profile.ProblemCount < blogMinProblemCount && !auth.GetAccess(c).IsSuperuser {
+		c.JSON(http.StatusForbidden, apiUserError("you need to solve at least "+
+			strconv.Itoa(blogMinProblemCount)+" problems to create a blog post"))
+		return
+	}
+
+	publishOn := time.Now()
+	if req.PublishOn != nil {
+		publishOn = *req.PublishOn
+	}
+	visible := false
+	if req.Visible != nil {
+		visible = *req.Visible
+	}
+
+	// v1 derives the initial slug from the title (letters and digits only) and
+	// does not carry the form's publish_on; an empty derivation falls back to
+	// "post".
+	post, err := getBlogPostService().CreateBlogPost(blogpost.CreateBlogPostRequest{
+		Title:          req.Title,
+		Slug:           uniqueBlogSlug(req.Title),
+		Content:        req.Content,
+		PublishOn:      publishOn,
+		Visible:        visible,
+		AuthorIDs:      []uint{profile.ID},
+		OrganizationID: req.OrganizationID,
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":   "blog post created",
+		"blog_post": gin.H{"id": post.ID, "slug": post.Slug},
+	})
+}
+
+// PublicBlogPostUpdateRequest is the editable part of a post.
+type PublicBlogPostUpdateRequest struct {
+	Title     *string    `json:"title"`
+	Content   *string    `json:"content"`
+	PublishOn *time.Time `json:"publish_on"`
+	Visible   *bool      `json:"visible"`
+	// Raw so an explicit null (detach from the organization) differs from an
+	// omitted key (leave it unchanged).
+	OrganizationID json.RawMessage `json:"organization_id"`
+}
+
+// PublicBlogPostUpdate – PATCH /api/v2/blog/:id
+// Authors edit their own posts; an organization's admins (and holders of
+// judge.edit_all_post) may edit its posts.
+func PublicBlogPostUpdate(c *gin.Context) {
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
+	_, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+
+	var post models.BlogPost
+	if err := db.DB.First(&post, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiUserError("blog post not found"))
+		return
+	}
+	staffEdit := auth.HasPerm(c, "judge.edit_all_post")
+	if !staffEdit && !canEditBlog(db.DB, &post, profile.ID) {
+		c.JSON(http.StatusForbidden, apiUserError("you cannot edit this blog post"))
+		return
+	}
+
+	var req PublicBlogPostUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		return
+	}
+
+	organizationID, clearOrganization, validOrg := parseOrgID(req.OrganizationID)
+	if !validOrg {
+		c.JSON(http.StatusBadRequest, apiUserError("invalid organization_id"))
+		return
+	}
+	// An echoed value is not a change: an author who is not the organization's
+	// admin may resubmit the form without tripping the gate.
+	changingOrg := clearOrganization || (organizationID != nil &&
+		(post.OrganizationID == nil || *post.OrganizationID != *organizationID))
+	if changingOrg && organizationID != nil && !staffEdit {
+		var count int64
+		db.DB.Model(&models.Organization{}).Where("id = ?", *organizationID).Count(&count)
+		if count == 0 {
+			c.JSON(http.StatusBadRequest, apiUserError("organization not found"))
+			return
+		}
+		if !isOrgAdmin(db.DB, *organizationID, profile.ID) {
+			c.JSON(http.StatusForbidden, apiUserError("only the organization's administrators can post as it"))
+			return
+		}
+	}
+
+	updated, err := getBlogPostService().UpdateBlogPost(blogpost.UpdateBlogPostRequest{
+		BlogPostID:        post.ID,
+		Title:             req.Title,
+		Content:           req.Content,
+		PublishOn:         req.PublishOn,
+		Visible:           req.Visible,
+		OrganizationID:    organizationID,
+		ClearOrganization: clearOrganization,
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "blog post updated",
+		"blog_post": gin.H{"id": updated.ID, "slug": updated.Slug},
+	})
+}
+
+// uniqueBlogSlug derives v1's title-based slug ("letters and digits only")
+// and appends -2, -3, … when that slug is already taken.
+func uniqueBlogSlug(title string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(title) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	base := b.String()
+	if base == "" {
+		base = "post"
+	}
+	slug := base
+	for i := 2; ; i++ {
+		var count int64
+		db.DB.Model(&models.BlogPost{}).Where("slug = ?", slug).Count(&count)
+		if count == 0 {
+			return slug
+		}
+		slug = base + "-" + strconv.Itoa(i)
+	}
 }
 
 // BlogVoteHandler – POST /api/v2/blog/:id/vote

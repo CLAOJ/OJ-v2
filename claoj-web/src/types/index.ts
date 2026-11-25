@@ -58,6 +58,22 @@ export interface ProblemDetail extends Problem {
     is_solved: boolean;
     is_attempted: boolean;
     pdf_url?: string;
+    /** v1 problem.html license link: /license/<key>, labelled display or name. */
+    license?: LicenseRef | null;
+}
+
+/** A judge_license row as the problem page needs it. */
+export interface LicenseRef {
+    id: number;
+    key: string;
+    name: string;
+    link: string;
+    display: string;
+}
+
+export interface LicenseDetail extends LicenseRef {
+    icon: string;
+    text: string;
 }
 
 export interface Submission {
@@ -126,6 +142,16 @@ export interface User {
     impersonator_username?: string;
     rating?: number | null;
     performance_points?: number;
+    /** GET /user/me: the caller's own profile stats (blog gate, etc.). */
+    profile?: {
+        points?: number;
+        rating?: number | null;
+        about?: string | null;
+        timezone?: string;
+        problem_count?: number;
+    };
+    /** GET /user/me: organizations the caller administers (post-as choices). */
+    admin_of?: { id: number; name: string; slug: string }[];
 }
 
 export interface UserDetail {
@@ -184,6 +210,8 @@ export interface ContestDetail extends Contest {
     description: string;
     summary: string;
     is_joined: boolean;
+    /** v1 profile.current_contest points at this contest (join/leave session). */
+    is_in_contest?: boolean;
     problems: {
         code: string;
         name: string;
@@ -227,9 +255,34 @@ export interface BreakdownItem {
 
 export interface RankingResponse {
     contest: string;
-    problems: { label: string; points: number }[];
+    problems: { code?: string; label: string; points: number }[];
     rankings: RankingRow[];
     /** Set when scoreboard_visibility hides the standings for now. */
+    scoreboard_hidden?: boolean;
+}
+
+/** One row of GET /contest/:key/rank/:problem (v1 ContestRankedSubmission). */
+export interface ContestProblemRankRow {
+    rank: number;
+    id: number;
+    user: string;
+    display_name: string;
+    points: number;
+    time: number | null;
+    memory: number | null;
+    language: string;
+    date: string;
+    result: string | null;
+    status: string;
+}
+
+/** GET /contest/:key/rank/:problem: best submission per user for one problem. */
+export interface ContestProblemRankResponse {
+    contest: string;
+    contest_name?: string;
+    problem: { code: string; label: string; points: number; name?: string };
+    data: ContestProblemRankRow[];
+    total: number;
     scoreboard_hidden?: boolean;
 }
 
@@ -277,6 +330,29 @@ export interface BlogPost {
 
 export interface BlogPostDetail extends BlogPost {
     content: string;
+    /** Publish state + owning organization, for the author's edit form. */
+    organization_id?: number | null;
+    organization_name?: string;
+    /** True when the viewer may edit (author, org admin, or staff). */
+    can_edit?: boolean;
+}
+
+/** POST /blogs — v1 BlogPostForm fields. */
+export interface BlogPostCreateRequest {
+    title: string;
+    content: string;
+    publish_on?: string;
+    visible?: boolean;
+    organization_id?: number | null;
+}
+
+/** PATCH /blog/:id — null detaches the post from its organization. */
+export interface BlogPostUpdateRequest {
+    title?: string;
+    content?: string;
+    publish_on?: string;
+    visible?: boolean;
+    organization_id?: number | null;
 }
 
 export interface BlogFeedItem {
@@ -829,15 +905,44 @@ export interface AdminOrganizationDetail extends AdminOrganization {
     admins: { id: number; username: string }[];
 }
 
-/** GET /admin/classes row (picker source for contest class ids). */
+/** GET /admin/classes row (picker source for contest class ids + class list). */
 export interface AdminClass {
     id: number;
     name: string;
     slug: string;
+    description: string;
     is_active: boolean;
+    access_code: string | null;
     organization_id: number;
     organization_name: string;
+    admin_count: number;
+    member_count: number;
 }
+
+/** A profile reference in a class's admins/members lists. */
+export interface ClassPersonRef {
+    id: number;
+    username: string;
+}
+
+/** GET /admin/class/:id - the editable shape. */
+export interface AdminClassDetail extends AdminClass {
+    admins: ClassPersonRef[];
+    members: ClassPersonRef[];
+}
+
+export interface AdminClassCreateRequest {
+    name: string;
+    slug?: string;
+    organization_id: number;
+    description?: string;
+    is_active?: boolean;
+    access_code?: string | null;
+    admin_ids?: number[];
+    member_ids?: number[];
+}
+
+export type AdminClassUpdateRequest = Partial<Omit<AdminClassCreateRequest, 'organization_id'>>;
 
 export interface AdminSubmission {
     id: number;
@@ -898,6 +1003,32 @@ export interface AdminSubmissionDetail {
     contest_name: string;
     source: string;
     test_cases: AdminSubmissionTestCase[];
+}
+
+/** GET /admin/problem/:code/diff — one row per submission, per-test-case results. */
+export interface AdminProblemDiffCase {
+    case: number;
+    status: string;
+    points: number | null;
+    total: number | null;
+}
+
+export interface AdminProblemDiffSubmission {
+    id: number;
+    user: string;
+    date: string;
+    language: string;
+    status: string;
+    result: string | null;
+    points: number | null;
+    time: number | null;
+    cases: AdminProblemDiffCase[];
+}
+
+export interface AdminProblemDiffResponse {
+    problem: string;
+    problem_name: string;
+    submissions: AdminProblemDiffSubmission[];
 }
 
 /** PATCH /admin/submission/:id */
@@ -1036,8 +1167,26 @@ export interface Organization {
 
 export interface OrganizationDetail extends Organization {
     user_id: number;
+    /** True when the viewer is a member (unlisted members are not in `members`). */
+    viewer_is_member?: boolean;
+    /** True when the viewer administers this organization. */
+    viewer_is_admin?: boolean;
+    /** The viewer's latest join request, if any. */
+    viewer_request?: OrganizationRequest | null;
     members: OrganizationMember[];
     admins: OrganizationMember[];
+}
+
+/** Matches GET /organization/:id/requests rows. */
+export interface OrganizationRequest {
+    id: number;
+    user_id: number;
+    username: string;
+    /** ISO timestamp of the request. */
+    time: string;
+    reason: string;
+    /** P = pending, A = approved, R = rejected. */
+    state: 'P' | 'A' | 'R';
 }
 
 export interface OrganizationMember {
@@ -1931,4 +2080,77 @@ export interface ContestStats {
     average_solve_time: number;
     problems: ContestProblemStats[];
     average_solve_times_by_problem: Record<string, number>;
+}
+
+// ============================================================
+// PHASE 6 ADMIN LEFTOVERS (points votes, org requests, comment locks)
+// ============================================================
+
+/** GET /admin/points-votes row (v1 ProblemPointsVoteAdmin). */
+export interface AdminPointsVote {
+    id: number;
+    points: number;
+    note: string;
+    vote_time: string;
+    voter_id: number;
+    voter: string;
+    problem_id: number;
+    problem: string;
+    problem_name: string;
+}
+
+export type AdminPointsVoteListResponse = AdminListResponse<AdminPointsVote>;
+
+/** GET /admin/organization-requests row (v1 OrganizationRequestAdmin). */
+export interface AdminOrganizationRequest {
+    id: number;
+    username: string;
+    organization_id: number;
+    organization: string;
+    organization_slug: string;
+    /** Django stored state: P pending, A approved, R rejected. */
+    state: 'P' | 'A' | 'R';
+    time: string;
+    reason: string;
+}
+
+export type AdminOrganizationRequestListResponse = AdminListResponse<AdminOrganizationRequest>;
+
+/** GET /admin/comment-locks row (v1 judge_commentlock). */
+export interface AdminCommentLock {
+    id: number;
+    page: string;
+}
+
+export type AdminCommentLockListResponse = AdminListResponse<AdminCommentLock>;
+
+// ============================================================
+// PUBLIC RUNTIME TYPES (v1 /runtimes + /runtimes/matrix)
+// ============================================================
+
+export interface RuntimeEntry {
+    name: string;
+    versions: string[];
+}
+
+export interface RuntimeLanguage {
+    id: number;
+    key: string;
+    name: string;
+    short_name: string | null;
+    description: string;
+    runtimes: RuntimeEntry[];
+}
+
+export interface RuntimeMatrixCell {
+    judge: string;
+    language_id: number;
+    runtimes: RuntimeEntry[];
+    is_latest: boolean;
+}
+
+export interface RuntimeMatrix {
+    judges: string[];
+    languages: { id: number; name: string }[];
+    cells: RuntimeMatrixCell[];
 }

@@ -13,7 +13,8 @@ import {
     ArrowLeft,
     Share2,
     ArrowBigUp,
-    ArrowBigDown
+    ArrowBigDown,
+    FileEdit
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -59,13 +60,24 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
 
     return (
         <div className="max-w-4xl mx-auto space-y-12 pb-20">
-            <Link
-                href="/post"
-                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group"
-            >
-                <ArrowLeft size={18} className=" transition-transform" />
-                {t('backToBlog')}
-            </Link>
+            <div className="flex items-center justify-between">
+                <Link
+                    href="/post"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group"
+                >
+                    <ArrowLeft size={18} className=" transition-transform" />
+                    {t('backToBlog')}
+                </Link>
+                {post.can_edit && (
+                    <Link
+                        href={`/post/${post.id}/edit`}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        <FileEdit size={16} />
+                        {t('editPost')}
+                    </Link>
+                )}
+            </div>
 
             <article className="space-y-10">
                 <header className="space-y-6">

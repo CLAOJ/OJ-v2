@@ -10,9 +10,13 @@ interface StaffSectionProps {
     selected: Record<StaffField, number[]>;
     initialOptions?: Partial<Record<StaffField, EntityOption[]>>;
     onChange: (field: StaffField, ids: number[]) => void;
+    /** Override the staff user search (organization pages). */
+    search?: (term: string) => Promise<EntityOption[]>;
+    /** Cache namespace for the picker results. */
+    queryKey?: string;
 }
 
-export function StaffSection({ selected, initialOptions = {}, onChange }: StaffSectionProps) {
+export function StaffSection({ selected, initialOptions = {}, onChange, search, queryKey = 'users' }: StaffSectionProps) {
     const t = useTranslations('Admin');
     const fields: { field: StaffField; label: string }[] = [
         { field: 'author_ids', label: t('contestForm.authorsLabel') },
@@ -29,8 +33,8 @@ export function StaffSection({ selected, initialOptions = {}, onChange }: StaffS
                     label={label}
                     value={selected[field]}
                     onChange={ids => onChange(field, ids)}
-                    search={searchUsers}
-                    queryKey="users"
+                    search={search ?? searchUsers}
+                    queryKey={queryKey}
                     initialOptions={initialOptions[field]}
                 />
             ))}

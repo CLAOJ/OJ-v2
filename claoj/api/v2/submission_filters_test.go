@@ -99,6 +99,79 @@ func TestSubmissionList_MultiValueAndOrganizationFilters(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, code)
 }
 
+// TestSubmissionList_BestMode covers v1's RankedSubmissions: one row per user,
+// highest points, then fastest time, zero-point rows and unlisted profiles out.
+func TestSubmissionList_BestMode(t *testing.T) {
+	setupAdminSubmissionDB(t)
+
+	_, alice := seedAccount(t, "alice", false, false)
+	_, bob := seedAccount(t, "bob", false, false)
+	_, carol := seedAccount(t, "carol", false, false)
+	_, dave := seedAccount(t, "dave", false, false)
+	require.NoError(t, db.DB.Model(&models.Profile{}).Where("id = ?", carol.ID).
+		Update("is_unlisted", true).Error)
+
+	group := models.ProblemGroup{Name: "g", FullName: "Group"}
+	require.NoError(t, db.DB.Create(&group).Error)
+	problem := models.Problem{Code: "p1", Name: "Problem", GroupID: group.ID, IsPublic: true, TimeLimit: 1, MemoryLimit: 256}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&problem).Error)
+	lang := models.Language{Key: "CPP17", Name: "C++17", Extension: "cpp"}
+	require.NoError(t, db.DB.Create(&lang).Error)
+
+	now := time.Now()
+	seq := 0
+	newSub := func(user models.Profile, points, runTime float64) models.Submission {
+		seq++
+		ac := "AC"
+		s := models.Submission{
+			UserID: user.ID, ProblemID: problem.ID, LanguageID: lang.ID,
+			Date: now.Add(time.Duration(seq) * time.Minute), Status: "D", Result: &ac,
+			Points: &points, Time: &runTime,
+		}
+		require.NoError(t, db.DB.Omit(clause.Associations).Create(&s).Error)
+		return s
+	}
+
+	newSub(alice, 50, 1)    // worse points
+	newSub(alice, 100, 3)   // tied best, slower
+	bestAlice := newSub(alice, 100, 2)
+	newSub(alice, 100, 2) // same points and time: only one row may survive
+	newSub(bob, 100, 1.5)
+	newSub(carol, 100, 0.5) // unlisted profile
+	newSub(dave, 0, 0.5)    // zero points
+
+	t.Run("dedupes ranks and orders", func(t *testing.T) {
+		code, rows, total := listSubmissions(t, "?problem=p1&best=1")
+		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, float64(2), total)
+		require.Len(t, rows, 2)
+		require.Equal(t, "bob", rows[0]["user"])
+		require.Equal(t, "alice", rows[1]["user"])
+		require.Equal(t, float64(bestAlice.ID), rows[1]["id"])
+		require.Equal(t, 100.0, rows[1]["points"])
+	})
+
+	t.Run("total follows the deduped set across pages", func(t *testing.T) {
+		code, rows, total := listSubmissions(t, "?problem=p1&best=1&page_size=1")
+		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, float64(2), total)
+		require.Len(t, rows, 1)
+	})
+
+	t.Run("user filter still applies", func(t *testing.T) {
+		_, rows, total := listSubmissions(t, "?problem=p1&best=1&user=alice")
+		require.Equal(t, float64(1), total)
+		require.Len(t, rows, 1)
+		require.Equal(t, float64(bestAlice.ID), rows[0]["id"])
+	})
+
+	t.Run("plain list is unchanged", func(t *testing.T) {
+		_, rows, total := listSubmissions(t, "?problem=p1")
+		require.Equal(t, float64(7), total)
+		require.Len(t, rows, 7)
+	})
+}
+
 // queryValues is the shared parser behind both filters.
 func TestQueryValues_RepeatedAndCommaSeparated(t *testing.T) {
 	router := authedRouter(0, http.MethodGet, "/probe", func(c *gin.Context) {

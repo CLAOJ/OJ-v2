@@ -14,12 +14,21 @@ import type { ProblemDetail } from '@/types';
  * opens this page and hands off to the browser's print dialog, where the user
  * picks "Save as PDF". The uploaded-PDF path is untouched.
  */
-export default function ProblemPrintView({ problem, autoPrint }: { problem: ProblemDetail; autoPrint: boolean }) {
+export default function ProblemPrintView({
+    problem,
+    autoPrint,
+    raw = false,
+}: {
+    problem: ProblemDetail;
+    autoPrint: boolean;
+    /** Bare statement (v1 /problem/<code>/raw): title, limits, description. */
+    raw?: boolean;
+}) {
     const t = useTranslations('Problems');
     const tPrint = useTranslations('ProblemPrint');
 
     useEffect(() => {
-        if (!autoPrint) return;
+        if (raw || !autoPrint) return;
         let cancelled = false;
         const run = () => { if (!cancelled) window.print(); };
         // Webfonts and KaTeX finish laying out after first paint; printing
@@ -30,10 +39,11 @@ export default function ProblemPrintView({ problem, autoPrint }: { problem: Prob
             run();
         }
         return () => { cancelled = true; };
-    }, [autoPrint]);
+    }, [autoPrint, raw]);
 
     return (
         <div className="problem-print mx-auto max-w-3xl bg-white p-2 print:max-w-none">
+            {!raw && (
             <div className="mb-6 flex items-center justify-between gap-3 print:hidden">
                 <Link
                     href={`/problem/${problem.code}`}
@@ -51,7 +61,19 @@ export default function ProblemPrintView({ problem, autoPrint }: { problem: Prob
                     {tPrint('print')}
                 </button>
             </div>
+            )}
 
+            {raw ? (
+                <div>
+                    <h2 className="text-2xl font-semibold">{problem.name}</h2>
+                    <hr className="my-3" />
+                    <div className="flex flex-wrap justify-center gap-6 py-1 text-sm">
+                        <span><b>{t('timeLimit')}:</b> {problem.time_limit}s</span>
+                        <span><b>{t('memoryLimit')}:</b> {formatMemoryLimit(problem.memory_limit)}</span>
+                    </div>
+                    <hr className="my-3" />
+                </div>
+            ) : (
             <header className="space-y-3 border-b pb-4">
                 <p className="text-xs font-mono text-muted-foreground">{problem.code}</p>
                 <h1 className="text-3xl font-semibold tracking-tight">{problem.name}</h1>
@@ -82,12 +104,13 @@ export default function ProblemPrintView({ problem, autoPrint }: { problem: Prob
                     </p>
                 )}
             </header>
+            )}
 
             <article className="pt-4">
                 <MathRenderer content={problem.description} />
             </article>
 
-            {problem.pdf_url && (
+            {!raw && problem.pdf_url && (
                 <p className="mt-6 border-t pt-3 text-xs text-muted-foreground print:hidden">
                     {tPrint('uploadedPdfNote')}
                 </p>

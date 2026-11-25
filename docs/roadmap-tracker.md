@@ -26,6 +26,7 @@ Live v2: https://beta.claoj.edu.vn · Live v1: https://claoj.edu.vn · Deploy: p
 - Phase 4c: judge tier/capabilities are informational (v2 queue has no tier routing); impersonated refresh family lives 2 h; exit restores a standard 7-day actor family (remember-me not preserved); registrations resend has no rate limit; flat-page `template_name`/`enable_comments` are mapped but not editable; `/api/redirects-map` is a public path-only dump; nav parent picker offers only the loaded page.
 - Phase 5: statement "PDF" is a browser print view (no HTML→PDF engine, no new deps); submission files live on local disk with no cleanup and are public by random name; solved list is AC-only (v1 lists points>0); heatmap is UTC-keyed (v1 uses the viewer's tz); profile blogs tab hides the owner's drafts; `POST /admin/recalculate-points` is synchronous/curl-only (504 risk on large installs, idempotent re-run); contest list groups upcoming/ongoing/past per page; 32 MiB upload body cap; org filter dropdown capped at 100 without search.
 - The points backfill (`POST /api/v2/admin/recalculate-points`, superuser) runs synchronously inside the request and has no admin button: on a large install it can outlive the proxy timeout, so run it once with curl (or the API client) from the server itself and check the JSON counts in the response.
+- Phase 6: public blog authoring (`/post/new`, `/post/<id>/edit`) reuses the markdown textarea but not the admin image-upload button (the upload endpoint is staff-only); title-derived slugs get a `-2`, `-3` suffix when taken; the blog problem-count gate (10) and the organization admin-of limit (3) are constants mirroring the v1 settings, not v2 config.
 
 ## Deliberate scope rulings
 - No org-specific 2FA gate (v1 has none; global middleware only).
@@ -33,3 +34,6 @@ Live v2: https://beta.claoj.edu.vn · Live v1: https://claoj.edu.vn · Deploy: p
 - No organization member manager (v1 admin exposes admins + read-only member count).
 - ProblemGroup "included problems" is read-only (v1 field is a broken FK reverse set).
 - Comment parent cannot be reparented in v2 (no safe MPTT helper).
+- v1's Django Profile admin (`/admin/judge/profile/`) is replaced by `/admin/users` and the tabbed user editor: the same profile, role and security fields, with v1-only admin columns read-only.
+- v1's SubmissionTestCase editor (`/admin/judge/submissiontestcase/`) is replaced by the read-only testcase panel on the admin submission page plus the rejudge action; testcase rows belong to the judge and are not hand-edited.
+- v1 Profile admin's per-object permission matrix is edited per user in the user editor, not as a standalone changelist.

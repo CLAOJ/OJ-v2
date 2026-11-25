@@ -35,6 +35,7 @@ import {
     Users,
     UserPlus,
     UserMinus,
+    UserCheck,
     Shield,
     Crown,
     TrendingUp,
@@ -45,12 +46,17 @@ import {
     Trophy,
     List,
     Lock,
+    Settings,
+    FilePlus,
+    PenLine,
 } from 'lucide-react';
 import { cn, getRankColor, getStatusVariant } from '@/lib/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { hasPerm } from '@/lib/permissions';
+import { toast } from 'sonner';
 
 dayjs.extend(relativeTime);
 
@@ -183,6 +189,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     const [problemSort, setProblemSort] = useState<{ sort: OrgProblemSort; order: 'asc' | 'desc' }>(DEFAULT_PROBLEM_SORT);
     const [tabPage, setTabPage] = useState(1);
     const [tabPageSize, setTabPageSize] = useState(TAB_PAGE_SIZE);
+    const [showRequestForm, setShowRequestForm] = useState(false);
+    const [reason, setReason] = useState('');
     const queryClient = useQueryClient();
 
     // Back/forward changes the query string without remounting; follow it.
@@ -263,7 +271,35 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
         }
     });
 
-    const isMember = org?.members?.some(m => m.username === user?.username);
+    const requestMutation = useMutation({
+        mutationFn: async (reason: string) => {
+            const res = await api.post(`/organization/${id}/request`, { reason });
+            return res.data;
+        },
+        onSuccess: () => {
+            setShowRequestForm(false);
+            setReason('');
+            queryClient.invalidateQueries({ queryKey: ['organization', id] });
+        },
+        onError: (error) => {
+            const message = isAxiosError(error) ? error.response?.data?.error : null;
+            toast.error(message || t('requestFailed'));
+        }
+    });
+
+    // Unlisted members are absent from `members`, so use the viewer flags.
+    const isMember = org?.viewer_is_member ?? false;
+    const isOrgAdmin = org?.viewer_is_admin ?? false;
+    const requestPending = org?.viewer_request?.state === 'P';
+
+    // Mirrors the API gate: create permission + org-admin membership (or the
+    // edit-all bypass).
+    const canCreateProblem = hasPerm(user, 'judge.create_organization_problem')
+        && (isOrgAdmin || hasPerm(user, 'judge.edit_all_problem'));
+    const canCreateContest = hasPerm(user, 'judge.create_private_contest')
+        && (isOrgAdmin || hasPerm(user, 'judge.edit_all_contest'));
+    const canCreateBlog = hasPerm(user, 'judge.edit_organization_post')
+        && (isOrgAdmin || hasPerm(user, 'judge.edit_all_post'));
 
     const handleJoin = () => {
         if (!isAuthenticated) {
@@ -279,6 +315,14 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
             return;
         }
         leaveMutation.mutate();
+    };
+
+    const handleRequest = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!reason.trim()) {
+            return;
+        }
+        requestMutation.mutate(reason.trim());
     };
 
     if (orgLoading) {
@@ -359,8 +403,44 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                             </div>
                         </div>
 
-                        <div className="flex gap-3">
-                            {isAuthenticated && user && !isMember && org.is_open && (
+                        <div className="flex flex-wrap gap-3">
+                            {isOrgAdmin && (
+                                <Link
+                                    href={`/organization/${org.id}-${org.slug}/manage`}
+                                    className="px-4 py-3 rounded-xl border font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                                >
+                                    <Settings size={18} />
+                                    {t('manage')}
+                                </Link>
+                            )}
+                            {canCreateProblem && (
+                                <Link
+                                    href={`/organization/${org.id}-${org.slug}/problem/new`}
+                                    className="px-4 py-3 rounded-xl border font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                                >
+                                    <FilePlus size={18} />
+                                    {t('newProblem')}
+                                </Link>
+                            )}
+                            {canCreateContest && (
+                                <Link
+                                    href={`/organization/${org.id}-${org.slug}/contest/new`}
+                                    className="px-4 py-3 rounded-xl border font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                                >
+                                    <Trophy size={18} />
+                                    {t('newContest')}
+                                </Link>
+                            )}
+                            {canCreateBlog && (
+                                <Link
+                                    href={`/organization/${org.id}-${org.slug}/blog/new`}
+                                    className="px-4 py-3 rounded-xl border font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                                >
+                                    <PenLine size={18} />
+                                    {t('newBlogPost')}
+                                </Link>
+                            )}
+                            {isAuthenticated && !isMember && org.is_open && (
                                 <button
                                     onClick={handleJoin}
                                     disabled={joinMutation.isPending}
@@ -380,13 +460,61 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                     {t('leave')}
                                 </button>
                             )}
-                            {!org.is_open && !isMember && (
+                            {!org.is_open && !isMember && requestPending && (
+                                <Badge className="px-4 py-2 text-xs font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-2">
+                                    <UserCheck size={14} />
+                                    {t('requestPending')}
+                                </Badge>
+                            )}
+                            {!org.is_open && !isMember && !requestPending && isAuthenticated && (
+                                <button
+                                    onClick={() => setShowRequestForm(open => !open)}
+                                    className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                >
+                                    <UserPlus size={18} />
+                                    {t('requestJoin')}
+                                </button>
+                            )}
+                            {!org.is_open && !isMember && !isAuthenticated && (
                                 <Badge className="px-4 py-2 text-xs font-medium bg-muted text-muted-foreground border border-dashed">
                                     {t('inviteOnly')}
                                 </Badge>
                             )}
                         </div>
                     </div>
+
+                    {showRequestForm && !isMember && (
+                        <form onSubmit={handleRequest} className="mb-6 rounded-md border border-dashed bg-muted/20 p-4 space-y-3">
+                            <label htmlFor="join-reason" className="block text-sm font-medium">
+                                {t('requestReason')}
+                            </label>
+                            <textarea
+                                id="join-reason"
+                                value={reason}
+                                onChange={e => setReason(e.target.value)}
+                                required
+                                rows={4}
+                                placeholder={t('requestReasonPlaceholder')}
+                                className="w-full px-3 py-2 rounded-xl bg-card border focus:ring-2 focus:ring-primary/20 outline-none"
+                            />
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRequestForm(false)}
+                                    className="px-4 py-2 rounded-xl border font-medium hover:bg-muted transition-colors"
+                                >
+                                    {tCommon('cancel')}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={requestMutation.isPending || !reason.trim()}
+                                    className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                >
+                                    {t('sendRequest')}
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
                     {org.about && (
                         <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-md p-6 border border-dashed">

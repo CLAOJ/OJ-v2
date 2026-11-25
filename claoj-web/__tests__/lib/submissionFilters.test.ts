@@ -23,6 +23,17 @@ describe('buildSubmissionListParams', () => {
         expect(params.get('language')).toBe('CPP17,PY3');
     });
 
+    it('sends best only when the mode is on', () => {
+        expect(buildSubmissionListParams({ problem: 'P01', best: true }).get('best')).toBe('1');
+        expect(buildSubmissionListParams({ problem: 'P01', best: false }).has('best')).toBe(false);
+        expect(buildSubmissionListParams({ problem: 'P01' }).has('best')).toBe(false);
+    });
+
+    it('sends the contest key only when given', () => {
+        expect(buildSubmissionListParams({ contest: 'cplusplusnc' }).get('contest')).toBe('cplusplusnc');
+        expect(buildSubmissionListParams({}).has('contest')).toBe(false);
+    });
+
     it('passes the user, problem and organization filters through', () => {
         const params = buildSubmissionListParams({
             user: 'alice',

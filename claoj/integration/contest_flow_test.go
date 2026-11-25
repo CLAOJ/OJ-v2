@@ -132,7 +132,8 @@ func TestContestFlow_JoinContest_AlreadyJoined(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp1.Code)
 
-	// Try to join again
+	// Try to join again: v1 re-join resumes the existing participation (and
+	// re-points current_contest at it) instead of failing.
 	resp2 := integration.MakeRequest(t, gin, integration.HTTPRequest{
 		Method: "POST",
 		Path:   "/contest/contest1/join",
@@ -142,8 +143,8 @@ func TestContestFlow_JoinContest_AlreadyJoined(t *testing.T) {
 		Body: map[string]interface{}{},
 	})
 
-	assert.Equal(t, http.StatusConflict, resp2.Code)
-	assert.Equal(t, "already joined", resp2.JSONBody["error"])
+	assert.Equal(t, http.StatusOK, resp2.Code)
+	assert.Equal(t, "successfully joined contest", resp2.JSONBody["message"])
 }
 
 // TestContestFlow_JoinContest_NotActive tests joining a contest before it starts

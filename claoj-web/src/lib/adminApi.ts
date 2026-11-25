@@ -7,6 +7,7 @@ import type {
     AdminContestCreateRequest,
     AdminProblem,
     AdminProblemCreateRequest,
+    AdminProblemDiffResponse,
     AdminJudge,
     AdminJudgeDetail,
     AdminJudgeUpdateRequest,
@@ -14,6 +15,13 @@ import type {
     AdminUserCreateRequest,
     AdminOrganizationDetail,
     AdminClassListResponse,
+    AdminClassDetail,
+    AdminClassCreateRequest,
+    AdminClassUpdateRequest,
+    AdminPointsVoteListResponse,
+    AdminOrganizationRequestListResponse,
+    AdminCommentLock,
+    AdminCommentLockListResponse,
     AdminSubmissionDetail,
     AdminSubmissionUpdateRequest,
     Group,
@@ -331,6 +339,10 @@ export const adminProblemApi = {
     detail: (code: string) =>
         api.get<AdminProblemDetail>(`/admin/problem/${code}`),
 
+    // Setter diff matrix source: every submission's per-test-case results.
+    diff: (code: string, user?: string) =>
+        api.get<AdminProblemDiffResponse>(`/admin/problem/${code}/diff?${qs({ user })}`),
+
     create: (data: AdminProblemCreateRequest) =>
         api.post<{ success: boolean; problem: AdminProblem }>('/admin/problems', data),
 
@@ -442,12 +454,60 @@ export const adminOrganizationApi = {
 };
 
 // ============================================================
-// ADMIN CLASS API (read-only picker source)
+// ADMIN CLASS API (contest picker source + v1 ClassAdmin CRUD)
 // ============================================================
 
 export const adminClassApi = {
-    list: (page: number = 1, pageSize: number = 50, search?: string) =>
-        api.get<AdminClassListResponse>(`/admin/classes?${qs({ page, page_size: pageSize, search })}`),
+    list: (page: number = 1, pageSize: number = 50, search?: string, organizationId?: number) =>
+        api.get<AdminClassListResponse>(`/admin/classes?${qs({ page, page_size: pageSize, search, organization_id: organizationId })}`),
+
+    detail: (id: number) =>
+        api.get<AdminClassDetail>(`/admin/class/${id}`),
+
+    create: (data: AdminClassCreateRequest) =>
+        api.post<{ message: string; class: AdminClassDetail }>('/admin/classes', data),
+
+    update: (id: number, data: AdminClassUpdateRequest) =>
+        api.patch<{ message: string; class: AdminClassDetail }>(`/admin/class/${id}`, data),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/class/${id}`),
+};
+
+// ============================================================
+// ADMIN POINTS VOTES (read-only; v1 ProblemPointsVoteAdmin)
+// ============================================================
+
+export const adminPointsVoteApi = {
+    list: (page: number = 1, pageSize: number = 20, filters: { search?: string; problem?: string } = {}) =>
+        api.get<AdminPointsVoteListResponse>(`/admin/points-votes?${qs({ page, page_size: pageSize, ...filters })}`),
+};
+
+// ============================================================
+// ADMIN ORGANIZATION REQUESTS (read-only; v1 OrganizationRequestAdmin)
+// ============================================================
+
+export const adminOrganizationRequestApi = {
+    list: (page: number = 1, pageSize: number = 20, filters: { search?: string; state?: string } = {}) =>
+        api.get<AdminOrganizationRequestListResponse>(`/admin/organization-requests?${qs({ page, page_size: pageSize, ...filters })}`),
+};
+
+// ============================================================
+// ADMIN COMMENT LOCKS (v1 judge_commentlock)
+// ============================================================
+
+export const adminCommentLockApi = {
+    list: (page: number = 1, pageSize: number = 20, search?: string) =>
+        api.get<AdminCommentLockListResponse>(`/admin/comment-locks?${qs({ page, page_size: pageSize, search })}`),
+
+    create: (page: string) =>
+        api.post<{ message: string; lock: AdminCommentLock }>('/admin/comment-locks', { page }),
+
+    update: (id: number, page: string) =>
+        api.patch<{ message: string; lock: AdminCommentLock }>(`/admin/comment-lock/${id}`, { page }),
+
+    delete: (id: number) =>
+        api.delete<{ message: string }>(`/admin/comment-lock/${id}`),
 };
 
 // ============================================================

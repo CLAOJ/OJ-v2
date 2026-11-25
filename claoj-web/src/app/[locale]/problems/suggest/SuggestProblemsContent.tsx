@@ -9,7 +9,7 @@ import { Link } from '@/navigation';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import { formatDate } from '@/lib/date';
-import { ArrowLeft, ClipboardList, Lock } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Lock, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 export default function SuggestProblemsContent() {
@@ -48,6 +48,15 @@ export default function SuggestProblemsContent() {
                 </h1>
                 <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
             </div>
+
+            {!forbidden && (
+                <Link
+                    href="/problems/suggest/new"
+                    className="w-fit flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-all"
+                >
+                    <Plus size={16} /> {t('newSuggestion')}
+                </Link>
+            )}
 
             {forbidden ? (
                 <div className="p-10 rounded-md bg-card border border-dashed text-center space-y-2">

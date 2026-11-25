@@ -16,6 +16,7 @@ import (
 const (
 	KindPasswordReset = "pwreset"
 	KindEmailVerify   = "emailverify"
+	KindEmailChange   = "emailchange"
 )
 
 // OneTimeStore issues and atomically consumes single-use tokens (password

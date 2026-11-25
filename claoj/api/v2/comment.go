@@ -141,6 +141,13 @@ func CommentCreate(c *gin.Context) {
 		return
 	}
 
+	// v1 judge/comments.py:71 - a locked page refuses new comments unless the
+	// caller holds judge.override_comment_lock.
+	if commentPageLocked(c, req.Page) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "comments are locked on this page"})
+		return
+	}
+
 	// Basic MPTT compatibility logic.
 	// DMOJ uses django-mptt for nested trees. We calculate proper Lft/Rght values
 	// to maintain compatibility with Django's MPTT structure.

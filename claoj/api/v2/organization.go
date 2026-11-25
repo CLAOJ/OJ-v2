@@ -2,8 +2,10 @@ package v2
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -11,6 +13,7 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
 	"github.com/CLAOJ/claoj/scoring"
+	"github.com/CLAOJ/claoj/service/organization"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -182,6 +185,32 @@ func OrganizationDetail(c *gin.Context) {
 		viewerProfileID = pid
 	}
 
+	// Viewer-scoped state for the organization page. Membership cannot be read
+	// off the member table: unlisted profiles are filtered out of it, and the
+	// join/request UI must not offer to join an organization you are in.
+	type viewerRequestInfo struct {
+		ID     uint      `json:"id"`
+		State  string    `json:"state"`
+		Time   time.Time `json:"time"`
+		Reason string    `json:"reason"`
+	}
+	viewerIsMember, viewerIsAdmin := false, false
+	var viewerRequest *viewerRequestInfo
+	if viewerProfileID > 0 {
+		var count int64
+		db.DB.Table("judge_profile_organizations").
+			Where("profile_id = ? AND organization_id = ?", viewerProfileID, org.ID).
+			Count(&count)
+		viewerIsMember = count > 0
+		viewerIsAdmin = isOrgAdmin(db.DB, org.ID, viewerProfileID)
+
+		var req models.OrganizationRequest
+		if err := db.DB.Where("user_id = ? AND organization_id = ?", viewerProfileID, org.ID).
+			Order("time DESC, id DESC").First(&req).Error; err == nil {
+			viewerRequest = &viewerRequestInfo{req.ID, req.State, req.Time, req.Reason}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":                 org.ID,
 		"name":               org.Name,
@@ -194,8 +223,109 @@ func OrganizationDetail(c *gin.Context) {
 		"performance_points": org.PerformancePoints,
 		"creation_date":      org.CreationDate,
 		"user_id":            viewerProfileID,
+		"viewer_is_member":   viewerIsMember,
+		"viewer_is_admin":    viewerIsAdmin,
+		"viewer_request":     viewerRequest,
 		"members":            members,
 		"admins":             admins,
+	})
+}
+
+// PublicOrganizationCreateRequest is the v1 CreateOrganization form: about,
+// logo_override_image, admins (plus the organization's own name/slug, which
+// the v2 form collects explicitly).
+type PublicOrganizationCreateRequest struct {
+	Name              string `json:"name" binding:"required"`
+	Slug              string `json:"slug" binding:"required"`
+	ShortName         string `json:"short_name"`
+	About             string `json:"about"`
+	LogoOverrideImage string `json:"logo_override_image"`
+	Admins            []uint `json:"admins"`
+}
+
+// organizationAdminLimit mirrors v1 settings.CLAOJ_ORGANIZATION_ADMIN_LIMIT:
+// how many organizations one profile may administer before creating more is
+// refused. v1's spam_organization escape hatch can only ever resolve true for
+// a superuser (no such Django permission exists), so superusers are exempt.
+const organizationAdminLimit = 3
+
+// PublicOrganizationCreate – POST /api/v2/organizations
+// v1 CreateOrganization: judge.add_organization, the admin-of limit, and the
+// caller becomes an administrator of the new organization.
+func PublicOrganizationCreate(c *gin.Context) {
+	_, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+	if !auth.HasPerm(c, "judge.add_organization") {
+		c.JSON(http.StatusForbidden, apiUserError("you are not allowed to create new organizations"))
+		return
+	}
+
+	if !auth.GetAccess(c).IsSuperuser {
+		var adminOf int64
+		db.DB.Table("judge_organization_admins").Where("profile_id = ?", profile.ID).Count(&adminOf)
+		if adminOf >= organizationAdminLimit {
+			c.JSON(http.StatusForbidden, apiUserError("you are already an administrator of "+
+				strconv.Itoa(int(adminOf))+" organizations; the limit is "+
+				strconv.Itoa(organizationAdminLimit)))
+			return
+		}
+	}
+
+	var req PublicOrganizationCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		return
+	}
+
+	// v1 sets the short name to the slug's first 20 characters.
+	shortName := req.ShortName
+	if shortName == "" {
+		shortName = req.Slug
+	}
+	if len(shortName) > 20 {
+		shortName = shortName[:20]
+	}
+
+	adminIDs := []uint{profile.ID}
+	for _, id := range req.Admins {
+		if id != profile.ID {
+			adminIDs = append(adminIDs, id)
+		}
+	}
+	missing, err := missingProfileIDs(adminIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if len(missing) > 0 {
+		c.JSON(http.StatusBadRequest, apiUserError(fmt.Sprintf("unknown profile IDs: %v", missing)))
+		return
+	}
+
+	created, err := getOrgService().CreateOrganization(organization.CreateOrganizationRequest{
+		Name:              req.Name,
+		Slug:              req.Slug,
+		ShortName:         shortName,
+		About:             req.About,
+		// v1 defaults a new organization to unlisted and closed.
+		IsUnlisted:        true,
+		LogoOverrideImage: req.LogoOverrideImage,
+		AdminIDs:          adminIDs,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "organization created",
+		"organization": gin.H{
+			"id":   created.ID,
+			"name": created.Name,
+			"slug": created.Slug,
+		},
 	})
 }
 
@@ -427,8 +557,16 @@ func RequestJoinOrganization(c *gin.Context) {
 }
 
 // OrganizationRequestList – GET /api/v2/organization/:id/requests (Admin only)
+// ?state=P (default, pending) | A | R | log (approved+rejected) | all mirrors
+// v1 OrganizationRequestView / OrganizationRequestLog.
 func OrganizationRequestList(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
+	if _, ok := loadOrganization(c); !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -439,21 +577,36 @@ func OrganizationRequestList(c *gin.Context) {
 		return
 	}
 
-	var reqs []models.OrganizationRequest
-	if err := db.DB.Preload("User.User").Where("organization_id = ? AND state = 'P'", id).Find(&reqs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+	// Usernames are resolved with an explicit JOIN: request.user_id is a
+	// judge_profile id and Preload("User.User") guesses has-one here (same
+	// trap as judge_ticket/contest participation).
+	q := db.DB.Table("judge_organizationrequest r").
+		Select("r.id, r.user_id, au.username, r.time, r.reason, r.state").
+		Joins("JOIN judge_profile p ON p.id = r.user_id").
+		Joins("JOIN auth_user au ON au.id = p.user_id").
+		Where("r.organization_id = ?", id)
+	switch state := c.DefaultQuery("state", "P"); state {
+	case "P", "A", "R":
+		q = q.Where("r.state = ?", state)
+	case "log":
+		q = q.Where("r.state IN ?", []string{"A", "R"})
+	case "all":
+	default:
+		c.JSON(http.StatusBadRequest, apiUserError("invalid state"))
 		return
 	}
 
-	type Item struct {
+	var items []struct {
 		ID       uint      `json:"id"`
+		UserID   uint      `json:"user_id"`
 		Username string    `json:"username"`
 		Time     time.Time `json:"time"`
 		Reason   string    `json:"reason"`
+		State    string    `json:"state"`
 	}
-	items := make([]Item, len(reqs))
-	for i, r := range reqs {
-		items[i] = Item{r.ID, r.User.User.Username, r.Time, r.Reason}
+	if err := q.Order("r.time DESC, r.id DESC").Scan(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
 	}
 	c.JSON(http.StatusOK, apiList(items))
 }
@@ -676,6 +829,13 @@ func OrganizationProblemList(c *gin.Context) {
 		Where(visExpr, visArgs...).
 		Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_organizations WHERE organization_id = ?)", org.ID)
 
+	// ?search= narrows by code/name. The org contest form's problem picker
+	// reads the org's problems through this same member-gated list.
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where("(judge_problem.code LIKE ? OR judge_problem.name LIKE ?)", like, like)
+	}
+
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -800,7 +960,7 @@ func OrganizationSubmissionList(c *gin.Context) {
 			"V", time.Now(), "C", "P")
 	}
 
-	writeSubmissionList(c, q, page, pageSize)
+	writeSubmissionList(c, q, page, pageSize, false)
 }
 
 // helpers

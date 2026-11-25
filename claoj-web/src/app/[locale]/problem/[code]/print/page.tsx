@@ -40,12 +40,15 @@ export default async function ProblemPrintPage({
     searchParams,
 }: {
     params: Promise<{ locale: string; code: string }>;
-    searchParams: Promise<{ print?: string }>;
+    searchParams: Promise<{ print?: string; raw?: string }>;
 }) {
     const { code } = await params;
-    const { print } = await searchParams;
+    const { print, raw } = await searchParams;
     const problem = await fetchProblem(code);
     if (!problem) notFound();
 
-    return <ProblemPrintView problem={problem} autoPrint={print === '1'} />;
+    // ?raw=1 is v1's bare /problem/<code>/raw statement: no site chrome and no
+    // auto-print, for embedding or a clean copy.
+    const isRaw = raw === '1';
+    return <ProblemPrintView problem={problem} autoPrint={!isRaw && print === '1'} raw={isRaw} />;
 }
