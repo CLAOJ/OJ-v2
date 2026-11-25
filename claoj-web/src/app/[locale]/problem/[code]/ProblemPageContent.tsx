@@ -40,11 +40,13 @@ import { cn, formatMemoryLimit } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import Comments from '@/components/common/Comments';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { toast } from 'sonner';
 import {
     MAX_TEXT_SOURCE_BYTES,
     problemPrintPath,
     problemReportPath,
+    problemTicketsPath,
     validateSubmissionFile,
     validateTextSourceFile,
 } from '@/lib/submissionFile';
@@ -104,6 +106,36 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
             ?? allowed[0];
         setLanguage(preferred.key);
     }, [problem, language]);
+
+    // v1 /problem/<p>/resubmit/<submission>: prefill the editor from an earlier
+    // submission. The API decides whether this viewer may read it (owner, or
+    // judge.resubmit_other), so a copied link never leaks someone's source.
+    const { user } = useAuth();
+    const resubmitId = searchParams.get('resubmit');
+    const { data: resubmitData } = useQuery({
+        queryKey: ['resubmit', resubmitId],
+        queryFn: async () => {
+            const res = await api.get<{ language: string; source: string }>(
+                `/submission/${resubmitId}/resubmit`
+            );
+            return res.data;
+        },
+        enabled: !!resubmitId && !!user,
+        retry: false
+    });
+    // Applied once per id: after that the editor belongs to the user.
+    const appliedResubmit = useRef<string | null>(null);
+    useEffect(() => {
+        if (!resubmitId || !resubmitData || !problem || appliedResubmit.current === resubmitId) return;
+        appliedResubmit.current = resubmitId;
+        if (!problem.languages.some(l => l.key === resubmitData.language)) {
+            toast.error(t('resubmitFailed'));
+            return;
+        }
+        setLanguage(resubmitData.language);
+        setCodeValue(resubmitData.source);
+        toast.success(t('resubmitLoaded', { id: resubmitId }));
+    }, [resubmitId, resubmitData, problem, t]);
 
     const { data: editorialData } = useQuery({
         queryKey: ['editorial', code],
@@ -319,6 +351,23 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
                     </Link>
                 </div>
+
+                {/* v1 problem.html: "Manage tickets" for editors, "My tickets"
+                    for users who already have one on this problem. */}
+                {(problem.can_edit || problem.has_tickets) && (
+                    <div className="bg-card border rounded-md p-6 shadow-sm">
+                        <Link
+                            href={problemTicketsPath(problem.code)}
+                            className="flex items-center gap-3 p-3 rounded-md hover:bg-primary/5 transition-all outline-none"
+                        >
+                            <MessageSquare size={18} className="text-muted-foreground" />
+                            <span className="text-sm font-medium">
+                                {problem.can_edit ? t('manageTickets') : t('myTickets')}
+                            </span>
+                            <ArrowUpRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all ml-auto" />
+                        </Link>
+                    </div>
+                )}
 
                 {/* Problem Clarifications Link */}
                 {clarificationsData && clarificationsData.length > 0 && (

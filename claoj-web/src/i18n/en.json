@@ -271,7 +271,11 @@
         "submitting": "Submitting...",
         "submitFailed": "Could not submit the suggestion. Please try again."
       }
-    }
+    },
+    "manageTickets": "Manage tickets",
+    "myTickets": "My tickets",
+    "resubmitLoaded": "Loaded the source of submission #{id}.",
+    "resubmitFailed": "That submission cannot be reused."
   },
   "License": {
     "source": "Source",
@@ -397,7 +401,11 @@
     "bestSolutionsFor": "Best solutions for {label}",
     "bestSolutionsTitle": "Best solutions for {problem} in {contest}",
     "bestSolutionsHint": "One best submission per user: contest points, then runtime.",
-    "noSolutions": "No solutions yet."
+    "noSolutions": "No solutions yet.",
+    "tagFilter": "Tag: #{tag}",
+    "clearTagFilter": "Clear tag filter",
+    "participationUserFilter": "Showing {user}'s participation",
+    "clearUserFilter": "Show everyone"
   },
   "Submissions": {
     "title": "Submissions",
@@ -508,7 +516,8 @@
     "diffExampleLabel": "Example:",
     "diffRemoved": "Removed",
     "diffAdded": "Added",
-    "unifiedDiff": "Unified Diff"
+    "unifiedDiff": "Unified Diff",
+    "resubmit": "Resubmit"
   },
   "Auth": {
     "loginTitle": "Welcome Back",
@@ -1191,7 +1200,9 @@
     "nextButton": "Next",
     "pageLabel": "Page {page}",
     "titleMinLength": "Title must be at least 5 characters",
-    "bodyMinLength": "Description must be at least 20 characters"
+    "bodyMinLength": "Description must be at least 20 characters",
+    "problemTicketsTitle": "Tickets for {code}",
+    "backToProblem": "Back to problem"
   },
   "Settings": {
     "title": "Settings",

@@ -507,6 +507,9 @@ func NewRouter() *gin.Engine {
 			protected.POST("/contest/:key/join", v2.ContestJoin)
 			protected.POST("/contest/:key/leave", v2.ContestLeave)
 			protected.POST("/submission/:id/abort", v2.SubmissionAbort)
+			// v1 /problem/<p>/resubmit/<submission>: prefill from an earlier
+			// submission (owner, or judge.resubmit_other).
+			protected.GET("/submission/:id/resubmit", v2.SubmissionResubmitSource)
 			protected.GET("/user/contests", contestHandlers.UserParticipationList)
 
 			// Tickets

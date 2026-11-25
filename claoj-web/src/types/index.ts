@@ -60,6 +60,10 @@ export interface ProblemDetail extends Problem {
     pdf_url?: string;
     /** v1 problem.html license link: /license/<key>, labelled display or name. */
     license?: LicenseRef | null;
+    /** The viewer may edit this problem (v1 Problem.is_editable_by). */
+    can_edit?: boolean;
+    /** The viewer has at least one ticket on this problem (see /tickets?problem=). */
+    has_tickets?: boolean;
 }
 
 /** A judge_license row as the problem page needs it. */

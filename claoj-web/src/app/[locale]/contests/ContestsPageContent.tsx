@@ -10,8 +10,9 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import { useDebounce } from '@/hooks/useDebounce';
-import { formatCountdown } from '@/lib/contestView';
+import { formatCountdown, contestTagPath } from '@/lib/contestView';
 import { Link } from '@/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
     Trophy,
@@ -32,17 +33,29 @@ import duration from 'dayjs/plugin/duration';
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
 
-export default function ContestsPageContent() {
+export default function ContestsPageContent({ initialTag = '' }: { initialTag?: string } = {}) {
     const t = useTranslations('Contest');
     const tAuth = useTranslations('Auth');
     const { requireAuth } = useRequireAuth();
     const queryClient = useQueryClient();
+    const searchParams = useSearchParams();
     const [search, setSearch] = useState('');
     // One request per pause in typing instead of one per keystroke.
     const debouncedSearch = useDebounce(search, 300);
+    // The tag filter follows the URL: ?tag=<name> (v1 /contests/tag/<name>).
+    // Kept in sync so navigating between tag links reseeds it.
+    const urlTag = initialTag || searchParams.get('tag') || '';
+    const [tag, setTag] = useState(urlTag);
+    const [seenTag, setSeenTag] = useState(urlTag);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
     const [now, setNow] = useState(dayjs());
+
+    if (urlTag !== seenTag) {
+        setSeenTag(urlTag);
+        setTag(urlTag);
+        setPage(1);
+    }
 
     useEffect(() => {
         const timer = setInterval(() => setNow(dayjs()), 1000);
@@ -53,10 +66,15 @@ export default function ContestsPageContent() {
     // list pages instead of requesting everything in one call and silently
     // dropping every contest past the cap.
     const { data: contestsData, isLoading } = useQuery({
-        queryKey: ['contests', debouncedSearch, page, pageSize],
+        queryKey: ['contests', debouncedSearch, tag, page, pageSize],
         queryFn: async () => {
             const res = await api.get<{ results: Contest[]; total: number }>('/contests', {
-                params: { search: debouncedSearch, page, page_size: pageSize }
+                params: {
+                    search: debouncedSearch,
+                    page,
+                    page_size: pageSize,
+                    ...(tag ? { tag } : {})
+                }
             });
             return res.data;
         }
@@ -140,14 +158,15 @@ export default function ContestsPageContent() {
                                                         {c.is_rated && <Badge variant="warning" className="text-xs h-4 ">{t('rated')}</Badge>}
                                                         {c.format && <Badge variant="outline" className="text-xs h-4 ">{c.format}</Badge>}
                                                         {c.tags && c.tags.map(tag => (
-                                                            <Badge
-                                                                key={tag.id}
-                                                                variant="secondary"
-                                                                className="text-xs h-4 "
-                                                                style={{ backgroundColor: tag.color + '20', color: tag.color, border: `1px solid ${tag.color}40` }}
-                                                            >
-                                                                #{tag.name}
-                                                            </Badge>
+                                                            <Link key={tag.id} href={contestTagPath(tag.name)}>
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="text-xs h-4 hover:opacity-80 transition-opacity"
+                                                                    style={{ backgroundColor: tag.color + '20', color: tag.color, border: `1px solid ${tag.color}40` }}
+                                                                >
+                                                                    #{tag.name}
+                                                                </Badge>
+                                                            </Link>
                                                         ))}
                                                         <span className="text-xs text-muted-foreground font-mono">{c.key}</span>
                                                     </div>
@@ -259,6 +278,18 @@ export default function ContestsPageContent() {
                     </div>
                 </div>
             </header>
+
+            {tag && (
+                <div className="flex flex-wrap items-center gap-3 -mt-6">
+                    <Badge variant="secondary" className="text-sm px-3 py-1">{t('tagFilter', { tag })}</Badge>
+                    <Link
+                        href="/contests"
+                        className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        {t('clearTagFilter')}
+                    </Link>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className="space-y-12">

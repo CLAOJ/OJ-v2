@@ -271,7 +271,11 @@
         "submitting": "Đang gửi...",
         "submitFailed": "Không thể gửi đề xuất. Vui lòng thử lại."
       }
-    }
+    },
+    "manageTickets": "Quản lý báo cáo",
+    "myTickets": "Báo cáo của tôi",
+    "resubmitLoaded": "Đã nạp mã nguồn của bài nộp #{id}.",
+    "resubmitFailed": "Không thể dùng lại bài nộp này."
   },
   "License": {
     "source": "Nguồn",
@@ -397,7 +401,11 @@
     "bestSolutionsFor": "Lời giải tốt nhất cho {label}",
     "bestSolutionsTitle": "Lời giải tốt nhất cho {problem} trong {contest}",
     "bestSolutionsHint": "Mỗi người một bài tốt nhất: điểm kỳ thi, sau đó thời gian chạy.",
-    "noSolutions": "Chưa có lời giải."
+    "noSolutions": "Chưa có lời giải.",
+    "tagFilter": "Thẻ: #{tag}",
+    "clearTagFilter": "Xóa bộ lọc thẻ",
+    "participationUserFilter": "Đang xem phần tham gia của {user}",
+    "clearUserFilter": "Xem tất cả"
   },
   "Submissions": {
     "title": "Bài nộp",
@@ -508,7 +516,8 @@
     "diffExampleLabel": "Ví dụ:",
     "diffRemoved": "Đã xóa",
     "diffAdded": "Đã thêm",
-    "unifiedDiff": "Diff hợp nhất"
+    "unifiedDiff": "Diff hợp nhất",
+    "resubmit": "Nộp lại"
   },
   "Auth": {
     "loginTitle": "Chào mừng trở lại",
@@ -1191,7 +1200,9 @@
     "nextButton": "Tiếp",
     "pageLabel": "Trang {page}",
     "titleMinLength": "Tiêu đề phải có ít nhất 5 ký tự",
-    "bodyMinLength": "Mô tả phải có ít nhất 20 ký tự"
+    "bodyMinLength": "Mô tả phải có ít nhất 20 ký tự",
+    "problemTicketsTitle": "Báo cáo của bài {code}",
+    "backToProblem": "Quay lại bài tập"
   },
   "Settings": {
     "title": "Cài đặt",

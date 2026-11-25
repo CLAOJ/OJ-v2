@@ -70,6 +70,16 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     const [showNames, setShowNames] = useState(true);
     const [showOrgs, setShowOrgs] = useState(true);
     const [participationPage, setParticipationPage] = useState(1);
+    // v1 /contest/<c>/participations/<user>: ?user= narrows the participation
+    // tab to one competitor. Follow the URL so the view is linkable.
+    const urlUser = searchParams.get('user') || '';
+    const [participationUser, setParticipationUser] = useState(urlUser);
+    const [seenUrlUser, setSeenUrlUser] = useState(urlUser);
+    if (urlUser !== seenUrlUser) {
+        setSeenUrlUser(urlUser);
+        setParticipationUser(urlUser);
+        setParticipationPage(1);
+    }
     const queryClient = useQueryClient();
     const { subscribe, unsubscribe, status } = useWebSocketContext();
     const [lastLiveUpdate, setLastLiveUpdate] = useState<Date | null>(null);
@@ -110,7 +120,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     });
 
     const { data: participations, isLoading: isParticipationsFetching } = useQuery({
-        queryKey: ['contest-participations', key, includeVirtual, participationPage],
+        queryKey: ['contest-participations', key, includeVirtual, participationUser, participationPage],
         queryFn: async () => {
             const res = await api.get<{ results: ContestParticipation[]; total: number; scoreboard_hidden?: boolean }>(
                 `/contest/${key}/participations`,
@@ -118,7 +128,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                     params: {
                         page: participationPage,
                         page_size: PARTICIPATION_PAGE_SIZE,
-                        ...(includeVirtual ? { include_virtual: 'true' } : {})
+                        ...(includeVirtual ? { include_virtual: 'true' } : {}),
+                        ...(participationUser ? { user: participationUser } : {})
                     }
                 }
             );
@@ -126,6 +137,14 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         },
         enabled: activeTab === 'participation'
     });
+
+    const clearParticipationUser = () => {
+        setParticipationUser('');
+        const next = new URLSearchParams(searchParams.toString());
+        next.delete('user');
+        const query = next.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    };
 
     const { mutate: joinContest, isPending: isJoining } = useMutation({
         mutationFn: async () => {
@@ -719,6 +738,19 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             <div className="flex items-center gap-3">
                                 <Users size={20} className="text-primary" />
                                 <h3 className="text-sm font-semibold ">{t('participation')}</h3>
+                                {participationUser && (
+                                    <>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {t('participationUserFilter', { user: participationUser })}
+                                        </Badge>
+                                        <button
+                                            onClick={clearParticipationUser}
+                                            className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+                                        >
+                                            {t('clearUserFilter')}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                             <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground cursor-pointer">
                                 <input

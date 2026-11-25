@@ -2,6 +2,7 @@ package contest
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -71,6 +72,12 @@ func ParticipationList(c *gin.Context) {
 		Where(virtualCond)
 	if contestKey != "" {
 		base = base.Where("judge_contest.`key` = ?", contestKey)
+	}
+	// v1 /contest/<c>/participations/<user>: one competitor's rows. The
+	// scoreboard gate above already limited the request to what the viewer may
+	// see, so a hidden scoreboard returns no rows here either.
+	if user := strings.TrimSpace(c.Query("user")); user != "" {
+		base = base.Where("auth_user.username = ?", user)
 	}
 
 	var total int64

@@ -2,6 +2,8 @@ import {
     MAX_TEXT_SOURCE_BYTES,
     problemPrintPath,
     problemReportPath,
+    problemResubmitPath,
+    problemTicketsPath,
     validateSubmissionFile,
     validateTextSourceFile,
 } from '@/lib/submissionFile';
@@ -53,5 +55,20 @@ describe('problem print and report paths', () => {
         expect(problemPrintPath('a/b')).toBe('/problem/a%2Fb/print?print=1');
         expect(problemReportPath('a/b')).toBe('/ticket/create?problem=a%2Fb');
         expect(problemReportPath('p100')).toBe('/ticket/create?problem=p100');
+    });
+});
+
+describe('problem resubmit and ticket paths', () => {
+    // v1 /problem/<p>/resubmit/<submission> is a query on the problem page in
+    // v2, so the submission id must survive as a query value for the
+    // prefill to bind to.
+    it('points the resubmit action at the problem page with the submission id', () => {
+        expect(problemResubmitPath('p100', 42)).toBe('/problem/p100?resubmit=42');
+        expect(problemResubmitPath('a/b', '7')).toBe('/problem/a%2Fb?resubmit=7');
+    });
+
+    it('builds the per-problem ticket list path', () => {
+        expect(problemTicketsPath('p100')).toBe('/problem/p100/tickets');
+        expect(problemTicketsPath('a/b')).toBe('/problem/a%2Fb/tickets');
     });
 });

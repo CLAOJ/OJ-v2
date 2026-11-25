@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn, getRankColor } from '@/lib/utils';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
+import { useDebounce } from '@/hooks/useDebounce';
 
 type RankBy = 'points' | 'rating' | 'contribution';
 
@@ -44,7 +45,17 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
     const searchParams = useSearchParams();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(searchParams.get('search') ?? '');
+    // v1 /users/find: a username search can be linked directly (?search=), and
+    // the API filters server-side so a match outside the current page is found.
+    const urlSearch = searchParams.get('search') ?? '';
+    const [seenUrlSearch, setSeenUrlSearch] = useState(urlSearch);
+    const debouncedSearch = useDebounce(search, 300);
+    if (urlSearch !== seenUrlSearch) {
+        setSeenUrlSearch(urlSearch);
+        setSearch(urlSearch);
+        setPage(1);
+    }
     // Home's "view all" links deep-link the ranking (?sort=rating). Follow the
     // URL when it changes, not only on mount: navigating between ranking links
     // while this page is mounted must reseed the sort. The adjustment runs
@@ -59,16 +70,17 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
         setPage(1);
     }
 
-    // Rankings are always highest-first server-side; only `search` is applied
-    // client-side, over the current page.
+    // Rankings are always highest-first server-side; the search itself is applied
+    // by the API (it matches username and display name across all pages).
     const { data, isLoading } = useQuery({
-        queryKey: ['users', page, pageSize, rankBy],
+        queryKey: ['users', page, pageSize, rankBy, debouncedSearch],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 page_size: pageSize.toString(),
                 sort: rankBy,
             });
+            if (debouncedSearch) params.set('search', debouncedSearch);
             const res = await api.get<PaginatedList<UserListItem>>(`/users?${params.toString()}`);
             return res.data;
         }
@@ -76,13 +88,7 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
 
     const fetchedUsers = data?.data || [];
     // Keep the server-assigned rank even when the search box narrows the list.
-    const users = fetchedUsers
-        .map((user, index) => ({ user, rank: (page - 1) * pageSize + index + 1 }))
-        .filter(({ user }) =>
-            !search ||
-            user.username.toLowerCase().includes(search.toLowerCase()) ||
-            (user.display_name || '').toLowerCase().includes(search.toLowerCase())
-        );
+    const users = fetchedUsers.map((user, index) => ({ user, rank: (page - 1) * pageSize + index + 1 }));
 
     const changeRanking = (key: RankBy) => {
         setRankBy(key);
@@ -183,7 +189,7 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
                                     <tr key={user.username} className="hover:bg-muted/10 transition-colors group">
                                         <td className="px-10 py-8 text-center">
                                             <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-muted font-medium text-sm text-muted-foreground">
-                                                {rank}
+                                                {debouncedSearch ? '—' : rank}
                                             </div>
                                         </td>
                                         <td className="px-6 py-8">

@@ -35,6 +35,7 @@ import {
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
 import { statusKey } from '@/lib/submissionStatus';
 import { formatMemoryMb, summarizeTestScore } from '@/lib/submissionDetail';
+import { problemResubmitPath } from '@/lib/submissionFile';
 import dayjs from 'dayjs';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
@@ -189,6 +190,9 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     // submission; staff use the admin abort path.
     const isOwner = !!user && !!sub && user.username === sub.user;
     const canAbort = isOwner && !!sub && ['QU', 'P', 'G'].includes(sub.status);
+    // v1 /problem/<p>/resubmit/<submission> prefills from your own submission;
+    // judge.resubmit_other may copy anyone's (the API enforces both).
+    const canResubmit = !!sub && (isOwner || !!user?.permissions?.includes('judge.resubmit_other'));
 
     const handleAbort = async () => {
         if (!confirm(t('abortConfirm'))) return;
@@ -397,6 +401,21 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                     </div>
                 )}
 
+                {/* Resubmit: refills the submit form on the problem page
+                    (v1 /problem/<p>/resubmit/<submission>). */}
+                {canResubmit && (
+                    <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
+                        <span className="text-sm text-muted-foreground font-medium">{t('submissionActions')}:</span>
+                        <Link
+                            href={problemResubmitPath(sub.problem, sub.id)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 font-medium text-sm transition-colors"
+                        >
+                            <RefreshCw size={16} />
+                            {t('resubmit')}
+                        </Link>
+                    </div>
+                )}
+
                 {/* Compare Actions */}
                 <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
                     <span className="text-sm text-muted-foreground font-medium">{t('compare')}:</span>
@@ -409,7 +428,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             className="w-32 px-3 py-2 rounded-xl bg-muted border border-muted-foreground/20 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
                         />
                         <Link
-                            href={compareId ? `/submission/${id}/diff?compare=${compareId}` : '#'}
+                            href={compareId ? `/submissions/diff/${id}?compare=${compareId}` : '#'}
                             className={cn(
                                 "flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-colors",
                                 compareId

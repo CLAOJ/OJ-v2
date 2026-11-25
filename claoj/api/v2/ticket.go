@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -29,11 +30,45 @@ func TicketList(c *gin.Context) {
 
 	var tickets []models.Ticket
 
-	// Admins can see all tickets, regular users see only their own
 	query := db.DB.Model(&models.Ticket{}).Preload("Assignees")
 
-	if !auth.HasPerm(c, "judge.change_ticket") {
-		query = query.Where("user_id = ?", profile.ID)
+	// Ticket staff see every ticket; everyone else sees their own. The
+	// ?problem= view below has its own v1 gate (ProblemTicketListView), which
+	// can widen a plain user to the tickets they opened *or* are assigned to.
+	scopeAll := auth.HasPerm(c, "judge.change_ticket")
+	problemScope := false
+	if problemCode := strings.TrimSpace(c.Query("problem")); problemCode != "" {
+		var problem models.Problem
+		if err := db.DB.Preload("Authors").Preload("Curators").
+			Where("code = ?", problemCode).First(&problem).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
+			return
+		}
+		if auth.CanEditProblem(c, &problem) {
+			scopeAll = true
+		} else if !auth.CanViewProblem(c, &problem) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
+			return
+		}
+		problemScope = true
+		contentTypeID, ok := ticketContentTypeID("problem")
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{"items": []any{}, "total": 0})
+			return
+		}
+		query = query.Where("content_type_id = ? AND object_id = ?", contentTypeID, problem.ID)
+	}
+
+	if !scopeAll {
+		// v1 own_ticket_filter: the ticket's creator, or one of its assignees.
+		if problemScope {
+			query = query.Where(
+				"(user_id = ? OR EXISTS (SELECT 1 FROM judge_ticket_assignees a "+
+					"WHERE a.ticket_id = judge_ticket.id AND a.profile_id = ?))",
+				profile.ID, profile.ID)
+		} else {
+			query = query.Where("user_id = ?", profile.ID)
+		}
 	}
 
 	// Apply filters
