@@ -17,6 +17,15 @@ type NavigationEntry struct {
 	Level       int
 }
 
+// PublicNavigationItem is one node of the public navbar tree.
+type PublicNavigationItem struct {
+	Key      string
+	Label    string
+	Path     string
+	Regex    string
+	Children []PublicNavigationItem
+}
+
 // ListNavigationRequest holds parameters for listing navigation entries.
 type ListNavigationRequest struct {
 	Page     int

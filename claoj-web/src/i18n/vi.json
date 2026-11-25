@@ -103,7 +103,18 @@
     "mobileNavigationMenu": "Menu điều hướng trên di động",
     "menu": "Menu",
     "tickets": "Báo cáo hỗ trợ",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "dbLabels": {
+      "Home": "Trang chủ",
+      "Problems": "Bài tập",
+      "Submissions": "Các bài nộp",
+      "Leaderboard": "Bảng xếp hạng",
+      "Organizations": "Tổ chức",
+      "Contests": "Các kỳ thi",
+      "About": "Thông tin",
+      "Judges": "Máy chấm",
+      "Users": "Thành viên"
+    }
   },
   "Footer": {
     "description": "Nền tảng lập trình thi đấu hiện đại, hiệu suất cao.",

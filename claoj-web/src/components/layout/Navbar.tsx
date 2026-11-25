@@ -2,10 +2,9 @@
 
 import { Link } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Ticket } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
+import { useMessages, useTranslations } from 'next-intl';
 import Logo from '@/components/navbar/Logo';
 import DesktopNav from '@/components/navbar/DesktopNav';
 import LanguageSwitcher from '@/components/navbar/LanguageSwitcher';
@@ -13,12 +12,42 @@ import ThemeToggle from '@/components/navbar/ThemeToggle';
 import UserMenu from '@/components/navbar/UserMenu';
 import MobileMenu from '@/components/navbar/MobileMenu';
 import { rememberLoginRedirect } from '@/lib/loginRedirect';
+import { buildNavLinks, type NavigationItem, type NavLink } from '@/lib/navbar';
+import api from '@/lib/api';
+
+// v2-only entries the DB table never held; appended after its rows. Report
+// needs a session, so it is added conditionally.
+const V2_ONLY_LINKS: NavLink[] = [{ key: 'ratings', href: '/ratings', tKey: 'ratings' }];
+const REPORT_LINK: NavLink = { key: 'report', href: '/ticket/create', tKey: 'report' };
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const t = useTranslations('Navbar');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        api.get<{ data: NavigationItem[] }>('/navigation')
+            .then((res) => {
+                if (!cancelled) setNavigation(res.data?.data ?? []);
+            })
+            // An unreachable API leaves navigation null: buildNavLinks then
+            // renders the static fallback, so the header never disappears.
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
+
+    // v1 translated DB labels with gettext; the catalog map is the v2
+    // equivalent, and labels it lacks render verbatim.
+    const messages = useMessages();
+    const dbLabels = (messages.Navbar as { dbLabels?: Record<string, string> } | undefined)?.dbLabels;
+    const navLinks = buildNavLinks(
+        navigation,
+        user ? [...V2_ONLY_LINKS, REPORT_LINK] : V2_ONLY_LINKS,
+        dbLabels,
+    );
 
     const handleLoginRedirect = () => {
         // rememberLoginRedirect filters out the credential pages, so clicking
@@ -40,23 +69,11 @@ export default function Navbar() {
                             </Link>
 
                             {/* Desktop Nav */}
-                            <DesktopNav />
+                            <DesktopNav links={navLinks} />
                         </div>
 
                         {/* Right Side Actions */}
                         <div className="flex items-center gap-3">
-                            {/* Report Issue Button */}
-                            {user && (
-                                <Link
-                                    href="/ticket/create"
-                                    className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors text-xs font-bold"
-                                    title={t('report')}
-                                >
-                                    <Ticket size={14} />
-                                    <span className="hidden 2xl:inline">{t('reportShort')}</span>
-                                </Link>
-                            )}
-
                             {/* Language Flags (moved into the drawer on mobile) */}
                             <div className="hidden xl:block">
                                 <LanguageSwitcher />
@@ -100,7 +117,7 @@ export default function Navbar() {
                             )}
 
                             {/* Mobile Menu Button */}
-                            <MobileMenu isOpen={mobileMenuOpen} onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
+                            <MobileMenu isOpen={mobileMenuOpen} onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} links={navLinks} />
                         </div>
                     </div>
                 </div>

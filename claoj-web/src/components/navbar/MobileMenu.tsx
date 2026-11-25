@@ -2,7 +2,7 @@
 
 import { Link, usePathname } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { User, LogOut, Menu, X, Ticket, RefreshCw, Crown, Settings as SettingsIcon } from 'lucide-react';
+import { User, LogOut, Menu, X, RefreshCw, Crown, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
@@ -10,27 +10,20 @@ import { useTranslations } from 'next-intl';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
 import { rememberLoginRedirect } from '@/lib/loginRedirect';
-
-const NAV_LINKS = [
-    { href: '/problems', key: 'problems' },
-    { href: '/contests', key: 'contests' },
-    { href: '/submissions', key: 'submissions' },
-    { href: '/users', key: 'users' },
-    { href: '/ratings', key: 'ratings' },
-    { href: '/organizations', key: 'organizations' },
-    { href: '/stats', key: 'stats' },
-];
+import { findActiveKey, type NavLink } from '@/lib/navbar';
 
 interface MobileMenuProps {
     isOpen: boolean;
     onToggle: () => void;
+    links: NavLink[];
 }
 
-export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
+export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps) {
     const { user, logout } = useAuth();
     const pathname = usePathname();
     const t = useTranslations('Navbar');
     const reduceMotion = useReducedMotion();
+    const activeKey = findActiveKey(links, pathname);
 
     const mobileMenuContainerRef = useFocusTrap({
         isActive: isOpen,
@@ -97,17 +90,18 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
 
                             <div className="flex flex-col gap-6 px-4 py-6">
                                 {/* Nav Links */}
-                                {NAV_LINKS.map((link) => (
+                                {links.map((link) => (
                                     <Link
                                         key={link.href}
                                         href={link.href}
                                         onClick={onToggle}
+                                        aria-current={link.key === activeKey ? 'page' : undefined}
                                         className={cn(
                                             "text-xl font-semibold tracking-tight",
-                                            pathname.startsWith(link.href) ? "text-primary" : "text-muted-foreground"
+                                            link.key === activeKey ? "text-primary" : "text-muted-foreground"
                                         )}
                                     >
-                                        {t(link.key)}
+                                        {link.label ?? t(link.tKey ?? link.key)}
                                     </Link>
                                 ))}
                                 <Link
@@ -121,18 +115,6 @@ export default function MobileMenu({ isOpen, onToggle }: MobileMenuProps) {
                                     <RefreshCw size={20} />
                                     <span>{t('randomProblem')}</span>
                                 </Link>
-
-                                {/* Report Issue */}
-                                {user && (
-                                    <Link
-                                        href="/ticket/create"
-                                        onClick={onToggle}
-                                        className="flex items-center gap-2 text-yellow-500 font-medium"
-                                    >
-                                        <Ticket size={18} />
-                                        <span>{t('report')}</span>
-                                    </Link>
-                                )}
 
                                 <div className="flex flex-col gap-4 pt-6 border-t border-border">
                                     {/* Language Switcher */}

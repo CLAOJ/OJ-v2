@@ -355,6 +355,8 @@ func NewRouter() *gin.Engine {
 		// public taxonomy the problem-list filters are built from.
 		apiv2.GET("/problems/suggest", v2.SuggestProblemList)
 		apiv2.GET("/license/:key", v2.PublicLicenseDetail)
+		// Public navbar (v1 judge_navigationbar) that drives the site header.
+		apiv2.GET("/navigation", v2.PublicNavigation)
 		apiv2.GET("/problem-groups", v2.ProblemGroupList)
 		apiv2.GET("/problem-types", v2.ProblemTypeList)
 		apiv2.GET("/licenses", v2.LicenseList)
