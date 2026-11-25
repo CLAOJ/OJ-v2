@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { ScanSearch, Play, Trash2, ExternalLink, Search } from 'lucide-react';
-import { adminContestApi, adminMossApi, type ContestMossResult } from '@/lib/adminApi';
+import { adminContestApi, adminMossApi, type ContestMossResult, type LLMReviewPair } from '@/lib/adminApi';
 import { contestPhase } from '@/lib/contestPhase';
 import { useListParams } from '@/hooks/useListParams';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -17,6 +17,54 @@ const LIST_SIZE = 20;
 
 type ApiError = { response?: { data?: { error?: string } } };
 const errorText = (e: unknown) => (e as ApiError)?.response?.data?.error ?? String(e);
+
+const VERDICT_CLASS: Record<LLMReviewPair['verdict'], string> = {
+    likely_copied: 'bg-destructive/15 text-destructive',
+    shared_template: 'bg-warning/15 text-warning',
+    independent: 'bg-success/15 text-success',
+    unclear: 'bg-muted text-muted-foreground',
+    error: 'bg-muted text-muted-foreground',
+};
+
+// LLM second opinion for one report (llm.json). Absent when the LLM is not configured.
+function LlmCell({ contestKey, reportPath }: { contestKey: string; reportPath: string }) {
+    const t = useTranslations('Admin');
+    const { data, isLoading } = useQuery({
+        queryKey: ['admin-contest-moss-llm', contestKey, reportPath],
+        queryFn: async () => (await adminMossApi.llmReview(contestKey, reportPath)).data,
+        retry: false,
+        staleTime: Infinity,
+    });
+    if (isLoading) return <Skeleton className="h-4 w-20" />;
+    if (!data?.pairs?.length) return <span className="text-muted-foreground">—</span>;
+    const copied = data.pairs.filter(p => p.verdict === 'likely_copied').length;
+    return (
+        <details>
+            <summary className={`cursor-pointer text-xs ${copied ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                {t('moss.llmSummary', { copied, total: data.pairs.length })}
+            </summary>
+            <ul className="mt-2 space-y-2 text-xs">
+                {data.pairs.map(p => (
+                    <li key={p.match} className="space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`px-1.5 py-0.5 rounded font-medium ${VERDICT_CLASS[p.verdict] ?? VERDICT_CLASS.unclear}`}>
+                                {t(`moss.verdict.${p.verdict}`)}
+                            </span>
+                            <a href={adminMossApi.reportUrl(contestKey, reportPath, `match_${p.match}.html`)} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-mono">
+                                {p.a} ↔ {p.b}
+                            </a>
+                            {p.verdict !== 'error' && <span className="text-muted-foreground tabular-nums">{Math.round(p.confidence * 100)}%</span>}
+                        </div>
+                        {p.error
+                            ? <p className="text-muted-foreground">{p.error}</p>
+                            : (p.reasons ?? []).map((s, i) => <p key={i} className="text-muted-foreground">• {s}</p>)}
+                    </li>
+                ))}
+                <li className="text-muted-foreground/70">{data.model}</li>
+            </ul>
+        </details>
+    );
+}
 
 export default function AdminMossPage() {
     const t = useTranslations('Admin');
@@ -172,6 +220,7 @@ export default function AdminMossPage() {
                                     <th className="px-4 py-2 font-semibold">{t('moss.colLanguage')}</th>
                                     <th className="px-4 py-2 font-semibold text-right">{t('moss.colSubmissions')}</th>
                                     <th className="px-4 py-2 font-semibold">{t('moss.colReport')}</th>
+                                    <th className="px-4 py-2 font-semibold">{t('moss.colLlm')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -186,6 +235,9 @@ export default function AdminMossPage() {
                                                     {t('moss.viewReport')} <ExternalLink size={12} />
                                                 </a>
                                             ) : <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-4 py-2 align-top">
+                                            {r.report_path ? <LlmCell contestKey={contestKey} reportPath={r.report_path} /> : <span className="text-muted-foreground">—</span>}
                                         </td>
                                     </tr>
                                 )))}

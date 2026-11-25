@@ -2888,7 +2888,16 @@
       "colSubmissions": "Thí sinh",
       "colReport": "Báo cáo",
       "viewReport": "Mở báo cáo",
-      "errorLabel": "Lỗi lần chạy gần nhất:"
+      "errorLabel": "Lỗi lần chạy gần nhất:",
+      "colLlm": "Đánh giá AI",
+      "llmSummary": "{copied} nghi sao chép / {total} cặp đã xét",
+      "verdict": {
+        "likely_copied": "Nghi sao chép",
+        "shared_template": "Dùng chung template",
+        "independent": "Độc lập",
+        "unclear": "Chưa rõ",
+        "error": "Lỗi"
+      }
     },
     "navGroups": {
       "content": "Nội dung",

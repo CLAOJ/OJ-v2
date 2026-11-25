@@ -2888,7 +2888,16 @@
       "colSubmissions": "Contestants",
       "colReport": "Report",
       "viewReport": "Open report",
-      "errorLabel": "Last run error:"
+      "errorLabel": "Last run error:",
+      "colLlm": "AI review",
+      "llmSummary": "{copied} likely copied / {total} reviewed",
+      "verdict": {
+        "likely_copied": "Likely copied",
+        "shared_template": "Shared template",
+        "independent": "Independent",
+        "unclear": "Unclear",
+        "error": "Failed"
+      }
     },
     "navGroups": {
       "content": "Content",

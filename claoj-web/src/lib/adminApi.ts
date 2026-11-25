@@ -1027,9 +1027,29 @@ export const adminMossApi = {
         api.post<{ queued: boolean }>(`/admin/contest/${key}/plagiarism`),
     clear: (key: string) =>
         api.delete<{ deleted: number }>(`/admin/contest/${key}/plagiarism`),
-    reportUrl: (key: string, reportPath: string) =>
-        `${api.defaults.baseURL}/admin/contest/${key}/plagiarism/report/${reportPath}/index.html`,
+    reportUrl: (key: string, reportPath: string, file = 'index.html') =>
+        `${api.defaults.baseURL}/admin/contest/${key}/plagiarism/report/${reportPath}/${file}`,
+    // Optional LLM second opinion written next to the report; 404 when the LLM is off.
+    llmReview: (key: string, reportPath: string) =>
+        api.get<LLMReview>(`/admin/contest/${key}/plagiarism/report/${reportPath}/llm.json`),
 };
+
+export interface LLMReviewPair {
+    match: number; // match_<n>.html
+    a: string;
+    b: string;
+    score: number;
+    verdict: 'likely_copied' | 'shared_template' | 'independent' | 'unclear' | 'error';
+    confidence: number;
+    reasons: string[] | null;
+    error?: string;
+}
+
+export interface LLMReview {
+    model: string;
+    generated_at: string;
+    pairs: LLMReviewPair[];
+}
 
 // Backend messages for 400/403/409 are written for end users; anything else gets the fallback.
 export function adminErrorMessage(err: unknown, fallback: string): string {
