@@ -228,6 +228,8 @@
     "problemGroup": "Nhóm bài tập",
     "selectGroupPlaceholder": "Chọn một nhóm...",
     "problemTypes": "Dạng bài",
+    "addTypePlaceholder": "Thêm dạng bài…",
+    "removeType": "Bỏ {name}",
     "backToProblems": "Quay lại danh sách bài",
     "findingRandomProblem": "Đang tìm bài ngẫu nhiên",
     "findingRandomProblemDesc": "Đang tải một bài tập ngẫu nhiên cho bạn...",

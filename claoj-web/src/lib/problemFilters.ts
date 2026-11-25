@@ -37,3 +37,13 @@ export function buildProblemListParams(q: ProblemListQuery): URLSearchParams {
     if (q.pageSize !== undefined) params.set('page_size', String(q.pageSize));
     return params;
 }
+
+/** Adds a problem type to the filter list, ignoring duplicates. */
+export function addProblemType(ids: number[], id: number): number[] {
+    return ids.includes(id) ? ids : [...ids, id];
+}
+
+/** Removes a problem type from the filter list. */
+export function removeProblemType(ids: number[], id: number): number[] {
+    return ids.filter(x => x !== id);
+}

@@ -1,4 +1,4 @@
-import { buildProblemListParams } from '@/lib/problemFilters';
+import { buildProblemListParams, addProblemType, removeProblemType } from '@/lib/problemFilters';
 
 describe('buildProblemListParams', () => {
     it('omits empty filters and keeps paging and sorting', () => {
@@ -31,5 +31,15 @@ describe('buildProblemListParams', () => {
         expect(buildProblemListParams({ pointsMin: 0 }).get('points_min')).toBe('0');
         expect(buildProblemListParams({ pointsMax: null }).has('points_max')).toBe(false);
         expect(buildProblemListParams({ pointsMax: 40 }).get('points_max')).toBe('40');
+    });
+});
+
+describe('problem type tags', () => {
+    it('adds without duplicating and removes by id', () => {
+        expect(addProblemType([], 3)).toEqual([3]);
+        expect(addProblemType([3], 3)).toEqual([3]);
+        expect(addProblemType([3], 5)).toEqual([3, 5]);
+        expect(removeProblemType([3, 5], 3)).toEqual([5]);
+        expect(removeProblemType([3], 9)).toEqual([3]);
     });
 });

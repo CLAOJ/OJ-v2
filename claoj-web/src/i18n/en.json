@@ -228,6 +228,8 @@
     "problemGroup": "Problem Group",
     "selectGroupPlaceholder": "Select a group...",
     "problemTypes": "Problem Types",
+    "addTypePlaceholder": "Add a problem type…",
+    "removeType": "Remove {name}",
     "backToProblems": "Back to Problems",
     "findingRandomProblem": "Finding Random Problem",
     "findingRandomProblemDesc": "Loading a random problem for you...",

@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { Problem, PaginatedList, ProblemTaxonomy } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
-import { buildProblemListParams } from '@/lib/problemFilters';
+import { buildProblemListParams, addProblemType, removeProblemType } from '@/lib/problemFilters';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link, useRouter } from '@/navigation';
 import { useState } from 'react';
@@ -20,7 +20,8 @@ import {
     RefreshCw,
     SlidersHorizontal,
     HelpCircle,
-    Lightbulb
+    Lightbulb,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
@@ -179,34 +180,52 @@ export default function ProblemsPageContent() {
                             </select>
                         </div>
 
-                        {/* Types */}
+                        {/* Types: v1's multi-select — chosen types as removable
+                            tags above a closed "add" select, so the panel stays
+                            short instead of listing every taxonomy chip. */}
                         {types && types.length > 0 && (
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-muted-foreground ml-1">{t('problemTypes')}</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {types.map(pt => {
-                                        const active = problemTypes.includes(pt.id);
-                                        return (
-                                            <button
-                                                key={pt.id}
-                                                onClick={() => {
-                                                    setProblemTypes(active
-                                                        ? problemTypes.filter(id => id !== pt.id)
-                                                        : [...problemTypes, pt.id]);
-                                                    setPage(1);
-                                                }}
-                                                className={cn(
-                                                    "px-3 h-8 text-xs font-medium rounded-xl border transition-all",
-                                                    active
-                                                        ? "bg-primary text-primary-foreground border-primary"
-                                                        : "bg-muted/30 hover:bg-muted/50 border-transparent text-muted-foreground"
-                                                )}
-                                            >
-                                                {pt.full_name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                <label htmlFor="problem-types" className="text-xs font-medium text-muted-foreground ml-1">{t('problemTypes')}</label>
+                                {problemTypes.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {problemTypes.map(id => {
+                                            const pt = types.find(x => x.id === id);
+                                            if (!pt) return null;
+                                            return (
+                                                <span
+                                                    key={id}
+                                                    className="inline-flex items-center gap-1 pl-2.5 pr-1 h-7 rounded-md bg-primary/15 text-primary text-xs font-medium"
+                                                >
+                                                    {pt.full_name}
+                                                    <button
+                                                        type="button"
+                                                        aria-label={t('removeType', { name: pt.full_name })}
+                                                        onClick={() => { setProblemTypes(removeProblemType(problemTypes, id)); setPage(1); }}
+                                                        className="p-0.5 rounded hover:bg-primary/20 transition-colors"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <select
+                                    id="problem-types"
+                                    value=""
+                                    onChange={(e) => {
+                                        const id = Number(e.target.value);
+                                        if (!id) return;
+                                        setProblemTypes(addProblemType(problemTypes, id));
+                                        setPage(1);
+                                    }}
+                                    className="w-full h-12 bg-muted/30 border border-transparent rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none cursor-pointer"
+                                >
+                                    <option value="">{t('addTypePlaceholder')}</option>
+                                    {types.filter(pt => !problemTypes.includes(pt.id)).map(pt => (
+                                        <option key={pt.id} value={pt.id}>{pt.full_name}</option>
+                                    ))}
+                                </select>
                             </div>
                         )}
 
