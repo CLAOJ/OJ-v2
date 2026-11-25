@@ -2,6 +2,7 @@
 
 import { Link } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { Ticket } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useEffect, useState } from 'react';
 import { useMessages, useTranslations } from 'next-intl';
@@ -12,13 +13,11 @@ import ThemeToggle from '@/components/navbar/ThemeToggle';
 import UserMenu from '@/components/navbar/UserMenu';
 import MobileMenu from '@/components/navbar/MobileMenu';
 import { rememberLoginRedirect } from '@/lib/loginRedirect';
-import { buildNavLinks, type NavigationItem, type NavLink } from '@/lib/navbar';
+import { buildNavLinks, type NavigationItem } from '@/lib/navbar';
 import api from '@/lib/api';
 
-// v2-only entries the DB table never held; appended after its rows. Report
-// needs a session, so it is added conditionally.
-const V2_ONLY_LINKS: NavLink[] = [{ key: 'ratings', href: '/ratings', tKey: 'ratings' }];
-const REPORT_LINK: NavLink = { key: 'report', href: '/ticket/create', tKey: 'report' };
+// The nav row mirrors v1's DB rows only: v2-only pages (Ratings) and the
+// ticket shortcut live outside it, as they did before the navbar port.
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -43,11 +42,7 @@ export default function Navbar() {
     // equivalent, and labels it lacks render verbatim.
     const messages = useMessages();
     const dbLabels = (messages.Navbar as { dbLabels?: Record<string, string> } | undefined)?.dbLabels;
-    const navLinks = buildNavLinks(
-        navigation,
-        user ? [...V2_ONLY_LINKS, REPORT_LINK] : V2_ONLY_LINKS,
-        dbLabels,
-    );
+    const navLinks = buildNavLinks(navigation, [], dbLabels);
 
     const handleLoginRedirect = () => {
         // rememberLoginRedirect filters out the credential pages, so clicking
@@ -74,6 +69,18 @@ export default function Navbar() {
 
                         {/* Right Side Actions */}
                         <div className="flex items-center gap-3">
+                            {/* Report Issue Button (ticket icon, as before the nav port) */}
+                            {user && (
+                                <Link
+                                    href="/ticket/create"
+                                    className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors text-xs font-bold"
+                                    title={t('report')}
+                                >
+                                    <Ticket size={14} />
+                                    <span className="hidden 2xl:inline">{t('reportShort')}</span>
+                                </Link>
+                            )}
+
                             {/* Language Flags (moved into the drawer on mobile) */}
                             <div className="hidden xl:block">
                                 <LanguageSwitcher />

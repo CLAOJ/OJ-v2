@@ -2,7 +2,7 @@
 
 import { Link, usePathname } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { User, LogOut, Menu, X, RefreshCw, Crown, Settings as SettingsIcon } from 'lucide-react';
+import { User, LogOut, Menu, X, RefreshCw, Crown, Settings as SettingsIcon, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
@@ -136,6 +136,19 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                     <RefreshCw size={20} />
                                     <span>{t('randomProblem')}</span>
                                 </Link>
+
+                                {/* Report issue: v2's ticket shortcut (v1 opened the
+                                    ticket form from the user area, not the nav row). */}
+                                {user && (
+                                    <Link
+                                        href="/ticket/create"
+                                        onClick={onToggle}
+                                        className="text-xl font-semibold tracking-tight flex items-center gap-2 text-warning"
+                                    >
+                                        <Ticket size={20} />
+                                        <span>{t('report')}</span>
+                                    </Link>
+                                )}
 
                                 <div className="flex flex-col gap-4 pt-6 border-t border-border">
                                     {/* Language Switcher */}
