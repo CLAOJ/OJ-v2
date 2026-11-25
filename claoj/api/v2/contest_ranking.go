@@ -71,7 +71,7 @@ func ContestRanking(c *gin.Context) {
 
 	// Fetch contest problems for breakdown
 	var contestProblems []models.ContestProblem
-	db.DB.Where("contest_id = ?", ct.ID).Order("`order` ASC").Find(&contestProblems)
+	db.DB.Preload("Problem").Where("contest_id = ?", ct.ID).Order("`order` ASC").Find(&contestProblems)
 
 	// Build user ID map for rating lookup
 	userIDs := make([]uint, len(participations))
@@ -217,12 +217,14 @@ func ContestRanking(c *gin.Context) {
 
 	// Prepare problem headers
 	type ProblemHeader struct {
+		Code   string `json:"code"`
 		Label  string `json:"label"`
 		Points int    `json:"points"`
 	}
 	headers := make([]ProblemHeader, len(contestProblems))
 	for i := range contestProblems {
 		headers[i] = ProblemHeader{
+			Code:   contestProblems[i].Problem.Code,
 			Label:  cf.GetLabelForProblem(i),
 			Points: contestProblems[i].Points,
 		}
@@ -233,6 +235,216 @@ func ContestRanking(c *gin.Context) {
 		"problems": headers,
 		"rankings": rankings,
 	})
+}
+
+// contestRankRow is one row of the per-problem contest ranking (v1
+// ContestRankedSubmission). It keeps the submission-list field names for the
+// user/problem/date/language columns and adds the contest points and rank.
+type contestRankRow struct {
+	Rank        int       `json:"rank"`
+	ID          uint      `json:"id"`
+	User        string    `json:"user"`
+	DisplayName string    `json:"display_name"`
+	Points      float64   `json:"points"`
+	Time        *float64  `json:"time"`
+	Memory      *float64  `json:"memory"`
+	Language    string    `json:"language"`
+	Date        time.Time `json:"date"`
+	Result      *string   `json:"result"`
+	Status      string    `json:"status"`
+}
+
+// ContestProblemRank - GET /api/v2/contest/:key/rank/:problem
+// v1 ContestRankedSubmission (/contest/<key>/rank/<problem>/): the best
+// submission per user for one contest problem, ordered by contest points then
+// runtime, keeping only positive-point rows. Unlisted profiles, archived
+// submissions and disqualified/virtual (unless include_virtual) participations
+// are excluded, like the scoreboard itself.
+func ContestProblemRank(c *gin.Context) {
+	key := c.Param("key")
+	code := c.Param("problem")
+	page, pageSize := parsePagination(c)
+
+	var ct models.Contest
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		return
+	}
+	if !auth.CanViewContest(c, &ct) {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+	// v1 ForceContestMixin.access_check: a contest that has not started is not
+	// readable without judge.see_private_contest (superusers hold every perm).
+	if time.Now().Before(ct.StartTime) && !auth.HasPerm(c, "judge.see_private_contest") {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+
+	var problem models.Problem
+	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
+		Where("code = ?", code).First(&problem).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+	var contestProblems []models.ContestProblem
+	db.DB.Where("contest_id = ?", ct.ID).Order("`order` ASC").Find(&contestProblems)
+	idx := -1
+	for i, cp := range contestProblems {
+		if cp.ProblemID == problem.ID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		c.JSON(http.StatusNotFound, apiError("problem is not in this contest"))
+		return
+	}
+	cp := contestProblems[idx]
+
+	cf := contest_format.GetFormat(ct.FormatName, &ct, ct.FormatConfig)
+	// v1 shows the problem name only when the viewer may access the problem,
+	// and the contest label otherwise.
+	problemHeader := gin.H{
+		"code":   problem.Code,
+		"label":  cf.GetLabelForProblem(idx),
+		"points": cp.Points,
+	}
+	if auth.CanViewProblem(c, &problem) {
+		problemHeader["name"] = problem.Name
+	}
+
+	hidden := func() {
+		c.JSON(http.StatusOK, gin.H{
+			"contest":           ct.Key,
+			"contest_name":      ct.Name,
+			"problem":           problemHeader,
+			"data":              []contestRankRow{},
+			"total":             0,
+			"scoreboard_hidden": true,
+		})
+	}
+
+	// While the scoreboard is withheld (scoreboard_visibility C/P), a
+	// participant still gets their own row (v1 can_see_own_scoreboard); every
+	// other viewer gets the same empty payload as the scoreboard, so no peer's
+	// per-problem points leak during a hidden contest.
+	ownOnly := false
+	var profileID uint
+	if !auth.CanSeeContestScoreboard(c, &ct) {
+		pid, ok := auth.CurrentProfileID(c)
+		if !ok {
+			hidden()
+			return
+		}
+		var participated int64
+		db.DB.Model(&models.ContestParticipation{}).
+			Where("contest_id = ? AND user_id = ?", ct.ID, pid).Count(&participated)
+		if participated == 0 {
+			hidden()
+			return
+		}
+		profileID, ownOnly = pid, true
+	}
+
+	q := db.DB.Table("judge_submission AS sub").
+		Joins("JOIN judge_contestsubmission cs ON cs.submission_id = sub.id").
+		Joins("JOIN judge_contestparticipation p ON p.id = cs.participation_id").
+		Joins("JOIN judge_profile jp ON jp.id = sub.user_id").
+		Where("p.contest_id = ? AND cs.problem_id = ?", ct.ID, cp.ID).
+		Where("cs.is_pretest = ? AND cs.points > 0", false).
+		Where("sub.is_archived = ? AND jp.is_unlisted = ?", false, false).
+		Where("p.is_disqualified = 0")
+	if ownOnly {
+		q = q.Where("p.user_id = ?", profileID)
+	} else if c.Query("include_virtual") == "true" || c.Query("include_virtual") == "1" {
+		q = q.Where("p.virtual >= 0")
+	} else {
+		q = q.Where("p.virtual = 0")
+	}
+
+	// One row per user: highest contest points, then fastest runtime.
+	ranked := q.Session(&gorm.Session{}).
+		Select("sub.id, ROW_NUMBER() OVER (PARTITION BY sub.user_id " +
+			"ORDER BY cs.points DESC, sub.time ASC, sub.id ASC) AS best_rank")
+	q = q.Joins("JOIN (?) AS best_rows ON best_rows.id = sub.id", ranked).
+		Where("best_rows.best_rank = 1")
+
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var rows []struct {
+		ID            uint
+		Status        string
+		Result        *string
+		Time          *float64
+		Memory        *float64
+		Date          time.Time
+		Username      string
+		DisplayName   string
+		ContestPoints float64
+		Language      string
+	}
+	if err := q.Session(&gorm.Session{}).
+		Joins("JOIN auth_user au ON au.id = jp.user_id").
+		Joins("JOIN judge_language l ON l.id = sub.language_id").
+		Select("sub.id, sub.status, sub.result, sub.time, sub.memory, sub.date, " +
+			"au.username, jp.username_display_override AS display_name, " +
+			"cs.points AS contest_points, l.key AS language").
+		Order("cs.points DESC, sub.time ASC, sub.id ASC").
+		Offset((page - 1) * pageSize).Limit(pageSize).
+		Scan(&rows).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	items := make([]contestRankRow, len(rows))
+	rank := 0
+	for i, r := range rows {
+		if i == 0 || r.ContestPoints != rows[i-1].ContestPoints || !sameRuntime(r.Time, rows[i-1].Time) {
+			rank = i + 1
+		}
+		displayName := r.DisplayName
+		if displayName == "" {
+			displayName = r.Username
+		}
+		items[i] = contestRankRow{
+			Rank:        rank,
+			ID:          r.ID,
+			User:        r.Username,
+			DisplayName: displayName,
+			Points:      r.ContestPoints,
+			Time:        r.Time,
+			Memory:      r.Memory,
+			Language:    r.Language,
+			Date:        r.Date,
+			Result:      r.Result,
+			Status:      r.Status,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"contest":      ct.Key,
+		"contest_name": ct.Name,
+		"problem":      problemHeader,
+		"data":         items,
+		"total":        total,
+	})
+}
+
+// sameRuntime reports whether two optional runtimes tie (both absent or equal).
+func sameRuntime(a, b *float64) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 // ContestRankingPDF - GET /api/v2/contest/:key/ranking/pdf

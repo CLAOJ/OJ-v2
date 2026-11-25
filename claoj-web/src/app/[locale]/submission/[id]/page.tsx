@@ -128,6 +128,8 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const { subscribe, unsubscribe } = useWebSocketContext();
     const [isRejudging, setIsRejudging] = useState(false);
     const [rejudgeError, setRejudgeError] = useState<string | null>(null);
+    const [isAborting, setIsAborting] = useState(false);
+    const [abortError, setAbortError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [compareId, setCompareId] = useState<string>('');
 
@@ -183,6 +185,26 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     };
 
     const isAdmin = user?.is_admin || user?.is_staff;
+    // v1 /submission/<id>/abort: the owner may abort their own queued/running
+    // submission; staff use the admin abort path.
+    const isOwner = !!user && !!sub && user.username === sub.user;
+    const canAbort = isOwner && !!sub && ['QU', 'P', 'G'].includes(sub.status);
+
+    const handleAbort = async () => {
+        if (!confirm(t('abortConfirm'))) return;
+        setIsAborting(true);
+        setAbortError(null);
+        try {
+            await api.post(`/submission/${id}/abort`);
+            queryClient.invalidateQueries({ queryKey: ['submission', id] });
+        } catch (err: unknown) {
+            const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
+            setAbortError(message || t('abortError'));
+        } finally {
+            setIsAborting(false);
+        }
+    };
+
     const resultInfo = sub?.result ? STATUS_INFO[sub.result] : null;
     const statusInfo = sub?.status ? STATUS_INFO[sub.status] || { color: 'text-zinc-500', icon: <AlertCircle size={20} /> } : null;
     const testScore = summarizeTestScore(sub?.test_cases ?? []);
@@ -300,6 +322,12 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                                 {rejudgeError}
                             </div>
                         )}
+
+                        {abortError && (
+                            <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                {abortError}
+                            </div>
+                        )}
                     </div>
 
                     {/* Right: Stats */}
@@ -349,6 +377,22 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                                 <RefreshCw size={16} />
                             )}
                             {t('rejudge')}
+                        </button>
+                    </div>
+                )}
+
+                {/* Abort: the submitter can stop their own queued/running submission (v1
+                    /submission/<id>/abort). */}
+                {canAbort && (
+                    <div className="mt-6 pt-6 border-t flex items-center gap-3 flex-wrap">
+                        <span className="text-sm text-muted-foreground font-medium">{t('submissionActions')}:</span>
+                        <button
+                            onClick={handleAbort}
+                            disabled={isAborting}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium text-sm transition-colors disabled:opacity-50"
+                        >
+                            {isAborting ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+                            {t('abort')}
                         </button>
                     </div>
                 )}

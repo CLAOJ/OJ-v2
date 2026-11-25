@@ -34,7 +34,9 @@ import {
     Wifi,
     Megaphone,
     Users,
-    Download
+    Download,
+    FileText,
+    LogOut
 } from 'lucide-react';
 import { cn, getRankColor, getRankBadgeColor, getRatingChangeColor, formatRatingChange } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -139,6 +141,21 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         }
     });
 
+    // v1 ContestLeave only detaches the current-contest pointer; the scoreboard
+    // row stays, so a later join resumes the same participation.
+    const { mutate: leaveContest, isPending: isLeaving } = useMutation({
+        mutationFn: async () => {
+            await api.post(`/contest/${key}/leave`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contest', key] });
+        },
+        onError: (err: unknown) => {
+            const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
+            toast.error(message || t('leaveFailed'));
+        }
+    });
+
     useEffect(() => {
         if (!contest) return;
 
@@ -229,19 +246,25 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 pt-4">
-                        {isRunning && (
+                        {contest.is_in_contest ? (
+                            <button
+                                onClick={() => requireAuth(() => {
+                                    if (confirm(t('leaveConfirm'))) leaveContest();
+                                }, tAuth('loginToJoinContest'))}
+                                disabled={isLeaving}
+                                className="px-4 h-10 rounded-md font-medium transition-all flex items-center gap-3 bg-muted/40 border hover:bg-muted disabled:opacity-50"
+                            >
+                                <LogOut size={18} />
+                                {t('leaveContest')}
+                            </button>
+                        ) : isRunning && (
                             <button
                                 onClick={() => requireAuth(() => joinContest(), tAuth('loginToJoinContest'))}
-                                disabled={isJoining || contest.is_joined}
-                                className={cn(
-                                    "px-4 h-10 rounded-md font-medium transition-all flex items-center gap-3",
-                                    contest.is_joined
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default"
-                                        : "bg-primary text-primary-foreground "
-                                )}
+                                disabled={isJoining}
+                                className="px-4 h-10 rounded-md font-medium transition-all flex items-center gap-3 bg-primary text-primary-foreground"
                             >
-                                {contest.is_joined ? <CheckCircle2 size={20} /> : <Play size={20} fill="currentColor" />}
-                                {contest.is_joined ? t('participating') : t('joinContest')}
+                                <Play size={20} fill="currentColor" />
+                                {contest.is_joined ? t('rejoinContest') : t('joinContest')}
                             </button>
                         )}
                         <div className="flex items-center gap-2 px-6 h-10 rounded-md bg-card border font-medium text-sm shadow-sm group">
@@ -259,6 +282,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             { id: 'problems', label: t('problems'), icon: ListOrdered, href: null },
                             { id: 'scoreboard', label: t('scoreboard'), icon: BarChart3, href: null },
                             { id: 'participation', label: t('participation'), icon: Users, href: null },
+                            { id: 'submissions', label: t('submissions'), icon: FileText, href: `/submissions?contest=${key}`, external: true },
                             { id: 'stats', label: t('statistics'), icon: Activity, href: `/contest/${key}/stats`, external: true }
                         ].map((tab) => (
                             <button
@@ -545,7 +569,15 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                         <th className="px-8 py-6 text-xs font-medium text-muted-foreground text-center">{t('total')}</th>
                                         {ranking?.problems.map((p, i) => (
                                             <th key={i} className="px-4 py-6 text-xs font-medium text-muted-foreground text-center w-28">
-                                                {p.label}
+                                                {p.code ? (
+                                                    <Link
+                                                        href={`/contest/${key}/rank/${p.code}`}
+                                                        title={t('bestSolutionsFor', { label: p.label })}
+                                                        className="hover:text-primary transition-colors"
+                                                    >
+                                                        {p.label}
+                                                    </Link>
+                                                ) : p.label}
                                             </th>
                                         ))}
                                         <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center">{t('window')}</th>
@@ -611,23 +643,34 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                             <td className="px-8 py-8 text-center font-semibold text-primary text-xl tracking-tighter">
                                                 {Math.round(row.score)}
                                             </td>
-                                            {row.breakdown.map((b, i) => (
+                                            {row.breakdown.map((b, i) => {
+                                            const problemCode = ranking?.problems[i]?.code;
+                                            const scoreClass = cn(
+                                                "text-sm font-medium text-white px-2 py-1 rounded-lg inline-block min-w-[50px] shadow-sm",
+                                                b && b.points > 0 ? "bg-emerald-500" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800"
+                                            );
+                                            return (
                                                 <td key={i} className="px-4 py-8 text-center">
                                                     {b ? (
                                                         <div className="space-y-1.5">
-                                                            <div className={cn(
-                                                                "text-sm font-medium text-white px-2 py-1 rounded-lg inline-block min-w-[50px] shadow-sm",
-                                                                b.points > 0 ? "bg-emerald-500" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800"
-                                                            )}>
-                                                                {b.points}
-                                                            </div>
+                                                            {problemCode ? (
+                                                                <Link
+                                                                    href={`/contest/${key}/rank/${problemCode}`}
+                                                                    className={cn(scoreClass, b.points > 0 && "hover:bg-emerald-600")}
+                                                                >
+                                                                    {b.points}
+                                                                </Link>
+                                                            ) : (
+                                                                <div className={scoreClass}>{b.points}</div>
+                                                            )}
                                                             <div className="text-xs text-muted-foreground font-medium opacity-50">
                                                                 {b.time != null ? formatClock(b.time) : '-'}
                                                             </div>
                                                         </div>
                                                     ) : <span className="text-muted-foreground/30 text-lg">·</span>}
                                                 </td>
-                                            ))}
+                                            );
+                                        })}
                                             <td className="px-10 py-8 text-center font-medium font-mono text-xs text-muted-foreground">
                                                 {formatClock(row.cumtime)}
                                             </td>
