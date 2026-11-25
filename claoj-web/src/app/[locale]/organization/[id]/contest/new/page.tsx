@@ -10,6 +10,7 @@ import api from '@/lib/api';
 import { Link } from '@/navigation';
 import ContestForm, { type ContestFormData } from '@/components/admin/ContestForm';
 import { contestFormToCreate } from '@/lib/adminForms';
+import { searchOrganizationProblems, searchPublicUsers } from '@/lib/publicSearch';
 import { parseLeadingId } from '@/utils/route';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
@@ -115,6 +116,11 @@ export default function OrganizationContestCreatePage() {
                 initialOptions={{
                     organization_ids: [{ id: org.id, label: org.name }],
                     author_ids: author,
+                }}
+                search={{
+                    problems: searchOrganizationProblems(org.id),
+                    users: searchPublicUsers,
+                    key: `org-${org.id}`,
                 }}
                 onSubmit={async data => { await createMutation.mutateAsync(data); }}
                 isLoading={createMutation.isPending}

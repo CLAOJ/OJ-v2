@@ -144,6 +144,7 @@ func ProblemList(c *gin.Context) {
 // problemListItem is the public problem-list row shape, shared with the
 // organization problems tab so both lists always look the same.
 type problemListItem struct {
+	ID        uint    `json:"id"`
 	Code      string  `json:"code"`
 	Name      string  `json:"name"`
 	Points    float64 `json:"points"`
@@ -172,6 +173,7 @@ func problemListItems(problems []models.Problem, profileID uint) []problemListIt
 	items := make([]problemListItem, len(problems))
 	for i, p := range problems {
 		items[i] = problemListItem{
+			ID:        p.ID,
 			Code:      p.Code,
 			Name:      p.Name,
 			Points:    p.Points,

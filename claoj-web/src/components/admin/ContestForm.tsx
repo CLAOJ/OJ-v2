@@ -81,6 +81,17 @@ export interface ContestFormOptions {
 export interface ContestFormProps {
     initialData?: ContestFormData;
     initialOptions?: ContestFormOptions;
+    /**
+     * Search sources for the relation pickers. Omitted on the admin pages
+     * (the staff endpoints); the organization pages pass public/owned sources
+     * so non-staff org admins can fill them in.
+     */
+    search?: {
+        problems?: (term: string) => Promise<EntityOption[]>;
+        users?: (term: string) => Promise<EntityOption[]>;
+        /** Cache namespace for the pickers, e.g. `org-7-` (separate sources). */
+        key?: string;
+    };
     onSubmit: (data: ContestFormData) => Promise<void>;
     isLoading?: boolean;
 }
@@ -92,7 +103,7 @@ interface ContestTag {
     description: string;
 }
 
-export default function ContestForm({ initialData, initialOptions, onSubmit, isLoading }: ContestFormProps) {
+export default function ContestForm({ initialData, initialOptions, search, onSubmit, isLoading }: ContestFormProps) {
     const t = useTranslations('Admin');
     const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ContestFormData>({
         defaultValues: {
@@ -144,14 +155,17 @@ export default function ContestForm({ initialData, initialOptions, onSubmit, isL
     const [description, setDescription] = useState(initialData?.description || '');
 
     const { data: tags } = useQuery<{ data: ContestTag[] }>({
-        queryKey: ['admin-contest-tags-list'],
+        queryKey: ['contest-tags-list'],
         queryFn: async () => {
-            const res = await api.get('/admin/contest-tags?page=1&page_size=1000');
+            const res = await api.get('/contest-tags?page=1&page_size=1000');
             return res.data;
         }
     });
 
     const selectedFormat = watch('format_name');
+    // The org pages pass their own picker sources; keep their cached results
+    // out of the staff pickers' namespace.
+    const pickerScope = search?.key ? `${search.key}-` : '';
     const selectedProblems = watch('problem_ids') || [];
     const selectedAuthors = watch('author_ids') || [];
     const selectedCurators = watch('curator_ids') || [];
@@ -243,6 +257,8 @@ export default function ContestForm({ initialData, initialOptions, onSubmit, isL
                 selectedProblems={selectedProblems}
                 initialOptions={initialOptions?.problems}
                 onChange={(ids) => setValue('problem_ids', ids)}
+                search={search?.problems}
+                queryKey={`${pickerScope}problems`}
             />
 
             <TagsSection
@@ -255,6 +271,8 @@ export default function ContestForm({ initialData, initialOptions, onSubmit, isL
                 selected={{ author_ids: selectedAuthors, curator_ids: selectedCurators, tester_ids: selectedTesters }}
                 initialOptions={initialOptions}
                 onChange={(field, ids) => setValue(field, ids)}
+                search={search?.users}
+                queryKey={`${pickerScope}users`}
             />
 
             <div className="flex justify-end gap-3">

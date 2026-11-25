@@ -4,13 +4,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { adminLicenseApi } from '@/lib/adminApi';
+import { fetchPublicLicenses } from '@/lib/publicSearch';
 import type { AdminLicense, SubmissionSourceVisibilityMode, TestcaseVisibilityMode } from '@/types';
 import { BasicInfoSection } from './problem-form/BasicInfoSection';
 import type { EntityOption } from './EntityPicker';
-
-// The taxonomy selects need every group/type, not a page of them.
-const TAXONOMY_PAGE_SIZE = 500;
 
 import { ClassificationSection } from './problem-form/ClassificationSection';
 import { AuthorsSection } from './problem-form/AuthorsSection';
@@ -147,11 +144,8 @@ export default function ProblemForm({ initialData, initialAuthors, initialOption
     });
 
     const { data: licenses } = useQuery<{ data: AdminLicense[] }>({
-        queryKey: ['admin-licenses'],
-        queryFn: async () => {
-            const res = await adminLicenseApi.list(1, TAXONOMY_PAGE_SIZE);
-            return res.data;
-        }
+        queryKey: ['public-licenses'],
+        queryFn: fetchPublicLicenses
     });
 
     const selectedGroup = watch('group_id');

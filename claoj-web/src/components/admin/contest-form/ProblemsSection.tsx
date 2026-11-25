@@ -8,10 +8,14 @@ interface ProblemsSectionProps {
     selectedProblems: number[];
     initialOptions?: EntityOption[];
     onChange: (ids: number[]) => void;
+    /** Override the staff problem search (organization pages). */
+    search?: (term: string) => Promise<EntityOption[]>;
+    /** Cache namespace for the picker results. */
+    queryKey?: string;
 }
 
 /** Selection order is contest problem order. */
-export function ProblemsSection({ selectedProblems, initialOptions, onChange }: ProblemsSectionProps) {
+export function ProblemsSection({ selectedProblems, initialOptions, onChange, search, queryKey = 'problems' }: ProblemsSectionProps) {
     const t = useTranslations('Admin');
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
@@ -22,8 +26,8 @@ export function ProblemsSection({ selectedProblems, initialOptions, onChange }: 
                 label={t('contestForm.problemsTitle')}
                 value={selectedProblems}
                 onChange={onChange}
-                search={searchProblems}
-                queryKey="problems"
+                search={search ?? searchProblems}
+                queryKey={queryKey}
                 initialOptions={initialOptions}
             />
             {selectedProblems.length > 0 && (

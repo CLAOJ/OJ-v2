@@ -342,6 +342,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/problems/suggest", v2.SuggestProblemList)
 		apiv2.GET("/problem-groups", v2.ProblemGroupList)
 		apiv2.GET("/problem-types", v2.ProblemTypeList)
+		apiv2.GET("/licenses", v2.LicenseList)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
@@ -359,6 +360,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/events", events.ServeWS)
 
 		apiv2.GET("/contests", contestHandlers.ContestList)
+		apiv2.GET("/contest-tags", v2.ContestTagList)
 		apiv2.GET("/contests/calendar", v2.ContestCalendar)
 		apiv2.GET("/contest/:key", contestHandlers.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)

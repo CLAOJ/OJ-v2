@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -727,6 +728,13 @@ func OrganizationProblemList(c *gin.Context) {
 	q := db.DB.Model(&models.Problem{}).
 		Where(visExpr, visArgs...).
 		Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_organizations WHERE organization_id = ?)", org.ID)
+
+	// ?search= narrows by code/name. The org contest form's problem picker
+	// reads the org's problems through this same member-gated list.
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where("(judge_problem.code LIKE ? OR judge_problem.name LIKE ?)", like, like)
+	}
 
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
