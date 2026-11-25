@@ -167,6 +167,8 @@ func ContestDetail(c *gin.Context) {
 	var ct models.Contest
 	if err := db.DB.
 		Preload("ContestProblems.Problem").
+		Preload("Authors").
+		Preload("Curators").
 		Where("`key` = ?", key).
 		First(&ct).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
@@ -234,9 +236,11 @@ func ContestDetail(c *gin.Context) {
 		}
 	}
 
-	// v1 renders every contest announcement on the contest page (there is no
-	// draft/unpublished state in judge_contestannouncement, and date is
-	// auto_now_add), newest first.
+	// v1 renders announcements only to participants, everyone once the contest
+	// has ended, and superusers/editors/testers (templates/contest/contest.html).
+	// A running contest's announcements are not public.
+	showAnnouncements := isJoined || hasEnded ||
+		auth.CanEditContest(c, &ct) || isContestTester(c, ct.ID)
 	type AnnouncementItem struct {
 		ID          uint      `json:"id"`
 		Title       string    `json:"title"`
@@ -244,13 +248,15 @@ func ContestDetail(c *gin.Context) {
 		Date        time.Time `json:"date"`
 	}
 	announcementItems := []AnnouncementItem{}
-	var announcements []models.ContestAnnouncement
-	if err := db.DB.Where("contest_id = ?", ct.ID).Order("date DESC, id DESC").Find(&announcements).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
-		return
-	}
-	for _, a := range announcements {
-		announcementItems = append(announcementItems, AnnouncementItem{a.ID, a.Title, a.Description, a.Date})
+	if showAnnouncements {
+		var announcements []models.ContestAnnouncement
+		if err := db.DB.Where("contest_id = ?", ct.ID).Order("date DESC, id DESC").Find(&announcements).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		for _, a := range announcements {
+			announcementItems = append(announcementItems, AnnouncementItem{a.ID, a.Title, a.Description, a.Date})
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -271,4 +277,19 @@ func ContestDetail(c *gin.Context) {
 		"has_ended":     hasEnded,
 		"can_virtual":   canVirtual,
 	})
+}
+
+// isContestTester reports whether the request user is one of the contest's
+// testers: they keep seeing a running contest's announcements, as in v1's
+// contest page.
+func isContestTester(c *gin.Context, contestID uint) bool {
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
+		return false
+	}
+	var count int64
+	db.DB.Table("judge_contest_testers").
+		Where("contest_id = ? AND profile_id = ?", contestID, profileID).
+		Count(&count)
+	return count > 0
 }
