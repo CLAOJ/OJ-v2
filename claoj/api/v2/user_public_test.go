@@ -240,3 +240,23 @@ func TestBlogList_AuthorFilter(t *testing.T) {
 	w, _ := profileGet(t, 0, "/blogs?author=nobody", "/blogs", BlogList)
 	require.Equal(t, http.StatusNotFound, w.Code)
 }
+
+// The profile Blogs tab and /user/<username>/blog page paginate one author's
+// posts; the total must count every post, not just the fetched page.
+func TestBlogList_AuthorPagination(t *testing.T) {
+	fx := setupProfileDB(t)
+	base := time.Now().Add(-24 * time.Hour)
+	for i, title := range []string{"one", "two", "three"} {
+		seedBlogPost(t, title, title, true, base.Add(time.Duration(i)*time.Minute), &fx.profile, nil)
+	}
+
+	_, first := profileGet(t, 0, "/blogs?author=solver&page=1&page_size=2", "/blogs", BlogList)
+	require.Len(t, first["data"].([]any), 2)
+	require.InDelta(t, float64(3), first["total"].(float64), 1e-9)
+	require.Equal(t, "three", first["data"].([]any)[0].(map[string]any)["title"],
+		"newest first")
+
+	_, second := profileGet(t, 0, "/blogs?author=solver&page=2&page_size=2", "/blogs", BlogList)
+	require.Len(t, second["data"].([]any), 1)
+	require.Equal(t, "one", second["data"].([]any)[0].(map[string]any)["title"])
+}

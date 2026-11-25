@@ -72,6 +72,21 @@ func CurrentUser(c *gin.Context) {
 		}
 	}
 
+	// admin_of drives the "post as this organization" picker on /post/new and
+	// /post/<id>/edit (only an organization's admins may post as it).
+	type adminOrg struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	}
+	adminOf := make([]adminOrg, 0)
+	db.DB.Table("judge_organization o").
+		Select("o.id, o.name, o.slug").
+		Joins("JOIN judge_organization_admins oa ON oa.organization_id = o.id").
+		Where("oa.profile_id = ?", profile.ID).
+		Order("o.name ASC").
+		Scan(&adminOf)
+
 	// We don't expose sensitive info like Password or TOTP keys.
 	// is_staff and is_admin drive the frontend admin surface: the admin gate
 	// (AdminAccessWrapper / AdminSidebar) hides all admin UI unless is_staff is
@@ -87,13 +102,15 @@ func CurrentUser(c *gin.Context) {
 		"is_superuser": authUser.IsSuperuser,
 		"date_joined":  authUser.DateJoined,
 		"profile": gin.H{
-			"points":   profile.Points,
-			"rating":   profile.Rating,
-			"about":    profile.About,
-			"timezone": profile.Timezone,
+			"points":        profile.Points,
+			"rating":        profile.Rating,
+			"about":         profile.About,
+			"timezone":      profile.Timezone,
+			"problem_count": profile.ProblemCount,
 		},
 		"can_organization_admin": access.HasPerm("judge.organization_admin"),
 		"permissions":            perms,
+		"admin_of":               adminOf,
 		"is_impersonating":       impersonatorID != 0,
 		"impersonator_username":  impersonatorUsername,
 	})

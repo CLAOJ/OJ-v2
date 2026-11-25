@@ -69,6 +69,16 @@ func TestUserList_DisplayNameAndOrganizations(t *testing.T) {
 	require.Equal(t, "plain", contrib[0]["username"])
 	require.Equal(t, "named", contrib[1]["username"])
 
+	// /contributors is the same list with the contribution ranking: unlisted
+	// profiles stay out of it even when they lead on contribution points.
+	_, hidden := seedAccount(t, "hidden", false, false)
+	require.NoError(t, db.DB.Model(&hidden).Updates(map[string]any{
+		"contribution_points": 50, "is_unlisted": true,
+	}).Error)
+	contrib = fetch("?sort=contribution")
+	require.Len(t, contrib, 2, "unlisted profiles are excluded")
+	require.Equal(t, "plain", contrib[0]["username"])
+
 	// Home's top-rating widget uses sort=rating; unrated users sort last.
 	require.NoError(t, db.DB.Model(&named).Update("rating", 1500).Error)
 	rated := fetch("?sort=rating")

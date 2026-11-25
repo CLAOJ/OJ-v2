@@ -501,8 +501,12 @@ func NewRouter() *gin.Engine {
 
 			// Blogs
 			protected.POST("/blog/:id/vote", v2.BlogVoteHandler)
+			// Public blog authoring (v1 /post/new, /post/<id>/edit).
+			protected.POST("/blogs", v2.PublicBlogPostCreate)
+			protected.PATCH("/blog/:id", v2.PublicBlogPostUpdate)
 
 			// Organizations
+			protected.POST("/organizations", v2.PublicOrganizationCreate)
 			protected.PATCH("/organization/:id", v2.UpdateOrganization)
 			protected.POST("/organization/:id/join", v2.JoinOrganization)
 			protected.POST("/organization/:id/leave", v2.LeaveOrganization)

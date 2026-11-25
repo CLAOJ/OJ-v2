@@ -2,6 +2,7 @@ package v2
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
 	"github.com/CLAOJ/claoj/scoring"
+	"github.com/CLAOJ/claoj/service/organization"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -196,6 +198,104 @@ func OrganizationDetail(c *gin.Context) {
 		"user_id":            viewerProfileID,
 		"members":            members,
 		"admins":             admins,
+	})
+}
+
+// PublicOrganizationCreateRequest is the v1 CreateOrganization form: about,
+// logo_override_image, admins (plus the organization's own name/slug, which
+// the v2 form collects explicitly).
+type PublicOrganizationCreateRequest struct {
+	Name              string `json:"name" binding:"required"`
+	Slug              string `json:"slug" binding:"required"`
+	ShortName         string `json:"short_name"`
+	About             string `json:"about"`
+	LogoOverrideImage string `json:"logo_override_image"`
+	Admins            []uint `json:"admins"`
+}
+
+// organizationAdminLimit mirrors v1 settings.CLAOJ_ORGANIZATION_ADMIN_LIMIT:
+// how many organizations one profile may administer before creating more is
+// refused. v1's spam_organization escape hatch can only ever resolve true for
+// a superuser (no such Django permission exists), so superusers are exempt.
+const organizationAdminLimit = 3
+
+// PublicOrganizationCreate – POST /api/v2/organizations
+// v1 CreateOrganization: judge.add_organization, the admin-of limit, and the
+// caller becomes an administrator of the new organization.
+func PublicOrganizationCreate(c *gin.Context) {
+	_, profile, ok := resolveUserProfile(c)
+	if !ok {
+		return
+	}
+	if !auth.HasPerm(c, "judge.add_organization") {
+		c.JSON(http.StatusForbidden, apiUserError("you are not allowed to create new organizations"))
+		return
+	}
+
+	if !auth.GetAccess(c).IsSuperuser {
+		var adminOf int64
+		db.DB.Table("judge_organization_admins").Where("profile_id = ?", profile.ID).Count(&adminOf)
+		if adminOf >= organizationAdminLimit {
+			c.JSON(http.StatusForbidden, apiUserError("you are already an administrator of "+
+				strconv.Itoa(int(adminOf))+" organizations; the limit is "+
+				strconv.Itoa(organizationAdminLimit)))
+			return
+		}
+	}
+
+	var req PublicOrganizationCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
+		return
+	}
+
+	// v1 sets the short name to the slug's first 20 characters.
+	shortName := req.ShortName
+	if shortName == "" {
+		shortName = req.Slug
+	}
+	if len(shortName) > 20 {
+		shortName = shortName[:20]
+	}
+
+	adminIDs := []uint{profile.ID}
+	for _, id := range req.Admins {
+		if id != profile.ID {
+			adminIDs = append(adminIDs, id)
+		}
+	}
+	missing, err := missingProfileIDs(adminIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if len(missing) > 0 {
+		c.JSON(http.StatusBadRequest, apiUserError(fmt.Sprintf("unknown profile IDs: %v", missing)))
+		return
+	}
+
+	created, err := getOrgService().CreateOrganization(organization.CreateOrganizationRequest{
+		Name:              req.Name,
+		Slug:              req.Slug,
+		ShortName:         shortName,
+		About:             req.About,
+		// v1 defaults a new organization to unlisted and closed.
+		IsUnlisted:        true,
+		LogoOverrideImage: req.LogoOverrideImage,
+		AdminIDs:          adminIDs,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "organization created",
+		"organization": gin.H{
+			"id":   created.ID,
+			"name": created.Name,
+			"slug": created.Slug,
+		},
 	})
 }
 
