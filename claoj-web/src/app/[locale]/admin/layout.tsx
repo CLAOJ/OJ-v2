@@ -78,7 +78,7 @@ const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
             { href: '/admin/languages', key: 'languages', icon: Terminal },
             { href: '/admin/language-limits', key: 'languageLimits', icon: Settings2 },
             { href: '/admin/points-votes', key: 'pointsVotes', icon: ThumbsUp },
-            { href: '/admin/moss', key: 'moss', icon: ScanSearch },
+            { href: '/admin/plagiarism', key: 'moss', icon: ScanSearch },
         ],
     },
     {

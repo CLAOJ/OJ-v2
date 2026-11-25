@@ -57,8 +57,8 @@ func writeReportFile(t *testing.T, path, body string) {
 
 func TestContestMoss_RequiresPermission(t *testing.T) {
 	_, staff, _ := setupContestMossDB(t)
-	router := authedRouter(staff.ID, http.MethodGet, "/admin/contest/:key/moss", AdminContestMossList)
-	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/moss", "")
+	router := authedRouter(staff.ID, http.MethodGet, "/admin/contest/:key/plagiarism", AdminContestMossList)
+	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/plagiarism", "")
 	require.Equal(t, http.StatusForbidden, w.Code)
 }
 
@@ -69,8 +69,8 @@ func TestContestMoss_ListReturnsReportPath(t *testing.T) {
 	reportPath := "knap/cpp"
 	require.NoError(t, db.DB.Create(&models.PlagiarismResult{ContestID: c.ID, ProblemID: p.ID, Language: "C++", SubmissionCount: 4, ReportPath: &reportPath, CreatedAt: time.Now()}).Error)
 
-	router := authedRouter(root.ID, http.MethodGet, "/admin/contest/:key/moss", AdminContestMossList)
-	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/moss", "")
+	router := authedRouter(root.ID, http.MethodGet, "/admin/contest/:key/plagiarism", AdminContestMossList)
+	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/plagiarism", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	var body struct {
 		Running bool   `json:"running"`
@@ -99,13 +99,13 @@ func TestContestMoss_RunEnqueues(t *testing.T) {
 	enqueueContestMoss = func(id uint) error { enqueued = append(enqueued, id); return nil }
 	t.Cleanup(func() { enqueueContestMoss = jobs.EnqueueContestMoss })
 
-	router := authedRouter(root.ID, http.MethodPost, "/admin/contest/:key/moss", AdminContestMossRun)
-	w := doRequest(router, http.MethodPost, "/admin/contest/tik25/moss", "")
+	router := authedRouter(root.ID, http.MethodPost, "/admin/contest/:key/plagiarism", AdminContestMossRun)
+	w := doRequest(router, http.MethodPost, "/admin/contest/tik25/plagiarism", "")
 	require.Equal(t, http.StatusAccepted, w.Code, w.Body.String())
 	require.Equal(t, []uint{c.ID}, enqueued)
 
 	enqueueContestMoss = func(uint) error { return jobs.ErrMossAlreadyRunning }
-	w = doRequest(router, http.MethodPost, "/admin/contest/tik25/moss", "")
+	w = doRequest(router, http.MethodPost, "/admin/contest/tik25/plagiarism", "")
 	require.Equal(t, http.StatusConflict, w.Code)
 }
 
@@ -116,8 +116,8 @@ func TestContestMoss_DeleteRemovesReportDir(t *testing.T) {
 	require.NoError(t, db.DB.Create(&models.PlagiarismResult{ContestID: c.ID, ProblemID: 1, Language: "C++", ReportPath: &reportPath, CreatedAt: time.Now()}).Error)
 	writeReportFile(t, filepath.Join(jobs.ContestReportDir(c.ID), "knap", "cpp", "index.html"), "report")
 
-	router := authedRouter(root.ID, http.MethodDelete, "/admin/contest/:key/moss", AdminContestMossDelete)
-	w := doRequest(router, http.MethodDelete, "/admin/contest/tik25/moss", "")
+	router := authedRouter(root.ID, http.MethodDelete, "/admin/contest/:key/plagiarism", AdminContestMossDelete)
+	w := doRequest(router, http.MethodDelete, "/admin/contest/tik25/plagiarism", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	var body struct {
 		Deleted int64 `json:"deleted"`
@@ -137,8 +137,8 @@ func TestContestMoss_ReportServesWithSandbox(t *testing.T) {
 	root, _, c := setupContestMossDB(t)
 	writeReportFile(t, filepath.Join(jobs.ContestReportDir(c.ID), "knap", "cpp", "index.html"), "<html>knap</html>")
 
-	router := authedRouter(root.ID, http.MethodGet, "/admin/contest/:key/moss/report/*path", AdminContestMossReport)
-	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/moss/report/knap/cpp/index.html", "")
+	router := authedRouter(root.ID, http.MethodGet, "/admin/contest/:key/plagiarism/report/*path", AdminContestMossReport)
+	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/plagiarism/report/knap/cpp/index.html", "")
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	require.Contains(t, w.Body.String(), "<html>knap</html>")
 	require.Equal(t, "sandbox allow-scripts allow-popups", w.Header().Get("Content-Security-Policy"))
@@ -154,14 +154,14 @@ func TestContestMoss_ReportRejectsTraversal(t *testing.T) {
 	writeReportFile(t, filepath.Join(jobs.ContestReportDir(other.ID), "x.html"), "other contest")
 	writeReportFile(t, filepath.Join(jobs.PlagiarismDir, "secret"), "secret")
 
-	router := authedRouter(root.ID, http.MethodGet, "/admin/contest/:key/moss/report/*path", AdminContestMossReport)
+	router := authedRouter(root.ID, http.MethodGet, "/admin/contest/:key/plagiarism/report/*path", AdminContestMossReport)
 	for _, target := range []string{
-		"/admin/contest/tik25/moss/report/../1/x.html",
-		"/admin/contest/tik25/moss/report/%2e%2e/%2e%2e/secret",
-		"/admin/contest/tik25/moss/report/etc/passwd",
-		"/admin/contest/tik25/moss/report/..%5c..%5csecret",
-		"/admin/contest/tik25/moss/report/../" + strconv.FormatUint(uint64(other.ID), 10) + "/x.html",
-		"/admin/contest/tik25/moss/report/knap/cpp",
+		"/admin/contest/tik25/plagiarism/report/../1/x.html",
+		"/admin/contest/tik25/plagiarism/report/%2e%2e/%2e%2e/secret",
+		"/admin/contest/tik25/plagiarism/report/etc/passwd",
+		"/admin/contest/tik25/plagiarism/report/..%5c..%5csecret",
+		"/admin/contest/tik25/plagiarism/report/../" + strconv.FormatUint(uint64(other.ID), 10) + "/x.html",
+		"/admin/contest/tik25/plagiarism/report/knap/cpp",
 	} {
 		w := doRequest(router, http.MethodGet, target, "")
 		require.Equal(t, http.StatusNotFound, w.Code, "target %s: %s", target, w.Body.String())
@@ -173,7 +173,7 @@ func TestContestMoss_ReportRequiresPermission(t *testing.T) {
 	_, staff, c := setupContestMossDB(t)
 	writeReportFile(t, filepath.Join(jobs.ContestReportDir(c.ID), "knap", "cpp", "index.html"), "report")
 
-	router := authedRouter(staff.ID, http.MethodGet, "/admin/contest/:key/moss/report/*path", AdminContestMossReport)
-	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/moss/report/knap/cpp/index.html", "")
+	router := authedRouter(staff.ID, http.MethodGet, "/admin/contest/:key/plagiarism/report/*path", AdminContestMossReport)
+	w := doRequest(router, http.MethodGet, "/admin/contest/tik25/plagiarism/report/knap/cpp/index.html", "")
 	require.Equal(t, http.StatusForbidden, w.Code)
 }

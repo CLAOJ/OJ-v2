@@ -1022,13 +1022,13 @@ export interface ContestMossResult {
 
 export const adminMossApi = {
     list: (key: string) =>
-        api.get<{ running: boolean; results: ContestMossResult[]; error: string }>(`/admin/contest/${key}/moss`),
+        api.get<{ running: boolean; results: ContestMossResult[]; error: string }>(`/admin/contest/${key}/plagiarism`),
     run: (key: string) =>
-        api.post<{ queued: boolean }>(`/admin/contest/${key}/moss`),
+        api.post<{ queued: boolean }>(`/admin/contest/${key}/plagiarism`),
     clear: (key: string) =>
-        api.delete<{ deleted: number }>(`/admin/contest/${key}/moss`),
+        api.delete<{ deleted: number }>(`/admin/contest/${key}/plagiarism`),
     reportUrl: (key: string, reportPath: string) =>
-        `${api.defaults.baseURL}/admin/contest/${key}/moss/report/${reportPath}/index.html`,
+        `${api.defaults.baseURL}/admin/contest/${key}/plagiarism/report/${reportPath}/index.html`,
 };
 
 // Backend messages for 400/403/409 are written for end users; anything else gets the fallback.
