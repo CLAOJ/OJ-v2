@@ -103,7 +103,18 @@
     "mobileNavigationMenu": "Mobile navigation menu",
     "menu": "Menu",
     "tickets": "Tickets",
-    "settings": "Settings"
+    "settings": "Settings",
+    "dbLabels": {
+      "Home": "Home",
+      "Problems": "Problems",
+      "Submissions": "Submissions",
+      "Leaderboard": "Leaderboard",
+      "Organizations": "Organizations",
+      "Contests": "Contests",
+      "About": "About",
+      "Judges": "Judges",
+      "Users": "Users"
+    }
   },
   "Footer": {
     "description": "Modern, high-performance competitive programming platform.",

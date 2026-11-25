@@ -4,7 +4,7 @@ import { Link } from '@/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useMessages, useTranslations } from 'next-intl';
 import Logo from '@/components/navbar/Logo';
 import DesktopNav from '@/components/navbar/DesktopNav';
 import LanguageSwitcher from '@/components/navbar/LanguageSwitcher';
@@ -39,9 +39,14 @@ export default function Navbar() {
         return () => { cancelled = true; };
     }, []);
 
+    // v1 translated DB labels with gettext; the catalog map is the v2
+    // equivalent, and labels it lacks render verbatim.
+    const messages = useMessages();
+    const dbLabels = (messages.Navbar as { dbLabels?: Record<string, string> } | undefined)?.dbLabels;
     const navLinks = buildNavLinks(
         navigation,
         user ? [...V2_ONLY_LINKS, REPORT_LINK] : V2_ONLY_LINKS,
+        dbLabels,
     );
 
     const handleLoginRedirect = () => {

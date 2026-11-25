@@ -51,6 +51,15 @@ export const FALLBACK_NAV_LINKS: NavLink[] = [
     { key: 'stats', href: '/stats', tKey: 'stats' },
 ];
 
+// v1 passes every DB label through gettext (`{{ _(node.label) }}`). Labels the
+// catalogs do not know stay verbatim: admins can add arbitrary rows.
+export function translateDbLabel(
+    label: string,
+    labels: Record<string, string> | undefined,
+): string {
+    return labels?.[label] ?? label;
+}
+
 function flatten(items: NavigationItem[]): NavigationItem[] {
     // v1 hangs children under their parent as a dropdown; the v2 header is a
     // single row, so children follow their parent instead of disappearing.
@@ -60,6 +69,7 @@ function flatten(items: NavigationItem[]): NavigationItem[] {
 export function buildNavLinks(
     items: NavigationItem[] | null | undefined,
     extras: NavLink[] = [],
+    dbLabels?: Record<string, string>,
 ): NavLink[] {
     const links: NavLink[] = [];
     const seen = new Set<string>();
@@ -73,7 +83,7 @@ export function buildNavLinks(
         for (const item of flatten(items)) {
             add({
                 key: item.key,
-                label: item.label,
+                label: translateDbLabel(item.label, dbLabels),
                 href: normalizeNavPath(item.path),
                 regex: item.regex,
             });

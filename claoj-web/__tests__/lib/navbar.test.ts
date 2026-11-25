@@ -3,6 +3,7 @@ import {
     findActiveKey,
     isActiveLink,
     normalizeNavPath,
+    translateDbLabel,
     FALLBACK_NAV_LINKS,
     type NavigationItem,
 } from '@/lib/navbar';
@@ -92,6 +93,41 @@ describe('buildNavLinks', () => {
         expect(links.at(-1)?.href).toBe('/ticket/create');
         // Ratings is already in the fallback, so it is not duplicated.
         expect(links.filter((l) => l.href === '/ratings')).toHaveLength(1);
+    });
+});
+
+describe('translateDbLabel', () => {
+    // v1 renders the label through gettext: known labels follow the catalog,
+    // arbitrary admin labels stay verbatim.
+    const viLabels = { Problems: 'Bài tập', Organizations: 'Tổ chức' };
+
+    it('translates a known DB label', () => {
+        expect(translateDbLabel('Problems', viLabels)).toBe('Bài tập');
+        expect(translateDbLabel('Organizations', viLabels)).toBe('Tổ chức');
+    });
+
+    it('renders an unknown DB label verbatim', () => {
+        expect(translateDbLabel('Wiki', viLabels)).toBe('Wiki');
+        expect(translateDbLabel('devlog', viLabels)).toBe('devlog');
+        expect(translateDbLabel('Server Status', viLabels)).toBe('Server Status');
+        expect(translateDbLabel('Problems', undefined)).toBe('Problems');
+    });
+
+    it('leaves English unchanged (identity catalog)', () => {
+        const enLabels = { Problems: 'Problems', Organizations: 'Organizations' };
+        expect(translateDbLabel('Problems', enLabels)).toBe('Problems');
+        expect(translateDbLabel('Server Status', enLabels)).toBe('Server Status');
+    });
+
+    it('is applied to DB rows, never to v2-only entries', () => {
+        const links = buildNavLinks(
+            [item({ key: 'problem', label: 'Problems', path: '/problems/' })],
+            [{ key: 'ratings', href: '/ratings', tKey: 'ratings' }],
+            viLabels,
+        );
+        expect(links[0].label).toBe('Bài tập');
+        expect(links[1].label).toBeUndefined();
+        expect(links[1].tKey).toBe('ratings');
     });
 });
 
