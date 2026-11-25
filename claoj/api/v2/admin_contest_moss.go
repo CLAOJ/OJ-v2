@@ -69,10 +69,6 @@ func AdminContestMossRun(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if _, err := jobs.MossUserID(db.DB); err != nil {
-		c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
-		return
-	}
 	if err := enqueueContestMoss(contest.ID); err != nil {
 		if errors.Is(err, jobs.ErrMossAlreadyRunning) {
 			c.JSON(http.StatusConflict, apiUserError(err.Error()))

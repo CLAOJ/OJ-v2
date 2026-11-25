@@ -74,7 +74,7 @@ func TestContestMoss_ListReturnsRows(t *testing.T) {
 	require.Equal(t, url, *body.Results[0].URL)
 }
 
-func TestContestMoss_RunNeedsConfigAndEnqueues(t *testing.T) {
+func TestContestMoss_RunEnqueues(t *testing.T) {
 	root, _, c := setupContestMossDB(t)
 	var enqueued []uint
 	enqueueContestMoss = func(id uint) error { enqueued = append(enqueued, id); return nil }
@@ -82,11 +82,6 @@ func TestContestMoss_RunNeedsConfigAndEnqueues(t *testing.T) {
 
 	router := authedRouter(root.ID, http.MethodPost, "/admin/contest/:key/moss", AdminContestMossRun)
 	w := doRequest(router, http.MethodPost, "/admin/contest/tik25/moss", "")
-	require.Equal(t, http.StatusBadRequest, w.Code)
-	require.Contains(t, w.Body.String(), "moss_user_id")
-
-	require.NoError(t, db.DB.Create(&models.MiscConfig{Key: "moss_user_id", Value: "123"}).Error)
-	w = doRequest(router, http.MethodPost, "/admin/contest/tik25/moss", "")
 	require.Equal(t, http.StatusAccepted, w.Code, w.Body.String())
 	require.Equal(t, []uint{c.ID}, enqueued)
 
