@@ -136,3 +136,9 @@ See `docs/roadmap-tracker.md`. Highlights: impersonated refresh TTL 2 h; points 
 | Problems filter (v1 shape) | `#problem-types` select with 78 options; choosing "2SAT" adds a removable tag, drops the option from the list and filters 20 rows → 2 |
 | Submissions filter (v1 shape) | `#verdict-filter` (12 options) + `#language-filter` (16 options); WA + C tags → total **188,881 → 70**; removing the WA tag → **240** |
 | `/license/[key]` | route + `GET /license/:key` live; the shared DB has **0 licenses** (v1 admin also shows "0 licenses"), so there is no data to display |
+| Header (v2) | DB-driven, v1's order: Bài tập, Bài nộp, Bảng xếp hạng, Tổ chức, Kỳ thi, Wiki, Giới thiệu; Giới thiệu opens a dropdown (Server Status, Máy chấm → /stats, devlog), `aria-expanded` false→true; reports are the amber ticket icon on the right |
+| `/problem/[code]/tickets` | "Báo cáo của bài 013_findn" with status filters and empty state (no longer bounces to /login) |
+| `/contests/tag/claoi` | 1 contest tagged `#claoi` |
+| `/contests/calendar?year=2026&month=9` | September 2026 contests (deep link honoured) |
+| `/users?search=`, `/contributors?search=` | 1 matching row each |
+| Resubmit | `/problem/dct04?resubmit=190022` prefills the editor with that submission's source (662 chars) |
