@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { User, Shield, Bell, Key, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProfileSettingsTab from '@/components/settings/ProfileSettingsTab';
+import { PreferencesSection } from '@/components/settings/PreferencesSection';
 import AccountSettingsTab from '@/components/settings/AccountSettingsTab';
 import OAuthSettingsTab from '@/components/settings/OAuthSettingsTab';
 import { useOAuthProviders } from '@/hooks/useOAuthProviders';
@@ -43,7 +44,12 @@ export default function SettingsPage() {
 
                 {/* Content Area */}
                 <div className="flex-grow p-8 rounded-md border bg-card shadow-sm">
-                    {activeTab === 'profile' && <ProfileSettingsTab />}
+                    {activeTab === 'profile' && (
+                        <div className="space-y-10">
+                            <ProfileSettingsTab />
+                            <PreferencesSection />
+                        </div>
+                    )}
                     {activeTab === 'account' && <AccountSettingsTab />}
                     {activeTab === 'oauth' && <OAuthSettingsTab />}
                     {activeTab === 'notifications' && <NotificationSettingsTab />}

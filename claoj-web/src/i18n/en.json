@@ -1397,7 +1397,12 @@
     "avatarRemoved": "Photo removed; your Gravatar is shown again",
     "avatarTooLarge": "The photo must be 1 MB or smaller",
     "avatarUploadUnavailable": "Photo upload is not available on this server",
-    "avatarUploadError": "Could not upload the photo. Please try again."
+    "avatarUploadError": "Could not upload the photo. Please try again.",
+    "aceTheme": "Code editor theme",
+    "aceThemeAuto": "Follow site theme",
+    "siteThemeAuto": "Follow system default",
+    "siteThemeLight": "Light",
+    "siteThemeDark": "Dark"
   },
   "Notification": {
     "title": "Notifications",

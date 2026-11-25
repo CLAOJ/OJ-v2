@@ -1397,7 +1397,12 @@
     "avatarRemoved": "Đã xoá ảnh, ảnh Gravatar sẽ được dùng lại",
     "avatarTooLarge": "Ảnh phải nhỏ hơn hoặc bằng 1 MB",
     "avatarUploadUnavailable": "Máy chủ này chưa hỗ trợ tải ảnh lên",
-    "avatarUploadError": "Không tải được ảnh lên. Vui lòng thử lại."
+    "avatarUploadError": "Không tải được ảnh lên. Vui lòng thử lại.",
+    "aceTheme": "Giao diện trình soạn code",
+    "aceThemeAuto": "Theo giao diện trang",
+    "siteThemeAuto": "Theo hệ thống",
+    "siteThemeLight": "Sáng",
+    "siteThemeDark": "Tối"
   },
   "Notification": {
     "title": "Thông báo",
