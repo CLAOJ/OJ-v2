@@ -345,6 +345,9 @@ func AdminProblemRescoreAll(c *gin.Context) {
 		return
 	}
 
+	// Points are refreshed by the grading-end hook of the rejudge itself
+	// (bridge.onGradingEnd), so nothing is recalculated here: doing it now
+	// would store values from the submissions as they are before the rejudge.
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "problem rescore initiated",
 		"rescored":     resp.Rescored,
@@ -757,6 +760,13 @@ func AdminSubmissionUpdate(c *gin.Context) {
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
+	}
+
+	// An archived submission stops contributing to its owner's points, so the
+	// toggle must refresh the stored profile/organization columns (v1
+	// recalculates on archive; same work the delete path does).
+	if req.IsArchived != nil {
+		getSubmissionService().RecalculateOwnerPoints(sub)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

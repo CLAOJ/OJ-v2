@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/config"
@@ -62,8 +63,8 @@ func BuildSubmissionRequest(subID uint) (map[string]interface{}, error) {
 
 	src := source.Source
 	if sub.Language.FileOnly {
-		// e.g. /media/submissions/file.zip -> https://site/media/...
-		src = config.C.App.SiteFullURL + src
+		// e.g. /api/submission-file/<hex>.zip -> https://site/api/submission-file/...
+		src = joinSiteURL(config.C.App.SiteFullURL, src)
 	}
 
 	return map[string]interface{}{
@@ -84,6 +85,14 @@ func BuildSubmissionRequest(subID uint) (map[string]interface{}, error) {
 			"file-size-limit": sub.Language.FileSizeLimit,
 		},
 	}, nil
+}
+
+// joinSiteURL appends a site-relative path to the configured site URL with
+// exactly one slash between them: SITE_URL may or may not end in "/", and a
+// doubled slash (https://site//api/...) is not matched by the public nginx
+// prefix rule for /api/.
+func joinSiteURL(site, path string) string {
+	return strings.TrimRight(site, "/") + "/" + strings.TrimLeft(path, "/")
 }
 
 // EnqueueJudgeSubmission queues a submission for any judge agent to grade.

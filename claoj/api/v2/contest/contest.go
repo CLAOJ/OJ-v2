@@ -61,12 +61,26 @@ func ContestList(c *gin.Context) {
 	sql := "SELECT * FROM judge_contest WHERE " + visExpr
 	args := append([]any{}, visArgs...)
 
+	where := sql
+	whereArgs := append([]any{}, visArgs...)
 	if search != "" {
 		sql += " AND (name LIKE ? OR `key` LIKE ?)"
 		args = append(args, "%"+search+"%", "%"+search+"%")
+		where += " AND (name LIKE ? OR `key` LIKE ?)"
+		whereArgs = append(whereArgs, "%"+search+"%", "%"+search+"%")
 	}
 
-	sql += " ORDER BY start_time DESC LIMIT ? OFFSET ?"
+	// The filtered row count, so the client can page past the page-size cap
+	// instead of requesting page_size=1000 and silently seeing only the first
+	// 100 rows.
+	var total int64
+	if err := db.DB.Raw("SELECT COUNT(*) FROM ("+where+") AS visible_contests", whereArgs...).
+		Scan(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	sql += " ORDER BY start_time DESC, id DESC LIMIT ? OFFSET ?"
 	args = append(args, pageSize, (page-1)*pageSize)
 
 	if err := db.DB.Raw(sql, args...).Scan(&contests).Error; err != nil {
@@ -144,7 +158,7 @@ func ContestList(c *gin.Context) {
 			tags,
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, gin.H{"results": items, "total": total})
 }
 
 // ContestDetail – GET /api/v2/contest/:key
@@ -153,6 +167,8 @@ func ContestDetail(c *gin.Context) {
 	var ct models.Contest
 	if err := db.DB.
 		Preload("ContestProblems.Problem").
+		Preload("Authors").
+		Preload("Curators").
 		Where("`key` = ?", key).
 		First(&ct).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("contest not found"))
@@ -220,21 +236,60 @@ func ContestDetail(c *gin.Context) {
 		}
 	}
 
+	// v1 renders announcements only to participants, everyone once the contest
+	// has ended, and superusers/editors/testers (templates/contest/contest.html).
+	// A running contest's announcements are not public.
+	showAnnouncements := isJoined || hasEnded ||
+		auth.CanEditContest(c, &ct) || isContestTester(c, ct.ID)
+	type AnnouncementItem struct {
+		ID          uint      `json:"id"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		Date        time.Time `json:"date"`
+	}
+	announcementItems := []AnnouncementItem{}
+	if showAnnouncements {
+		var announcements []models.ContestAnnouncement
+		if err := db.DB.Where("contest_id = ?", ct.ID).Order("date DESC, id DESC").Find(&announcements).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		for _, a := range announcements {
+			announcementItems = append(announcementItems, AnnouncementItem{a.ID, a.Title, a.Description, a.Date})
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"key":         ct.Key,
-		"name":        ct.Name,
-		"description": ct.Description,
-		"summary":     ct.Summary,
-		"start_time":  ct.StartTime,
-		"end_time":    ct.EndTime,
-		"time_limit":  ct.TimeLimit,
-		"is_rated":    ct.IsRated,
-		"format":      ct.FormatName,
-		"problems":    problems,
-		"is_joined":   isJoined,
-		"is_virtual":  isVirtual,
-		"is_active":   isActive,
-		"has_ended":   hasEnded,
-		"can_virtual": canVirtual,
+		"key":           ct.Key,
+		"name":          ct.Name,
+		"description":   ct.Description,
+		"summary":       ct.Summary,
+		"start_time":    ct.StartTime,
+		"end_time":      ct.EndTime,
+		"time_limit":    ct.TimeLimit,
+		"is_rated":      ct.IsRated,
+		"format":        ct.FormatName,
+		"problems":      problems,
+		"announcements": announcementItems,
+		"is_joined":     isJoined,
+		"is_virtual":    isVirtual,
+		"is_active":     isActive,
+		"has_ended":     hasEnded,
+		"can_virtual":   canVirtual,
 	})
+}
+
+// isContestTester reports whether the request user is one of the contest's
+// testers: they keep seeing a running contest's announcements, as in v1's
+// contest page.
+func isContestTester(c *gin.Context, contestID uint) bool {
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
+		return false
+	}
+	var count int64
+	db.DB.Table("judge_contest_testers").
+		Where("contest_id = ? AND profile_id = ?", contestID, profileID).
+		Count(&count)
+	return count > 0
 }

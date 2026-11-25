@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/hibiken/asynq"
@@ -96,6 +97,39 @@ func TestBuildSubmissionRequest_MissingSubmission(t *testing.T) {
 	setupJudgeDB(t)
 	_, err := BuildSubmissionRequest(999)
 	assert.Error(t, err)
+}
+
+// The file-only source is a site-relative path; the packet joins it to
+// SITE_URL. A trailing slash in SITE_URL used to produce "//api/...", which
+// the public nginx prefix rule for /api/ does not match.
+func TestBuildSubmissionRequest_FileOnlyJoinsSiteURL(t *testing.T) {
+	oldSite := config.C.App.SiteFullURL
+	t.Cleanup(func() { config.C.App.SiteFullURL = oldSite })
+
+	for _, site := range []string{"https://oj.example", "https://oj.example/"} {
+		t.Run(site, func(t *testing.T) {
+			database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
+			require.NoError(t, err)
+			require.NoError(t, database.AutoMigrate(
+				&models.Language{}, &models.Problem{}, &models.Submission{},
+				&models.SubmissionSource{}, &models.LanguageLimit{},
+			))
+			oldDB := db.DB
+			t.Cleanup(func() { db.DB = oldDB })
+			db.DB = database
+
+			require.NoError(t, db.DB.Create(&models.Language{ID: 1, Key: "ZIP", Name: "ZIP", Extension: "zip", FileOnly: true, FileSizeLimit: 8}).Error)
+			require.NoError(t, db.DB.Create(&models.Problem{ID: 1, Code: "fileprob", Name: "File", GroupID: 1, TimeLimit: 1, MemoryLimit: 65536}).Error)
+			require.NoError(t, db.DB.Create(&models.Submission{ID: 7, UserID: 1, ProblemID: 1, LanguageID: 1, Date: time.Now(), Status: "QU"}).Error)
+			const src = "/api/submission-file/0123456789abcdef.zip"
+			require.NoError(t, db.DB.Create(&models.SubmissionSource{SubmissionID: 7, Source: src}).Error)
+
+			config.C.App.SiteFullURL = site
+			pkt, err := BuildSubmissionRequest(7)
+			require.NoError(t, err)
+			assert.Equal(t, "https://oj.example"+src, pkt["source"])
+		})
+	}
 }
 
 func TestEnqueueJudgeSubmission_QueueTaskIDAndPayload(t *testing.T) {

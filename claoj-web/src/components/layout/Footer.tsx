@@ -33,7 +33,7 @@ export default function Footer() {
 
     return (
         <>
-            <footer className="border-t bg-card pt-12 pb-6">
+            <footer className="border-t bg-card pt-12 pb-6 print:hidden">
                 <div className="container mx-auto px-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                         <div className="col-span-1 md:col-span-2">
@@ -61,13 +61,12 @@ export default function Footer() {
                             <h4 className="font-semibold mb-4">{t('support')}</h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li><Link href="/tickets" className="hover:text-primary transition-colors">{t('helpTickets')}</Link></li>
+                                {/* Flat pages served by the [...] slug catch-all. prefetch is
+                                    off: they are outside the app's route tree, so Next has
+                                    nothing useful to prefetch and a missing page would only
+                                    log a 404. */}
+                                <li><Link href="/wiki" prefetch={false} className="hover:text-primary transition-colors">{t('wiki')}</Link></li>
                                 <li><a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">{t('builtBy')}</a></li>
-                                {/* The "About us" and "Donate" entries linked to /about and
-                                    /donate, neither of which exists as a route. Next prefetched
-                                    both on every page that renders the footer, so each one was a
-                                    steady source of 404s in the console. Their translation keys
-                                    (Footer.aboutUs / Footer.donate) are still in en.json and
-                                    vi.json — restore these <li>s once the pages are written. */}
                             </ul>
                         </div>
                     </div>
@@ -91,14 +90,14 @@ export default function Footer() {
                     onClick={() => setExpanded(true)}
                     aria-label={t('supportTitle')}
                     title={t('supportTitle')}
-                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform "
+                    className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform print:hidden"
                 >
                     <Heart size={20} className="fill-white" />
                 </button>
             )}
 
             {!dismissed && expanded && (
-                <div className="fixed bottom-5 right-5 z-40 w-[180px] rounded-lg border border-border bg-background shadow-xl">
+                <div className="fixed bottom-5 right-5 z-40 w-[180px] rounded-lg border border-border bg-background shadow-xl print:hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
                         <span className="text-xs font-semibold text-foreground">{t('supportTitle')}</span>

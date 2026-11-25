@@ -21,6 +21,22 @@ export interface Problem {
     is_solved: boolean;
 }
 
+/** A problem group or type — the public taxonomy the list filters use. */
+export interface ProblemTaxonomy {
+    id: number;
+    name: string;
+    full_name: string;
+}
+
+/** A problem suggestion awaiting review (GET /problems/suggest). */
+export interface SuggestedProblem {
+    code: string;
+    name: string;
+    points: number;
+    date: string | null;
+    suggester: string;
+}
+
 export interface ProblemDetail extends Problem {
     id: number;
     description: string;
@@ -28,7 +44,15 @@ export interface ProblemDetail extends Problem {
     time_limit: number;
     memory_limit: number;
     group: string;
-    languages: { key: string; name: string }[];
+    languages: {
+        key: string;
+        name: string;
+        /** File extension without the dot, e.g. "cpp" (used by file-only languages). */
+        extension?: string;
+        file_only?: boolean;
+        /** Max upload size in MB; 0 means file submissions are disabled. */
+        file_size_limit?: number;
+    }[];
     types: { name: string }[];
     authors: { username: string }[];
     is_solved: boolean;
@@ -130,6 +154,7 @@ export interface Contest {
     end_time: string;
     is_rated: boolean;
     format?: string;
+    /** Microseconds (Django DurationField). The admin API uses seconds. */
     time_limit?: number;
     user_count: number;
     is_joined: boolean;
@@ -167,10 +192,18 @@ export interface ContestDetail extends Contest {
         ac_rate: number;
         is_solved: boolean;
     }[];
+    announcements?: {
+        id: number;
+        title: string;
+        description: string;
+        date: string;
+    }[];
 }
 
 export interface RankingRow {
     username: string;
+    display_name?: string;
+    organization?: { id: number; name: string; short_name: string } | null;
     score: number;
     cumtime: number;
     rank: number;
@@ -179,6 +212,7 @@ export interface RankingRow {
     performance?: number | null;
     breakdown: BreakdownItem[];
     is_disqualified?: boolean;
+    is_virtual?: boolean;
     participation_id?: number;
 }
 
@@ -187,12 +221,27 @@ export interface BreakdownItem {
     penalty?: number;
     solved?: boolean;
     label?: string;
+    /** Seconds from the participation start (judge_contestparticipation.format_data). */
+    time?: number;
 }
 
 export interface RankingResponse {
     contest: string;
     problems: { label: string; points: number }[];
     rankings: RankingRow[];
+    /** Set when scoreboard_visibility hides the standings for now. */
+    scoreboard_hidden?: boolean;
+}
+
+/** GET /contest/:key/participations row. */
+export interface ContestParticipation {
+    contest: string;
+    user: string;
+    display_name: string;
+    score: number;
+    cumtime: number;
+    is_disqualified: boolean;
+    is_virtual: boolean;
 }
 export interface Comment {
     id: number;
@@ -245,7 +294,28 @@ export interface BlogVoteRequest {
 
 export interface SolvedProblem {
     code: string;
+    name: string;
     points: number;
+    date: string;
+    language: string;
+    case_points: number;
+    case_total: number;
+}
+
+/** One day of the profile submission heatmap (dense, oldest first). */
+export interface UserActivityDay {
+    date: string;
+    count: number;
+}
+
+/** GET /user/:username/analytics — only the fields the profile page reads. */
+export interface UserAnalytics {
+    username: string;
+    activity: UserActivityDay[];
+    activity_year: UserActivityDay[];
+    streak_days: number;
+    performance_points: number;
+    contribution_points: number;
 }
 
 export interface RatingHistoryEntry {
@@ -961,6 +1031,7 @@ export interface Organization {
     is_unlisted: boolean;
     slots?: number;
     member_count: number;
+    performance_points: number;
 }
 
 export interface OrganizationDetail extends Organization {
@@ -975,6 +1046,33 @@ export interface OrganizationMember {
     display_name?: string;
     role: string;
     joined_at: string;
+    points: number;
+    problem_count: number;
+    rating: number | null;
+    performance_points: number;
+}
+
+/** Matches GET /organization/:id/problems (the public problem-list row shape). */
+export interface OrganizationProblemRow {
+    code: string;
+    name: string;
+    points: number;
+    partial: boolean;
+    user_count: number;
+    ac_rate: number;
+    group: string;
+    is_solved: boolean;
+}
+
+/** Matches GET /organization/:id/contests (past contests of the organization). */
+export interface OrganizationContestRow {
+    key: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+    is_rated: boolean;
+    format: string;
+    user_count: number;
 }
 
 // ============================================================
@@ -1079,7 +1177,7 @@ export interface UserListItem {
     contribution_points: number;
     display_rank: string;
     avatar_url?: string;
-    organizations?: { id: number; name: string; slug: string }[];
+    organizations?: { id: number; short_name: string }[];
 }
 
 // ============================================================

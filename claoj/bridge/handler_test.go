@@ -13,6 +13,7 @@ import (
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/scoring"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -128,6 +129,80 @@ func TestEvent_FullGradingFlowIsReplaySafe(t *testing.T) {
 	require.NotNil(t, s.Points)
 	assert.InDelta(t, 50.0, *s.Points, 1e-9) // 10/20 of 100, partial
 	assert.InDelta(t, 0.3, *s.Time, 1e-9)
+}
+
+// acceptedCases is one fully accepted 10/10 test case, so a grading-end on it
+// stores full points and counts as a solved problem.
+func acceptedCases() Packet {
+	return Packet{"name": "test-case-status", "submission-id": 7, "cases": []interface{}{
+		map[string]interface{}{"position": 1, "status": 0, "time": 0.1, "memory": 1024, "points": 10, "total-points": 10},
+	}}
+}
+
+// v1 refreshes the submitter's points on every grading end; the stored columns
+// and the user's organization must follow the new submission.
+func TestEvent_GradingEndRecalculatesProfileAndOrgPoints(t *testing.T) {
+	setupEventDB(t)
+	require.NoError(t, db.DB.AutoMigrate(&models.Organization{}))
+	org := models.Organization{Name: "org", Slug: "org", ShortName: "org", CreationDate: time.Now()}
+	require.NoError(t, db.DB.Create(&org).Error)
+	require.NoError(t, db.DB.Exec(
+		"INSERT INTO judge_profile_organizations (profile_id, organization_id) VALUES (?, ?)", 1, org.ID,
+	).Error)
+	require.NoError(t, db.DB.Model(&models.Problem{}).Where("id = 1").Update("is_public", true).Error)
+
+	r := newEventRouter()
+	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "grading-begin", "submission-id": 7}))
+	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", acceptedCases()))
+	require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "grading-end", "submission-id": 7}))
+
+	wantPP := 100 + scoring.PpBonusFunction(1)
+	var p models.Profile
+	require.NoError(t, db.DB.First(&p, 1).Error)
+	require.InDelta(t, 100.0, p.Points, 1e-9)
+	require.Equal(t, 1, p.ProblemCount)
+	require.InDelta(t, wantPP, p.PerformancePoints, 1e-9)
+
+	var o models.Organization
+	require.NoError(t, db.DB.First(&o, org.ID).Error)
+	require.InDelta(t, wantPP, o.PerformancePoints, 1e-9, "the member's new PP feeds the organization")
+}
+
+// v1 recalculates on every grading end, even when the submission cannot
+// contribute today: hiding a problem (or archiving the submission) after it was
+// graded must drop the stored points when it is rejudged.
+func TestEvent_GradingEndRecalculatesHiddenSubmissions(t *testing.T) {
+	cases := map[string]func(t *testing.T){
+		"non-public problem": func(t *testing.T) {},
+		"organization-private problem": func(t *testing.T) {
+			require.NoError(t, db.DB.Model(&models.Problem{}).Where("id = 1").
+				Updates(map[string]interface{}{"is_public": true, "is_organization_private": true}).Error)
+		},
+		"archived submission": func(t *testing.T) {
+			require.NoError(t, db.DB.Model(&models.Problem{}).Where("id = 1").Update("is_public", true).Error)
+			require.NoError(t, db.DB.Model(&models.Submission{}).Where("id = 7").Update("is_archived", true).Error)
+		},
+	}
+	for name, prepare := range cases {
+		t.Run(name, func(t *testing.T) {
+			setupEventDB(t)
+			prepare(t)
+			require.NoError(t, db.DB.Model(&models.Profile{}).Where("id = 1").Updates(map[string]interface{}{
+				"points": 999.0, "performance_points": 888.0, "problem_count": 7,
+			}).Error)
+
+			r := newEventRouter()
+			require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "grading-begin", "submission-id": 7}))
+			require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", acceptedCases()))
+			require.Equal(t, http.StatusNoContent, post(t, r, judgeName, "secret", Packet{"name": "grading-end", "submission-id": 7}))
+
+			var p models.Profile
+			require.NoError(t, db.DB.First(&p, 1).Error)
+			require.InDelta(t, 0.0, p.Points, 1e-9, "the stale points must be recalculated away")
+			require.InDelta(t, 0.0, p.PerformancePoints, 1e-9)
+			require.Equal(t, 0, p.ProblemCount)
+		})
+	}
 }
 
 func TestEvent_CompileMessageKeepsGrading(t *testing.T) {

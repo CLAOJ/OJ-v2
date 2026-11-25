@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { UserListItem, PaginatedList } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -14,7 +15,8 @@ import {
     Trophy,
     TrendingUp,
     ThumbsUp,
-    RefreshCw
+    RefreshCw,
+    Building2
 } from 'lucide-react';
 import { cn, getRankColor } from '@/lib/utils';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
@@ -27,13 +29,31 @@ const RANKINGS: { key: RankBy; icon: typeof Trophy; labelKey: 'points' | 'rating
     { key: 'contribution', icon: ThumbsUp, labelKey: 'contributors' },
 ];
 
+/** `?sort=` values the ranking bar knows; anything else is the points ranking. */
+function rankFromUrl(value: string | null): RankBy {
+    return value === 'rating' || value === 'contribution' ? value : 'points';
+}
+
 export default function UsersListPage() {
     const t = useTranslations('Users');
     const tCommon = useTranslations('Common');
+    const searchParams = useSearchParams();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
-    const [rankBy, setRankBy] = useState<RankBy>('points');
+    // Home's "view all" links deep-link the ranking (?sort=rating). Follow the
+    // URL when it changes, not only on mount: navigating between ranking links
+    // while this page is mounted must reseed the sort. The adjustment runs
+    // during render (React's documented pattern) so the first query already
+    // uses the new value.
+    const urlSort = searchParams.get('sort');
+    const [rankBy, setRankBy] = useState<RankBy>(rankFromUrl(urlSort));
+    const [seenUrlSort, setSeenUrlSort] = useState(urlSort);
+    if (urlSort !== seenUrlSort) {
+        setSeenUrlSort(urlSort);
+        setRankBy(rankFromUrl(urlSort));
+        setPage(1);
+    }
 
     // Rankings are always highest-first server-side; only `search` is applied
     // client-side, over the current page.
@@ -134,6 +154,7 @@ export default function UsersListPage() {
                             <tr className="bg-muted/30 border-b">
                                 <th className="px-10 py-6 text-xs font-medium text-muted-foreground w-20 text-center">{t('rank')}</th>
                                 <th className="px-6 py-6 text-xs font-medium text-muted-foreground">{t('user')}</th>
+                                <th className="px-6 py-6 text-xs font-medium text-muted-foreground text-center w-28">{t('solved')}</th>
                                 <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center">
                                     {rankBy === 'points' ? t('points') : rankBy === 'rating' ? t('rating') : t('contribution')}
                                 </th>
@@ -143,7 +164,7 @@ export default function UsersListPage() {
                             {isLoading ? (
                                 Array.from({ length: 15 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={3} className="px-10 py-6"><Skeleton className="h-16 w-full rounded-md" /></td>
+                                        <td colSpan={4} className="px-10 py-6"><Skeleton className="h-16 w-full rounded-md" /></td>
                                     </tr>
                                 ))
                             ) : (
@@ -164,8 +185,17 @@ export default function UsersListPage() {
                                                         {user.display_name || user.username}
                                                     </span>
                                                     <span className="text-xs font-mono text-muted-foreground">@{user.username}</span>
+                                                    {user.organizations && user.organizations.length > 0 && (
+                                                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                                            <Building2 size={12} />
+                                                            {user.organizations.map(o => o.short_name).join(', ')}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </Link>
+                                        </td>
+                                        <td className="px-6 py-8 text-center">
+                                            <span className="font-medium text-sm text-muted-foreground">{user.problem_count}</span>
                                         </td>
                                         <td className="px-10 py-8 text-center">
                                             {rankBy === 'points' && (

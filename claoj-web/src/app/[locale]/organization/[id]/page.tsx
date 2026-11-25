@@ -3,11 +3,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { OrganizationDetail, OrganizationMember } from '@/types';
+import {
+    OrganizationDetail,
+    OrganizationMember,
+    OrganizationProblemRow,
+    OrganizationContestRow,
+    PaginatedList,
+    Submission,
+} from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
-import { Link, useRouter } from '@/navigation';
-import { useState, use } from 'react';
+import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { toggleSort } from '@/lib/listSort';
+import {
+    DEFAULT_MEMBER_SORT,
+    DEFAULT_PROBLEM_SORT,
+    formatPoints,
+    parseOrgTab,
+    type OrgMemberSort,
+    type OrgProblemSort,
+    type OrgTab,
+} from '@/lib/organizationView';
+import { Link, useRouter, usePathname } from '@/navigation';
+import { useState, use, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { isAxiosError } from 'axios';
 import { parseLeadingId } from '@/utils/route';
 import {
     Building2,
@@ -18,13 +39,14 @@ import {
     Crown,
     TrendingUp,
     Hash,
-    Trophy,
-    MapPin,
-    Calendar,
     ArrowLeft,
-    FileText
+    FileText,
+    Puzzle,
+    Trophy,
+    List,
+    Lock,
 } from 'lucide-react';
-import { cn, getRankColor } from '@/lib/utils';
+import { cn, getRankColor, getStatusVariant } from '@/lib/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion } from 'framer-motion';
@@ -32,24 +54,193 @@ import { useAuth } from '@/components/providers/AuthProvider';
 
 dayjs.extend(relativeTime);
 
+const TAB_PAGE_SIZE = PAGE_SIZE_OPTIONS[1];
+
+/** Empty-list placeholder shared by every organization tab. */
+function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
+    return (
+        <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-md">
+            <div className="mx-auto mb-4 opacity-10 flex justify-center">{icon}</div>
+            <p className="font-medium">{text}</p>
+        </div>
+    );
+}
+
+/** Shown when one of the member-only tabs answers 403. */
+function MembersOnly() {
+    const t = useTranslations('Organization');
+    return (
+        <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-md">
+            <Lock size={48} className="mx-auto mb-4 opacity-10" />
+            <p className="font-medium">{t('membersOnly')}</p>
+            <p className="text-sm opacity-70 mt-1">{t('membersOnlyHint')}</p>
+        </div>
+    );
+}
+
+interface MemberTableProps {
+    members: OrganizationMember[];
+    /** The member tab sorts server-side; the admins tab keeps its own order. */
+    sort?: { sort: OrgMemberSort; order: 'asc' | 'desc' };
+    onSort?: (column: OrgMemberSort) => void;
+}
+
+function MemberTable({ members, sort, onSort }: MemberTableProps) {
+    const t = useTranslations('Organization');
+    const sortable = !!sort && !!onSort;
+    const sortProps = (column: OrgMemberSort) => ({
+        active: sort?.sort === column,
+        order: sort?.order ?? 'desc',
+        onClick: () => onSort?.(column),
+    });
+
+    return (
+        <div className="bg-card border rounded-md overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-muted/30 border-b">
+                            <th className="px-6 py-4 text-xs font-medium text-muted-foreground">#</th>
+                            <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('member')}</th>
+                            {sortable ? (
+                                <>
+                                    <SortableHeader label={t('rating')} className="text-center w-32" {...sortProps('rating')} />
+                                    <SortableHeader label={t('solved')} className="text-center w-32" {...sortProps('problem_count')} />
+                                    <SortableHeader label={t('points')} className="text-center w-32" {...sortProps('points')} />
+                                    <SortableHeader label={t('pp')} className="text-center w-32" {...sortProps('performance_points')} />
+                                </>
+                            ) : (
+                                <>
+                                    <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('rating')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('solved')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('points')}</th>
+                                    <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('pp')}</th>
+                                </>
+                            )}
+                            <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-right w-32">{t('role')}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-muted/50">
+                        {members.map((member, index) => (
+                            <tr key={member.id} className="hover:bg-muted/10 transition-colors">
+                                <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{index + 1}</td>
+                                <td className="px-6 py-4">
+                                    <Link href={`/user/${member.username}`} className="flex items-center gap-3 group outline-none">
+                                        <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-primary font-medium text-xs">
+                                            {(member.display_name || member.username)[0]?.toUpperCase()}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                                                {member.display_name || member.username}
+                                            </span>
+                                            <span className="text-xs font-mono text-muted-foreground opacity-60">@{member.username}</span>
+                                        </div>
+                                    </Link>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <span className={cn('text-sm font-medium', getRankColor(member.rating))}>
+                                        {member.rating ?? '-'}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-center text-sm font-medium">{member.problem_count}</td>
+                                <td className="px-6 py-4 text-center text-sm font-medium">{formatPoints(member.points)}</td>
+                                <td className="px-6 py-4 text-center text-sm font-semibold text-primary">{formatPoints(member.performance_points)}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <Badge
+                                        className={cn(
+                                            'text-xs font-medium',
+                                            member.role === 'admin'
+                                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                : 'bg-muted text-muted-foreground border-transparent'
+                                        )}
+                                    >
+                                        {member.role === 'admin' ? <Crown size={12} className="inline mr-1" /> : null}
+                                        {member.role === 'admin' ? t('admin') : t('member')}
+                                    </Badge>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 export default function OrganizationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idParam } = use(params);
     const id = parseLeadingId(idParam);
     const t = useTranslations('Organization');
     const tCommon = useTranslations('Common');
     const router = useRouter();
-    const { user, loading } = useAuth();
-    const [activeTab, setActiveTab] = useState<'members' | 'admins'>('members');
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const { user } = useAuth();
+    // Deep-linkable tabs: ?tab=problems etc. Read once on mount, then the URL
+    // follows every tab change (same pattern as the contest page).
+    const [activeTab, setActiveTab] = useState<OrgTab>(() => parseOrgTab(searchParams.get('tab')));
+    const [memberSort, setMemberSort] = useState<{ sort: OrgMemberSort; order: 'asc' | 'desc' }>(DEFAULT_MEMBER_SORT);
+    const [problemSort, setProblemSort] = useState<{ sort: OrgProblemSort; order: 'asc' | 'desc' }>(DEFAULT_PROBLEM_SORT);
+    const [tabPage, setTabPage] = useState(1);
+    const [tabPageSize, setTabPageSize] = useState(TAB_PAGE_SIZE);
     const queryClient = useQueryClient();
+
+    // Back/forward changes the query string without remounting; follow it.
+    useEffect(() => {
+        setActiveTab(parseOrgTab(searchParams.get('tab')));
+    }, [searchParams]);
 
     const isAuthenticated = !!user;
 
+    const selectTab = (tab: OrgTab) => {
+        setActiveTab(tab);
+        setTabPage(1);
+        const next = new URLSearchParams(searchParams.toString());
+        next.set('tab', tab);
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    };
+
     const { data: org, isLoading: orgLoading } = useQuery({
-        queryKey: ['organization', id],
+        queryKey: ['organization', id, memberSort.sort, memberSort.order],
         queryFn: async () => {
-            const res = await api.get<OrganizationDetail>(`/organization/${id}`);
+            const res = await api.get<OrganizationDetail>(`/organization/${id}`, {
+                params: { sort: memberSort.sort, order: memberSort.order },
+            });
             return res.data;
         }
+    });
+
+    const problemsQuery = useQuery({
+        queryKey: ['organization-problems', id, tabPage, tabPageSize, problemSort.sort, problemSort.order],
+        queryFn: async () => {
+            const res = await api.get<PaginatedList<OrganizationProblemRow>>(`/organization/${id}/problems`, {
+                params: { page: tabPage, page_size: tabPageSize, sort: problemSort.sort, order: problemSort.order },
+            });
+            return res.data;
+        },
+        enabled: activeTab === 'problems',
+    });
+
+    const contestsQuery = useQuery({
+        queryKey: ['organization-contests', id, tabPage, tabPageSize],
+        queryFn: async () => {
+            const res = await api.get<PaginatedList<OrganizationContestRow>>(`/organization/${id}/contests`, {
+                params: { page: tabPage, page_size: tabPageSize },
+            });
+            return res.data;
+        },
+        enabled: activeTab === 'contests',
+    });
+
+    const submissionsQuery = useQuery({
+        queryKey: ['organization-submissions', id, tabPage, tabPageSize],
+        queryFn: async () => {
+            const res = await api.get<PaginatedList<Submission>>(`/organization/${id}/submissions`, {
+                params: { page: tabPage, page_size: tabPageSize },
+            });
+            return res.data;
+        },
+        enabled: activeTab === 'submissions',
     });
 
     const joinMutation = useMutation({
@@ -116,39 +307,24 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
         );
     }
 
-    const MemberCard = ({ member, isAdmin }: { member: OrganizationMember; isAdmin: boolean }) => (
-        <Link
-            href={`/user/${member.username}`}
-            className="group block bg-card border rounded-md p-6 hover:border-primary/30 transition-all"
+    const tabButton = (tab: OrgTab, icon: React.ReactNode, label: string) => (
+        <button
+            onClick={() => selectTab(tab)}
+            className={cn(
+                'flex items-center gap-2 px-4 py-3 rounded text-sm font-medium transition-all flex-1 justify-center whitespace-nowrap',
+                activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+            )}
         >
-            <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center text-primary font-semibold text-xl">
-                    {member.display_name?.[0]?.toUpperCase() || member.username[0]?.toUpperCase()}
-                </div>
-                <div className="flex-1">
-                    <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">
-                        {member.display_name || member.username}
-                    </h4>
-                    <p className="text-xs font-mono text-muted-foreground">@{member.username}</p>
-                    <div className="flex items-center gap-3 mt-2">
-                        {isAdmin && (
-                            <Badge className="text-xs font-medium bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                <Crown size={12} className="inline mr-1" /> {t('adminBadge')}
-                            </Badge>
-                        )}
-                        {member.joined_at && (
-                            <span className="text-xs text-muted-foreground font-medium">
-                                {t('joinedAgo', { time: dayjs(member.joined_at).fromNow() })}
-                            </span>
-                        )}
-                    </div>
-                </div>
-                <div className="text-right">
-                    <div className="text-2xl font-semibold text-primary">{member.role === 'admin' ? 'ADM' : 'MEM'}</div>
-                </div>
-            </div>
-        </Link>
+            {icon}
+            {label}
+        </button>
     );
+
+    const currentQuery =
+        activeTab === 'problems' ? problemsQuery : activeTab === 'contests' ? contestsQuery : activeTab === 'submissions' ? submissionsQuery : null;
+    const needsTab = activeTab === 'problems' || activeTab === 'contests' || activeTab === 'submissions';
+    const tabForbidden =
+        needsTab && isAxiosError(currentQuery?.error) && currentQuery?.error.response?.status === 403;
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 mt-4 pb-20">
@@ -219,7 +395,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     )}
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-8">
                         <Link
                             href={`/organization/${org.id}-${org.slug}/blog`}
                             className="bg-muted/30 rounded-md p-4 border border-dashed hover:border-primary/30 hover:bg-muted/50 transition-all group"
@@ -246,6 +422,13 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         </div>
                         <div className="bg-muted/30 rounded-md p-4 border border-dashed">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <TrendingUp size={16} />
+                                <span className="text-xs font-medium ">{t('pp')}</span>
+                            </div>
+                            <div className="text-lg font-semibold text-primary">{formatPoints(org.performance_points)}</div>
+                        </div>
+                        <div className="bg-muted/30 rounded-md p-4 border border-dashed">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Shield size={16} />
                                 <span className="text-xs font-medium ">{tCommon('status')}</span>
                             </div>
@@ -264,30 +447,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
 
             {/* Tabs */}
             <div className="flex bg-card border p-1 rounded-md shadow-sm sticky top-4 z-10 overflow-x-auto">
-                <button
-                    onClick={() => setActiveTab('members')}
-                    className={cn(
-                        "flex items-center gap-2 px-6 py-3 rounded text-sm font-medium transition-all flex-1 justify-center",
-                        activeTab === 'members'
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-muted"
-                    )}
-                >
-                    <Users size={16} />
-                    {t('membersCount', { count: org.members?.length || 0 })}
-                </button>
-                <button
-                    onClick={() => setActiveTab('admins')}
-                    className={cn(
-                        "flex items-center gap-2 px-6 py-3 rounded text-sm font-medium transition-all flex-1 justify-center",
-                        activeTab === 'admins'
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-muted"
-                    )}
-                >
-                    <Crown size={16} />
-                    {t('adminsCount', { count: org.admins?.length || 0 })}
-                </button>
+                {tabButton('members', <Users size={16} />, t('membersCount', { count: org.members?.length || 0 }))}
+                {tabButton('admins', <Crown size={16} />, t('adminsCount', { count: org.admins?.length || 0 }))}
+                {tabButton('problems', <Puzzle size={16} />, t('problems'))}
+                {tabButton('contests', <Trophy size={16} />, t('contests'))}
+                {tabButton('submissions', <List size={16} />, t('submissions'))}
             </div>
 
             {/* Tab Content */}
@@ -296,35 +460,208 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                className="space-y-4"
             >
                 {activeTab === 'members' && (
+                    org.members && org.members.length > 0
+                        ? (
+                            <MemberTable
+                                members={org.members}
+                                sort={memberSort}
+                                onSort={column => setMemberSort(toggleSort(memberSort, column, 'desc'))}
+                            />
+                        )
+                        : <EmptyState icon={<Users size={48} />} text={t('noMembers')} />
+                )}
+                {activeTab === 'admins' && (
+                    org.admins && org.admins.length > 0
+                        ? <MemberTable members={org.admins} />
+                        : <EmptyState icon={<Crown size={48} />} text={t('noAdmins')} />
+                )}
+
+                {tabForbidden && <MembersOnly />}
+
+                {activeTab === 'problems' && !tabForbidden && (
                     <>
-                        {org.members && org.members.length > 0 ? (
-                            org.members.map((member) => (
-                                <MemberCard key={member.id} member={member} isAdmin={false} />
-                            ))
-                        ) : (
-                            <div className="col-span-full text-center py-20 text-muted-foreground border-2 border-dashed rounded-md">
-                                <Users size={48} className="mx-auto mb-4 opacity-10" />
-                                <p className="font-medium">{t('noMembers')}</p>
+                        {problemsQuery.isLoading ? (
+                            <Skeleton className="h-72 rounded-md" />
+                        ) : problemsQuery.data?.data.length ? (
+                            <div className="bg-card border rounded-md overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-muted/30 border-b">
+                                                <SortableHeader
+                                                    label={t('problem')}
+                                                    className="px-6 py-4"
+                                                    active={problemSort.sort === 'name'}
+                                                    order={problemSort.order}
+                                                    onClick={() => {
+                                                        setProblemSort(toggleSort(problemSort, 'name', 'asc'));
+                                                        setTabPage(1);
+                                                    }}
+                                                />
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('group')}</th>
+                                                <SortableHeader
+                                                    label={t('points')}
+                                                    className="px-6 py-4 text-center w-28"
+                                                    active={problemSort.sort === 'points'}
+                                                    order={problemSort.order}
+                                                    onClick={() => {
+                                                        setProblemSort(toggleSort(problemSort, 'points', 'desc'));
+                                                        setTabPage(1);
+                                                    }}
+                                                />
+                                                <SortableHeader
+                                                    label={t('solvedBy')}
+                                                    className="px-6 py-4 text-center w-28"
+                                                    active={problemSort.sort === 'user_count'}
+                                                    order={problemSort.order}
+                                                    onClick={() => {
+                                                        setProblemSort(toggleSort(problemSort, 'user_count', 'desc'));
+                                                        setTabPage(1);
+                                                    }}
+                                                />
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('acRate')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-muted/50">
+                                            {problemsQuery.data.data.map(p => (
+                                                <tr key={p.code} className="hover:bg-muted/10 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <Link href={`/problem/${p.code}`} className="inline-flex flex-col gap-0.5 hover:text-primary transition-colors">
+                                                            <span className="font-medium text-sm">{p.name}</span>
+                                                            <span className="text-xs uppercase font-mono text-muted-foreground opacity-40">{p.code}</span>
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-muted-foreground">{p.group}</td>
+                                                    <td className="px-6 py-4 text-center text-sm font-medium">{p.points}</td>
+                                                    <td className="px-6 py-4 text-center text-sm">{p.user_count}</td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className={cn('text-sm font-medium', p.is_solved && 'text-emerald-500')}>
+                                                            {formatPoints(p.ac_rate)}%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
+                        ) : (
+                            <EmptyState icon={<Puzzle size={48} />} text={t('noProblems')} />
                         )}
                     </>
                 )}
-                {activeTab === 'admins' && (
+
+                {activeTab === 'contests' && !tabForbidden && (
                     <>
-                        {org.admins && org.admins.length > 0 ? (
-                            org.admins.map((member) => (
-                                <MemberCard key={member.id} member={member} isAdmin />
-                            ))
-                        ) : (
-                            <div className="col-span-full text-center py-20 text-muted-foreground border-2 border-dashed rounded-md">
-                                <Crown size={48} className="mx-auto mb-4 opacity-10" />
-                                <p className="font-medium">{t('noAdmins')}</p>
+                        {contestsQuery.isLoading ? (
+                            <Skeleton className="h-72 rounded-md" />
+                        ) : contestsQuery.data?.data.length ? (
+                            <div className="bg-card border rounded-md overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-muted/30 border-b">
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('contest')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-48">{t('startTime')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('duration')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('participants')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-muted/50">
+                                            {contestsQuery.data.data.map(c => (
+                                                <tr key={c.key} className="hover:bg-muted/10 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <Link href={`/contest/${c.key}`} className="font-medium text-sm hover:text-primary transition-colors">
+                                                            {c.name}
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">
+                                                        {dayjs(c.start_time).format('YYYY-MM-DD HH:mm')}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">
+                                                        {dayjs(c.end_time).diff(dayjs(c.start_time), 'minute')}m
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-sm">{c.user_count}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
+                        ) : (
+                            <EmptyState icon={<Trophy size={48} />} text={t('noContests')} />
                         )}
                     </>
+                )}
+
+                {activeTab === 'submissions' && !tabForbidden && (
+                    <>
+                        {submissionsQuery.isLoading ? (
+                            <Skeleton className="h-72 rounded-md" />
+                        ) : submissionsQuery.data?.data.length ? (
+                            <div className="bg-card border rounded-md overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-muted/30 border-b">
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground w-28">{tCommon('status')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground">{t('problem')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground w-40">{t('member')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('language')}</th>
+                                                <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-right w-36">{t('date')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-muted/50">
+                                            {submissionsQuery.data.data.map(s => (
+                                                <tr key={s.id} className="hover:bg-muted/10 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <Link href={`/submission/${s.id}`} className="outline-none">
+                                                            <Badge
+                                                                variant={getStatusVariant(s.result || s.status)}
+                                                                className="px-3 py-1 rounded text-xs font-medium uppercase"
+                                                            >
+                                                                {s.result || s.status}
+                                                            </Badge>
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <Link href={`/problem/${s.problem}`} className="inline-flex flex-col gap-0.5 hover:text-primary transition-colors">
+                                                            <span className="font-medium text-sm">{s.problem_name || s.problem}</span>
+                                                            <span className="text-xs uppercase font-mono text-muted-foreground opacity-40">{s.problem}</span>
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <Link href={`/user/${s.user}`} className="text-sm font-medium hover:text-primary transition-colors">
+                                                            {s.user}
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-xs font-medium text-muted-foreground">{s.language}</td>
+                                                    <td className="px-6 py-4 text-right text-xs font-medium text-muted-foreground">
+                                                        {dayjs(s.date).fromNow()}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : (
+                            <EmptyState icon={<List size={48} />} text={t('noSubmissions')} />
+                        )}
+                    </>
+                )}
+
+                {needsTab && !tabForbidden && currentQuery && (
+                    <PaginationBar
+                        page={tabPage}
+                        onPageChange={setTabPage}
+                        total={currentQuery.data?.total}
+                        pageSize={tabPageSize}
+                        onPageSizeChange={size => { setTabPageSize(size); setTabPage(1); }}
+                    />
                 )}
             </motion.div>
         </div>

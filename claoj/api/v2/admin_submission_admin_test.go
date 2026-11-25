@@ -256,6 +256,46 @@ func TestAdminSubmissionUpdate_GatesAndValidation(t *testing.T) {
 	require.Equal(t, got.Date.Unix(), after.Date.Unix())
 }
 
+// Archiving toggles what the submission contributes, so the stored profile and
+// organization points must be recalculated (v1 recalculates on archive; the
+// delete path does the same work).
+func TestAdminSubmissionUpdate_ArchiveRecalculatesPoints(t *testing.T) {
+	setupAdminSubmissionDB(t)
+	f := seedAdminSubmission(t)
+	require.NoError(t, db.DB.AutoMigrate(&models.Organization{}))
+	require.NoError(t, db.DB.Model(&models.Problem{}).Where("id = ?", f.problem.ID).
+		Updates(map[string]interface{}{"is_public": true, "partial": false, "points": 100}).Error)
+
+	// An unarchived, fully accepted submission in a public problem: the stored
+	// columns start at what it contributes.
+	require.NoError(t, db.DB.Model(&models.Submission{}).Where("id = ?", f.sub.ID).
+		Update("is_archived", false).Error)
+	require.NoError(t, db.DB.Model(&models.Profile{}).Where("id = ?", f.owner.ID).
+		Updates(map[string]interface{}{"points": 100.0, "performance_points": 100.0, "problem_count": 1}).Error)
+
+	root := newSubmissionUser(t, "root", true)
+	router := authedRouter(root.ID, http.MethodPatch, "/admin/submission/:id", AdminSubmissionUpdate)
+
+	require.Equal(t, http.StatusOK, doRequest(router, http.MethodPatch, "/admin/submission/1", `{"is_archived": true}`).Code)
+	var p models.Profile
+	require.NoError(t, db.DB.First(&p, f.owner.ID).Error)
+	require.InDelta(t, 0.0, p.Points, 1e-9, "an archived submission must stop counting")
+	require.Equal(t, 0, p.ProblemCount)
+
+	// Unarchiving restores it.
+	require.Equal(t, http.StatusOK, doRequest(router, http.MethodPatch, "/admin/submission/1", `{"is_archived": false}`).Code)
+	require.NoError(t, db.DB.First(&p, f.owner.ID).Error)
+	require.InDelta(t, 100.0, p.Points, 1e-9)
+	require.Equal(t, 1, p.ProblemCount)
+
+	// A patch that does not touch is_archived leaves the points alone.
+	require.NoError(t, db.DB.Model(&models.Profile{}).Where("id = ?", f.owner.ID).
+		Update("points", 55.0).Error)
+	require.Equal(t, http.StatusOK, doRequest(router, http.MethodPatch, "/admin/submission/1", `{"points": 10}`).Code)
+	require.NoError(t, db.DB.First(&p, f.owner.ID).Error)
+	require.InDelta(t, 55.0, p.Points, 1e-9)
+}
+
 func TestAdminSubmissionList_FilteredTotalAndProblemName(t *testing.T) {
 	setupAdminSubmissionDB(t)
 	seedAdminSubmission(t)

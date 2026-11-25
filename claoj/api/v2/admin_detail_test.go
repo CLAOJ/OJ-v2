@@ -3,9 +3,11 @@ package v2
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/CLAOJ/claoj/api/v2/contest"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
@@ -98,6 +100,40 @@ func TestAdminContestDetail_IsFlatWithProblemsAndSeconds(t *testing.T) {
 	require.Len(t, problems, 1)
 	require.Equal(t, "knap", problems[0].(map[string]any)["code"])
 	require.NotContains(t, body, "contest")
+}
+
+// The public detail payload exposes the stored Django DurationField in
+// microseconds, while the admin API keeps speaking seconds (the unit admin
+// forms send). Guard both sides of that contract in one test.
+func TestContestDetail_TimeLimitMicrosecondsVsAdminSeconds(t *testing.T) {
+	setupAdminDetailDB(t)
+	require.NoError(t, db.DB.AutoMigrate(&models.ContestAnnouncement{}))
+
+	limit := int64(5400 * 1_000_000)
+	start := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	ct := models.Contest{
+		Key: "units", Name: "Units", Description: "d",
+		StartTime: start, EndTime: start.Add(5 * time.Hour), TimeLimit: &limit, IsVisible: true,
+	}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&ct).Error)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Handle(http.MethodGet, "/contest/:key", contest.ContestDetail)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/contest/units", nil))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var publicBody map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &publicBody))
+	require.Equal(t, float64(5400*1_000_000), publicBody["time_limit"])
+
+	adminRouter := authedRouter(1, http.MethodGet, "/admin/contest/:key", AdminContestDetail)
+	adminResp := doRequest(adminRouter, http.MethodGet, "/admin/contest/units", "")
+	require.Equal(t, http.StatusOK, adminResp.Code, adminResp.Body.String())
+	var adminBody map[string]any
+	require.NoError(t, json.Unmarshal(adminResp.Body.Bytes(), &adminBody))
+	require.Equal(t, float64(5400), adminBody["time_limit"])
 }
 
 func TestAdminContestUpdate_TimeLimitSecondsAndBadFormat(t *testing.T) {

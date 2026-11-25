@@ -378,6 +378,40 @@ export const blogFeedApi = {
 };
 
 // ============================================================
+// PROBLEM SUBMIT API
+// ============================================================
+
+export interface ProblemSubmitBody {
+    language: string;
+    source?: string;
+    file?: File;
+}
+
+export const problemSubmitApi = {
+    submit: (problemCode: string, body: ProblemSubmitBody, contestKey?: string | null) => {
+        const url = contestKey
+            ? `/problem/${problemCode}/submit?contest=${contestKey}`
+            : `/problem/${problemCode}/submit`;
+        if (!body.file) {
+            return api.post<{ submission_id: number }>(url, {
+                language: body.language,
+                source: body.source,
+            });
+        }
+        const form = new FormData();
+        form.append('language', body.language);
+        form.append('submission_file', body.file);
+        // The instance default is application/json, and axios 1.x stringifies
+        // FormData when the request looks like JSON — the file never reached
+        // the server. Declaring multipart (the browser still supplies the
+        // boundary) keeps the FormData intact.
+        return api.post<{ submission_id: number }>(url, form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+};
+
+// ============================================================
 // PROBLEM PDF STATEMENT API (Task #29)
 // ============================================================
 

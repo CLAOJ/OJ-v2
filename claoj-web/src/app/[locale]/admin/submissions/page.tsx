@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { getStatusVariant, cn } from '@/lib/utils';
 import { formatMemoryMb } from '@/lib/submissionDetail';
+import { VERDICT_CODES } from '@/lib/submissionStatus';
 
 const FILTER_KEYS = ['user', 'problem', 'result', 'status', 'language'] as const;
 const PAGE_SIZE = 50;
@@ -117,7 +118,7 @@ export default function AdminSubmissionPage() {
     const toggleSelected = (id: number) =>
         setSelected(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
 
-    const results = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'SC', 'AB'];
+    const results = VERDICT_CODES;
     const statuses = ['QU', 'P', 'G', 'D', 'IE', 'CE', 'AB'];
 
     // Batch rejudge preview

@@ -15,13 +15,18 @@ import (
 )
 
 // SubmissionList – GET /api/v2/submissions
-// Supports ?user=username and ?problem=code filters
+// Supports ?user=username, ?problem=code, ?result=, ?language= and
+// ?organization=. The verdict and language filters accept repeated params
+// (?result=AC&result=WA) or one comma-separated value (?result=AC,WA);
+// `organization` is an organization id, matching v1's
+// `user__organizations=<pk>` filter (membership, not problem ownership).
 func SubmissionList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	userFilter := c.Query("user")
 	problemFilter := c.Query("problem")
-	resultFilter := c.Query("result")
-	langFilter := c.Query("language")
+	resultFilters := queryValues(c, "result")
+	langFilters := queryValues(c, "language")
+	orgFilter := strings.TrimSpace(c.Query("organization"))
 
 	// Only expose submissions to problems the requesting user may see, so
 	// organization-private problems do not leak via the submission list.
@@ -39,32 +44,52 @@ func SubmissionList(c *gin.Context) {
 	if problemFilter != "" {
 		q = q.Where("pr.code = ?", problemFilter)
 	}
-	if resultFilter != "" {
-		q = q.Where("judge_submission.result = ?", resultFilter)
+	if len(resultFilters) > 0 {
+		q = q.Where("judge_submission.result IN ?", resultFilters)
 	}
-	if langFilter != "" {
-		q = q.Where("l.key = ?", langFilter)
+	if len(langFilters) > 0 {
+		q = q.Where("l.key IN ?", langFilters)
+	}
+	if orgFilter != "" {
+		orgID, err := strconv.ParseUint(orgFilter, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, apiError("invalid organization id"))
+			return
+		}
+		// Organization membership only; the problem visibility filter above
+		// still decides which submissions (and org-private problems) are listed.
+		q = q.Where("EXISTS (SELECT 1 FROM judge_profile_organizations po "+
+			"WHERE po.profile_id = jp.id AND po.organization_id = ?)", orgID)
 	}
 
 	// Branch the filtered statement: one COUNT for the pager, one page fetch.
+	writeSubmissionList(c, q, page, pageSize)
+}
+
+// submissionListRow is the public submission row shape, shared by the global
+// list and the organization submissions tab.
+type submissionListRow struct {
+	ID          uint      `json:"id"`
+	Problem     string    `json:"problem"`
+	ProblemName string    `json:"problem_name"`
+	User        string    `json:"user"`
+	Date        time.Time `json:"date"`
+	Language    string    `json:"language"`
+	Status      string    `json:"status"`
+	Result      *string   `json:"result"`
+	Points      *float64  `json:"points"`
+	Time        *float64  `json:"time"`
+	Memory      *float64  `json:"memory"`
+}
+
+// writeSubmissionList pages a submission query (which must already carry the
+// judge_profile/ auth_user / judge_problem / judge_language joins) and writes
+// the list response.
+func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int) {
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
-	}
-
-	type Row struct {
-		ID          uint      `json:"id"`
-		Problem     string    `json:"problem"`
-		ProblemName string    `json:"problem_name"`
-		User        string    `json:"user"`
-		Date        time.Time `json:"date"`
-		Language    string    `json:"language"`
-		Status      string    `json:"status"`
-		Result      *string   `json:"result"`
-		Points      *float64  `json:"points"`
-		Time        *float64  `json:"time"`
-		Memory      *float64  `json:"memory"`
 	}
 
 	var rows []struct {
@@ -85,9 +110,9 @@ func SubmissionList(c *gin.Context) {
 		return
 	}
 
-	items := make([]Row, len(rows))
+	items := make([]submissionListRow, len(rows))
 	for i, r := range rows {
-		items[i] = Row{
+		items[i] = submissionListRow{
 			ID:          r.Submission.ID,
 			Problem:     r.ProblemCode,
 			ProblemName: r.ProblemName,
@@ -140,7 +165,18 @@ func SubmissionDetail(c *gin.Context) {
 
 	source := ""
 	if sub.Source != nil {
-		source = sub.Source.Source
+		// File-only submissions store the uploaded file's public URL in
+		// source. v1 (judge/views/submission.py) gives that URL only to the
+		// submitter, so anonymous viewers get no source at all.
+		if !sub.Language.FileOnly {
+			source = sub.Source.Source
+		} else {
+			access := auth.GetAccess(c)
+			profileID, _ := auth.CurrentProfileID(c)
+			if (access.IsSuperuser && access.IsActive) || (profileID != 0 && profileID == sub.UserID) {
+				source = sub.Source.Source
+			}
+		}
 	}
 
 	type TestCaseItem struct {
@@ -257,15 +293,15 @@ func SubmissionDiff(c *gin.Context) {
 		tag := op[0]
 		for i := int(tag.I1); i < int(tag.I2); i++ {
 			diffLines = append(diffLines, gin.H{
-				"type":  "delete",
-				"line":  i + 1,
+				"type":    "delete",
+				"line":    i + 1,
 				"content": lines1[i],
 			})
 		}
 		for i := int(tag.J1); i < int(tag.J2); i++ {
 			diffLines = append(diffLines, gin.H{
-				"type":  "add",
-				"line":  i + 1,
+				"type":    "add",
+				"line":    i + 1,
 				"content": lines2[i],
 			})
 		}

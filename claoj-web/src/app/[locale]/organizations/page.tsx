@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { Organization } from '@/types';
+import { Organization, UserDetail } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
 import { useState } from 'react';
@@ -12,17 +12,32 @@ import {
     Search,
     Building2,
     RefreshCw,
-    Shield
+    Shield,
+    TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatPoints } from '@/lib/organizationView';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function OrganizationsListPage() {
     const t = useTranslations('Organizations');
     const tCommon = useTranslations('Common');
+    const { user } = useAuth();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
+
+    // "Your organizations" (v1 organization/list.html) reuses the public profile
+    // payload instead of a dedicated endpoint.
+    const { data: profile } = useQuery({
+        queryKey: ['user-profile', user?.username],
+        queryFn: async () => {
+            const res = await api.get<UserDetail>(`/user/${user?.username}`);
+            return res.data;
+        },
+        enabled: !!user?.username,
+    });
 
     const { data, isLoading } = useQuery({
         queryKey: ['organizations', page, pageSize, search],
@@ -80,6 +95,25 @@ export default function OrganizationsListPage() {
                 </div>
             </div>
 
+            {/* Your organizations (logged-in shortcut, v1 parity) */}
+            {user && profile?.organizations && profile.organizations.length > 0 && (
+                <div className="p-6 rounded-md bg-card border shadow-sm space-y-3">
+                    <h2 className="text-xs font-medium text-muted-foreground ml-1">{t('yourOrganizations')}</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {profile.organizations.map(org => (
+                            <Link
+                                key={org.id}
+                                href={`/organization/${org.id}`}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-muted/30 border text-sm font-medium hover:border-primary/30 hover:text-primary transition-all"
+                            >
+                                <Building2 size={14} />
+                                {org.name}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoading ? (
                     Array.from({ length: 6 }).map((_, i) => (
@@ -132,6 +166,11 @@ export default function OrganizationsListPage() {
                                         <Users size={16} />
                                         <span className="text-sm font-medium">{org.member_count}</span>
                                         <span className="text-xs font-medium">{t('members')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-muted-foreground" title={t('performancePoints')}>
+                                        <TrendingUp size={16} />
+                                        <span className="text-sm font-medium">{formatPoints(org.performance_points)}</span>
+                                        <span className="text-xs font-medium">{t('pp')}</span>
                                     </div>
                                 </div>
                             </div>

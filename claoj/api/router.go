@@ -237,6 +237,7 @@ func NewRouter() *gin.Engine {
 			admin.POST("/admin/submission/:id/rescore", v2.AdminSubmissionRescore)
 			admin.POST("/admin/submissions/batch-rescore", v2.AdminSubmissionBatchRescore)
 			admin.POST("/admin/problem/:code/rescore-all", v2.AdminProblemRescoreAll)
+			admin.POST("/admin/recalculate-points", v2.AdminRecalculatePoints)
 
 			admin.POST("/admin/comment/:id/hide", v2.CommentHide)
 
@@ -336,6 +337,11 @@ func NewRouter() *gin.Engine {
 
 		apiv2.GET("/problems", v2.ProblemList)
 		apiv2.GET("/problems/random", v2.RandomProblem)
+		// Suggestions awaiting review (judge.suggest_new_problem), and the
+		// public taxonomy the problem-list filters are built from.
+		apiv2.GET("/problems/suggest", v2.SuggestProblemList)
+		apiv2.GET("/problem-groups", v2.ProblemGroupList)
+		apiv2.GET("/problem-types", v2.ProblemTypeList)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
@@ -378,6 +384,9 @@ func NewRouter() *gin.Engine {
 
 		apiv2.GET("/organizations", v2.OrganizationList)
 		apiv2.GET("/organization/:id", v2.OrganizationDetail)
+		apiv2.GET("/organization/:id/problems", v2.OrganizationProblemList)
+		apiv2.GET("/organization/:id/contests", v2.OrganizationContestList)
+		apiv2.GET("/organization/:id/submissions", v2.OrganizationSubmissionList)
 		apiv2.GET("/languages", v2.LanguageList)
 		apiv2.GET("/judges", v2.JudgeList)
 
@@ -407,6 +416,10 @@ func NewRouter() *gin.Engine {
 
 		// Uploaded markdown images (blog posts, license text)
 		apiv2.GET("/media/:name", v2.MarkdownMediaServe)
+
+		// Uploaded submission files for file-only languages. The judge agent
+		// fetches SiteFullURL + SubmissionSource.source, i.e. this route.
+		apiv2.GET("/submission-file/:name", v2.SubmissionFileServe)
 
 		// Flat pages + redirects (v1 contrib tables). /page feeds the web
 		// catch-all route, /redirects-map feeds the web proxy's path redirects.

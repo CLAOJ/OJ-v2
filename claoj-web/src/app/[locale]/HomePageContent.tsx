@@ -3,7 +3,7 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { BlogPost, Contest, User, Problem } from '@/types';
+import { BlogPost, Contest, UserListItem, Problem } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
@@ -26,6 +26,7 @@ import {
     MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCountdown } from '@/lib/countdown';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import ReactMarkdown from 'react-markdown';
@@ -93,16 +94,15 @@ export default function HomePageContent() {
         }
     });
 
-    // Fetch top users by rating (limit 10). The API has no order param and always
-    // sorts by performance points — sort by rating client-side.
+    // Fetch top users by rating (limit 10). The API sorts server-side
+    // (sort=rating is rating DESC with unrated users last), so no client sort.
+    // Unrated users are dropped rather than printed as "N/A": v1's widget only
+    // lists users that have a rating.
     const { data: topRatingUsers } = useQuery({
         queryKey: ['top-rating-users'],
         queryFn: async () => {
-            const res = await api.get<{ data: User[] }>('/users?page_size=100');
-            return (res.data.data || [])
-                .filter(u => u.rating != null)
-                .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-                .slice(0, 10);
+            const res = await api.get<{ data: UserListItem[] }>('/users?sort=rating&page_size=10');
+            return (res.data.data || []).filter(u => u.rating != null);
         }
     });
 
@@ -110,8 +110,18 @@ export default function HomePageContent() {
     const { data: topScorers } = useQuery({
         queryKey: ['top-scorers'],
         queryFn: async () => {
-            const res = await api.get<{ data: User[] }>('/users?page_size=10');
+            const res = await api.get<{ data: UserListItem[] }>('/users?page_size=10');
             return res.data.data;
+        }
+    });
+
+    // Fetch top contributors (limit 10). v1 shows this list under the rating
+    // and points widgets; contribution_points DESC is the API's own ordering.
+    const { data: topContributors } = useQuery({
+        queryKey: ['top-contributors'],
+        queryFn: async () => {
+            const res = await api.get<{ data: UserListItem[] }>('/users?sort=contribution&page_size=10');
+            return (res.data.data || []).filter(u => u.contribution_points > 0);
         }
     });
 
@@ -180,15 +190,10 @@ export default function HomePageContent() {
     };
 
     const getTimeRemaining = (endTime: string) => {
-        const end = dayjs(endTime);
-        const diff = end.diff(now);
+        const diff = dayjs(endTime).diff(now);
         if (diff <= 0) return 'Ended';
 
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        return formatCountdown(diff);
     };
 
     const getRatingClass = (rating?: number | null) => {
@@ -487,14 +492,14 @@ export default function HomePageContent() {
                                                     {user.username}
                                                 </Link>
                                             </td>
-                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">{user.rating || 'N/A'}</td>
+                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">{user.rating}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
                                 <Link href="/organizations" className="text-gray-400 hover:text-primary">{t('organizations')}</Link>
-                                <Link href="/users?order=-rating" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
+                                <Link href="/users?sort=rating" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
                             </div>
                         </div>
                     </div>
@@ -534,7 +539,47 @@ export default function HomePageContent() {
                             </table>
                             <div className="px-3 py-2 text-xs flex justify-between">
                                 <Link href="/organizations" className="text-gray-400 hover:text-primary">{t('organizations')}</Link>
-                                <Link href="/users?order=-performance_points" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
+                                <Link href="/users?sort=points" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Top Contributors (limit 10) */}
+                {topContributors && topContributors.length > 0 && (
+                    <div className="bg-primary-10 rounded-lg overflow-hidden">
+                        <h3 className="bg-muted px-4 py-3 text-sm font-semibold text-foreground flex items-center gap-2">
+                            <ThumbsUp className="text-muted-foreground" size={16} />
+                            {t('topContributors')}
+                        </h3>
+                        <div className="p-2">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-xs text-gray-400 border-b border-muted">
+                                        <th className="px-3 py-2 text-left">#</th>
+                                        <th className="px-3 py-2 text-left">{tUsers('username')}</th>
+                                        <th className="px-3 py-2 text-right">{tUsers('contribution')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {topContributors.map((user, i) => (
+                                        <tr key={user.username} className="border-b border-muted/50 last:border-0 hover:bg-muted/50">
+                                            <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                                            <td className="px-3 py-2">
+                                                <Link href={`/user/${user.username}`} className="font-medium hover:text-primary">
+                                                    {user.display_name || user.username}
+                                                </Link>
+                                            </td>
+                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">
+                                                {user.contribution_points}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <div className="px-3 py-2 text-xs flex justify-between">
+                                <Link href="/organizations" className="text-gray-400 hover:text-primary">{t('organizations')}</Link>
+                                <Link href="/users?sort=contribution" className="text-gray-400 hover:text-primary">{t('viewAllArrow')}</Link>
                             </div>
                         </div>
                     </div>

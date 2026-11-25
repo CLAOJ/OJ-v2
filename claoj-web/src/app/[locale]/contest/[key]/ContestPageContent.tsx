@@ -3,10 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { ContestDetail, RankingResponse } from '@/types';
+import { ContestDetail, RankingResponse, ContestParticipation } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
+import { PaginationBar } from '@/components/ui/PaginationBar';
+import {
+    buildScoreboardCsv,
+    contestTimeLimitSeconds,
+    countTotalAc,
+    formatClock,
+    formatCountdown,
+    parseContestTab,
+    type ContestTab,
+} from '@/lib/contestView';
 import { useState, useEffect, use } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from '@/navigation';
 import {
     Trophy,
     Clock,
@@ -19,11 +31,13 @@ import {
     HelpCircle,
     Info,
     Activity,
-    Wifi
+    Wifi,
+    Megaphone,
+    Users,
+    Download
 } from 'lucide-react';
 import { cn, getRankColor, getRankBadgeColor, getRatingChangeColor, formatRatingChange } from '@/lib/utils';
 import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from '@/navigation';
@@ -33,8 +47,9 @@ import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { toast } from 'sonner';
 
-dayjs.extend(duration);
 dayjs.extend(relativeTime);
+
+const PARTICIPATION_PAGE_SIZE = 50;
 
 export default function ContestPageContent({ params }: { params: Promise<{ key: string }> }) {
     const { key } = use(params);
@@ -42,11 +57,28 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     const tAuth = useTranslations('Auth');
     const tCommon = useTranslations('Common');
     const { requireAuth } = useRequireAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'problems' | 'scoreboard'>('dashboard');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    // Deep-linkable tabs: ?tab=participation etc. Read once on mount, then the
+    // URL follows every tab change.
+    const [activeTab, setActiveTab] = useState<ContestTab>(() => parseContestTab(searchParams.get('tab')));
     const [timeLeft, setTimeLeft] = useState<string>('');
+    const [includeVirtual, setIncludeVirtual] = useState(false);
+    const [showNames, setShowNames] = useState(true);
+    const [showOrgs, setShowOrgs] = useState(true);
+    const [participationPage, setParticipationPage] = useState(1);
     const queryClient = useQueryClient();
     const { subscribe, unsubscribe, status } = useWebSocketContext();
     const [lastLiveUpdate, setLastLiveUpdate] = useState<Date | null>(null);
+
+    const selectTab = (tab: ContestTab) => {
+        setActiveTab(tab);
+        // Keep any other query params (e.g. a future ?from= link) intact.
+        const next = new URLSearchParams(searchParams.toString());
+        next.set('tab', tab);
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    };
 
     const { data: contest, isLoading: isFetching } = useQuery({
         queryKey: ['contest', key],
@@ -57,9 +89,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     });
 
     const { data: ranking, isLoading: isRankingFetching } = useQuery({
-        queryKey: ['contest-ranking', key],
+        queryKey: ['contest-ranking', key, includeVirtual],
         queryFn: async () => {
-            const res = await api.get<RankingResponse>(`/contest/${key}/ranking`);
+            const res = await api.get<RankingResponse>(`/contest/${key}/ranking`, {
+                params: includeVirtual ? { include_virtual: 'true' } : {}
+            });
             return res.data;
         },
         enabled: activeTab === 'scoreboard',
@@ -71,6 +105,24 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
             const isRunning = now.isAfter(contestData.start_time) && now.isBefore(contestData.end_time);
             return isRunning ? 10000 : false;
         }
+    });
+
+    const { data: participations, isLoading: isParticipationsFetching } = useQuery({
+        queryKey: ['contest-participations', key, includeVirtual, participationPage],
+        queryFn: async () => {
+            const res = await api.get<{ results: ContestParticipation[]; total: number; scoreboard_hidden?: boolean }>(
+                `/contest/${key}/participations`,
+                {
+                    params: {
+                        page: participationPage,
+                        page_size: PARTICIPATION_PAGE_SIZE,
+                        ...(includeVirtual ? { include_virtual: 'true' } : {})
+                    }
+                }
+            );
+            return res.data;
+        },
+        enabled: activeTab === 'participation'
     });
 
     const { mutate: joinContest, isPending: isJoining } = useMutation({
@@ -96,11 +148,9 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
             const end = dayjs(contest.end_time);
 
             if (now.isBefore(start)) {
-                const diff = dayjs.duration(start.diff(now));
-                setTimeLeft(`${t('startIn')} ${Math.floor(diff.asHours())}h ${diff.minutes()}m ${diff.seconds()}s`);
+                setTimeLeft(`${t('startIn')} ${formatCountdown(start.diff(now))}`);
             } else if (now.isBefore(end)) {
-                const diff = dayjs.duration(end.diff(now));
-                setTimeLeft(`${t('endsIn')} ${Math.floor(diff.asHours())}h ${diff.minutes()}m ${diff.seconds()}s`);
+                setTimeLeft(`${t('endsIn')} ${formatCountdown(end.diff(now))}`);
             } else {
                 setTimeLeft(t('ended'));
                 clearInterval(interval);
@@ -132,6 +182,27 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
 
     const isRunning = dayjs().isAfter(contest.start_time) && dayjs().isBefore(contest.end_time);
     const isPast = dayjs().isAfter(contest.end_time);
+    const limitSeconds = contestTimeLimitSeconds(contest.time_limit);
+    const totalAc = ranking ? countTotalAc(ranking.rankings, ranking.problems) : [];
+
+    const downloadScoreboardCsv = () => {
+        if (!ranking) return;
+        const csv = buildScoreboardCsv({
+            problems: ranking.problems,
+            rows: ranking.rankings,
+            includeName: showNames,
+            includeOrg: showOrgs,
+        });
+        // BOM so Excel opens the UTF-8 usernames correctly.
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ranking_${key}.csv`;
+        link.click();
+        // Revoking synchronously can cancel the download in some browsers.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-4 pb-20 mt-4">
@@ -187,11 +258,12 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, href: null },
                             { id: 'problems', label: t('problems'), icon: ListOrdered, href: null },
                             { id: 'scoreboard', label: t('scoreboard'), icon: BarChart3, href: null },
+                            { id: 'participation', label: t('participation'), icon: Users, href: null },
                             { id: 'stats', label: t('statistics'), icon: Activity, href: `/contest/${key}/stats`, external: true }
                         ].map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => tab.href ? window.location.href = tab.href : setActiveTab(tab.id as any)}
+                                onClick={() => tab.href ? window.location.href = tab.href : selectTab(tab.id as ContestTab)}
                                 className={cn(
                                     "relative py-6 text-xs font-medium flex items-center gap-3 transition-all cursor-pointer",
                                     activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -219,6 +291,30 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                         className="grid grid-cols-1 lg:grid-cols-3 gap-4"
                     >
                         <div className="lg:col-span-2 space-y-4">
+                            {contest.announcements && contest.announcements.length > 0 && (
+                                <section className="p-4 rounded-md border bg-card shadow-sm space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <Megaphone size={18} className="text-primary" />
+                                        <h2 className="text-xl font-semibold tracking-tight">{t('announcements')}</h2>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {contest.announcements.map((announcement) => (
+                                            <article key={announcement.id} className="border-l-2 border-primary/40 pl-4 space-y-1">
+                                                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                                    <h3 className="text-sm font-semibold">{announcement.title}</h3>
+                                                    <time className="text-xs text-muted-foreground">
+                                                        {dayjs(announcement.date).format('MMM D, YYYY HH:mm')}
+                                                    </time>
+                                                </div>
+                                                <div className="prose prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
+                                                    <MathRenderer content={announcement.description} />
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
                             <section className="p-4 rounded-md border bg-card shadow-sm space-y-4 min-h-[40vh]">
                                 <div className="space-y-4">
                                     <h2 className="text-3xl font-semibold tracking-tight">{t('dashboard')}</h2>
@@ -258,7 +354,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     </div>
                                     <div className="space-y-1.5">
                                         <p className="text-xs font-medium text-muted-foreground ">{t('timeConstraint')}</p>
-                                        <p className="text-sm font-medium">{contest.time_limit ? t('minutesCount', { count: contest.time_limit / 60 }) : t('infiniteWindow')}</p>
+                                        <p className="text-sm font-medium">
+                                            {limitSeconds > 0
+                                                ? t('fixedWindow', { duration: formatClock(limitSeconds) })
+                                                : t('infiniteWindow')}
+                                        </p>
                                     </div>
                                     <div className="pt-4 border-t space-y-4">
                                         <div className="flex items-center justify-between text-xs font-medium">
@@ -380,12 +480,47 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                         className="rounded-md border bg-card overflow-hidden"
                     >
                         {/* Scoreboard Header with Live Indicator */}
-                        <div className="flex items-center justify-between px-4 py-4 border-b bg-muted/30">
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b bg-muted/30">
                             <div className="flex items-center gap-3">
                                 <BarChart3 size={20} className="text-primary" />
                                 <h3 className="text-sm font-semibold ">{t('scoreboard')}</h3>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={showNames}
+                                        onChange={(e) => setShowNames(e.target.checked)}
+                                        className="accent-primary"
+                                    />
+                                    {t('showNames')}
+                                </label>
+                                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={showOrgs}
+                                        onChange={(e) => setShowOrgs(e.target.checked)}
+                                        className="accent-primary"
+                                    />
+                                    {t('showOrganizations')}
+                                </label>
+                                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={includeVirtual}
+                                        onChange={(e) => setIncludeVirtual(e.target.checked)}
+                                        className="accent-primary"
+                                    />
+                                    {t('showVirtual')}
+                                </label>
+                                <button
+                                    onClick={downloadScoreboardCsv}
+                                    disabled={!ranking}
+                                    className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-40"
+                                >
+                                    <Download size={14} />
+                                    {t('exportCsv')}
+                                </button>
                                 {isRunning && status === 'connected' && (
                                     <span className="flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-500 text-xs font-medium animate-pulse">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -417,8 +552,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/50">
-                                    {ranking?.rankings.map((row) => (
-                                        <tr key={row.username} className="hover:bg-muted/5 transition-colors">
+                                    {ranking?.rankings.map((row, rowIndex) => (
+                                        <tr key={row.participation_id ?? `${row.username}-${rowIndex}`} className="hover:bg-muted/5 transition-colors">
                                             <td className="px-10 py-8 text-center">
                                                 <span className={cn(
                                                     "inline-flex items-center justify-center w-9 h-9 rounded-xl font-medium text-sm",
@@ -431,9 +566,22 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                 </span>
                                             </td>
                                             <td className="px-8 py-8">
-                                                <Link href={`/user/${row.username}`} className="font-medium text-base hover:text-primary transition-colors">
-                                                    {row.username}
-                                                </Link>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <Link href={`/user/${row.username}`} className="font-medium text-base hover:text-primary transition-colors">
+                                                            {row.username}
+                                                        </Link>
+                                                        {row.is_virtual && (
+                                                            <Badge variant="outline" className="text-xs h-4">{t('virtual')}</Badge>
+                                                        )}
+                                                    </div>
+                                                    {showNames && row.display_name && row.display_name !== row.username && (
+                                                        <span className="text-xs text-muted-foreground">{row.display_name}</span>
+                                                    )}
+                                                    {showOrgs && row.organization && (
+                                                        <span className="text-xs text-muted-foreground">{row.organization.short_name}</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-8 text-center">
                                                 <div className="flex flex-col items-center gap-1">
@@ -463,7 +611,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                             <td className="px-8 py-8 text-center font-semibold text-primary text-xl tracking-tighter">
                                                 {Math.round(row.score)}
                                             </td>
-                                            {row.breakdown.map((b: any, i) => (
+                                            {row.breakdown.map((b, i) => (
                                                 <td key={i} className="px-4 py-8 text-center">
                                                     {b ? (
                                                         <div className="space-y-1.5">
@@ -474,19 +622,38 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                                 {b.points}
                                                             </div>
                                                             <div className="text-xs text-muted-foreground font-medium opacity-50">
-                                                                {b.time ? `${Math.round(b.time / 60)}m` : '-'}
+                                                                {b.time != null ? formatClock(b.time) : '-'}
                                                             </div>
                                                         </div>
                                                     ) : <span className="text-muted-foreground/30 text-lg">·</span>}
                                                 </td>
                                             ))}
                                             <td className="px-10 py-8 text-center font-medium font-mono text-xs text-muted-foreground">
-                                                {Math.floor(row.cumtime / 60)}m
+                                                {formatClock(row.cumtime)}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
+                                {ranking && ranking.rankings.length > 0 && (
+                                    <tfoot>
+                                        <tr className="border-t bg-muted/20">
+                                            <td colSpan={2} className="px-8 py-3 text-xs font-semibold text-muted-foreground">
+                                                {t('totalAc')}
+                                            </td>
+                                            <td colSpan={2} />
+                                            {totalAc.map((count, i) => (
+                                                <td key={i} className="px-4 py-3 text-center text-xs font-semibold">
+                                                    {count}
+                                                </td>
+                                            ))}
+                                            <td />
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
+                            {ranking?.scoreboard_hidden && (
+                                <p className="p-12 text-center text-sm text-muted-foreground">{t('scoreboardHidden')}</p>
+                            )}
                             {isRankingFetching && (
                                 <div className="p-24 space-y-4">
                                     <Skeleton className="h-16 w-full rounded-md" />
@@ -495,6 +662,101 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                 </div>
                             )}
                         </div>
+                    </motion.div>
+                )}
+            {activeTab === 'participation' && (
+                    <motion.div
+                        key="participation"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="rounded-md border bg-card overflow-hidden"
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b bg-muted/30">
+                            <div className="flex items-center gap-3">
+                                <Users size={20} className="text-primary" />
+                                <h3 className="text-sm font-semibold ">{t('participation')}</h3>
+                            </div>
+                            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={includeVirtual}
+                                    onChange={(e) => { setIncludeVirtual(e.target.checked); setParticipationPage(1); }}
+                                    className="accent-primary"
+                                />
+                                {t('showVirtual')}
+                            </label>
+                        </div>
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-muted/30 border-b">
+                                        <th className="px-8 py-4 text-xs font-medium text-muted-foreground w-16 text-center">#</th>
+                                        <th className="px-8 py-4 text-xs font-medium text-muted-foreground">{t('competitor')}</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-28">{t('score')}</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-muted-foreground text-center w-32">{t('time')}</th>
+                                        <th className="px-8 py-4 text-xs font-medium text-muted-foreground text-center w-32">{tCommon('status')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-muted/50">
+                                    {participations?.results.map((row, index) => (
+                                        <tr key={`${row.user}-${index}`} className="hover:bg-muted/5 transition-colors">
+                                            <td className="px-8 py-4 text-center text-xs font-medium text-muted-foreground">
+                                                {(participationPage - 1) * PARTICIPATION_PAGE_SIZE + index + 1}
+                                            </td>
+                                            <td className="px-8 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <Link href={`/user/${row.user}`} className="font-medium hover:text-primary transition-colors">
+                                                            {row.user}
+                                                        </Link>
+                                                        {row.is_virtual && (
+                                                            <Badge variant="outline" className="text-xs h-4">{t('virtual')}</Badge>
+                                                        )}
+                                                    </div>
+                                                    {row.display_name && row.display_name !== row.user && (
+                                                        <span className="text-xs text-muted-foreground">{row.display_name}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-semibold text-primary">
+                                                {Math.round(row.score)}
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-mono text-xs text-muted-foreground">
+                                                {formatClock(row.cumtime)}
+                                            </td>
+                                            <td className="px-8 py-4 text-center">
+                                                {row.is_disqualified ? (
+                                                    <Badge variant="destructive" className="text-xs">{t('disqualified')}</Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {isParticipationsFetching && (
+                                <div className="p-12 space-y-4">
+                                    <Skeleton className="h-12 w-full rounded-md" />
+                                    <Skeleton className="h-12 w-full rounded-md opacity-60" />
+                                </div>
+                            )}
+                            {participations && participations.results.length === 0 && !isParticipationsFetching && (
+                                <p className="p-12 text-center text-sm text-muted-foreground">
+                                    {participations.scoreboard_hidden ? t('scoreboardHidden') : t('noParticipants')}
+                                </p>
+                            )}
+                        </div>
+                        {participations && !participations.scoreboard_hidden && (
+                            <PaginationBar
+                                page={participationPage}
+                                onPageChange={setParticipationPage}
+                                total={participations.total}
+                                pageSize={PARTICIPATION_PAGE_SIZE}
+                                className="rounded-none border-0 border-t"
+                            />
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

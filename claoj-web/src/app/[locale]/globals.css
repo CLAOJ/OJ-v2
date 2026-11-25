@@ -304,3 +304,28 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
 }
+
+/* Problem print view (/problem/[code]/print): always paper-light, whatever
+   the active theme. The statement renders through the shared MathRenderer,
+   which carries dark:prose-invert, so the prose colour variables are forced
+   back to their light values here. */
+.problem-print {
+  color-scheme: light;
+  color: #111827;
+}
+
+.problem-print .prose {
+  --tw-prose-body: #111827;
+  --tw-prose-headings: #111827;
+  --tw-prose-bold: #111827;
+  --tw-prose-counters: #4b5563;
+  --tw-prose-bullets: #9ca3af;
+  --tw-prose-hr: #e5e7eb;
+  --tw-prose-quotes: #111827;
+  --tw-prose-quote-borders: #e5e7eb;
+  --tw-prose-captions: #4b5563;
+  --tw-prose-code: #111827;
+  --tw-prose-th-borders: #d1d5db;
+  --tw-prose-td-borders: #e5e7eb;
+  color: #111827;
+}

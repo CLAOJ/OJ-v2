@@ -115,6 +115,7 @@
     "submissions": "Submissions",
     "organizations": "Organizations",
     "helpTickets": "Help Tickets",
+    "wiki": "Wiki",
     "aboutUs": "About Us",
     "donate": "Donate",
     "github": "GitHub",
@@ -136,6 +137,7 @@
     "upcomingContests": "Upcoming contests",
     "topRatingUsers": "Top rating users",
     "topScorers": "Top scorers",
+    "topContributors": "Top contributors",
     "newProblems": "New problems",
     "commentStream": "Comment stream",
     "organizations": "Organizations",
@@ -192,6 +194,26 @@
     "summary": "Summary",
     "searchPlaceholder": "Code or Name...",
     "submitFailed": "Failed to submit code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "loadFromFile": "Load from file",
+    "loadFromFileHint": "Read a source file (up to {size} KB) into the editor",
+    "downloadPdf": "Download PDF",
+    "reportProblem": "Report an issue",
+    "partialScoring": "Partial scoring",
+    "fileSubmit": {
+      "label": "Source file",
+      "choose": "Choose a file",
+      "hint": "Accepted: .{ext} · maximum {size} MB",
+      "errors": {
+        "empty": "The file is empty",
+        "tooLarge": "The file is too large",
+        "wrongExtension": "Wrong file type for this language",
+        "notEnabled": "File submissions are not enabled for this language",
+        "missing": "Choose a file to submit",
+        "unreadable": "The file could not be read"
+      }
+    },
     "advancedFilters": "Advanced Filters",
     "solvedStatus": "Solved Status",
     "statusAll": "All",
@@ -223,7 +245,25 @@
     "memoryLimit": "Memory Limit",
     "acRateAria": "Accepted submission rate",
     "group": "Group",
-    "problemClarifications": "Problem Clarifications"
+    "problemClarifications": "Problem Clarifications",
+    "allGroups": "All groups",
+    "hasEditorial": "Has editorial",
+    "acCount": "# AC",
+    "suggestions": "Suggestions",
+    "suggest": {
+      "title": "Suggested problems",
+      "subtitle": "Problems suggested by users and still awaiting review.",
+      "forbidden": "You do not have permission to view suggested problems.",
+      "error": "Could not load suggested problems. Please try again.",
+      "empty": "No suggestions are waiting for review.",
+      "suggester": "Suggester",
+      "date": "Date"
+    }
+  },
+  "ProblemPrint": {
+    "print": "Print / Save as PDF",
+    "back": "Back to problem",
+    "uploadedPdfNote": "This problem also has an official PDF statement; open the problem page to view it."
   },
   "Contest": {
     "title": "Contests",
@@ -312,7 +352,18 @@
     "pageSubtitle": "Participate in challenges, win recognition, and grow your rating.",
     "viewCalendar": "View Calendar",
     "viewAllPast": "View all past contests",
-    "viewLessPast": "Show fewer past contests"
+    "viewLessPast": "Show fewer past contests",
+    "participation": "Participation",
+    "fixedWindow": "{duration} window per contestant",
+    "totalAc": "Total AC",
+    "exportCsv": "Export CSV",
+    "showNames": "Names",
+    "showOrganizations": "Organizations",
+    "showVirtual": "Virtual participants",
+    "time": "Time",
+    "disqualified": "Disqualified",
+    "noParticipants": "No participants yet.",
+    "scoreboardHidden": "The scoreboard is hidden for now."
   },
   "Submissions": {
     "title": "Submissions",
@@ -405,6 +456,8 @@
     "verdictLabel": "Verdict",
     "allResultsOption": "All Results",
     "allLanguagesOption": "All Languages",
+    "organizationLabel": "Organization",
+    "allOrganizationsOption": "All Organizations",
     "diffMissingIdTitle": "Missing comparison ID",
     "diffMissingIdDesc": "Please provide a submission ID to compare with using the <code>compare</code> query parameter.",
     "diffExampleLabel": "Example:",
@@ -612,7 +665,18 @@
     "moreOrganizations": "+{count} more",
     "showingUsers": "Showing {count} users",
     "rankBy": "Rank By",
-    "contributors": "Contributors"
+    "contributors": "Contributors",
+    "blogs": "Blog posts",
+    "noBlogs": "No blog posts yet.",
+    "viewSubmissions": "View submissions",
+    "submissionActivity": "Submission activity",
+    "activitySummary": "{count, plural, one {# submission} other {# submissions}} in the last year",
+    "activityError": "Could not load activity",
+    "noActivity": "No submissions in the last year.",
+    "less": "Less",
+    "more": "More",
+    "language": "Language",
+    "tests": "Tests"
   },
   "Common": {
     "loading": "Loading...",
@@ -905,7 +969,29 @@
     "about": "About",
     "openForJoining": "Open for joining (anyone can join)",
     "unlistedHide": "Unlisted (hide from public list)",
-    "memberSlots": "Member Slots (0 for unlimited)"
+    "memberSlots": "Member Slots (0 for unlimited)",
+    "submissions": "Submissions",
+    "member": "Member",
+    "rating": "Rating",
+    "solved": "Solved",
+    "points": "Points",
+    "pp": "PP",
+    "role": "Role",
+    "problem": "Problem",
+    "group": "Group",
+    "solvedBy": "Solved",
+    "acRate": "AC rate",
+    "contest": "Contest",
+    "startTime": "Start time",
+    "duration": "Duration",
+    "participants": "Participants",
+    "language": "Language",
+    "date": "Date",
+    "noProblems": "No problems in this organization",
+    "noContests": "No contests in this organization",
+    "noSubmissions": "No submissions yet",
+    "membersOnly": "Members only",
+    "membersOnlyHint": "Join the organization to view its private data."
   },
   "Organizations": {
     "title": "Organizations",
@@ -915,7 +1001,10 @@
     "unlisted": "Unlisted",
     "members": "Members",
     "showingCount": "Showing {count} of {total} organizations",
-    "noneFound": "No organizations found"
+    "noneFound": "No organizations found",
+    "pp": "PP",
+    "performancePoints": "Performance points",
+    "yourOrganizations": "Your organizations"
   },
   "Ticket": {
     "title": "Support Tickets",

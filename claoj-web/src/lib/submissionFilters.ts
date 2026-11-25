@@ -1,0 +1,29 @@
+export interface SubmissionListQuery {
+    user?: string;
+    problem?: string;
+    /** Verdict codes; the API takes them as one comma-separated value. */
+    results?: string[];
+    /** Language keys, same encoding as `results`. */
+    languages?: string[];
+    /** Organization id; only that organization's members' submissions. */
+    organization?: string;
+    page?: number;
+    pageSize?: number;
+}
+
+/**
+ * Query string for GET /submissions. Empty filters are omitted so the API's
+ * defaults apply; multi-value filters are joined with commas, which the API
+ * accepts alongside repeated params.
+ */
+export function buildSubmissionListParams(q: SubmissionListQuery): URLSearchParams {
+    const params = new URLSearchParams();
+    if (q.user) params.set('user', q.user);
+    if (q.problem) params.set('problem', q.problem);
+    if (q.results && q.results.length > 0) params.set('result', q.results.join(','));
+    if (q.languages && q.languages.length > 0) params.set('language', q.languages.join(','));
+    if (q.organization) params.set('organization', q.organization);
+    if (q.page !== undefined) params.set('page', String(q.page));
+    if (q.pageSize !== undefined) params.set('page_size', String(q.pageSize));
+    return params;
+}

@@ -2,7 +2,11 @@ package v2
 
 import (
 	"errors"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -16,6 +20,12 @@ import (
 // maxSourceBytes is Django's hard per-submission source limit.
 const maxSourceBytes = 65536
 
+// maxSubmissionUploadBytes caps the whole multipart body of a file submission.
+// The real limit is the language's file_size_limit (MB) applied to the file
+// itself; this ceiling only stops an unlimited upload from being buffered
+// before the language (and therefore its limit) is known.
+const maxSubmissionUploadBytes = 32 << 20
+
 type SubmitRequest struct {
 	Language   string `json:"language" binding:"required"`
 	Source     string `json:"source" binding:"required"`
@@ -23,13 +33,21 @@ type SubmitRequest struct {
 }
 
 // Submit – POST /api/v2/problem/:code/submit
-// @Description Submit a solution for a problem. Requires authentication.
+// @Description Submit a solution for a problem. Requires authentication. Text
+// @Description languages post JSON {language, source}; file-only languages
+// @Description post multipart/form-data with fields language, contest_key and
+// @Description one submission_file whose extension matches the language.
 // @Tags Problems
 // @Summary Submit solution
 // @Accept json
+// @Accept mpfd
 // @Produce json
 // @Param code path string true "Problem code"
-// @Param request body SubmitRequest true "Submission details"
+// @Param request body SubmitRequest false "Submission details (JSON)"
+// @Param language formData string false "Language key (multipart)"
+// @Param contest_key formData string false "Contest key (multipart)"
+// @Param contest query string false "Contest key (query param, as the web client sends it)"
+// @Param submission_file formData file false "Source file (file-only languages)"
 // @Success 200 {object} map[string]interface{} "Submission queued"
 // @Failure 400 {object} map[string]string "Invalid request"
 // @Failure 401 {object} map[string]string "Unauthorized"
@@ -47,9 +65,34 @@ func Submit(c *gin.Context) {
 	userID := uid.(uint)
 
 	var req SubmitRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var form *multipart.Form
+	// file_only languages submit an uploaded file (v1 ProblemSubmitForm), all
+	// other languages keep the JSON {language, source} path.
+	isUpload := strings.HasPrefix(c.ContentType(), "multipart/form-data")
+	if isUpload {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSubmissionUploadBytes)
+		parsed, err := c.MultipartForm()
+		if err != nil {
+			var tooLarge *http.MaxBytesError
+			if errors.As(err, &tooLarge) {
+				c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "the uploaded file is too large"})
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart body"})
+			}
+			return
+		}
+		form = parsed
+		req.Language = firstFormValue(form, "language")
+		req.ContestKey = firstFormValue(form, "contest_key")
+	} else if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	// The web client opens the problem page with ?contest=<key> and submits
+	// there, so the key arrives as a query param rather than a form/JSON field.
+	// Without this fallback those submissions were never linked to the contest.
+	if req.ContestKey == "" {
+		req.ContestKey = c.Query("contest")
 	}
 
 	// 1. Fetch Problem (editor/tester associations loaded for the access check)
@@ -79,15 +122,56 @@ func Submit(c *gin.Context) {
 		return
 	}
 
-	// 3. Validate Source Length
-	if len(req.Source) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "source cannot be empty"})
-		return
+	// 3. Validate the source for the language's submission mode
+	sourceValue := req.Source
+	storedPath := ""
+	if isUpload {
+		if !lang.FileOnly {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "this language does not accept file submissions"})
+			return
+		}
+		files := form.File["submission_file"]
+		if len(files) != 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "exactly one submission_file is required"})
+			return
+		}
+		publicPath, err := saveSubmissionFile(c, files[0], &lang)
+		if err != nil {
+			var userErr submissionFileError
+			if errors.As(err, &userErr) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": userErr.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store the submitted file"})
+			}
+			return
+		}
+		sourceValue = publicPath
+		storedPath = filepath.Join(submissionFileDir, filepath.Base(publicPath))
+	} else {
+		if lang.FileOnly {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "this language requires a file submission"})
+			return
+		}
+		if len(req.Source) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "source cannot be empty"})
+			return
+		}
+		// Note: normally there's a 65536 byte hard limit from Django, or custom per language
+		if len(req.Source) > maxSourceBytes {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "source code too long"})
+			return
+		}
 	}
-	// Note: normally there's a 65536 byte hard limit from Django, or custom per language
-	if len(req.Source) > maxSourceBytes {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "source code too long"})
-		return
+
+	// The stored file is only kept once its source row is committed; every
+	// failure before that point removes the orphan.
+	fileKept := false
+	if storedPath != "" {
+		defer func() {
+			if !fileKept {
+				os.Remove(storedPath)
+			}
+		}()
 	}
 
 	// 4. Create the Submission record within a transaction
@@ -125,7 +209,7 @@ func Submit(c *gin.Context) {
 
 		source := models.SubmissionSource{
 			SubmissionID: sub.ID,
-			Source:       req.Source,
+			Source:       sourceValue,
 		}
 		if err := tx.Create(&source).Error; err != nil {
 			return err
@@ -206,6 +290,7 @@ func Submit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	fileKept = true
 
 	// 5. Enqueue the asynchronous grading task
 	if err := jobs.EnqueueJudgeSubmission(sub.ID); err != nil {
@@ -222,4 +307,12 @@ func Submit(c *gin.Context) {
 		"message":       "submitted successfully",
 		"submission_id": sub.ID,
 	})
+}
+
+// firstFormValue reads the first value of a multipart form field.
+func firstFormValue(form *multipart.Form, key string) string {
+	if values := form.Value[key]; len(values) > 0 {
+		return values[0]
+	}
+	return ""
 }

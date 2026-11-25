@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/config"
@@ -24,7 +25,9 @@ import (
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Items per page" default(20)
 // @Param search query string false "Search by problem code or name"
-// @Param group query string false "Filter by problem group"
+// @Param group query string false "Filter by problem group (id or full name)"
+// @Param type query []int false "Filter by problem type ids (repeated or comma-separated)"
+// @Param has_editorial query string false "Filter by a public editorial: 1/true or 0/false"
 // @Param points_min query float64 false "Minimum points"
 // @Param points_max query float64 false "Maximum points"
 // @Param status query string false "Filter by status: solved, unsolved (requires login)"
@@ -62,8 +65,31 @@ func ProblemList(c *gin.Context) {
 		q = q.Where("code LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 	if group != "" {
-		q = q.Joins("JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
-			Where("judge_problemgroup.full_name LIKE ?", "%"+group+"%")
+		// The list sends a group id; a name substring is still accepted for
+		// bookmarked v1-style URLs.
+		if gid, err := strconv.ParseUint(group, 10, 64); err == nil {
+			q = q.Where("judge_problem.group_id = ?", gid)
+		} else {
+			q = q.Joins("JOIN judge_problemgroup ON judge_problemgroup.id = judge_problem.group_id").
+				Where("judge_problemgroup.full_name LIKE ?", "%"+group+"%")
+		}
+	}
+	// A problem matches when it carries any of the selected types. The
+	// subquery keeps one row per problem, so COUNT stays correct.
+	if typeIDs, requested := problemTypeIDs(c); requested {
+		if len(typeIDs) == 0 {
+			// v1 narrows on an all-invalid type filter; it never widens it
+			// back to every problem.
+			q = q.Where("1 = 0")
+		} else {
+			q = q.Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_types WHERE problemtype_id IN ?)", typeIDs)
+		}
+	}
+	switch c.Query("has_editorial") {
+	case "1", "true":
+		q = q.Where(hasPublicEditorialSQL, time.Now())
+	case "0", "false":
+		q = q.Where("NOT "+hasPublicEditorialSQL, time.Now())
 	}
 	if pointsMin != "" {
 		q = q.Where("points >= ?", pointsMin)
@@ -112,7 +138,25 @@ func ProblemList(c *gin.Context) {
 		return
 	}
 
-	// Get solved problems for the current user
+	c.JSON(http.StatusOK, apiListWithTotal(problemListItems(problems, profileID), total))
+}
+
+// problemListItem is the public problem-list row shape, shared with the
+// organization problems tab so both lists always look the same.
+type problemListItem struct {
+	Code      string  `json:"code"`
+	Name      string  `json:"name"`
+	Points    float64 `json:"points"`
+	Partial   bool    `json:"partial"`
+	UserCount int     `json:"user_count"`
+	AcRate    float64 `json:"ac_rate"`
+	Group     string  `json:"group"`
+	IsSolved  bool    `json:"is_solved"`
+}
+
+// problemListItems builds those rows, flagging what profileID already solved
+// (0 = anonymous, nothing is flagged).
+func problemListItems(problems []models.Problem, profileID uint) []problemListItem {
 	solvedIDs := make(map[uint]bool)
 	if profileID > 0 {
 		var solved []uint
@@ -125,20 +169,9 @@ func ProblemList(c *gin.Context) {
 		}
 	}
 
-	type ProblemItem struct {
-		Code      string  `json:"code"`
-		Name      string  `json:"name"`
-		Points    float64 `json:"points"`
-		Partial   bool    `json:"partial"`
-		UserCount int     `json:"user_count"`
-		AcRate    float64 `json:"ac_rate"`
-		Group     string  `json:"group"`
-		IsSolved  bool    `json:"is_solved"`
-	}
-
-	items := make([]ProblemItem, len(problems))
+	items := make([]problemListItem, len(problems))
 	for i, p := range problems {
-		items[i] = ProblemItem{
+		items[i] = problemListItem{
 			Code:      p.Code,
 			Name:      p.Name,
 			Points:    p.Points,
@@ -149,6 +182,92 @@ func ProblemList(c *gin.Context) {
 			IsSolved:  solvedIDs[p.ID],
 		}
 	}
+	return items
+}
+
+// publicEditorialCondition is the v1 editorial visibility rule
+// (Solution.is_accessible_by): public and already published. A NULL publish_on
+// is unpublished, so it does not count. Shared with ProblemSolutionExists so
+// the editorial tab and the has_editorial filter always agree.
+const publicEditorialCondition = `is_public = 1 AND publish_on <= ?`
+
+const hasPublicEditorialSQL = `EXISTS (SELECT 1 FROM judge_solution s` +
+	` WHERE s.problem_id = judge_problem.id AND ` + publicEditorialCondition + `)`
+
+// problemTypeIDs reads the `type` filter as repeated params (?type=1&type=2)
+// or as one comma-separated value (?type=1,2) and reports whether the filter
+// was sent at all. Bad values are dropped; a filter with no valid id stays
+// requested so the caller can narrow to nothing instead of widening.
+func problemTypeIDs(c *gin.Context) (ids []uint, requested bool) {
+	raws := c.QueryArray("type")
+	for _, raw := range raws {
+		for _, part := range strings.Split(raw, ",") {
+			if id, err := strconv.ParseUint(strings.TrimSpace(part), 10, 64); err == nil {
+				ids = append(ids, uint(id))
+			}
+		}
+	}
+	return ids, len(raws) > 0
+}
+
+// SuggestProblemList - GET /api/v2/problems/suggest
+// @Description Problems still hidden but carrying a suggester, i.e.
+// @Description suggestions awaiting review (v1 SuggestList parity). Metadata
+// @Description only: no statement content is returned.
+// @Tags Problems
+// @Summary List suggested problems
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Items per page" default(100)
+// @Success 200 {object} map[string]interface{} "Paginated list of suggestions"
+// @Failure 403 {object} map[string]interface{} "judge.suggest_new_problem required"
+// @Router /problems/suggest [get]
+func SuggestProblemList(c *gin.Context) {
+	if !auth.HasPerm(c, "judge.suggest_new_problem") {
+		c.JSON(http.StatusForbidden, apiError("you do not have permission to view problem suggestions"))
+		return
+	}
+	page, pageSize := parsePagination(c)
+
+	// v1: Q(is_public=False) & ~Q(suggester=None).
+	q := db.DB.Model(&models.Problem{}).
+		Where("is_public = ? AND suggester_id IS NOT NULL", false)
+
+	var total int64
+	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	var problems []models.Problem
+	if err := q.Session(&gorm.Session{}).
+		Preload("Suggester.User").
+		Select("judge_problem.id, judge_problem.code, judge_problem.name, judge_problem.points, judge_problem.date, judge_problem.suggester_id").
+		Order("judge_problem.date DESC, judge_problem.id DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&problems).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	type SuggestItem struct {
+		Code      string     `json:"code"`
+		Name      string     `json:"name"`
+		Points    float64    `json:"points"`
+		Date      *time.Time `json:"date"`
+		Suggester string     `json:"suggester"`
+	}
+
+	items := make([]SuggestItem, len(problems))
+	for i, p := range problems {
+		items[i] = SuggestItem{Code: p.Code, Name: p.Name, Points: p.Points, Date: p.Date}
+		if p.Suggester != nil {
+			items[i].Suggester = p.Suggester.User.Username
+		}
+	}
+	// Per-user and permission-gated: no shared cache may keep it.
+	c.Header("Cache-Control", "private, no-store")
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
 
@@ -169,8 +288,11 @@ func RandomProblem(c *gin.Context) {
 // tags, encoding/json emits the Go field names and every field reads as
 // undefined on the client — which blanked out the submit-language <select>.
 type problemLangItem struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
+	Key           string `json:"key"`
+	Name          string `json:"name"`
+	Extension     string `json:"extension"`
+	FileOnly      bool   `json:"file_only"`
+	FileSizeLimit int    `json:"file_size_limit"`
 }
 
 type problemTypeItem struct {
@@ -207,7 +329,13 @@ func ProblemDetail(c *gin.Context) {
 
 	langs := make([]problemLangItem, len(p.AllowedLangs))
 	for i, l := range p.AllowedLangs {
-		langs[i] = problemLangItem{Key: l.Key, Name: l.Name}
+		langs[i] = problemLangItem{
+			Key:           l.Key,
+			Name:          l.Name,
+			Extension:     l.Extension,
+			FileOnly:      l.FileOnly,
+			FileSizeLimit: l.FileSizeLimit,
+		}
 	}
 
 	types := make([]problemTypeItem, len(p.Types))

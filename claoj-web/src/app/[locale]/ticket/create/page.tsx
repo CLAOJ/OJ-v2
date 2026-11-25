@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { Problem } from '@/types';
 import { Link, useRouter } from '@/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,8 +27,19 @@ type TicketFormValues = {
     problem_code?: string;
 };
 
+// useSearchParams needs a Suspense boundary at build time; the form is split
+// out for that, not for reuse.
 export default function CreateTicketPage() {
+    return (
+        <Suspense fallback={null}>
+            <CreateTicketForm />
+        </Suspense>
+    );
+}
+
+function CreateTicketForm() {
     const t = useTranslations('Ticket');
+    const searchParams = useSearchParams();
 
     // Built inside the component so the messages can go through t(); at module
     // scope they were unavoidably English and surfaced verbatim to the user.
@@ -37,11 +49,16 @@ export default function CreateTicketPage() {
         problem_code: z.string().optional(),
     });
     const router = useRouter();
-    const { user, loading } = useAuth();
+    const { user } = useAuth();
     const [problemSearch, setProblemSearch] = useState('');
     const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
+    const [problemCleared, setProblemCleared] = useState(false);
 
     const isAuthenticated = !!user;
+
+    // ?problem=<code> from the problem page's report link. Picking another
+    // problem or clearing the field takes over from it, so no effect is needed.
+    const initialProblemCode = searchParams.get('problem');
 
     const { data: problems } = useQuery({
         queryKey: ['problems-search', problemSearch],
@@ -53,6 +70,17 @@ export default function CreateTicketPage() {
         enabled: !!problemSearch
     });
 
+    const { data: initialProblem } = useQuery({
+        queryKey: ['ticket-problem', initialProblemCode],
+        queryFn: async () => {
+            const res = await api.get<Problem>(`/problem/${initialProblemCode}`);
+            return res.data;
+        },
+        enabled: !!initialProblemCode
+    });
+
+    const relatedProblem = selectedProblem ?? (problemCleared ? null : initialProblem ?? null);
+
     const createMutation = useMutation({
         mutationFn: async (data: TicketFormValues) => {
             const payload = {
@@ -60,11 +88,11 @@ export default function CreateTicketPage() {
                 body: data.body,
                 problem_code: data.problem_code || undefined,
             };
-            const res = await api.post('/tickets', payload);
+            const res = await api.post<{ message: string; id: number }>('/tickets', payload);
             return res.data;
         },
         onSuccess: (data) => {
-            router.push(`/ticket/${data.data?.id || data.id}`);
+            router.push(`/ticket/${data.id}`);
         }
     });
 
@@ -72,7 +100,6 @@ export default function CreateTicketPage() {
         register,
         handleSubmit,
         formState: { errors },
-        setValue,
     } = useForm<TicketFormValues>({
         resolver: zodResolver(ticketSchema),
     });
@@ -83,12 +110,12 @@ export default function CreateTicketPage() {
     }
 
     const onSubmit = async (data: TicketFormValues) => {
-        createMutation.mutate(data);
+        createMutation.mutate({ ...data, problem_code: relatedProblem?.code });
     };
 
     const handleSelectProblem = (problem: Problem) => {
         setSelectedProblem(problem);
-        setValue('problem_code', problem.code);
+        setProblemCleared(true);
         setProblemSearch('');
     };
 
@@ -142,20 +169,20 @@ export default function CreateTicketPage() {
                                 type="text"
                                 placeholder={t('searchProblemPlaceholder')}
                                 className="w-full h-14 bg-muted/30 border border-muted-foreground/10 rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all outline-none"
-                                value={selectedProblem ? `${selectedProblem.code} - ${selectedProblem.name}` : problemSearch}
+                                value={relatedProblem ? `${relatedProblem.code} - ${relatedProblem.name}` : problemSearch}
                                 onChange={(e) => {
                                     setProblemSearch(e.target.value);
                                     setSelectedProblem(null);
-                                    setValue('problem_code', '');
+                                    setProblemCleared(true);
                                 }}
                                 onFocus={() => problemSearch && setSelectedProblem(null)}
                             />
-                            {selectedProblem && (
+                            {relatedProblem && (
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setSelectedProblem(null);
-                                        setValue('problem_code', '');
+                                        setProblemCleared(true);
                                     }}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
                                 >

@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/CLAOJ/claoj/contribution"
@@ -13,18 +14,38 @@ import (
 )
 
 // BlogList – GET /api/v2/blogs
+// Optional filters: ?organization=<id>, ?author=<username|profile id>.
 func BlogList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	orgID := c.Query("organization")
+	author := c.Query("author")
 
 	var posts []models.BlogPost
-	query := db.DB.Preload("Authors.User").
+	query := db.DB.Model(&models.BlogPost{}).Preload("Authors.User").
 		Where("visible = ? AND publish_on <= ?", true, time.Now())
+
+	if author != "" {
+		// v1 UserBlogPage: one author's personal (non-organization) posts.
+		profileID, ok := resolveAuthorProfileID(author)
+		if !ok {
+			c.JSON(http.StatusNotFound, apiError("user not found"))
+			return
+		}
+		query = query.Joins("JOIN judge_blogpost_authors jba ON jba.blogpost_id = judge_blogpost.id").
+			Where("jba.profile_id = ?", profileID).
+			Where("organization_id IS NULL")
+	}
 
 	if orgID != "" {
 		query = query.Where("organization_id = ?", orgID)
-	} else {
+	} else if author == "" {
 		query = query.Where("organization_id IS NULL AND global_post = ?", true)
+	}
+
+	var total int64
+	if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
 	}
 
 	if err := query.Order("sticky DESC, publish_on DESC").
@@ -59,7 +80,24 @@ func BlogList(c *gin.Context) {
 			p.ID, p.Title, p.Slug, authors, p.PublishOn, p.Summary, p.Score, p.Sticky,
 		}
 	}
-	c.JSON(http.StatusOK, apiList(items))
+	c.JSON(http.StatusOK, apiListWithTotal(items, total))
+}
+
+// resolveAuthorProfileID maps a blog author filter — an auth_user username or
+// a judge_profile.id — to the profile id. ok=false means no such profile.
+func resolveAuthorProfileID(author string) (uint, bool) {
+	var profile models.Profile
+	if err := db.DB.Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
+		Where("au.username = ?", author).First(&profile).Error; err == nil {
+		return profile.ID, true
+	}
+	id, err := strconv.ParseUint(author, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	var count int64
+	db.DB.Model(&models.Profile{}).Where("id = ?", id).Count(&count)
+	return uint(id), count > 0
 }
 
 // BlogDetail – GET /api/v2/blog/:id

@@ -3,27 +3,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { Problem, PaginatedList } from '@/types';
+import { Problem, PaginatedList, ProblemTaxonomy } from '@/types';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { hasPerm } from '@/lib/permissions';
+import { buildProblemListParams } from '@/lib/problemFilters';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Badge } from '@/components/ui/Badge';
 import { Link, useRouter } from '@/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     Search,
     ChevronUp,
     ChevronDown,
     Flame,
     CheckCircle2,
-    Filter,
-    ArrowRight,
-    Trophy,
     Gamepad2,
     RefreshCw,
     SlidersHorizontal,
-    HelpCircle
+    HelpCircle,
+    Lightbulb
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 
 const TRENDING_LIMIT = 5;
@@ -36,8 +35,12 @@ export default function ProblemsPageContent() {
     const t = useTranslations('Problems');
     const tCommon = useTranslations('Common');
     const router = useRouter();
+    const { user } = useAuth();
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<string>('all');
+    const [group, setGroup] = useState<string>('');
+    const [problemTypes, setProblemTypes] = useState<number[]>([]);
+    const [hasEditorial, setHasEditorial] = useState(false);
     const [pointsMin, setPointsMin] = useState<number>(0);
     const [pointsMax, setPointsMax] = useState<number>(POINTS_MAX);
     const [sort, setSort] = useState<string>('code');
@@ -46,20 +49,41 @@ export default function ProblemsPageContent() {
     const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
 
     const { data: problemData, isLoading } = useQuery({
-        queryKey: ['problems', search, status, pointsMin, pointsMax, sort, order, page, pageSize],
+        queryKey: ['problems', search, status, group, problemTypes, hasEditorial, pointsMin, pointsMax, sort, order, page, pageSize],
         queryFn: async () => {
-            const params = new URLSearchParams({
+            const params = buildProblemListParams({
                 search,
                 status: status !== 'all' ? status : '',
-                points_min: pointsMin.toString(),
-                points_max: pointsMax >= POINTS_MAX ? '' : pointsMax.toString(),
+                group,
+                types: problemTypes,
+                hasEditorial,
+                pointsMin,
+                pointsMax: pointsMax >= POINTS_MAX ? null : pointsMax,
                 sort,
                 order,
-                page: page.toString(),
-                page_size: pageSize.toString(),
+                page,
+                pageSize,
             });
             const res = await api.get<PaginatedList<Problem>>(`/problems?${params.toString()}`);
             return res.data;
+        }
+    });
+
+    // Filter vocabulary: v1 derives both selects from the full group/type tables.
+    const { data: groups } = useQuery({
+        // Distinct from the admin lists' ['problem-groups'] cache entry: this
+        // one holds the public taxonomy array, not the admin paged response.
+        queryKey: ['public-problem-groups'],
+        queryFn: async () => {
+            const res = await api.get<PaginatedList<ProblemTaxonomy>>('/problem-groups');
+            return res.data.data;
+        }
+    });
+    const { data: types } = useQuery({
+        queryKey: ['public-problem-types'],
+        queryFn: async () => {
+            const res = await api.get<PaginatedList<ProblemTaxonomy>>('/problem-types');
+            return res.data.data;
         }
     });
 
@@ -142,6 +166,61 @@ export default function ProblemsPageContent() {
                             </div>
                         </div>
 
+                        {/* Group */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-muted-foreground ml-1">{t('problemGroup')}</label>
+                            <select
+                                className="w-full h-12 bg-muted/30 border border-transparent rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none cursor-pointer"
+                                value={group}
+                                onChange={(e) => { setGroup(e.target.value); setPage(1); }}
+                            >
+                                <option value="">{t('allGroups')}</option>
+                                {groups?.map(g => <option key={g.id} value={g.id}>{g.full_name}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Types */}
+                        {types && types.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground ml-1">{t('problemTypes')}</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {types.map(pt => {
+                                        const active = problemTypes.includes(pt.id);
+                                        return (
+                                            <button
+                                                key={pt.id}
+                                                onClick={() => {
+                                                    setProblemTypes(active
+                                                        ? problemTypes.filter(id => id !== pt.id)
+                                                        : [...problemTypes, pt.id]);
+                                                    setPage(1);
+                                                }}
+                                                className={cn(
+                                                    "px-3 h-8 text-xs font-medium rounded-xl border transition-all",
+                                                    active
+                                                        ? "bg-primary text-primary-foreground border-primary"
+                                                        : "bg-muted/30 hover:bg-muted/50 border-transparent text-muted-foreground"
+                                                )}
+                                            >
+                                                {pt.full_name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Editorial */}
+                        <label className="flex items-center gap-3 ml-1 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 accent-primary cursor-pointer"
+                                checked={hasEditorial}
+                                onChange={(e) => { setHasEditorial(e.target.checked); setPage(1); }}
+                            />
+                            <span className="text-xs font-medium text-muted-foreground">{t('hasEditorial')}</span>
+                        </label>
+
                         {/* Point Range */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center ml-1">
@@ -165,6 +244,9 @@ export default function ProblemsPageContent() {
                             onClick={() => {
                                 setSearch('');
                                 setStatus('all');
+                                setGroup('');
+                                setProblemTypes([]);
+                                setHasEditorial(false);
                                 setPointsMin(0);
                                 setPointsMax(POINTS_MAX);
                             }}
@@ -175,7 +257,7 @@ export default function ProblemsPageContent() {
                     </div>
 
                     {/* Random Problem Action */}
-                    <div className="pt-6 border-t">
+                    <div className="pt-6 border-t space-y-2">
                         <button
                             onClick={launchRandomProblem}
                             className="w-full h-10 rounded-md bg-foreground text-background font-medium flex items-center justify-center gap-2"
@@ -183,6 +265,17 @@ export default function ProblemsPageContent() {
                             <Gamepad2 size={20} />
                             <span>{t('surpriseMe')}</span>
                         </button>
+                        {/* v1 shows a "Suggest" tab in the problem list header
+                            for holders of judge.suggest_new_problem. */}
+                        {hasPerm(user, 'judge.suggest_new_problem') && (
+                            <Link
+                                href="/problems/suggest"
+                                className="w-full h-10 rounded-md bg-muted/50 hover:bg-muted border border-dashed text-xs font-medium flex items-center justify-center gap-2 transition-all"
+                            >
+                                <Lightbulb size={16} />
+                                <span>{t('suggestions')}</span>
+                            </Link>
+                        )}
                     </div>
                 </div>
 
@@ -246,12 +339,17 @@ export default function ProblemsPageContent() {
                                             {t('acRate')} {sort === 'ac_rate' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                                         </div>
                                     </th>
+                                    <th className="px-10 py-6 text-xs font-medium text-muted-foreground text-center cursor-pointer group" onClick={() => toggleSort('user_count')}>
+                                        <div className="flex items-center gap-2 justify-center">
+                                            {t('acCount')} {sort === 'user_count' && (order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted/50">
                                 {isLoading ? (
                                     Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
-                                        <tr key={i}><td colSpan={5} className="px-10 py-6"><Skeleton className="h-10 w-full rounded-md" /></td></tr>
+                                        <tr key={i}><td colSpan={6} className="px-10 py-6"><Skeleton className="h-10 w-full rounded-md" /></td></tr>
                                     ))
                                 ) : (
                                     problemData?.data.map(p => (
@@ -293,6 +391,7 @@ export default function ProblemsPageContent() {
                                                     </div>
                                                 </div>
                                             </td>
+                                            <td className="px-10 py-8 text-center text-sm font-medium text-muted-foreground">{p.user_count}</td>
                                         </tr>
                                     ))
                                 )}
