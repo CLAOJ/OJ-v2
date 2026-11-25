@@ -2869,7 +2869,7 @@
     },
     "moss": {
       "title": "MOSS",
-      "subtitle": "Báo cáo đạo văn theo từng bài tập và ngôn ngữ của kỳ thi.",
+      "subtitle": "Báo cáo sao chép code theo từng bài tập và ngôn ngữ của kỳ thi.",
       "contestLabel": "Kỳ thi",
       "contestPlaceholder": "Tìm kỳ thi theo mã hoặc tên",
       "contestList": "Danh sách kỳ thi",
