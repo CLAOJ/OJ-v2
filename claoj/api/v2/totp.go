@@ -162,7 +162,7 @@ func TotpSetup(c *gin.Context) {
 
 	match, err := auth.CheckPassword(req.Password, user.Password)
 	if err != nil || !match {
-		c.JSON(http.StatusUnauthorized, apiError("invalid password"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid password"))
 		return
 	}
 
@@ -170,7 +170,7 @@ func TotpSetup(c *gin.Context) {
 	var existingDevice models.TotpDevice
 	if err := db.DB.Where("user_id = ?", userID).First(&existingDevice).Error; err == nil {
 		if existingDevice.Confirmed {
-			c.JSON(http.StatusBadRequest, apiError("TOTP is already enabled. Disable it first to reconfigure."))
+			c.JSON(http.StatusBadRequest, apiUserError("TOTP is already enabled. Disable it first to reconfigure."))
 			return
 		}
 		// Delete unconfirmed device
@@ -235,7 +235,7 @@ func TotpConfirm(c *gin.Context) {
 	// Get unconfirmed device
 	var device models.TotpDevice
 	if err := db.DB.Where("user_id = ? AND confirmed = ?", userID, false).First(&device).Error; err != nil {
-		c.JSON(http.StatusBadRequest, apiError("no pending TOTP setup found"))
+		c.JSON(http.StatusBadRequest, apiUserError("no pending TOTP setup found"))
 		return
 	}
 
@@ -249,7 +249,7 @@ func TotpConfirm(c *gin.Context) {
 	// Verify code
 	valid := totp.Validate(req.Code, secret)
 	if !valid {
-		c.JSON(http.StatusUnauthorized, apiError("invalid TOTP code"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid TOTP code"))
 		return
 	}
 
@@ -298,14 +298,14 @@ func TotpDisable(c *gin.Context) {
 
 	match, err := auth.CheckPassword(req.Password, user.Password)
 	if err != nil || !match {
-		c.JSON(http.StatusUnauthorized, apiError("invalid password"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid password"))
 		return
 	}
 
 	// Get confirmed device
 	var device models.TotpDevice
 	if err := db.DB.Where("user_id = ? AND confirmed = ?", userID, true).First(&device).Error; err != nil {
-		c.JSON(http.StatusBadRequest, apiError("TOTP is not enabled"))
+		c.JSON(http.StatusBadRequest, apiUserError("TOTP is not enabled"))
 		return
 	}
 
@@ -318,7 +318,7 @@ func TotpDisable(c *gin.Context) {
 
 	valid := totp.Validate(req.Code, secret)
 	if !valid {
-		c.JSON(http.StatusUnauthorized, apiError("invalid TOTP code"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid TOTP code"))
 		return
 	}
 
@@ -359,12 +359,12 @@ func TotpVerify(c *gin.Context) {
 	// Find user
 	var user models.AuthUser
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, apiError("invalid credentials"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid credentials"))
 		return
 	}
 
 	if !auth.ValidTOTPChallenge(req.Token, user.ID) {
-		c.JSON(http.StatusUnauthorized, apiError("login expired, enter your password again"))
+		c.JSON(http.StatusUnauthorized, apiUserError("login expired, enter your password again"))
 		return
 	}
 
@@ -381,14 +381,14 @@ func TotpVerify(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
 		return
 	} else if secret = s; secret == "" {
-		c.JSON(http.StatusBadRequest, apiError("TOTP not enabled for this account"))
+		c.JSON(http.StatusBadRequest, apiUserError("TOTP not enabled for this account"))
 		return
 	}
 
 	// Verify TOTP code
 	valid := totp.Validate(req.Code, secret)
 	if !valid {
-		c.JSON(http.StatusUnauthorized, apiError("invalid TOTP code"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid TOTP code"))
 		return
 	}
 
@@ -452,14 +452,14 @@ func TotpBackupCodesGenerate(c *gin.Context) {
 
 	match, err := auth.CheckPassword(req.Password, user.Password)
 	if err != nil || !match {
-		c.JSON(http.StatusUnauthorized, apiError("invalid password"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid password"))
 		return
 	}
 
 	// Check if TOTP is enabled
 	var device models.TotpDevice
 	if err := db.DB.Where("user_id = ? AND confirmed = ?", userID, true).First(&device).Error; err != nil {
-		c.JSON(http.StatusBadRequest, apiError("TOTP is not enabled"))
+		c.JSON(http.StatusBadRequest, apiUserError("TOTP is not enabled"))
 		return
 	}
 
@@ -494,11 +494,11 @@ func TotpBackupVerify(c *gin.Context) {
 	// Find user
 	var user models.AuthUser
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, apiError("invalid credentials"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid credentials"))
 		return
 	}
 	if !auth.ValidTOTPChallenge(req.Token, user.ID) {
-		c.JSON(http.StatusUnauthorized, apiError("login expired, enter your password again"))
+		c.JSON(http.StatusUnauthorized, apiUserError("login expired, enter your password again"))
 		return
 	}
 
@@ -509,7 +509,7 @@ func TotpBackupVerify(c *gin.Context) {
 	// Find unused backup code
 	var backupCode models.BackupCode
 	if err := db.DB.Where("user_id = ? AND code = ? AND used = ?", user.ID, codeHash, false).First(&backupCode).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, apiError("invalid backup code"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid backup code"))
 		return
 	}
 

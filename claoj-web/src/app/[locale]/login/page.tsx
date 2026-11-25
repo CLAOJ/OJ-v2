@@ -102,7 +102,8 @@ export default function LoginPage() {
             router.push(getRedirectUrl(user.is_staff || !!user.is_admin));
         } catch (caught) {
             const err = caught as ApiError;
-            setError(err.response?.data?.error || t('invalidTotpCode'));
+            const msg = err.response?.data?.error;
+            setError(!msg || msg === 'invalid TOTP code' ? t('invalidTotpCode') : msg);
         } finally {
             setIsLoading(false);
         }

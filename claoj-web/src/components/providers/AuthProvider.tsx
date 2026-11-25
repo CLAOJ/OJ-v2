@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import api, { webauthnApi } from '@/lib/api';
+import { credentialJSON, requestOptions } from '@/lib/webauthn';
 import axios, { AxiosRequestConfig } from 'axios';
 import { User } from '@/types';
 
@@ -68,49 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loginWebAuthn = async (username: string): Promise<User> => {
         // Begin login
         const beginRes = await webauthnApi.beginLogin(username);
-        const options = beginRes.data.options;
-
-        // Convert options to use ArrayBuffer for credential IDs
-        const publicKeyOptions: PublicKeyCredentialRequestOptions = {
-            ...options,
-            challenge: typeof options.challenge === 'string'
-                ? Uint8Array.from(atob(options.challenge), (b) => b.charCodeAt(0))
-                : new Uint8Array(options.challenge as ArrayBuffer),
-            allowCredentials: options.allowCredentials?.map((cred: PublicKeyCredentialDescriptor) => ({
-                ...cred,
-                id: Uint8Array.from(cred.id as unknown as number[], (b: number) => b),
-            })),
-        };
-
-        // Get credential from authenticator
         const credential = await navigator.credentials.get({
-            publicKey: publicKeyOptions,
+            publicKey: requestOptions(beginRes.data.options),
         }) as PublicKeyCredential;
-
-        // Convert response to JSON
-        const response = {
-            id: credential.id,
-            rawId: Array.from(new Uint8Array(credential.rawId)),
-            type: credential.type,
-            clientExtensionResults: credential.getClientExtensionResults(),
-            response: {
-                authenticatorData: Array.from(
-                    new Uint8Array((credential.response as AuthenticatorAssertionResponse).authenticatorData)
-                ),
-                clientDataJSON: Array.from(
-                    new Uint8Array((credential.response as AuthenticatorAssertionResponse).clientDataJSON)
-                ),
-                signature: Array.from(
-                    new Uint8Array((credential.response as AuthenticatorAssertionResponse).signature)
-                ),
-                userHandle: (credential.response as AuthenticatorAssertionResponse).userHandle
-                    ? Array.from(new Uint8Array((credential.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer))
-                    : null,
-            },
-        };
-
-        // Finish login
-        const finishRes = await webauthnApi.finishLogin(response);
+        const finishRes = await webauthnApi.finishLogin(credentialJSON(credential));
         // Tokens are set via httpOnly cookies by the server
         const userData = finishRes.data.user as User;
         setUser(userData);

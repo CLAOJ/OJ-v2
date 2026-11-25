@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { webauthnApi } from '@/lib/api';
+import { creationOptions, credentialJSON } from '@/lib/webauthn';
 import { Loader2, Key } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -25,41 +26,10 @@ export function WebAuthnRegistrationForm({ onSuccess }: WebAuthnRegistrationForm
     const registerMutation = useMutation({
         mutationFn: async () => {
             const beginRes = await webauthnApi.beginRegistration(password);
-            const options = beginRes.data.options;
-
-            const publicKeyOptions: PublicKeyCredentialCreationOptions = {
-                ...options,
-                challenge: typeof options.challenge === 'string'
-                    ? Uint8Array.from(atob(options.challenge), (b) => b.charCodeAt(0))
-                    : new Uint8Array(options.challenge as ArrayBuffer),
-                user: {
-                    ...options.user,
-                    id: typeof options.user.id === 'string'
-                        ? Uint8Array.from(atob(options.user.id), (b) => b.charCodeAt(0))
-                        : new Uint8Array(options.user.id as ArrayBuffer),
-                },
-            };
-
             const credential = await navigator.credentials.create({
-                publicKey: publicKeyOptions,
+                publicKey: creationOptions(beginRes.data.options),
             }) as PublicKeyCredential;
-
-            const response = {
-                id: credential.id,
-                rawId: Array.from(new Uint8Array(credential.rawId)),
-                type: credential.type,
-                clientExtensionResults: credential.getClientExtensionResults(),
-                response: {
-                    attestationObject: Array.from(
-                        new Uint8Array((credential.response as AuthenticatorAttestationResponse).attestationObject)
-                    ),
-                    clientDataJSON: Array.from(
-                        new Uint8Array((credential.response as AuthenticatorAttestationResponse).clientDataJSON)
-                    ),
-                },
-            };
-
-            return await webauthnApi.finishRegistration(response, credentialName);
+            return await webauthnApi.finishRegistration(credentialJSON(credential), credentialName);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['webauthn-status'] });

@@ -155,7 +155,7 @@ func WebAuthnBeginRegistration(c *gin.Context) {
 
 	match, err := auth.CheckPassword(req.Password, user.Password)
 	if err != nil || !match {
-		c.JSON(http.StatusUnauthorized, apiError("invalid password"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid password"))
 		return
 	}
 
@@ -167,7 +167,7 @@ func WebAuthnBeginRegistration(c *gin.Context) {
 	}
 
 	if profile.IsWebauthnEnabled {
-		c.JSON(http.StatusBadRequest, apiError("WebAuthn is already enabled. Disable it first to reconfigure."))
+		c.JSON(http.StatusBadRequest, apiUserError("WebAuthn is already enabled. Disable it first to reconfigure."))
 		return
 	}
 
@@ -221,7 +221,7 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 	// Get session from cookie
 	sessionCookie, err := c.Cookie("webauthn_registration_session")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("registration session not found"))
+		c.JSON(http.StatusBadRequest, apiUserError("registration session not found"))
 		return
 	}
 
@@ -324,7 +324,7 @@ func WebAuthnBeginLogin(c *gin.Context) {
 	// Find user by username
 	var user models.AuthUser
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, apiError("invalid credentials"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid credentials"))
 		return
 	}
 
@@ -336,7 +336,7 @@ func WebAuthnBeginLogin(c *gin.Context) {
 	}
 
 	if !profile.IsWebauthnEnabled {
-		c.JSON(http.StatusBadRequest, apiError("WebAuthn is not enabled for this account"))
+		c.JSON(http.StatusBadRequest, apiUserError("WebAuthn is not enabled for this account"))
 		return
 	}
 
@@ -386,7 +386,7 @@ func WebAuthnFinishLogin(c *gin.Context) {
 	// Get session from cookie
 	sessionCookie, err := c.Cookie("webauthn_login_session")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("login session not found"))
+		c.JSON(http.StatusBadRequest, apiUserError("login session not found"))
 		return
 	}
 
@@ -572,7 +572,7 @@ func WebAuthnCredentialDelete(c *gin.Context) {
 
 	match, err := auth.CheckPassword(req.Password, user.Password)
 	if err != nil || !match {
-		c.JSON(http.StatusUnauthorized, apiError("invalid password"))
+		c.JSON(http.StatusUnauthorized, apiUserError("invalid password"))
 		return
 	}
 
