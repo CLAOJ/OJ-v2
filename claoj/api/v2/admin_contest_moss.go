@@ -3,6 +3,9 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/db"
@@ -40,15 +43,15 @@ func AdminContestMossList(c *gin.Context) {
 		ProblemName     string  `json:"problem_name"`
 		Language        string  `json:"language"`
 		SubmissionCount uint    `json:"submission_count"`
-		URL             *string `json:"url"`
+		ReportPath      *string `json:"report_path"`
 	}
 	var rows []row
-	if err := db.DB.Table("judge_contestmoss m").
-		Select("p.code AS problem_code, p.name AS problem_name, m.language, m.submission_count, m.url").
-		Joins("JOIN judge_problem p ON p.id = m.problem_id").
-		Joins("LEFT JOIN judge_contestproblem cp ON cp.problem_id = m.problem_id AND cp.contest_id = m.contest_id").
-		Where("m.contest_id = ?", contest.ID).
-		Order("cp.`order` ASC, m.id ASC").
+	if err := db.DB.Table("plagiarism_result r").
+		Select("p.code AS problem_code, p.name AS problem_name, r.language, r.submission_count, r.report_path").
+		Joins("JOIN judge_problem p ON p.id = r.problem_id").
+		Joins("LEFT JOIN judge_contestproblem cp ON cp.problem_id = r.problem_id AND cp.contest_id = r.contest_id").
+		Where("r.contest_id = ?", contest.ID).
+		Order("cp.`order` ASC, r.id ASC").
 		Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		return
@@ -86,10 +89,54 @@ func AdminContestMossDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
-	res := db.DB.Where("contest_id = ?", contest.ID).Delete(&models.ContestMoss{})
+	res := db.DB.Where("contest_id = ?", contest.ID).Delete(&models.PlagiarismResult{})
 	if res.Error != nil {
 		c.JSON(http.StatusInternalServerError, apiError(res.Error.Error()))
 		return
 	}
+	if err := os.RemoveAll(jobs.ContestReportDir(contest.ID)); err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"deleted": res.RowsAffected})
+}
+
+// AdminContestMossReport - GET /api/v2/admin/contest/:key/moss/report/*path
+// Serves one file from the contest's compare50 report dir with a sandbox CSP,
+// so scripts inside a report cannot act with the admin's session.
+func AdminContestMossReport(c *gin.Context) {
+	contest, ok := contestForMoss(c)
+	if !ok {
+		return
+	}
+	raw := c.Param("path")
+	for _, seg := range strings.FieldsFunc(raw, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if seg == ".." {
+			c.JSON(http.StatusNotFound, apiError("report not found"))
+			return
+		}
+	}
+	root := jobs.ContestReportDir(contest.ID)
+	full := filepath.Join(root, filepath.Clean("/"+raw))
+	rel, err := filepath.Rel(root, full)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		c.JSON(http.StatusNotFound, apiError("report not found"))
+		return
+	}
+	f, err := os.Open(full)
+	if err != nil {
+		c.JSON(http.StatusNotFound, apiError("report not found"))
+		return
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || info.IsDir() {
+		c.JSON(http.StatusNotFound, apiError("report not found"))
+		return
+	}
+	c.Header("Content-Security-Policy", "sandbox allow-scripts")
+	c.Header("X-Content-Type-Options", "nosniff")
+	// ServeContent rather than c.File: http.ServeFile redirects any request
+	// ending in /index.html, which is exactly what report pages are.
+	http.ServeContent(c.Writer, c.Request, info.Name(), info.ModTime(), f)
 }
