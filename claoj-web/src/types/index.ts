@@ -900,6 +900,32 @@ export interface AdminSubmissionDetail {
     test_cases: AdminSubmissionTestCase[];
 }
 
+/** GET /admin/problem/:code/diff — one row per submission, per-test-case results. */
+export interface AdminProblemDiffCase {
+    case: number;
+    status: string;
+    points: number | null;
+    total: number | null;
+}
+
+export interface AdminProblemDiffSubmission {
+    id: number;
+    user: string;
+    date: string;
+    language: string;
+    status: string;
+    result: string | null;
+    points: number | null;
+    time: number | null;
+    cases: AdminProblemDiffCase[];
+}
+
+export interface AdminProblemDiffResponse {
+    problem: string;
+    problem_name: string;
+    submissions: AdminProblemDiffSubmission[];
+}
+
 /** PATCH /admin/submission/:id */
 export interface AdminSubmissionUpdateRequest {
     language_id?: number;

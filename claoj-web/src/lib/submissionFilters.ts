@@ -7,6 +7,8 @@ export interface SubmissionListQuery {
     languages?: string[];
     /** Organization id; only that organization's members' submissions. */
     organization?: string;
+    /** One best submission per user (highest points, then fastest). */
+    best?: boolean;
     page?: number;
     pageSize?: number;
 }
@@ -23,6 +25,7 @@ export function buildSubmissionListParams(q: SubmissionListQuery): URLSearchPara
     if (q.results && q.results.length > 0) params.set('result', q.results.join(','));
     if (q.languages && q.languages.length > 0) params.set('language', q.languages.join(','));
     if (q.organization) params.set('organization', q.organization);
+    if (q.best) params.set('best', '1');
     if (q.page !== undefined) params.set('page', String(q.page));
     if (q.pageSize !== undefined) params.set('page_size', String(q.pageSize));
     return params;

@@ -60,15 +60,25 @@ export default function SubmissionListPage() {
     // adjustment runs during render (React's documented pattern) so the first
     // query already uses the new value.
     const urlUser = searchParams.get('user');
+    const urlBest = searchParams.get('best') === '1';
     const [userFilter, setUserFilter] = useState(urlUser ?? '');
     const [problemFilter, setProblemFilter] = useState('');
     const [resultFilters, setResultFilters] = useState<string[]>([]);
     const [langFilters, setLangFilters] = useState<string[]>([]);
     const [orgFilter, setOrgFilter] = useState('');
+    // `best=1` comes from the problem page's "Best solutions" link; it is a
+    // mode, not a filter the visitor edits here.
+    const [bestOnly, setBestOnly] = useState(urlBest);
     const [seenUrlUser, setSeenUrlUser] = useState(urlUser);
     if (urlUser !== seenUrlUser) {
         setSeenUrlUser(urlUser);
         setUserFilter(urlUser ?? '');
+        setPage(1);
+    }
+    const [seenUrlBest, setSeenUrlBest] = useState(urlBest);
+    if (urlBest !== seenUrlBest) {
+        setSeenUrlBest(urlBest);
+        setBestOnly(urlBest);
         setPage(1);
     }
 
@@ -93,7 +103,7 @@ export default function SubmissionListPage() {
     });
 
     const { data, isLoading } = useQuery({
-        queryKey: ['submissions', page, pageSize, userFilter, problemFilter, resultFilters, langFilters, orgFilter],
+        queryKey: ['submissions', page, pageSize, userFilter, problemFilter, resultFilters, langFilters, orgFilter, bestOnly],
         queryFn: async () => {
             const res = await api.get<PaginatedList<Submission>>('/submissions', {
                 params: buildSubmissionListParams({
@@ -102,6 +112,7 @@ export default function SubmissionListPage() {
                     results: resultFilters,
                     languages: langFilters,
                     organization: orgFilter,
+                    best: bestOnly,
                     page,
                     pageSize,
                 })
@@ -137,6 +148,11 @@ export default function SubmissionListPage() {
                         {t('title')}
                     </h1>
                     <p className="text-muted-foreground font-medium opacity-80">{t('subtitle')}</p>
+                    {bestOnly && (
+                        <Badge variant="warning" title={t('bestModeHint')}>
+                            {t('bestModeBadge')}
+                        </Badge>
+                    )}
                 </header>
 
                 <div className="flex flex-wrap items-center gap-3">

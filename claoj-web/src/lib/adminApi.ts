@@ -7,6 +7,7 @@ import type {
     AdminContestCreateRequest,
     AdminProblem,
     AdminProblemCreateRequest,
+    AdminProblemDiffResponse,
     AdminJudge,
     AdminJudgeDetail,
     AdminJudgeUpdateRequest,
@@ -330,6 +331,10 @@ export const adminProblemApi = {
 
     detail: (code: string) =>
         api.get<AdminProblemDetail>(`/admin/problem/${code}`),
+
+    // Setter diff matrix source: every submission's per-test-case results.
+    diff: (code: string, user?: string) =>
+        api.get<AdminProblemDiffResponse>(`/admin/problem/${code}/diff?${qs({ user })}`),
 
     create: (data: AdminProblemCreateRequest) =>
         api.post<{ success: boolean; problem: AdminProblem }>('/admin/problems', data),
