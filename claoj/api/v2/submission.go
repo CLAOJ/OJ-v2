@@ -15,11 +15,13 @@ import (
 )
 
 // SubmissionList – GET /api/v2/submissions
-// Supports ?user=username, ?problem=code, ?result=, ?language= and
-// ?organization=. The verdict and language filters accept repeated params
-// (?result=AC&result=WA) or one comma-separated value (?result=AC,WA);
+// Supports ?user=username, ?problem=code, ?result=, ?language=,
+// ?organization= and ?best=1. The verdict and language filters accept repeated
+// params (?result=AC&result=WA) or one comma-separated value (?result=AC,WA);
 // `organization` is an organization id, matching v1's
 // `user__organizations=<pk>` filter (membership, not problem ownership).
+// `best=1` keeps one row per user (v1 RankedSubmissions: highest points, then
+// fastest time), dropping zero-point rows and unlisted profiles.
 func SubmissionList(c *gin.Context) {
 	page, pageSize := parsePagination(c)
 	userFilter := c.Query("user")
@@ -62,8 +64,24 @@ func SubmissionList(c *gin.Context) {
 			"WHERE po.profile_id = jp.id AND po.organization_id = ?)", orgID)
 	}
 
+	best := c.Query("best") == "1"
+	if best {
+		q = q.Where("jp.is_unlisted = ?", false).
+			Where("judge_submission.points > ?", 0).
+			Where("judge_submission.is_archived = ?", false)
+		// Rank the already-filtered rows per submitter and keep the winner, so
+		// the pager's COUNT and the page fetch both see one row per user.
+		ranked := q.Session(&gorm.Session{}).
+			Select("judge_submission.id, ROW_NUMBER() OVER (" +
+				"PARTITION BY judge_submission.user_id " +
+				"ORDER BY judge_submission.points DESC, judge_submission.time ASC, judge_submission.id ASC" +
+				") AS best_rank")
+		q = q.Joins("JOIN (?) AS best_rows ON best_rows.id = judge_submission.id", ranked).
+			Where("best_rows.best_rank = 1")
+	}
+
 	// Branch the filtered statement: one COUNT for the pager, one page fetch.
-	writeSubmissionList(c, q, page, pageSize)
+	writeSubmissionList(c, q, page, pageSize, best)
 }
 
 // submissionListRow is the public submission row shape, shared by the global
@@ -84,8 +102,8 @@ type submissionListRow struct {
 
 // writeSubmissionList pages a submission query (which must already carry the
 // judge_profile/ auth_user / judge_problem / judge_language joins) and writes
-// the list response.
-func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int) {
+// the list response. `best` switches the order to v1's best-solutions ranking.
+func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int, best bool) {
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -100,9 +118,14 @@ func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int) {
 		LangKey     string
 	}
 
+	order := "judge_submission.date DESC"
+	if best {
+		order = "judge_submission.points DESC, judge_submission.time ASC, judge_submission.id ASC"
+	}
+
 	if err := q.Session(&gorm.Session{}).
 		Select("judge_submission.*, au.username, pr.code as problem_code, pr.name as problem_name, l.key as lang_key").
-		Order("judge_submission.date DESC").
+		Order(order).
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&rows).Error; err != nil {
