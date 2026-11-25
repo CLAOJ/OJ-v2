@@ -88,12 +88,14 @@ function NameStylesEditor({ data }: { data: NameStylesData }) {
                                             value={r.color || '#000000'}
                                             aria-label={t('color')}
                                             onChange={e => update(i, { color: e.target.value })}
-                                            className="h-9 w-10 cursor-pointer rounded border bg-transparent"
+                                            className={`h-9 w-10 cursor-pointer rounded border bg-transparent ${r.color ? '' : 'opacity-25'}`}
                                         />
-                                        {r.color && (
+                                        {r.color ? (
                                             <button type="button" onClick={() => update(i, { color: '' })} className="text-xs text-muted-foreground hover:underline">
                                                 {t('clearColor')}
                                             </button>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">{t('noColor')}</span>
                                         )}
                                     </div>
                                 </td>
@@ -108,6 +110,7 @@ function NameStylesEditor({ data }: { data: NameStylesData }) {
                                 </td>
                                 <td className="p-3 whitespace-nowrap">
                                     <span
+                                        className="text-primary"
                                         style={{
                                             color: r.color || undefined,
                                             fontWeight: r.bold ? 700 : undefined,

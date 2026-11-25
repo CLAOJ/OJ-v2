@@ -188,7 +188,10 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
                     </div>
 
                     <div className="text-center space-y-1">
-                        <h1 className="text-2xl font-semibold tracking-tight">{user.display_name || user.username}</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {/* A link to itself so the rank name style (applied to /user/NAME links) shows here too. */}
+                            <Link href={`/user/${user.username}`} className={getRankColor(user.rating)}>{user.display_name || user.username}</Link>
+                        </h1>
                         <p className="text-sm font-mono text-muted-foreground">@{user.username}</p>
                         {user.full_name && <p className="text-sm font-medium">{user.full_name}</p>}
                         {user.rating != null && (

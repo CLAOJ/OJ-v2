@@ -2987,6 +2987,7 @@
       "preview": "Preview",
       "remove": "Remove rank",
       "clearColor": "Rating colour",
+      "noColor": "Default (rating colour)",
       "addRank": "Add rank",
       "save": "Save",
       "saved": "Name styles saved",

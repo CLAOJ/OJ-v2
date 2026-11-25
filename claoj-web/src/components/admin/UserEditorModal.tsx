@@ -31,6 +31,7 @@ import { Switch } from '@/components/ui/Switch';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { cn } from '@/lib/utils';
+import { useNameStyles } from '@/components/providers/NameStyles';
 import { Search, ShieldCheck, ShieldOff } from 'lucide-react';
 
 interface UserEditorModalProps {
@@ -99,6 +100,10 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
         queryKey: ['admin-languages'],
         queryFn: async () => (await adminLanguageApi.list(1, 100)).data.data,
     });
+    // Display ranks come from the name-style list (plus plain "user"); keep an
+    // unlisted current value selectable so opening the editor never changes it.
+    const { data: nameStyles } = useNameStyles();
+    const rankOptions = [...new Set(['user', ...Object.keys(nameStyles?.styles ?? {}), form.display_rank].filter(Boolean))];
 
     const saveMutation = useMutation({
         mutationFn: async () => {
@@ -341,11 +346,13 @@ function UserEditorBody({ detail, viewer, onClose }: UserEditorBodyProps) {
                                     </Select>
                                 </Field>
                                 <Field id="user-display-rank" label={t('users.editor.displayRankLabel')}>
-                                    <Input
+                                    <Select
                                         id="user-display-rank"
                                         value={form.display_rank}
                                         onChange={(e) => setForm({ ...form, display_rank: e.target.value })}
-                                    />
+                                    >
+                                        {rankOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </Select>
                                 </Field>
                                 <Field id="user-ace-theme" label={t('users.editor.aceThemeLabel')}>
                                     <Input
