@@ -26,7 +26,7 @@
 ## Review Focus
 
 1. A problem × language with exactly one qualifying submission: no compare50 run, row stored with `submission_count = 1` and `report_path = NULL` (Task 3 test).
-2. Usernames Django allows but a filesystem treats specially (`.`, `..`, Unicode like `tik25_lêthanh`) used as folder names: `.`/`..` are prefixed, Unicode kept (Task 3 test).
+2. Usernames Django allows but a filesystem treats specially (`.`, `..`, leading/trailing `.`, Windows reserved names like `con`, Unicode like `tik25_lêthanh`) used as folder names: unsafe names are wrapped in `~` (never valid in a Django username, so no collision), Unicode kept (Task 3 test).
 3. Report route with traversal (`../`, `%2e%2e/`, absolute paths) or another contest's id: 404, never a file outside the contest's dir (Task 4 test).
 4. Contestant source or username containing `</script><script>alert(1)</script>`: appears escaped in the report HTML (Task 1 test), and the route sets the sandbox CSP (Task 4 test).
 5. A v2 run on a contest that also has v1 MOSS rows: `judge_contestmoss` rows are unchanged afterwards (Task 3 test).
@@ -106,9 +106,12 @@ Then in the OJ-v2 worktree: `.gitmodules`, gitlink `claoj/plagiarism`.
   func LanguageExt(commonName string) string                    // "C++"→"cpp", unknown→"txt"
   func LanguageSlug(commonName string) string                   // "C++"→"cpp", "C#"→"csharp"
   func ContestReportDir(contestID uint) string                  // filepath.Join(PlagiarismDir, strconv.Itoa(id))
-  func RunContestMoss(tx *gorm.DB, contestID uint, chk Checker) (int, error)
+  func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checker) (int, error) // ctx reaches compare50 (asynq timeout)
+  func SubmissionFolder(username string) string                  // safe folder name, see below
   ```
   `Compare50.Check` runs `Compare50Python -m compare50 <each subdir of subsDir> -o outDir -n MaxPairs` with `exec.CommandContext`; on non-zero exit it returns an error containing the last 2 KB of stderr.
+
+`SubmissionFolder`: a username is unsafe if it is `.` or `..`, starts or ends with `.`, or its part before the first `.` is (case-insensitively) a Windows reserved name (`con`, `prn`, `aux`, `nul`, `com1`-`com9`, `lpt1`-`lpt9`); unsafe names become `"~" + name + "~"`, safe names are unchanged. `~` never occurs in a Django username, so the mapping is collision-free on Linux and Windows.
 
 Extension map (`LanguageExt`): C→c, C++→cpp, Python→py, Pascal→pas, Java→java, Golang→go, Rust→rs, Perl→pl, Ruby→rb, Kotlin→kt, C#→cs, PHP→php, JavaScript→js, Haskell→hs, Scala→scala, Swift→swift, Lua→lua, D→d; anything else → txt. `LanguageSlug`: lowercase, `+`→`p`, `#`→`sharp`, any other non-`[a-z0-9]` → `_`.
 
@@ -117,13 +120,13 @@ Extension map (`LanguageExt`): C→c, C++→cpp, Python→py, Pascal→pas, Java
   - `TestRunContestMoss_SingleSubmissionSkipsChecker`: only alice submits Python; no checker call for Python; row with `submission_count = 1`, `report_path = nil`.
   - `TestRunContestMoss_FailureKeepsOldRowsAndFiles`: pre-existing row + `ContestReportDir/old/index.html`; checker returns error; assert error returned, old row unchanged, old file still there, no `.tmp-*` dirs left in `PlagiarismDir`.
   - `TestRunContestMoss_LeavesV1TableAlone`: insert a `models.ContestMoss` row for the contest; run successfully; the row is unchanged.
-  - `TestRunContestMoss_SafeFolderNames`: users `.`, `..`, `tik25_lêthanh`; folders are `_.`, `_..`, `tik25_lêthanh`, all inside `subsDir`.
+  - `TestRunContestMoss_SafeFolderNames`: users `.`, `..`, `con`, `a.`, `tik25_lêthanh`; folders are `~.~`, `~..~`, `~con~`, `~a.~`, `tik25_lêthanh`, all distinct and inside `subsDir` (must pass on Windows).
   - `TestLanguageExtAndSlug`: table test over the maps above, including unknown → `txt` and `C#` → `csharp`.
   - Keep `TestMossRunError_*` as they are.
 - [ ] **Step 2: Run** `cd claoj && go test ./jobs/ -run 'Moss|Language' -v`. Expected: compile FAIL (`Checker`, `PlagiarismDir` undefined).
 - [ ] **Step 3: Implement** `compare50.go` (`Checker`, `Compare50`, `LanguageExt`, `LanguageSlug`, `ContestReportDir`) and rewrite `RunContestMoss`:
   - Same submission query as today, but group by `l.common_name` for every language present (drop `MossLanguages`).
-  - Per contest run, build everything in `tmp := PlagiarismDir/.tmp-<contestID>-<unixnano>`: submissions in `tmp/subs/<code>/<slug>/<user>/main.<ext>`, reports in `tmp/report/<code>/<slug>/`. Call the checker only when ≥ 2 users; folder names `.`/`..` get a `_` prefix. `defer os.RemoveAll(tmp)`.
+  - Per contest run, build everything in `tmp := PlagiarismDir/.tmp-<contestID>-<unixnano>`: submissions in `tmp/subs/<code>/<slug>/<user>/main.<ext>`, reports in `tmp/report/<code>/<slug>/`. Call the checker only when ≥ 2 users; folder names come from `SubmissionFolder`. `defer os.RemoveAll(tmp)`.
   - On success: rename `ContestReportDir` → `PlagiarismDir/.old-<id>-<nanos>` (if it exists), rename `tmp/report` → `ContestReportDir`, then in a DB transaction delete the contest's `plagiarism_result` rows and insert the new ones. If the transaction fails, rename both back. Finally `RemoveAll` the `.old` dir.
   - `HandleContestMossTask` passes `Compare50{}` and no longer reads `moss_user_id`. Delete `MossUserID`, `ErrMossNotConfigured`, `MossSubmitter` and the `claoj/moss` package. Keep `models.ContestMoss`: no v2 production code uses it any more, but `TestRunContestMoss_LeavesV1TableAlone` does.
 - [ ] **Step 4: Run** `go test ./jobs/ -v` and `go vet ./...`. Expected: PASS, and no remaining imports of `github.com/CLAOJ/claoj/moss`.
