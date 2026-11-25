@@ -54,8 +54,8 @@ func (c Compare50) Check(ctx context.Context, subsDir, outDir string) error {
 			args = append(args, "./"+e.Name())
 		}
 	}
-	// --llm-language only matters when COMPARE50_LLM_* is set (AI review reasons for VN judges).
-	args = append(args, "-o", absOut, "-n", strconv.Itoa(maxPairs), "--llm-language", "Vietnamese")
+	// AI review settings (COMPARE50_LLM_*, incl. _LANGUAGE) reach compare50 through the inherited env.
+	args = append(args, "-o", absOut, "-n", strconv.Itoa(maxPairs))
 
 	// ponytail: buffers all of stderr; fine at compare50's output size.
 	var stderr bytes.Buffer
