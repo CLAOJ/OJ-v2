@@ -41,10 +41,10 @@ describe('Button Component', () => {
         expect(screen.getByRole('button')).toHaveClass('underline-offset-4');
 
         rerender(<Button variant="success">Success</Button>);
-        expect(screen.getByRole('button')).toHaveClass('bg-emerald-500');
+        expect(screen.getByRole('button')).toHaveClass('bg-emerald-700');
 
         rerender(<Button variant="warning">Warning</Button>);
-        expect(screen.getByRole('button')).toHaveClass('bg-amber-500');
+        expect(screen.getByRole('button')).toHaveClass('bg-amber-700');
     });
 
     it('applies size variants', () => {
