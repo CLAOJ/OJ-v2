@@ -139,6 +139,40 @@ func SendVerificationEmail(to, username, verifyLink string) error {
 	return SendEmail(to, subject, htmlBody, textBody)
 }
 
+// SendEmailChangeEmail notifies one side of a pending email change. The new
+// address receives the confirmation link; the old address only gets a notice
+// (v1's email_change_notify template carries no link).
+func SendEmailChangeEmail(to, username, newEmail, link string, toNewAddress bool) error {
+	var subject, action, htmlAction, textAction string
+	if toNewAddress {
+		subject = "Confirm your new email - " + config.C.Email.FromName
+		action = "confirm"
+		htmlAction = fmt.Sprintf("<p><a href=\"%s\">Confirm this email change</a></p>", link)
+		textAction = "Open this link to confirm it: " + link
+	} else {
+		subject = "Email change requested - " + config.C.Email.FromName
+		// v1 notice: no link, no action required from the old address.
+		action = "requested"
+		htmlAction = "<p>If this was you, no further action is required.</p>"
+		textAction = "If this was you, no further action is required."
+	}
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; line-height: 1.6; color: #333;">
+  <h2>Hello %s,</h2>
+  <p>A change of the email on your %s account to <strong>%s</strong> was requested.</p>
+  %s
+  <p>If you did not request it, ignore this email; the current address stays in place.</p>
+</body>
+</html>`, username, config.C.Email.FromName, newEmail, htmlAction)
+
+	textBody := fmt.Sprintf("Hello %s,\n\nA change of your %s account email to %s was %s.\n%s\n\nIf you did not request it, ignore this email.\n\nThanks,\n%s",
+		username, config.C.Email.FromName, newEmail, action, textAction, config.C.Email.FromName)
+
+	return SendEmail(to, subject, htmlBody, textBody)
+}
+
 // SendPasswordResetEmail sends password reset email
 func SendPasswordResetEmail(to, username, resetLink string) error {
 	data := EmailData{

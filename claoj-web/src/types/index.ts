@@ -58,6 +58,22 @@ export interface ProblemDetail extends Problem {
     is_solved: boolean;
     is_attempted: boolean;
     pdf_url?: string;
+    /** v1 problem.html license link: /license/<key>, labelled display or name. */
+    license?: LicenseRef | null;
+}
+
+/** A judge_license row as the problem page needs it. */
+export interface LicenseRef {
+    id: number;
+    key: string;
+    name: string;
+    link: string;
+    display: string;
+}
+
+export interface LicenseDetail extends LicenseRef {
+    icon: string;
+    text: string;
 }
 
 export interface Submission {

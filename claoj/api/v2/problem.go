@@ -314,6 +314,7 @@ func ProblemDetail(c *gin.Context) {
 		Preload("Authors.User").
 		Preload("Curators").
 		Preload("Testers").
+		Preload("License").
 		Where("code = ?", code).
 		First(&p).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiError("problem not found"))
@@ -367,6 +368,19 @@ func ProblemDetail(c *gin.Context) {
 		}
 	}
 
+	// v1 problem.html shows the license as a link to /license/<key>, labelled
+	// with display (falling back to name). nil when the problem has none.
+	var licensePayload interface{}
+	if p.License != nil {
+		licensePayload = gin.H{
+			"id":      p.License.ID,
+			"key":     p.License.Key,
+			"name":    p.License.Name,
+			"link":    p.License.Link,
+			"display": p.License.Display,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":             p.ID,
 		"code":           p.Code,
@@ -387,6 +401,7 @@ func ProblemDetail(c *gin.Context) {
 		"is_solved":      isSolved,
 		"is_attempted":   isAttempted,
 		"pdf_url":        p.PdfURL,
+		"license":        licensePayload,
 	})
 }
 
