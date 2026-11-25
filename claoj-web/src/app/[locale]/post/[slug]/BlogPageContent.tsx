@@ -70,7 +70,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                 </Link>
                 {post.can_edit && (
                     <Link
-                        href={`/post/${post.id}/edit`}
+                        href={`/post/${post.id}-${post.slug}/edit`}
                         className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
                     >
                         <FileEdit size={16} />

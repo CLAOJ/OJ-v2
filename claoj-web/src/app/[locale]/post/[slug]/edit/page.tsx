@@ -9,10 +9,13 @@ import BlogPostForm from '@/components/blog/BlogPostForm';
 import { Link } from '@/navigation';
 import { ArrowLeft, FileEdit, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { parseLeadingId } from '@/utils/route';
 
-/** v1 `/post/<id>/edit` (BlogPostEdit). */
+/** v1 `/post/<id>/edit` (BlogPostEdit). The segment is the same `<id>-<slug>`
+ *  as the post page: Next.js forbids two different dynamic names under /post. */
 export default function EditBlogPostPage() {
-    const { id } = useParams<{ id: string }>();
+    const { slug } = useParams<{ slug: string }>();
+    const id = parseLeadingId(slug);
     const t = useTranslations('Blog');
 
     const { data: post, isLoading } = useQuery({
