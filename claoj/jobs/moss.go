@@ -116,12 +116,6 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 				if _, err := os.Stat(filepath.Join(reportRoot, p.Code, slug, "index.html")); err == nil {
 					reportPath := p.Code + "/" + slug
 					row.ReportPath = &reportPath
-					// Optional second opinion; never fails the check.
-					if PlagiarismLLM != nil {
-						if err := PlagiarismLLM.Review(ctx, p.Code, lang, subsDir, filepath.Join(reportRoot, p.Code, slug)); err != nil {
-							log.Printf("jobs: llm review %s/%s: %v", p.Code, lang, err)
-						}
-					}
 				}
 			}
 			rows = append(rows, row)
