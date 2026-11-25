@@ -255,10 +255,21 @@ func ContestRankingPDF(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "contest not found"})
 		return
 	}
+	// Same duration gate as the JSON endpoint: a PDF of a hidden scoreboard
+	// would leak the standings the scoreboard_visibility setting withholds.
+	if !auth.CanSeeContestScoreboard(c, &ct) {
+		c.JSON(http.StatusOK, gin.H{
+			"contest":           ct.Key,
+			"problems":          []any{},
+			"rankings":          []any{},
+			"scoreboard_hidden": true,
+		})
+		return
+	}
 
 	// Fetch all participations for this contest
 	var participations []models.ContestParticipation
-	if err := db.DB.Preload("User.User").
+	if err := db.DB.
 		Where("contest_id = ? AND virtual = 0 AND is_disqualified = 0", ct.ID).
 		Order("score DESC, cumtime ASC, tiebreaker DESC").
 		Find(&participations).Error; err != nil {
@@ -269,6 +280,17 @@ func ContestRankingPDF(c *gin.Context) {
 	// Fetch contest problems for breakdown
 	var contestProblems []models.ContestProblem
 	db.DB.Where("contest_id = ?", ct.ID).Order("`order` ASC").Find(&contestProblems)
+
+	// Resolve usernames with an explicit JOIN: participation.user_id is a
+	// judge_profile id, and Preload("User.User") guessed has-one and left every
+	// name blank (same trap as judge_ticket.user_id).
+	usernames := contestRankingUsernames(func() []uint {
+		ids := make([]uint, len(participations))
+		for i, p := range participations {
+			ids[i] = p.UserID
+		}
+		return ids
+	}())
 
 	cf := contest_format.GetFormat(ct.FormatName, &ct, ct.FormatConfig)
 
@@ -340,7 +362,7 @@ func ContestRankingPDF(c *gin.Context) {
 		}
 
 		rankings = append(rankings, LocalRankingRow{
-			Username:  p.User.User.Username,
+			Username:  usernames[p.UserID],
 			Score:     p.Score,
 			Cumtime:   p.Cumtime,
 			Rank:      rankNum,
@@ -385,4 +407,26 @@ func ContestRankingPDF(c *gin.Context) {
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=contest_%s_scoreboard.pdf", key))
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+// contestRankingUsernames resolves judge_profile ids to their auth_user
+// usernames in one query.
+func contestRankingUsernames(profileIDs []uint) map[uint]string {
+	names := make(map[uint]string, len(profileIDs))
+	if len(profileIDs) == 0 {
+		return names
+	}
+	var rows []struct {
+		ProfileID uint   `gorm:"column:profile_id"`
+		Username  string `gorm:"column:username"`
+	}
+	db.DB.Table("judge_profile").
+		Select("judge_profile.id AS profile_id, auth_user.username AS username").
+		Joins("JOIN auth_user ON auth_user.id = judge_profile.user_id").
+		Where("judge_profile.id IN ?", profileIDs).
+		Scan(&rows)
+	for _, r := range rows {
+		names[r.ProfileID] = r.Username
+	}
+	return names
 }

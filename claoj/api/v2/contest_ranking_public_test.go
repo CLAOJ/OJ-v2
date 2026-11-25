@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -235,4 +236,55 @@ func TestContestRanking_PrivilegedSeesHiddenStandings(t *testing.T) {
 	visible := getRankingPayload(t, "/contest/c1/ranking", &judge.UserID)
 	require.False(t, visible.ScoreboardHidden)
 	require.Len(t, visible.Rankings, 1)
+}
+
+func doPDFRequest(t *testing.T) *httptest.ResponseRecorder {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Handle(http.MethodGet, "/contest/:key/ranking/pdf", ContestRankingPDF)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/contest/c1/ranking/pdf", nil))
+	return w
+}
+
+// The PDF must honour scoreboard_visibility: a hidden board returns the JSON
+// endpoint's hidden payload instead of a PDF that leaks the standings.
+func TestContestRankingPDF_HiddenForDuration(t *testing.T) {
+	f := setupRankingDB(t)
+	setScoreboardVisibility(t, f.contest.ID, "C")
+
+	w := doPDFRequest(t)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NotContains(t, w.Header().Get("Content-Type"), "application/pdf")
+	var body rankingPayload
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.True(t, body.ScoreboardHidden)
+	require.Empty(t, body.Rankings)
+
+	setScoreboardVisibility(t, f.contest.ID, "V")
+	w = doPDFRequest(t)
+	require.Equal(t, "application/pdf", w.Header().Get("Content-Type"))
+	require.True(t, bytes.HasPrefix(w.Body.Bytes(), []byte("%PDF")))
+}
+
+// The PDF used to read p.User.User.Username off a has-one guess that never
+// loaded, printing a blank column. Names now come from the same JOIN the
+// ranking endpoint uses.
+func TestContestRankingPDF_UsernamesResolved(t *testing.T) {
+	f := setupRankingDB(t)
+
+	var participations []models.ContestParticipation
+	require.NoError(t, db.DB.Where("contest_id = ?", f.contest.ID).Order("id ASC").Find(&participations).Error)
+	require.NotEmpty(t, participations)
+	ids := make([]uint, len(participations))
+	for i, p := range participations {
+		ids[i] = p.UserID
+	}
+	names := contestRankingUsernames(ids)
+	require.Equal(t, "alice", names[participations[0].UserID])
+	require.Equal(t, "bob", names[participations[1].UserID])
+
+	// With no participation ids the helper must not query or panic.
+	require.Empty(t, contestRankingUsernames(nil))
 }
