@@ -17,6 +17,7 @@ func LanguageList(c *gin.Context) {
 	}
 
 	type Item struct {
+		ID         uint   `json:"id"`
 		Key        string `json:"key"`
 		Name       string `json:"name"`
 		ShortName  string `json:"short_name"`
@@ -29,7 +30,7 @@ func LanguageList(c *gin.Context) {
 		if l.ShortName != nil {
 			short = *l.ShortName
 		}
-		items[i] = Item{l.Key, l.Name, short, l.CommonName, l.Extension}
+		items[i] = Item{l.ID, l.Key, l.Name, short, l.CommonName, l.Extension}
 	}
 	c.JSON(http.StatusOK, apiList(items))
 }
