@@ -52,5 +52,5 @@ func TestCompare50Check_RelativeLabelsAndAbsoluteOut(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(wantOut))
 	// os.ReadDir sorts: "-b" before "a".
-	require.Equal(t, "-m compare50 ./-b ./a -o "+wantOut+" -n 7", strings.TrimSpace(lines[1]))
+	require.Equal(t, "-m compare50 ./-b ./a -o "+wantOut+" -n 7 --llm-language Vietnamese", strings.TrimSpace(lines[1]))
 }
