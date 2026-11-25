@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { ApiError } from '@/lib/api';
+import BrandLogo from '@/components/common/BrandLogo';
 
 type LoginFormValues = {
     username: string;
@@ -137,7 +138,7 @@ export default function LoginPage() {
                 className="w-full max-w-md space-y-4 p-5 rounded-md border bg-card"
             >
                 <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-semibold tracking-tight italic text-primary">CLAOJ</h1>
+                    <h1><BrandLogo /></h1>
                     {requiresTotp ? (
                         <>
                             <h2 className="text-2xl font-semibold">{t('totpTitle')}</h2>

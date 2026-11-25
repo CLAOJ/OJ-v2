@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ApiError } from '@/lib/api';
+import BrandLogo from '@/components/common/BrandLogo';
 
 type RegisterFormValues = {
     username: string;
@@ -109,7 +110,7 @@ export default function RegisterPage() {
                 ) : (
                     <>
                         <div className="text-center space-y-2">
-                            <h1 className="text-3xl font-semibold tracking-tight italic text-primary">CLAOJ</h1>
+                            <h1><BrandLogo /></h1>
                             <h2 className="text-2xl font-semibold">{t('registerTitle')}</h2>
                             <p className="text-muted-foreground">{t('registerDesc')}</p>
                         </div>
