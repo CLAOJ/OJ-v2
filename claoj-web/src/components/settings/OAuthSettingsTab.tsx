@@ -2,10 +2,12 @@
 
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { Globe, Bell } from 'lucide-react';
+import { Globe } from 'lucide-react';
+import { useOAuthProviders } from '@/hooks/useOAuthProviders';
 
 export default function OAuthSettingsTab() {
     const t = useTranslations('Settings');
+    const oauthProviders = useOAuthProviders();
 
     const handleOAuthConnect = (provider: string) => {
         window.location.href = `${process.env.NEXT_PUBLIC_API_URL || `${window.location.origin}/api`}/auth/oauth/${provider}`;
@@ -25,7 +27,7 @@ export default function OAuthSettingsTab() {
 
                 <div className="space-y-4">
                     {/* Google */}
-                    <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
+                    <div hidden={!oauthProviders.includes('google')} className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center">
                                 <svg className="h-6 w-6" viewBox="0 0 24 24">
@@ -49,7 +51,7 @@ export default function OAuthSettingsTab() {
                     </div>
 
                     {/* GitHub */}
-                    <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
+                    <div hidden={!oauthProviders.includes('github')} className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center">
                                 <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">

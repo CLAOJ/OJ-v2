@@ -230,3 +230,11 @@ func splitString(s, sep string) []string {
 	result = append(result, s[start:])
 	return result
 }
+
+func TestEnabledProviders(t *testing.T) {
+	assert.Equal(t, []string{"google", "github"}, EnabledProviders())
+	saved := config.C.OAuth.GitHub.ClientID
+	config.C.OAuth.GitHub.ClientID = ""
+	defer func() { config.C.OAuth.GitHub.ClientID = saved }()
+	assert.Equal(t, []string{"google"}, EnabledProviders())
+}

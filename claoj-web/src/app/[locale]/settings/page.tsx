@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import ProfileSettingsTab from '@/components/settings/ProfileSettingsTab';
 import AccountSettingsTab from '@/components/settings/AccountSettingsTab';
 import OAuthSettingsTab from '@/components/settings/OAuthSettingsTab';
+import { useOAuthProviders } from '@/hooks/useOAuthProviders';
 import NotificationSettingsTab from '@/components/settings/NotificationSettingsTab';
 import APITokenSettingsTab from '@/components/settings/APITokenSettingsTab';
 import DataExportSettingsTab from '@/components/settings/DataExportSettingsTab';
@@ -19,6 +20,7 @@ export default function SettingsPage() {
     const { user } = useAuth();
     const t = useTranslations('Settings');
     const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
+    const oauthProviders = useOAuthProviders();
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 ">
@@ -32,7 +34,7 @@ export default function SettingsPage() {
                 <aside className="w-full md:w-64 space-y-1">
                     <TabButton icon={User} label={t('profile')} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
                     <TabButton icon={Shield} label={t('account')} active={activeTab === 'account'} onClick={() => setActiveTab('account')} />
-                    <TabButton icon={Globe} label={t('oauth')} active={activeTab === 'oauth'} onClick={() => setActiveTab('oauth')} />
+                    {oauthProviders.length > 0 && <TabButton icon={Globe} label={t('oauth')} active={activeTab === 'oauth'} onClick={() => setActiveTab('oauth')} />}
                     <TabButton icon={Bell} label={t('notifications')} active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} />
                     <TabButton icon={Key} label={t('apiToken')} active={activeTab === 'api-token'} onClick={() => setActiveTab('api-token')} />
                     <TabButton icon={Download} label={t('dataExport')} active={activeTab === 'data-export'} onClick={() => setActiveTab('data-export')} />

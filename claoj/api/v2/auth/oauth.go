@@ -136,3 +136,8 @@ func OAuthCallback(c *gin.Context) {
 		},
 	})
 }
+
+// OAuthProviders - GET /api/v2/auth/oauth-providers: the enabled providers.
+func OAuthProviders(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"providers": oauth.EnabledProviders()})
+}

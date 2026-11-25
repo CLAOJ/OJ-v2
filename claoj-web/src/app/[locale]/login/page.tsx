@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { ApiError } from '@/lib/api';
 import BrandLogo from '@/components/common/BrandLogo';
+import { useOAuthProviders } from '@/hooks/useOAuthProviders';
 
 type LoginFormValues = {
     username: string;
@@ -125,6 +126,8 @@ export default function LoginPage() {
             setIsLoading(false);
         }
     };
+
+    const oauthProviders = useOAuthProviders();
 
     const handleOAuthLogin = (provider: string) => {
         window.location.href = `${process.env.NEXT_PUBLIC_API_URL || `${window.location.origin}/api`}/auth/oauth/${provider}`;
@@ -296,7 +299,7 @@ export default function LoginPage() {
 
                 {!requiresTotp && !showWebAuthnForm && (
                     <>
-                        <div className="relative">
+                        <div className="relative" hidden={oauthProviders.length === 0}>
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-muted-foreground/20"></div>
                             </div>
@@ -305,9 +308,10 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className={cn('grid gap-3', oauthProviders.length > 1 && 'grid-cols-2')} hidden={oauthProviders.length === 0}>
                             <button
                                 onClick={() => handleOAuthLogin('google')}
+                                hidden={!oauthProviders.includes('google')}
                                 className="flex items-center justify-center gap-2 h-12 rounded-xl border bg-card hover:bg-muted/50 transition-colors font-medium text-sm"
                             >
                                 <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -320,6 +324,7 @@ export default function LoginPage() {
                             </button>
                             <button
                                 onClick={() => handleOAuthLogin('github')}
+                                hidden={!oauthProviders.includes('github')}
                                 className="flex items-center justify-center gap-2 h-12 rounded-xl border bg-card hover:bg-muted/50 transition-colors font-medium text-sm"
                             >
                                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">

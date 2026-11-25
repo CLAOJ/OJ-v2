@@ -349,3 +349,15 @@ func VerifyStateToken(tokenString, secret string) error {
 	}
 	return nil
 }
+
+// EnabledProviders lists the providers that are configured, so the login page
+// only offers buttons that work.
+func EnabledProviders() []string {
+	out := []string{}
+	for _, p := range []Provider{ProviderGoogle, ProviderGitHub} {
+		if getProviderConfig(p) != nil {
+			out = append(out, string(p))
+		}
+	}
+	return out
+}

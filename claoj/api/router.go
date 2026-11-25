@@ -80,6 +80,7 @@ func NewRouter() *gin.Engine {
 		apiv2.POST("/auth/webauthn/login/finish", v2.WebAuthnFinishLogin)
 		// WebAuthn Credentials (Protected)
 		// OAuth
+		apiv2.GET("/auth/oauth-providers", authHandlers.OAuthProviders)
 		apiv2.GET("/auth/oauth/:provider", authHandlers.OAuthStart)
 		apiv2.POST("/auth/oauth/:provider/callback", authHandlers.OAuthCallback)
 
