@@ -136,6 +136,14 @@ func deleteSubmissionRows(tx *gorm.DB, sub *models.Submission) error {
 	return tx.Delete(sub).Error
 }
 
+// RecalculateOwnerPoints refreshes the points a single submission feeds — its
+// owner's stored points and the owner's organizations' — after an admin
+// archives or unarchives it. Archived submissions are excluded from PP, so the
+// stored columns must follow the toggle (v1 recalculates on archive).
+func (s *SubmissionService) RecalculateOwnerPoints(sub models.Submission) {
+	recalculateAffected([]models.Submission{sub}, nil)
+}
+
 // recalculateAffected refreshes what a batch of deleted submissions fed: the
 // owners' points, their organizations' points and the contest participations'
 // scores — once per distinct user, organization and participation, not once

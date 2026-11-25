@@ -168,9 +168,10 @@ func TestEvent_GradingEndRecalculatesProfileAndOrgPoints(t *testing.T) {
 	require.InDelta(t, wantPP, o.PerformancePoints, 1e-9, "the member's new PP feeds the organization")
 }
 
-// A submission that cannot contribute points (hidden problem, archived) must
-// leave the stored columns alone.
-func TestEvent_GradingEndSkipsPointsForHiddenSubmissions(t *testing.T) {
+// v1 recalculates on every grading end, even when the submission cannot
+// contribute today: hiding a problem (or archiving the submission) after it was
+// graded must drop the stored points when it is rejudged.
+func TestEvent_GradingEndRecalculatesHiddenSubmissions(t *testing.T) {
 	cases := map[string]func(t *testing.T){
 		"non-public problem": func(t *testing.T) {},
 		"organization-private problem": func(t *testing.T) {
@@ -197,9 +198,9 @@ func TestEvent_GradingEndSkipsPointsForHiddenSubmissions(t *testing.T) {
 
 			var p models.Profile
 			require.NoError(t, db.DB.First(&p, 1).Error)
-			require.InDelta(t, 999.0, p.Points, 1e-9, "stored points must be untouched")
-			require.InDelta(t, 888.0, p.PerformancePoints, 1e-9)
-			require.Equal(t, 7, p.ProblemCount)
+			require.InDelta(t, 0.0, p.Points, 1e-9, "the stale points must be recalculated away")
+			require.InDelta(t, 0.0, p.PerformancePoints, 1e-9)
+			require.Equal(t, 0, p.ProblemCount)
 		})
 	}
 }

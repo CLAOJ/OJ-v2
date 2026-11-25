@@ -273,14 +273,12 @@ func onGradingEnd(subID uint) error {
 
 // recalcProfilePoints refreshes the stored points columns after a grading end,
 // the way v1 does (Profile.calculate_points also refreshes the user's
-// organizations). Mirrors the PP visibility rule: a non-public or
-// organization-private problem, or an archived submission, contributes
-// nothing, so there is no reason to recalculate. Failures are logged and never
-// returned — a points problem must not fail grading.
+// organizations). It runs unconditionally: hiding a problem or archiving the
+// submission AFTER it was graded only drops the points when a rejudge
+// recalculates, which is exactly v1's behaviour. The calculation itself skips
+// non-public, organization-private and archived rows. Failures are logged and
+// never returned — a points problem must not fail grading.
 func recalcProfilePoints(sub *models.Submission) {
-	if sub.IsArchived || !sub.Problem.IsPublic || sub.Problem.IsOrganizationPrivate {
-		return
-	}
 	if err := scoring.CalculateProfilePoints(db.DB, sub.UserID); err != nil {
 		log.Printf("bridge: sub %d: recalculate profile %d points: %v", sub.ID, sub.UserID, err)
 		return

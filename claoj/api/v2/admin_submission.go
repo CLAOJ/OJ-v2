@@ -762,6 +762,13 @@ func AdminSubmissionUpdate(c *gin.Context) {
 		return
 	}
 
+	// An archived submission stops contributing to its owner's points, so the
+	// toggle must refresh the stored profile/organization columns (v1
+	// recalculates on archive; same work the delete path does).
+	if req.IsArchived != nil {
+		getSubmissionService().RecalculateOwnerPoints(sub)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Submission updated",
