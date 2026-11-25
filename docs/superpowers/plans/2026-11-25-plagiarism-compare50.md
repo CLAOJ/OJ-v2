@@ -4,7 +4,7 @@
 
 **Goal:** v2's contest plagiarism check runs on a forked, CP-tuned compare50 inside the backend image instead of Stanford's MOSS server.
 
-**Architecture:** The compare50 1.2.15 source is vendored into `claoj/plagiarism/` and installed in a venv in the backend image. The existing asynq job (`jobs/moss.go`) writes each qualifying submission to `<user>/main.<ext>`, runs compare50 per problem × language, swaps the finished reports into `data/plagiarism/<contest_id>/`, and records rows in a new v2-only table `plagiarism_result`. A permission-checked route serves the reports in a CSP sandbox. Part 2 adds an offline benchmark (`scripts/plagiarism-bench/`) against a local DB clone and tunes the fork until it meets the spec's targets.
+**Architecture:** The compare50 fork lives in its own repo (`github.com/CLAOJ/compare50`, branch `claoj`), mounted in OJ-v2 as a git submodule at `claoj/plagiarism` and installed in a venv in the backend image. The existing asynq job (`jobs/moss.go`) writes each qualifying submission to `<user>/main.<ext>`, runs compare50 per problem × language, swaps the finished reports into `data/plagiarism/<contest_id>/`, and records rows in a new v2-only table `plagiarism_result`. A permission-checked route serves the reports in a CSP sandbox. Part 2 adds an offline benchmark (`scripts/plagiarism-bench/`) against a local DB clone and tunes the fork until it meets the spec's targets.
 
 **Tech Stack:** Go 1.25 (gin, gorm, asynq, testify, sqlite for tests), Python 3 (compare50 fork, stdlib `unittest`), Next.js (claoj-web, next-intl), Docker (alpine), MariaDB.
 
@@ -16,7 +16,7 @@
 - v2 never reads or writes `judge_contestmoss`. v1's MOSS stays in use and untouched.
 - v2 never runs DDL. New tables go in `scripts/v2_runtime_tables.sql` (idempotent `CREATE TABLE IF NOT EXISTS`), are listed as RETAINED-V2 in `scripts/cleanup_v2_tables.sql`, and get an entry in `docs/schema-audit.md` section 3.
 - Reuse the permission `judge.moss_contest` and the existing API paths `/api/v2/admin/contest/:key/moss`.
-- Fork: keep upstream `LICENSE` (GPLv3); `claoj/plagiarism/UPSTREAM.md` records upstream version 1.2.15 and lists every change we make.
+- Fork: lives in `github.com/CLAOJ/compare50`, branch `claoj`; **never push `main` there** (its CI publishes to PyPI), never force-push. Keep upstream `LICENSE` (GPLv3); `UPSTREAM.md` in the fork records upstream version 1.2.15 and lists every change we make. OJ-v2 consumes it as the submodule `claoj/plagiarism`, pinned by gitlink commit.
 - A failed or partial run keeps the previous rows *and* the previous report files.
 - Reports are served with `Content-Security-Policy: sandbox allow-scripts` and `X-Content-Type-Options: nosniff`.
 - Benchmark data (contestants' code, DB dumps) is never committed; the MOSS account id comes from env var `MOSS_USER_ID` and is never committed.
@@ -35,25 +35,28 @@
 
 ## Part 1 — replace MOSS
 
-### Task 1: Vendor compare50 and drop lib50
+### Task 1: Drop lib50 in the compare50 fork, mount it as a submodule
 
-**Files:**
-- Create: `claoj/plagiarism/` (upstream compare50 1.2.15 sdist contents: `setup.py`, `compare50/`, `LICENSE`, `README.md`), `claoj/plagiarism/UPSTREAM.md`
-- Modify: `claoj/plagiarism/setup.py` (remove `lib50` from `install_requires`), `claoj/plagiarism/compare50/__main__.py`
-- Test: `claoj/plagiarism/tests/test_cli.py`
+**Files** (fork clone `F:\Coding\CLAOJ\compare50`, remote `origin` = `https://github.com/CLAOJ/compare50`; create branch `claoj` from `main`):
+- Modify: `setup.py` (remove `lib50` from `install_requires`), `compare50/__main__.py`, `compare50/_api.py` (and any other file that imports `lib50`)
+- Create: `UPSTREAM.md`, `tests/cli_tests.py` (follow the style of the existing `tests/*_tests.py`; they run with `python -m tests`)
+
+Then in the OJ-v2 worktree: `.gitmodules`, gitlink `claoj/plagiarism`.
 
 **Interfaces:**
-- Produces: `python -m compare50 <sub_dir>... -o <out_dir> -n <max_pairs>` writes `<out_dir>/index.html` plus `match_N.html`; exit code 0 on success. Each `<sub_dir>` is one submission; its folder name is the label shown in the report.
+- Produces: `python -m compare50 <sub_dir>... -o <out_dir> -n <max_pairs>` writes `<out_dir>/index.html` plus `match_N.html`; exit code 0 on success. Each `<sub_dir>` is one submission; its folder name is the label shown in the report. The parent of `<out_dir>` must exist (compare50 creates `<out_dir>` itself).
+- Produces: OJ-v2 path `claoj/plagiarism/` = the fork checkout (contains `setup.py`), pinned by the gitlink commit. Task 6 consumes it.
 
-- [ ] **Step 1: Fetch upstream source.** `pip download compare50==1.2.15 --no-deps --no-binary :all: -d <scratch>`, unpack, copy into `claoj/plagiarism/`. Commit this unmodified copy first (`chore: vendor compare50 1.2.15`) so later diffs show only our changes.
-- [ ] **Step 2: Write failing tests** in `tests/test_cli.py` (stdlib `unittest`, run compare50 via `subprocess` with `sys.executable -m compare50`, `cwd` = `claoj/plagiarism`):
-  - `test_ranks_copied_pair_first`: three dirs `a/main.cpp`, `b/main.cpp` (copy of `a` with renamed identifiers), `c/main.cpp` (unrelated program, ≥ 40 lines each); assert exit 0, `index.html` exists, and the first ranked pair in its `GRAPH` JSON is `{a, b}`.
+- [ ] **Step 1: Write failing tests** in the fork's `tests/cli_tests.py` (stdlib `unittest`, run compare50 via `subprocess` with `sys.executable -m compare50`):
+  - `test_ranks_copied_pair_first`: three dirs `a/main.cpp`, `b/main.cpp` (copy of `a` with renamed identifiers), `c/main.cpp` (unrelated program, >= 40 lines each); assert exit 0, `index.html` exists, and the first ranked pair in its `GRAPH` JSON is `{a, b}`.
   - `test_escapes_source_and_names`: a submission folder named `x<b>y` whose source contains `</script><script>alert(1)</script>`; assert neither raw string appears in any output `.html`.
   - `test_imports_without_lib50`: in a subprocess with `sys.modules['lib50'] = None` inserted before import, `import compare50.__main__` succeeds.
-- [ ] **Step 3: Run** `python -m unittest discover -s tests -v` from `claoj/plagiarism` (in a Linux container: `docker run --rm -v <repo>/claoj/plagiarism:/w -w /w python:3.12-slim sh -c "pip install -q . && python -m unittest discover -s tests -v"`). Expected: `test_imports_without_lib50` FAILS (and the escaping test fails if upstream doesn't escape).
-- [ ] **Step 4: Remove lib50.** Replace `lib50.files(patterns, root=dir)` with a stdlib walk (`pathlib.Path.rglob` with `fnmatch` include/exclude) that returns the same `(included, excluded)` sets; replace `lib50.Error`/`lib50.config.TaggedValue` with local equivalents in `compare50/_api.py`. Fix escaping in the renderer templates if Step 3 showed it missing (Jinja autoescape on for `.html`). Record both changes in `UPSTREAM.md`.
-- [ ] **Step 5: Run the tests again.** Expected: all 3 PASS, on Linux and on Windows (`python -m unittest discover -s tests -v` in a local venv).
-- [ ] **Step 6: Commit** `feat(plagiarism): drop lib50 from the compare50 fork`.
+  Make sure `python -m tests` still discovers and runs them (extend `tests/__main__.py` only if needed).
+- [ ] **Step 2: Run** in a Linux container: `docker run --rm -v <fork clone>:/w -w /w python:3.12-slim sh -c "pip install -q -e . && python -m tests"`. Expected: `test_imports_without_lib50` FAILS (and the escaping test fails if upstream does not escape). Note which pre-existing tests pass before you change anything.
+- [ ] **Step 3: Remove lib50.** Replace `lib50.files(patterns, root=dir)` with a stdlib walk (`pathlib.Path.rglob` with `fnmatch` include/exclude) that returns the same `(included, excluded)` sets; replace `lib50.Error`/`lib50.config.TaggedValue` with local equivalents in `compare50/_api.py`. Fix escaping in the renderer templates if Step 2 showed it missing (Jinja autoescape on for `.html`). Record both changes in `UPSTREAM.md` (upstream version 1.2.15, list of our changes).
+- [ ] **Step 4: Run the tests again.** Expected: all new and all pre-existing tests PASS on Linux (container) and on Windows (`python -m venv` + `pip install -e . && python -m tests`). If compare50 needs another Unix-only dependency to run on Windows, report it; Linux is the required platform.
+- [ ] **Step 5: Commit and push the fork branch.** In the fork clone: `git commit` (heredoc), subject `feat: drop lib50 so compare50 runs without termios`, then `git push -u origin claoj`. Never push `main`, never force-push. Record the pushed HEAD SHA.
+- [ ] **Step 6: Add the submodule in the OJ-v2 worktree.** `git submodule add -b claoj https://github.com/CLAOJ/compare50 claoj/plagiarism`, check it is at the SHA from Step 5 (`git submodule status`), and add one line to `docs/development.md` (clone with `--recurse-submodules`, or run `git submodule update --init`). Commit `build: add the compare50 fork as a submodule` (stage `.gitmodules`, `claoj/plagiarism`, `docs/development.md`).
 
 ### Task 2: `plagiarism_result` table and model
 
@@ -164,20 +167,22 @@ Extension map (`LanguageExt`): C→c, C++→cpp, Python→py, Pascal→pas, Java
 - [ ] **Step 2: Verify** `cd claoj-web && npx tsc --noEmit && npm run lint` pass, and `grep -ri "stanford\|moss_user_id" src/` returns nothing.
 - [ ] **Step 3: Commit** `feat(admin-web): plagiarism check page uses local reports`.
 
-### Task 6: Backend image ships the fork
+### Task 6: Backend image and CI install the fork
 
 **Files:**
-- Modify: `claoj/Dockerfile`, `claoj/.dockerignore` (create if missing: exclude `plagiarism/tests/__pycache__`, `*.pyc`)
+- Modify: `claoj/Dockerfile`, `.github/workflows/ci-cd.yml` (the `actions/checkout@v4` step of the backend image-build job, the one before `context: claoj`: add `with: { submodules: true }`)
+- Create: `claoj/.dockerignore` only if none exists (exclude `plagiarism/.git`, `plagiarism/tests`, `**/__pycache__`)
 
 **Interfaces:**
-- Consumes: `jobs.Compare50Python = "/opt/compare50/bin/python"` (Task 3).
+- Consumes: `jobs.Compare50Python = "/opt/compare50/bin/python"` (Task 3); the `claoj/plagiarism` submodule (Task 1).
 
-- [ ] **Step 1: Implement.** Runtime stage: `apk add --no-cache python3`, `COPY plagiarism /opt/compare50-src`, `python3 -m venv /opt/compare50 && /opt/compare50/bin/pip install --no-cache-dir /opt/compare50-src && rm -rf /opt/compare50-src`. If numpy has no musl wheel for the Python version, switch the runtime base to a Python-capable alternative and note it in the commit.
+- [ ] **Step 1: Implement.** Builder stage (same alpine base as runtime): `apk add python3`, `COPY plagiarism /src/compare50`, `python3 -m venv /opt/compare50 && /opt/compare50/bin/pip install --no-cache-dir /src/compare50`. Runtime stage: `apk add --no-cache python3` and `COPY --from=<that stage> /opt/compare50 /opt/compare50`. If numpy has no musl wheel for the alpine Python version, switch the runtime base to a Python-capable alternative and note it in the commit.
 - [ ] **Step 2: Verify:**
-  - `docker build -t claoj-go:plag claoj`; record the image size change against `ghcr.io/claoj/claoj-go:latest` (`docker images`).
-  - Smoke test: `docker run --rm -v <dir with 3 submission folders>:/s claoj-go:plag sh -c '/opt/compare50/bin/python -m compare50 /s/* -o /tmp/r -n 250 && ls /tmp/r/index.html'` prints the path.
-- [ ] **Step 3: End-to-end check.** Run the stack locally (`CLAOJ/claoj-docker/claoj/docker-compose.v2.yml` with the local DB), apply the new `v2_runtime_tables.sql` statement, run a check from `/admin/moss` on a seeded contest, and open a report. Its match pages must navigate, and no console errors may come from the sandbox. If links open new tabs and get blocked, add `allow-popups` to the CSP and to Task 4's test.
-- [ ] **Step 4: Commit** `build(backend): install the compare50 fork in the image`.
+  - `docker build -t claoj-go:plag claoj` (submodule checked out); record the image size change against `ghcr.io/claoj/claoj-go:latest` (`docker images`).
+  - Smoke test: `docker run --rm -v <dir with 3 submission folders>:/s claoj-go:plag sh -c '/opt/compare50/bin/python -m compare50 /s/a /s/b /s/c -o /tmp/r -n 250 && ls /tmp/r/index.html'` prints the path.
+  - `ci-cd.yml` still parses as YAML (`python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci-cd.yml'))"`).
+- [ ] **Step 3: SKIPPED by user instruction** (end-to-end check through the local compose stack; needs a seeded local DB). The final report must list it as not done. If a later run does it: open a report; match pages must navigate with no sandbox console errors; if links open new tabs and get blocked, add `allow-popups` to the CSP and to Task 4's test.
+- [ ] **Step 4: Commit** `build(backend): install the compare50 submodule in the image`.
 
 **Deploy note (for the user, not the executor):** before deploying, apply the `plagiarism_result` statement from `scripts/v2_runtime_tables.sql` to the prod DB.
 
@@ -240,8 +245,8 @@ Extension map (`LanguageExt`): C→c, C++→cpp, Python→py, Pascal→pas, Java
 ### Task 10: Tune the fork
 
 **Files:**
-- Modify: `claoj/plagiarism/compare50/passes.py`, `claoj/plagiarism/compare50/preprocessors.py`, `claoj/plagiarism/compare50/comparators/_winnowing.py`, renderer templates (percentage column), `claoj/plagiarism/UPSTREAM.md`, `scripts/plagiarism-bench/RESULTS.md`
-- Test: `claoj/plagiarism/tests/test_tuning.py`
+- Modify, in the fork repo (branch `claoj`): `compare50/passes.py`, `compare50/preprocessors.py`, `compare50/comparators/_winnowing.py`, renderer templates (percentage column), `UPSTREAM.md`; in OJ-v2: the `claoj/plagiarism` gitlink (bump after each kept lever), `scripts/plagiarism-bench/RESULTS.md`
+- Test: `tests/tuning_tests.py` in the fork repo
 
 Work through one lever at a time. For each: write a unit test, implement the lever, re-run the benchmark, and record the numbers in `RESULTS.md`. Keep the lever only if target 1 or 2 improves without regressing the other. Otherwise revert it and record why.
 
@@ -250,5 +255,5 @@ Work through one lever at a time. For each: write a unit test, implement the lev
 - [ ] **Lever C — CP preprocessors.** Tests: `#include`, `using namespace`, `#define` lines and `ios::sync_with_stdio`/`cin.tie` statements produce no tokens; `int`/`long long`/`int64_t`/`longint`/`int64` normalize to one token. Add them to the structure pass.
 - [ ] **Lever D — percentage in the report.** Test: the rendered `index.html` contains, for each pair, the shared-fingerprint share of each file (MOSS-style %). This doesn't affect ranking; always keep it.
 - [ ] **Stop rule:** finish when targets 1 and 2 hold on all three contests. If they still miss after levers A–C plus one combined re-tune, stop, keep the best variant, and record the gap in `RESULTS.md` for the user.
-- [ ] **Final:** run `python -m unittest discover -s tests -v` for the fork, Task 1's tests again, and `go test ./jobs/ ./api/...`; update `UPSTREAM.md` with the kept levers; rebuild the image (Task 6 Step 2 smoke test).
+- [ ] **Final:** run `python -m tests` for the fork, Task 1's tests again, and `go test ./jobs/ ./api/...`; update `UPSTREAM.md` with the kept levers; rebuild the image (Task 6 Step 2 smoke test).
 - [ ] **Commit** after each kept lever: `perf(plagiarism): <lever> (target1 x%→y%, target2 x%→y%)`.
