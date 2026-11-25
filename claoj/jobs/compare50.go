@@ -54,6 +54,7 @@ func (c Compare50) Check(ctx context.Context, subsDir, outDir string) error {
 			args = append(args, "./"+e.Name())
 		}
 	}
+	// AI review settings (COMPARE50_LLM_*, incl. _LANGUAGE) reach compare50 through the inherited env.
 	args = append(args, "-o", absOut, "-n", strconv.Itoa(maxPairs))
 
 	// ponytail: buffers all of stderr; fine at compare50's output size.
