@@ -313,19 +313,23 @@ func UserAnalytics(c *gin.Context) {
 		return
 	}
 
-	// Get submission statistics
+	// Get submission statistics. GORM maps columns to fields by snake_case
+	// name, so the field names must match the SQL aliases exactly.
 	type SubStats struct {
-		TotalSubs      int64   `json:"total_submissions"`
-		AcceptedSubs   int64   `json:"accepted_submissions"`
-		TotalPoints    float64 `json:"total_points"`
-		AveragePoints  float64 `json:"average_points"`
-		BestSubmission float64 `json:"best_submission"`
+		TotalSubmissions    int64   `json:"total_submissions"`
+		AcceptedSubmissions int64   `json:"accepted_submissions"`
+		TotalPoints         float64 `json:"total_points"`
+		AveragePoints       float64 `json:"average_points"`
+		BestSubmission      float64 `json:"best_submission"`
 	}
 	var stats SubStats
-	db.DB.Table("judge_submission").
+	if err := db.DB.Table("judge_submission").
 		Select("COUNT(*) as total_submissions, SUM(CASE WHEN result = 'AC' THEN 1 ELSE 0 END) as accepted_submissions, SUM(points) as total_points, AVG(points) as average_points, MAX(points) as best_submission").
 		Where("user_id = ?", profile.ID).
-		Scan(&stats)
+		Scan(&stats).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
 
 	// Get language distribution
 	type LangDist struct {
@@ -345,16 +349,19 @@ func UserAnalytics(c *gin.Context) {
 	// sparse shape for existing consumers; `activity_year` is the dense
 	// 365-day series (one row per day, zero included) the profile heatmap needs.
 	type Activity struct {
-		Date  string `json:"date"`
-		Count int64  `json:"count"`
+		Date  day   `json:"date"`
+		Count int64 `json:"count"`
 	}
 	var activity []Activity
-	db.DB.Table("judge_submission").
+	if err := db.DB.Table("judge_submission").
 		Select("DATE(date) as date, COUNT(*) as count").
 		Where("user_id = ? AND date >= ?", profile.ID, time.Now().AddDate(0, 0, -30)).
 		Group("DATE(date)").
 		Order("date ASC").
-		Scan(&activity)
+		Scan(&activity).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
 
 	// The past year: today and the 364 days before it. Day keys are computed
 	// in UTC so they agree with the DATE() the database groups by. This
@@ -363,21 +370,24 @@ func UserAnalytics(c *gin.Context) {
 	today := time.Now().UTC()
 	yearStart := today.AddDate(0, 0, -364)
 	var yearCounts []Activity
-	db.DB.Table("judge_submission").
+	if err := db.DB.Table("judge_submission").
 		Select("DATE(date) as date, COUNT(*) as count").
 		Where("user_id = ? AND date >= ?", profile.ID, yearStart).
 		Group("DATE(date)").
 		Order("date ASC").
-		Scan(&yearCounts)
+		Scan(&yearCounts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
 
 	countsByDate := make(map[string]int64, len(yearCounts))
 	for _, row := range yearCounts {
-		countsByDate[row.Date] = row.Count
+		countsByDate[dayKey(string(row.Date))] = row.Count
 	}
 	activityYear := make([]Activity, 0, 365)
-	for day := yearStart; !day.After(today); day = day.AddDate(0, 0, 1) {
-		key := day.Format("2006-01-02")
-		activityYear = append(activityYear, Activity{Date: key, Count: countsByDate[key]})
+	for d := yearStart; !d.After(today); d = d.AddDate(0, 0, 1) {
+		key := d.Format("2006-01-02")
+		activityYear = append(activityYear, Activity{Date: day(key), Count: countsByDate[key]})
 	}
 
 	// Get problem group distribution

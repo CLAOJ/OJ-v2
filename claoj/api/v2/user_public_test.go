@@ -180,6 +180,37 @@ func TestProfileAnalytics_YearHeatmap(t *testing.T) {
 	require.Equal(t, today.AddDate(0, 0, -10).Format("2006-01-02"), thirty[0].(map[string]any)["date"])
 }
 
+// statistics counts every submission (all results), per v1 semantics; the
+// per-day buckets count all submissions on the day too.
+func TestProfileAnalytics_StatisticsAndDayBuckets(t *testing.T) {
+	fx := setupProfileDB(t)
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.UTC)
+	addSubmission(t, fx.visibleA, fx.profile, 100, "AC", false, today)
+	addSubmission(t, fx.visibleA, fx.profile, 0, "WA", false, today)
+	addSubmission(t, fx.visibleB, fx.profile, 100, "AC", false, today.AddDate(0, 0, -10))
+
+	w, body := profileGet(t, 0, "/user/solver/analytics", "/user/:user/analytics", UserAnalytics)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	stats := body["statistics"].(map[string]any)
+	require.InDelta(t, float64(3), stats["total_submissions"].(float64), 1e-9)
+	require.InDelta(t, float64(2), stats["accepted_submissions"].(float64), 1e-9)
+	require.InDelta(t, 200.0, stats["total_points"].(float64), 1e-9)
+	require.InDelta(t, 100.0, stats["best_submission"].(float64), 1e-9)
+
+	year := body["activity_year"].([]any)
+	require.Len(t, year, 365)
+	require.InDelta(t, float64(2), year[364].(map[string]any)["count"].(float64), 1e-9, "today counts AC and WA")
+	require.InDelta(t, float64(1), year[354].(map[string]any)["count"].(float64), 1e-9)
+
+	thirty := body["activity"].([]any)
+	require.Len(t, thirty, 2)
+	require.Equal(t, today.AddDate(0, 0, -10).Format("2006-01-02"), thirty[0].(map[string]any)["date"])
+	require.Equal(t, today.Format("2006-01-02"), thirty[1].(map[string]any)["date"])
+	require.InDelta(t, float64(2), thirty[1].(map[string]any)["count"].(float64), 1e-9)
+}
+
 func TestBlogList_AuthorFilter(t *testing.T) {
 	fx := setupProfileDB(t)
 	otherUser, other := seedAccount(t, "otherblogger", false, false)

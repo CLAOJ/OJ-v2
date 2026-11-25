@@ -38,8 +38,8 @@ func LanguageStats(c *gin.Context) {
 // DailySubmissionStats – GET /api/v2/stats/submissions/daily
 func DailySubmissionStats(c *gin.Context) {
 	type Result struct {
-		Date  string `json:"date"`
-		Count int    `json:"count"`
+		Date  day `json:"date"`
+		Count int `json:"count"`
 	}
 
 	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
