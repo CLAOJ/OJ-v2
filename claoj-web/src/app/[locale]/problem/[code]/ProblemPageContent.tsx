@@ -244,11 +244,11 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         problem.is_attempted ? "bg-amber-50/50 border-amber-200" : "bg-card shadow-sm"
                 )}>
                     {problem.is_solved ? (
-                        <div className="p-4 rounded-full bg-emerald-500 text-white">
+                        <div className="p-4 rounded-full bg-emerald-700 text-white">
                             <CheckCircle2 size={40} />
                         </div>
                     ) : problem.is_attempted ? (
-                        <div className="p-4 rounded-full bg-amber-500 text-white">
+                        <div className="p-4 rounded-full bg-amber-700 text-white">
                             <XCircle size={40} />
                         </div>
                     ) : (

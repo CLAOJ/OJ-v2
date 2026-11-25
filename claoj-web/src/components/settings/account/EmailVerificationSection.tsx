@@ -49,7 +49,7 @@ export function EmailVerificationSection() {
                         <CheckCircle size={16} />
                         {t('emailVerifiedMsg')}
                     </p>
-                    <Badge variant="default" className="bg-emerald-500 text-white">
+                    <Badge variant="default" className="bg-emerald-700 text-white">
                         {t('verifiedBadge')}
                     </Badge>
                 </div>

@@ -46,7 +46,7 @@ export default function ProblemsPageContent() {
     const [sort, setSort] = useState<string>('date');
     const [order, setOrder] = useState<'asc' | 'desc'>('desc');
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
+    const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[2]);
 
     const { data: problemData, isLoading } = useQuery({
         queryKey: ['problems', search, status, group, problemTypes, hasEditorial, pointsMin, pointsMax, sort, order, page, pageSize],

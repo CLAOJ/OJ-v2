@@ -239,7 +239,7 @@ export default function BlogListPage() {
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className={cn(
                                                 "w-8 h-8 rounded-lg flex items-center justify-center font-medium text-xs shrink-0 select-none",
-                                                idx === 0 ? "bg-amber-500 text-white" :
+                                                idx === 0 ? "bg-amber-700 text-white" :
                                                     idx === 1 ? "bg-zinc-400 text-white" :
                                                         idx === 2 ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground"
                                             )}>

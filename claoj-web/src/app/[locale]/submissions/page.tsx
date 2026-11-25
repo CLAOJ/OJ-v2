@@ -75,7 +75,7 @@ export default function SubmissionListPage() {
         }
     };
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[2]);
     // The profile's "View submissions" link deep-links into a prefiltered list.
     // Follow the URL when it changes, not only on mount: navigating from
     // another profile while this page is mounted must reseed the filter. The

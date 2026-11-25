@@ -225,7 +225,7 @@ export default function ContestCalendarPage() {
                     const statusConfig = {
                         ongoing: {
                             label: t('statusOngoing'),
-                            color: 'bg-emerald-500 text-white',
+                            color: 'bg-emerald-700 text-white',
                             icon: Zap
                         },
                         upcoming: {
