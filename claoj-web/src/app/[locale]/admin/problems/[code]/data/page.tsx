@@ -10,6 +10,7 @@ import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FilesTab, ConfigTab, PdfTab } from '@/components/admin/problem-data';
+import { CloneProblemButton } from '@/components/admin/CloneProblemModal';
 
 interface TestCaseWithContent {
     id: number;
@@ -206,6 +207,7 @@ export default function ProblemDataPage() {
                     <Edit2 size={18} />
                     {t('problems.editProblemTitle')}
                 </Link>
+                <CloneProblemButton code={code} name={problem?.name ?? code} />
             </div>
 
             {/* Tabs */}
