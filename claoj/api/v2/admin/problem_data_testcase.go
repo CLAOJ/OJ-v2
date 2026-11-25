@@ -1,12 +1,15 @@
 package admin
 
 import (
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/problemdata"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -23,7 +26,7 @@ func AdminProblemDataDeleteTestCase(c *gin.Context) {
 	}
 
 	var testCase models.ProblemTestCase
-	if err := db.DB.Where("id = ? AND dataset_id IN (SELECT id FROM judge_problemdata WHERE problem_id = ?)", testCaseID, problem.ID).First(&testCase).Error; err != nil {
+	if err := db.DB.Where("id = ? AND dataset_id = ?", testCaseID, problem.ID).First(&testCase).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "test case not found"})
 		return
 	}
@@ -69,15 +72,10 @@ func AdminProblemDataReorder(c *gin.Context) {
 	}
 
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		// Validate all test cases belong to this problem's dataset
-		var problemData models.ProblemData
-		if err := tx.Where("problem_id = ?", problem.ID).First(&problemData).Error; err != nil {
-			return err
-		}
-
+		// Validate all test cases belong to this problem (dataset_id is judge_problem.id)
 		for _, tc := range req.TestCases {
 			var testCase models.ProblemTestCase
-			if err := tx.Where("id = ? AND dataset_id = ?", tc.ID, problemData.ID).First(&testCase).Error; err != nil {
+			if err := tx.Where("id = ? AND dataset_id = ?", tc.ID, problem.ID).First(&testCase).Error; err != nil {
 				return err
 			}
 		}
@@ -121,32 +119,55 @@ func AdminProblemDataTestCaseContent(c *gin.Context) {
 	}
 
 	var testCase models.ProblemTestCase
-	if err := db.DB.Where("id = ? AND dataset_id IN (SELECT id FROM judge_problemdata WHERE problem_id = ?)", testCaseID, problem.ID).First(&testCase).Error; err != nil {
+	if err := db.DB.Where("id = ? AND dataset_id = ?", testCaseID, problem.ID).First(&testCase).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "test case not found"})
 		return
 	}
 
-	// Read test case files
-	dataDir := filepath.Join("data", "problems", problemCode, "testcase")
-	inputPath := filepath.Join(dataDir, testCase.InputFile)
-	outputPath := filepath.Join(dataDir, testCase.OutputFile)
-
-	inputData, err := os.ReadFile(inputPath)
-	if err != nil {
-		inputData = []byte{}
-	}
-	outputData, err := os.ReadFile(outputPath)
-	if err != nil {
-		outputData = []byte{}
-	}
+	inputData, inCut := testCaseFile(problemCode, testCase.InputFile)
+	outputData, outCut := testCaseFile(problemCode, testCase.OutputFile)
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":          testCase.ID,
 		"order":       testCase.Order,
-		"input_data":  string(inputData),
-		"output_data": string(outputData),
+		"input_data":  inputData,
+		"output_data": outputData,
+		"truncated":   inCut || outCut,
 		"encoding":    "utf-8",
 	})
+}
+
+// testCaseContentLimit caps each file shown in the admin preview.
+const testCaseContentLimit = 256 << 10
+
+// testCaseFile reads a test file from the judges' archive (v1 layout), falling
+// back to the v2-local data/problems/<code>/testcase/ directory.
+func testCaseFile(code, name string) (string, bool) {
+	if name == "" {
+		return "", false
+	}
+	if a, err := problemdata.Open(code); err == nil {
+		defer a.Close()
+		if s, cut, err := a.Read(name, testCaseContentLimit); err == nil {
+			return s, cut
+		}
+	}
+	dir := filepath.Clean(filepath.Join("data", "problems", code, "testcase"))
+	path := filepath.Join(dir, name)
+	if !strings.HasPrefix(path, dir+string(os.PathSeparator)) {
+		return "", false
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "", false
+	}
+	defer f.Close()
+	data, _ := io.ReadAll(io.LimitReader(f, testCaseContentLimit+1))
+	cut := len(data) > testCaseContentLimit
+	if cut {
+		data = data[:testCaseContentLimit]
+	}
+	return strings.ToValidUTF8(string(data), ""), cut
 }
 
 // TestCaseUpdateRequest - PATCH /api/v2/admin/problem/:code/data/testcase/:id
@@ -171,7 +192,7 @@ func AdminProblemDataTestCaseUpdate(c *gin.Context) {
 	}
 
 	var testCase models.ProblemTestCase
-	if err := db.DB.Where("id = ? AND dataset_id IN (SELECT id FROM judge_problemdata WHERE problem_id = ?)", testCaseID, problem.ID).First(&testCase).Error; err != nil {
+	if err := db.DB.Where("id = ? AND dataset_id = ?", testCaseID, problem.ID).First(&testCase).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "test case not found"})
 		return
 	}

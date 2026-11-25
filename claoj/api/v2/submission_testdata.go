@@ -1,16 +1,11 @@
 package v2
 
 import (
-	"archive/zip"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
-	"gopkg.in/yaml.v3"
+	"github.com/CLAOJ/claoj/problemdata"
 )
 
 // v1's CLAOJ_TESTCASE_VISIBLE_LENGTH: bytes of each input/answer shown.
@@ -27,34 +22,11 @@ type caseData struct {
 // file. As in v1, any problem with the data (no root configured, no init.yml,
 // no archive, unreadable file) yields nil and the page simply shows no data.
 func problemCaseData(problem *models.Problem) map[int]caseData {
-	root := config.C.App.ProblemDataRoot
-	if root == "" || problem.Code == "" || filepath.Base(problem.Code) != problem.Code {
-		return nil
-	}
-	dir := filepath.Join(root, problem.Code)
-	initYML, err := os.ReadFile(filepath.Join(dir, "init.yml"))
-	if err != nil {
-		return nil
-	}
-	var init struct {
-		Archive string `yaml:"archive"`
-	}
-	if yaml.Unmarshal(initYML, &init) != nil || init.Archive == "" {
-		return nil
-	}
-	archivePath := filepath.Clean(filepath.Join(dir, init.Archive))
-	if !strings.HasPrefix(archivePath, filepath.Clean(dir)+string(os.PathSeparator)) {
-		return nil
-	}
-	archive, err := zip.OpenReader(archivePath)
+	archive, err := problemdata.Open(problem.Code)
 	if err != nil {
 		return nil
 	}
 	defer archive.Close()
-	files := make(map[string]*zip.File, len(archive.File))
-	for _, f := range archive.File {
-		files[f.Name] = f
-	}
 
 	var cases []models.ProblemTestCase
 	if db.DB.Where("dataset_id = ?", problem.ID).Order("`order` ASC").Find(&cases).Error != nil {
@@ -67,8 +39,8 @@ func problemCaseData(problem *models.Problem) map[int]caseData {
 			continue
 		}
 		order++
-		in, err1 := visibleContent(files[tc.InputFile])
-		ans, err2 := visibleContent(files[tc.OutputFile])
+		in, err1 := visibleContent(archive, tc.InputFile)
+		ans, err2 := visibleContent(archive, tc.OutputFile)
 		if err1 != nil || err2 != nil {
 			return nil
 		}
@@ -78,24 +50,12 @@ func problemCaseData(problem *models.Problem) map[int]caseData {
 }
 
 // visibleContent mirrors v1 get_visible_content.
-func visibleContent(f *zip.File) (string, error) {
-	if f == nil {
-		return "", os.ErrNotExist
-	}
-	rc, err := f.Open()
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-	data, err := io.ReadAll(io.LimitReader(rc, testcaseVisibleBytes))
-	if err != nil {
-		return "", err
-	}
-	s := strings.ToValidUTF8(string(data), "")
-	if f.UncompressedSize64 > testcaseVisibleBytes {
+func visibleContent(a *problemdata.Archive, name string) (string, error) {
+	s, cut, err := a.Read(name, testcaseVisibleBytes)
+	if cut {
 		s += "..."
 	}
-	return s, nil
+	return s, err
 }
 
 // truncatePrefix applies a contest's output_prefix_override to shown data.

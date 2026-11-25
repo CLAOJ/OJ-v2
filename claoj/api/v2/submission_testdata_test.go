@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/CLAOJ/claoj/problemdata"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,19 +32,20 @@ func TestVisibleContent(t *testing.T) {
 		files[f.Name] = f
 	}
 
-	got, err := visibleContent(files["short.in"])
+	a := &problemdata.Archive{Files: files}
+	got, err := visibleContent(a, "short.in")
 	require.NoError(t, err)
 	require.Equal(t, "1 2\n", got)
 
-	got, err = visibleContent(files["long.out"])
+	got, err = visibleContent(a, "long.out")
 	require.NoError(t, err)
 	require.Equal(t, strings.Repeat("9", 64)+"...", got)
 
-	got, err = visibleContent(files["utf8.out"])
+	got, err = visibleContent(a, "utf8.out")
 	require.NoError(t, err)
 	require.Equal(t, strings.Repeat("a", 63)+"...", got)
 
-	_, err = visibleContent(nil)
+	_, err = visibleContent(a, "missing.in")
 	require.Error(t, err)
 
 	five, zero := 5, 0

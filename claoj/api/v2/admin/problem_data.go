@@ -52,7 +52,8 @@ func AdminProblemData(c *gin.Context) {
 
 	// Get test cases
 	var testCases []models.ProblemTestCase
-	db.DB.Where("dataset_id = ?", problemData.ID).Order("`order` ASC").Find(&testCases)
+	// dataset_id references judge_problem.id (v1 ProblemTestCase.dataset), not judge_problemdata.id
+	db.DB.Where("dataset_id = ?", problem.ID).Order("`order` ASC").Find(&testCases)
 
 	items := make([]TestCaseItem, len(testCases))
 	for i, tc := range testCases {
@@ -91,7 +92,7 @@ type AdminProblemDataUploadRequest struct {
 	// Or individual test cases
 	TestCases []struct {
 		Order      int    `json:"order" binding:"required"`
-		Type       string `json:"type"` // C=Case, S=Sample
+		Type       string `json:"type"`        // C=Case, S=Sample
 		InputData  string `json:"input_data"`  // base64
 		OutputData string `json:"output_data"` // base64
 		Points     *int   `json:"points"`
@@ -171,14 +172,14 @@ func AdminProblemDataUpload(c *gin.Context) {
 
 		// Handle ZIP upload
 		if req.ZipData != "" {
-			if err := handleZipUpload(tx, req.ZipData, testCaseDir, problemData.ID, req.Checker, req.CheckerArgs, dataDir, req.Grader, req.GraderArgs); err != nil {
+			if err := handleZipUpload(tx, req.ZipData, testCaseDir, problem.ID, req.Checker, req.CheckerArgs, dataDir, req.Grader, req.GraderArgs); err != nil {
 				return err
 			}
 		}
 
 		// Handle individual test cases (only if no ZIP)
 		if req.ZipData == "" && len(req.TestCases) > 0 {
-			if err := handleIndividualTestCases(tx, req.TestCases, testCaseDir, problemData.ID, req.Checker, req.CheckerArgs); err != nil {
+			if err := handleIndividualTestCases(tx, req.TestCases, testCaseDir, problem.ID, req.Checker, req.CheckerArgs); err != nil {
 				return err
 			}
 		}
@@ -200,7 +201,7 @@ func AdminProblemDataUpload(c *gin.Context) {
 	})
 }
 
-func handleZipUpload(tx *gorm.DB, zipData, testCaseDir string, problemDataID uint, checker, checkerArgs, dataDir, grader, graderArgs string) error {
+func handleZipUpload(tx *gorm.DB, zipData, testCaseDir string, problemID uint, checker, checkerArgs, dataDir, grader, graderArgs string) error {
 	zipBytes, err := base64.StdEncoding.DecodeString(zipData)
 	if err != nil {
 		return fmt.Errorf("failed to decode zip data: %w", err)
@@ -212,7 +213,7 @@ func handleZipUpload(tx *gorm.DB, zipData, testCaseDir string, problemDataID uin
 	}
 
 	// Delete existing test cases
-	if err := tx.Where("dataset_id = ?", problemDataID).Delete(&models.ProblemTestCase{}).Error; err != nil {
+	if err := tx.Where("dataset_id = ?", problemID).Delete(&models.ProblemTestCase{}).Error; err != nil {
 		return err
 	}
 
@@ -230,7 +231,7 @@ func handleZipUpload(tx *gorm.DB, zipData, testCaseDir string, problemDataID uin
 
 		points := 0
 		testCase := models.ProblemTestCase{
-			DatasetID:   problemDataID,
+			DatasetID:   problemID,
 			Order:       i,
 			Type:        "C",
 			Points:      &points,
@@ -273,9 +274,9 @@ func handleIndividualTestCases(tx *gorm.DB, testCases []struct {
 	OutputData string `json:"output_data"`
 	Points     *int   `json:"points"`
 	IsPretest  bool   `json:"is_pretest"`
-}, testCaseDir string, problemDataID uint, checker, checkerArgs string) error {
+}, testCaseDir string, problemID uint, checker, checkerArgs string) error {
 	// Delete existing test cases
-	if err := tx.Where("dataset_id = ?", problemDataID).Delete(&models.ProblemTestCase{}).Error; err != nil {
+	if err := tx.Where("dataset_id = ?", problemID).Delete(&models.ProblemTestCase{}).Error; err != nil {
 		return err
 	}
 
@@ -304,7 +305,7 @@ func handleIndividualTestCases(tx *gorm.DB, testCases []struct {
 
 		// Create database record
 		testCase := models.ProblemTestCase{
-			DatasetID:   problemDataID,
+			DatasetID:   problemID,
 			Order:       tc.Order,
 			Type:        tc.Type,
 			Points:      tc.Points,

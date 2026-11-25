@@ -75,8 +75,11 @@ func BlogList(c *gin.Context) {
 		Authors   []Author  `json:"authors"`
 		PublishOn time.Time `json:"publish_on"`
 		Summary   string    `json:"summary"`
-		Score     int       `json:"score"`
-		Sticky    bool      `json:"sticky"`
+		// v1 blog-post.html: summary|default(content), so the body is sent only
+		// for posts without a summary.
+		Content string `json:"content,omitempty"`
+		Score   int    `json:"score"`
+		Sticky  bool   `json:"sticky"`
 	}
 
 	items := make([]Item, len(posts))
@@ -86,7 +89,11 @@ func BlogList(c *gin.Context) {
 			authors[j] = Author{a.User.Username}
 		}
 		items[i] = Item{
-			p.ID, p.Title, p.Slug, authors, p.PublishOn, p.Summary, p.Score, p.Sticky,
+			ID: p.ID, Title: p.Title, Slug: p.Slug, Authors: authors, PublishOn: p.PublishOn,
+			Summary: p.Summary, Score: p.Score, Sticky: p.Sticky,
+		}
+		if p.Summary == "" {
+			items[i].Content = p.Content
 		}
 	}
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))

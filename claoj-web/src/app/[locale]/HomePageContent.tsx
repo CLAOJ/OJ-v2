@@ -268,14 +268,12 @@ export default function HomePageContent() {
                         ))
                     ) : posts && posts.length > 0 ? (
                         <>
-                            {posts.map((post, index) => (
+                            {posts.map((post) => (
                                 <article
                                     key={post.id}
                                     className={cn(
                                         "bg-card border rounded-lg overflow-hidden transition-all",
-                                        post.sticky && "border-primary border-2",
-                                        // Show full content for first post, truncated for others
-                                        index === 0 ? "" : ""
+                                        post.sticky && "border-primary border-2"
                                     )}
                                 >
                                     <div className="p-4 sm:p-5">
@@ -333,10 +331,7 @@ export default function HomePageContent() {
                                                 </div>
 
                                                 {(post.summary || post.content) && (
-                                                    <div className={cn(
-                                                        "prose dark:prose-invert max-w-none text-sm text-muted-foreground",
-                                                        index > 0 ? "line-clamp-3" : ""
-                                                    )}>
+                                                    <div className="prose dark:prose-invert max-w-none text-sm text-muted-foreground">
                                                         <ReactMarkdown
                                                             remarkPlugins={[remarkGfm]}
                                                             rehypePlugins={[rehypeRaw]}
@@ -346,7 +341,7 @@ export default function HomePageContent() {
                                                     </div>
                                                 )}
 
-                                                {index === 0 && (post.summary || (post.content && post.content.length > 200)) && (
+                                                {post.summary && (
                                                     <div className="mt-3">
                                                         <Link
                                                             href={`/post/${post.id}-${post.slug}`}

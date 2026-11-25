@@ -38,7 +38,7 @@ type ProblemTestCase struct {
 	Checker       string `gorm:"column:checker;size:10;not null;default:''"`
 	CheckerArgs   string `gorm:"column:checker_args;type:longtext;not null;default:''"`
 
-	Dataset ProblemData `gorm:"foreignKey:DatasetID"`
+	Dataset Problem `gorm:"foreignKey:DatasetID"` // v1 ProblemTestCase.dataset -> judge_problem
 }
 
 func (ProblemTestCase) TableName() string { return "judge_problemtestcase" }
