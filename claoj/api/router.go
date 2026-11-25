@@ -197,6 +197,8 @@ func NewRouter() *gin.Engine {
 			admin.DELETE("/admin/problem/:code/data/file/*path", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataFileDelete)
 			admin.GET("/admin/problem/:code/data/testcase/:id/content", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseContent)
 			admin.PATCH("/admin/problem/:code/data/testcase/:id", auth.RequireProblemEdit(), adminHandlers.AdminProblemDataTestCaseUpdate)
+			// Problem Submission Diff Matrix
+			admin.GET("/admin/problem/:code/diff", auth.RequireProblemEdit(), v2.AdminProblemSubmissionDiff)
 
 			// Solutions
 			admin.GET("/admin/solutions", v2.AdminSolutionList)

@@ -492,6 +492,85 @@ func AdminSubmissionDetail(c *gin.Context) {
 	})
 }
 
+// AdminProblemSubmissionDiff - GET /api/v2/admin/problem/:code/diff
+// v1's setter diff matrix (ProblemSubmissionDiff): one row per submission with
+// its per-testcase results, so the page can compare two at a time. Optional
+// ?user=username narrows the rows before the cap applies.
+func AdminProblemSubmissionDiff(c *gin.Context) {
+	var problem models.Problem
+	if err := db.DB.Where("code = ?", c.Param("code")).First(&problem).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		return
+	}
+
+	q := db.DB.Where("problem_id = ?", problem.ID).Order("date DESC").
+		// shortcut: the Latest 200 cap keeps the matrix and its testcase
+		// payload bounded; add paging when a problem outgrows it.
+		Limit(200)
+	if username := strings.TrimSpace(c.Query("user")); username != "" {
+		q = q.Where("user_id IN (SELECT id FROM judge_profile WHERE user_id IN " +
+			"(SELECT id FROM auth_user WHERE username = ?))", username)
+	}
+
+	var subs []models.Submission
+	if err := q.Preload("Language").Find(&subs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError("failed to load submissions"))
+		return
+	}
+
+	ids := make([]uint, len(subs))
+	for i, s := range subs {
+		ids[i] = s.ID
+	}
+	casesBySubmission := make(map[uint][]gin.H, len(subs))
+	if len(ids) > 0 {
+		var testCases []models.SubmissionTestCase
+		if err := db.DB.Where("submission_id IN ?", ids).Order("`case` ASC").
+			Find(&testCases).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError("failed to load test cases"))
+			return
+		}
+		for _, tc := range testCases {
+			casesBySubmission[tc.SubmissionID] = append(casesBySubmission[tc.SubmissionID], gin.H{
+				"case": tc.Case, "status": tc.Status, "points": tc.Points, "total": tc.Total,
+			})
+		}
+	}
+
+	usernames := contestRankingUsernames(func() []uint {
+		profileIDs := make([]uint, len(subs))
+		for i, s := range subs {
+			profileIDs[i] = s.UserID
+		}
+		return profileIDs
+	}())
+
+	items := make([]gin.H, len(subs))
+	for i, s := range subs {
+		cases := casesBySubmission[s.ID]
+		if cases == nil {
+			cases = []gin.H{}
+		}
+		items[i] = gin.H{
+			"id":       s.ID,
+			"user":     usernames[s.UserID],
+			"date":     s.Date,
+			"language": s.Language.Key,
+			"status":   s.Status,
+			"result":   s.Result,
+			"points":   s.Points,
+			"time":     s.Time,
+			"cases":    cases,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"problem":      problem.Code,
+		"problem_name": problem.Name,
+		"submissions":  items,
+	})
+}
+
 // AdminSubmissionUpdateRequest - PATCH /api/v2/admin/submission/:id
 // Only staff-editable fields; user, problem and date are deliberately absent.
 // Nullable fields are raw so an explicit null clears them while an omitted key
