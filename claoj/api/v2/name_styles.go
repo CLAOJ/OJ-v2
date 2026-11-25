@@ -17,11 +17,12 @@ import (
 const nameStylesKey = "display_rank_styles"
 
 type nameStyle struct {
-	Color  string `json:"color"`  // #rgb / #rrggbb, "" = keep the rating colour
-	Bold   bool   `json:"bold"`   // bold name
-	Strike bool   `json:"strike"` // struck-through name
-	Italic bool   `json:"italic"` // italic name
-	Prefix string `json:"prefix"` // emoji / short text before the name
+	Color     string `json:"color"`     // #rgb / #rrggbb, "" = keep the rating colour
+	Bold      bool   `json:"bold"`      // bold name
+	Strike    bool   `json:"strike"`    // struck-through name
+	Italic    bool   `json:"italic"`    // italic name
+	Underline bool   `json:"underline"` // underlined name (otherwise never underlined)
+	Prefix    string `json:"prefix"`    // emoji / short text before the name
 }
 
 // v1 ranks.scss.

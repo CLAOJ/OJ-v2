@@ -17,4 +17,11 @@ describe('nameStylesCss', () => {
         expect(css).toContain('content:"\\"}x"');
         expect(css).not.toContain('bob');
     });
+
+    it('sets the configured decoration, and none when unset', () => {
+        const css = (s: object) => nameStylesCss({ styles: { r: { color: '', bold: false, strike: false, prefix: '', ...s } }, users: { a: 'r' } });
+        expect(css({})).toContain('text-decoration:none!important');
+        expect(css({ underline: true })).toContain('text-decoration:underline!important');
+        expect(css({ underline: true, strike: true })).toContain('text-decoration:underline line-through!important');
+    });
 });

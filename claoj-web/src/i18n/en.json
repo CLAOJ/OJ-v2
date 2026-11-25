@@ -2984,6 +2984,7 @@
       "bold": "Bold",
       "strike": "Strikethrough",
       "italic": "Italic",
+      "underline": "Underline",
       "prefix": "Prefix",
       "preview": "Preview",
       "remove": "Remove rank",

@@ -8,6 +8,7 @@ export interface NameStyle {
     bold: boolean;
     strike: boolean;
     italic?: boolean;
+    underline?: boolean;
     prefix: string;
 }
 
@@ -35,7 +36,9 @@ export function nameStylesCss({ styles, users }: NameStylesData): string {
         const decl = [
             s.color && COLOR.test(s.color) ? `color:${s.color}!important` : '',
             s.bold ? 'font-weight:700!important' : '',
-            s.strike ? 'text-decoration:line-through!important' : '',
+            // Always set: links inside prose are underlined by default, so a
+            // styled name shows exactly the decoration configured here.
+            `text-decoration:${[s.underline && 'underline', s.strike && 'line-through'].filter(Boolean).join(' ') || 'none'}!important`,
             s.italic ? 'font-style:italic!important' : '',
         ].filter(Boolean).join(';');
         if (decl) out.push(`${sels.flatMap(x => [x, `${x} *`]).join(',')}{${decl}}`);
