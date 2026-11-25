@@ -12,8 +12,8 @@ Live v2: https://beta.claoj.edu.vn · Live v1: https://claoj.edu.vn · Deploy: p
 | 4a | Users + Groups admin (tabbed editor, roles/permissions/security, session revocation, group membership) | Done | `8938ce0` | go test exit 0; jest 272; CI 45454748538 green; live 4-tab editor + group members |
 | 4b | Organizations, Blog (+markdown image upload), Tickets, Taxonomy/Tags, Comments, Licenses | Done | `573017e` | go test exit 0; jest 277; CI 45475795661 green; live checks on all five admin pages |
 | 4c | Submissions admin detail/edit, Impersonation, Registration activate/resend, Judges, Languages, Navbar, Flat pages/Redirects | Done | `722d368` | go test exit 0; jest 28 suites / 297 tests; `npm run build` ok; 6 task reviews + final cross-task review; CSRF added to admin group |
-| 5 | Public pages: contest content/announcements/scoreboard, problem discovery filters, org lists, profile, problem page (auto-PDF, file submit), polish | In progress | — | worktree `OJ-v2-wt/feat/public-parity-phase5` |
-| R | Full v1↔v2 screen comparison (public + admin) and gap/result report | Pending | — | report will be `docs/v1-v2-screen-parity-report.md` |
+| 5 | Public pages: contest content/announcements/scoreboard, problem discovery filters, org lists, profile, problem page (auto-PDF, file submit), polish | Done | `22749b2` | go test exit 0; jest 37 suites / 343 tests; `npm run build` ok; 6 task reviews + cross-task final review; fixed contest-submission linkage, scoreboard PDF bypass, announcement gating, grading-end point recalculation |
+| R | Full v1↔v2 screen comparison (public + admin) and gap/result report | In progress | — | inventory: 173 v1 screens vs 65 v2 pages (temp `parity/screen-inventory.md`); report will be `docs/v1-v2-screen-parity-report.md` |
 
 ## Known limits carried forward
 - Comment hide does not cascade to replies (v1 bulk actions do not either).
@@ -24,6 +24,7 @@ Live v2: https://beta.claoj.edu.vn · Live v1: https://claoj.edu.vn · Deploy: p
 - Latent GORM `belongsTo` relation shape on Submission/Rating/Participation models (untouched; fixed only on Ticket).
 - Contest/problem clone flows still drop some new settings.
 - Phase 4c: judge tier/capabilities are informational (v2 queue has no tier routing); impersonated refresh family lives 2 h; exit restores a standard 7-day actor family (remember-me not preserved); registrations resend has no rate limit; flat-page `template_name`/`enable_comments` are mapped but not editable; `/api/redirects-map` is a public path-only dump; nav parent picker offers only the loaded page.
+- Phase 5: statement "PDF" is a browser print view (no HTML→PDF engine, no new deps); submission files live on local disk with no cleanup and are public by random name; solved list is AC-only (v1 lists points>0); heatmap is UTC-keyed (v1 uses the viewer's tz); profile blogs tab hides the owner's drafts; `POST /admin/recalculate-points` is synchronous/curl-only (504 risk on large installs, idempotent re-run); contest list groups upcoming/ongoing/past per page; 32 MiB upload body cap; org filter dropdown capped at 100 without search.
 - The points backfill (`POST /api/v2/admin/recalculate-points`, superuser) runs synchronously inside the request and has no admin button: on a large install it can outlive the proxy timeout, so run it once with curl (or the API client) from the server itself and check the JSON counts in the response.
 
 ## Deliberate scope rulings
