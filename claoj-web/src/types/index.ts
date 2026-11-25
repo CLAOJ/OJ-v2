@@ -878,15 +878,44 @@ export interface AdminOrganizationDetail extends AdminOrganization {
     admins: { id: number; username: string }[];
 }
 
-/** GET /admin/classes row (picker source for contest class ids). */
+/** GET /admin/classes row (picker source for contest class ids + class list). */
 export interface AdminClass {
     id: number;
     name: string;
     slug: string;
+    description: string;
     is_active: boolean;
+    access_code: string | null;
     organization_id: number;
     organization_name: string;
+    admin_count: number;
+    member_count: number;
 }
+
+/** A profile reference in a class's admins/members lists. */
+export interface ClassPersonRef {
+    id: number;
+    username: string;
+}
+
+/** GET /admin/class/:id - the editable shape. */
+export interface AdminClassDetail extends AdminClass {
+    admins: ClassPersonRef[];
+    members: ClassPersonRef[];
+}
+
+export interface AdminClassCreateRequest {
+    name: string;
+    slug?: string;
+    organization_id: number;
+    description?: string;
+    is_active?: boolean;
+    access_code?: string | null;
+    admin_ids?: number[];
+    member_ids?: number[];
+}
+
+export type AdminClassUpdateRequest = Partial<Omit<AdminClassCreateRequest, 'organization_id'>>;
 
 export interface AdminSubmission {
     id: number;
@@ -2006,4 +2035,77 @@ export interface ContestStats {
     average_solve_time: number;
     problems: ContestProblemStats[];
     average_solve_times_by_problem: Record<string, number>;
+}
+
+// ============================================================
+// PHASE 6 ADMIN LEFTOVERS (points votes, org requests, comment locks)
+// ============================================================
+
+/** GET /admin/points-votes row (v1 ProblemPointsVoteAdmin). */
+export interface AdminPointsVote {
+    id: number;
+    points: number;
+    note: string;
+    vote_time: string;
+    voter_id: number;
+    voter: string;
+    problem_id: number;
+    problem: string;
+    problem_name: string;
+}
+
+export type AdminPointsVoteListResponse = AdminListResponse<AdminPointsVote>;
+
+/** GET /admin/organization-requests row (v1 OrganizationRequestAdmin). */
+export interface AdminOrganizationRequest {
+    id: number;
+    username: string;
+    organization_id: number;
+    organization: string;
+    organization_slug: string;
+    /** Django stored state: P pending, A approved, R rejected. */
+    state: 'P' | 'A' | 'R';
+    time: string;
+    reason: string;
+}
+
+export type AdminOrganizationRequestListResponse = AdminListResponse<AdminOrganizationRequest>;
+
+/** GET /admin/comment-locks row (v1 judge_commentlock). */
+export interface AdminCommentLock {
+    id: number;
+    page: string;
+}
+
+export type AdminCommentLockListResponse = AdminListResponse<AdminCommentLock>;
+
+// ============================================================
+// PUBLIC RUNTIME TYPES (v1 /runtimes + /runtimes/matrix)
+// ============================================================
+
+export interface RuntimeEntry {
+    name: string;
+    versions: string[];
+}
+
+export interface RuntimeLanguage {
+    id: number;
+    key: string;
+    name: string;
+    short_name: string | null;
+    description: string;
+    runtimes: RuntimeEntry[];
+}
+
+export interface RuntimeMatrixCell {
+    judge: string;
+    language_id: number;
+    runtimes: RuntimeEntry[];
+    is_latest: boolean;
+}
+
+export interface RuntimeMatrix {
+    judges: string[];
+    languages: { id: number; name: string }[];
+    cells: RuntimeMatrixCell[];
 }

@@ -88,6 +88,20 @@ type Problem struct {
 
 func (Problem) TableName() string { return "judge_problem" }
 
+// ProblemPointsVote mirrors judge_problempointsvote (v1's problem point vote).
+type ProblemPointsVote struct {
+	ID        uint      `gorm:"primaryKey;column:id"`
+	Points    int       `gorm:"column:points;not null"`
+	Note      string    `gorm:"column:note;type:longtext;not null"`
+	VoteTime  time.Time `gorm:"column:vote_time;not null"`
+	VoterID   uint      `gorm:"column:voter_id;not null;index"`
+	ProblemID uint      `gorm:"column:problem_id;not null;index"`
+	Voter     Profile   `gorm:"foreignKey:VoterID"`
+	Problem   Problem   `gorm:"foreignKey:ProblemID"`
+}
+
+func (ProblemPointsVote) TableName() string { return "judge_problempointsvote" }
+
 // ProblemTranslation mirrors judge_problemtranslation.
 type ProblemTranslation struct {
 	ID          uint    `gorm:"primaryKey;column:id"`
