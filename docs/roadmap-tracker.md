@@ -24,6 +24,7 @@ Live v2: https://beta.claoj.edu.vn · Live v1: https://claoj.edu.vn · Deploy: p
 - Latent GORM `belongsTo` relation shape on Submission/Rating/Participation models (untouched; fixed only on Ticket).
 - Contest/problem clone flows still drop some new settings.
 - Phase 4c: judge tier/capabilities are informational (v2 queue has no tier routing); impersonated refresh family lives 2 h; exit restores a standard 7-day actor family (remember-me not preserved); registrations resend has no rate limit; flat-page `template_name`/`enable_comments` are mapped but not editable; `/api/redirects-map` is a public path-only dump; nav parent picker offers only the loaded page.
+- The points backfill (`POST /api/v2/admin/recalculate-points`, superuser) runs synchronously inside the request and has no admin button: on a large install it can outlive the proxy timeout, so run it once with curl (or the API client) from the server itself and check the JSON counts in the response.
 
 ## Deliberate scope rulings
 - No org-specific 2FA gate (v1 has none; global middleware only).
