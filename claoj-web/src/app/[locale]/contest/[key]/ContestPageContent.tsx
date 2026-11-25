@@ -632,7 +632,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                             <td className="px-10 py-8 text-center">
                                                 <span className={cn(
                                                     "inline-flex items-center justify-center w-9 h-9 rounded-xl font-medium text-sm",
-                                                    row.rank === 1 ? "bg-amber-500 text-white" :
+                                                    row.rank === 1 ? "bg-amber-700 text-white" :
                                                         row.rank === 2 ? "bg-zinc-400 text-white" :
                                                             row.rank === 3 ? "bg-orange-600 text-white" :
                                                                 "bg-muted text-muted-foreground"

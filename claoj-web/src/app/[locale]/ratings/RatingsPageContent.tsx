@@ -111,7 +111,7 @@ export default function RatingsPageContent() {
                                             {entry.rank === 1 && <Trophy size={16} className="text-amber-500" />}
                                             <span className={cn(
                                                 "inline-flex items-center justify-center w-8 h-8 rounded-xl font-medium text-sm",
-                                                entry.rank === 1 ? "bg-amber-500 text-white" :
+                                                entry.rank === 1 ? "bg-amber-700 text-white" :
                                                     entry.rank === 2 ? "bg-zinc-400 text-white" :
                                                         entry.rank === 3 ? "bg-orange-600 text-white" :
                                                             "bg-muted text-muted-foreground"

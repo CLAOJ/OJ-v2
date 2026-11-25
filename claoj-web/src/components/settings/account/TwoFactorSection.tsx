@@ -256,7 +256,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                             <CheckCircle size={16} />
                             {t('twoFactorEnabledMsg')}
                         </p>
-                        <Badge variant="default" className="bg-emerald-500 text-white">
+                        <Badge variant="default" className="bg-emerald-700 text-white">
                             {tc('active')}
                         </Badge>
                     </div>
