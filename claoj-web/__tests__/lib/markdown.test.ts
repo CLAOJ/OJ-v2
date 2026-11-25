@@ -146,6 +146,13 @@ describe('normalizeDmojMarkdown', () => {
         );
     });
 
+    it('nests list items indented by one space, like v1', () => {
+        expect(normalizeDmojMarkdown('- First AC:\r\n + a\r\n + b\r\n- next')).toBe(
+            '- First AC:\r\n    + a\r\n    + b\r\n- next'
+        );
+        expect(normalizeDmojMarkdown('text\n + not a sublist')).toBe('text\n + not a sublist');
+    });
+
     it('leaves a non-spoiler blockquote untouched', () => {
         const src = '<blockquote>\nplain\n</blockquote>';
         expect(normalizeDmojMarkdown(src)).toBe(src);

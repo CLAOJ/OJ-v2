@@ -32,9 +32,10 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
 
     const getTypeFromPage = (): 'problem' | 'editorial' | 'blog' => {
         if (contextType) return contextType;
-        if (page.startsWith('e/')) return 'editorial';
-        if (page.startsWith('p/')) return 'problem';
-        if (page.startsWith('blog/')) return 'blog';
+        // Page keys use v1's format (the comment table is shared): p:, s:, c:, b:.
+        if (page.startsWith('s:')) return 'editorial';
+        if (page.startsWith('p:')) return 'problem';
+        if (page.startsWith('b:')) return 'blog';
         return 'problem';
     };
 
@@ -46,7 +47,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
     const { data: comments, isLoading } = useQuery({
         queryKey: ['comments', page],
         queryFn: async () => {
-            const res = await api.get<PaginatedList<Comment>>(`/comments?page=${page}`);
+            const res = await api.get<PaginatedList<Comment>>(`/comments?page=${encodeURIComponent(page)}`);
             return res.data.data;
         }
     });

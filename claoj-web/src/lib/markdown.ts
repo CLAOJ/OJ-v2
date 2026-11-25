@@ -34,7 +34,7 @@ export function normalizeDmojMarkdown(content: string): string {
         .map((segment, i) =>
             i % 2 === 1
                 ? segment
-                : convertInlineMath(convertUserReferences(convertLineBreaks(convertHeadings(segment)))))
+                : convertInlineMath(convertUserReferences(convertLineBreaks(convertListIndent(convertHeadings(segment))))))
         .join('');
 }
 
@@ -60,6 +60,15 @@ function convertSpoilers(text: string): string {
 // non-`#` character follows, so mid-line hashes (`#5`) are left alone.
 function convertHeadings(text: string): string {
     return text.replace(/^(#{1,6})(?=[^\s#])/gm, '$1 ');
+}
+
+// A list item indented by ONE space under another item (` + sub`) is nested in
+// v1 (python-markdown) but CommonMark needs the parent's content column, so it
+// would render as a flat sibling list. Re-indent it to 4 spaces, which nests
+// under both `- ` and `1. ` parents. Only fires right after a list-item line,
+// so a stray indented line elsewhere never becomes an indented code block.
+function convertListIndent(text: string): string {
+    return text.replace(/(?<=^[ \t]*(?:[-+*]|\d+[.)]) [^\n]*\n) (?=(?:[-+*]|\d+[.)]) )/gm, '    ');
 }
 
 // `<br>`, `<br/>`, `<br />`, and the malformed `</br>` -> a markdown hard line

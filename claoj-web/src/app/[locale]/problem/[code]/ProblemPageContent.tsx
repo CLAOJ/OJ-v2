@@ -518,7 +518,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         )}
 
                         <section className="pt-10 border-t">
-                            <Comments page={`p/${problem.code}`} problemName={problem.name} contextType="problem" />
+                            <Comments page={`p:${problem.code}`} problemName={problem.name} contextType="problem" />
                         </section>
                     </div>
 

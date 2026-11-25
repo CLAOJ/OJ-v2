@@ -146,7 +146,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
             </article>
 
             <div className="pt-20 border-t">
-                <Comments page={`blog/${id}`} />
+                <Comments page={`b:${id}`} />
             </div>
         </div>
     );

@@ -401,7 +401,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                             </section>
 
                             <section className="pt-4">
-                                <Comments page={`c/${key}`} />
+                                <Comments page={`c:${key}`} />
                             </section>
                         </div>
 

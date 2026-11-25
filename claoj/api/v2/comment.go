@@ -3,6 +3,7 @@ package v2
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -28,6 +29,24 @@ type CommentRevision struct {
 
 func (CommentRevision) TableName() string { return "judge_commentrevision" }
 
+// commentPageLink maps a comment page key to its v2 URL and a title. Keys use
+// v1's format (judge_comment is shared with v1): p:<problem>, s:<problem>
+// (editorial), c:<contest>, b:<blog id>.
+func commentPageLink(page string) (link, title string) {
+	kind, key, _ := strings.Cut(page, ":")
+	switch kind {
+	case "p":
+		return "/problem/" + key, "Problem: " + key
+	case "s":
+		return "/problem/" + key + "/editorial", "Editorial: " + key
+	case "c":
+		return "/contest/" + key, "Contest: " + key
+	case "b":
+		return "/post/" + key, "Blog: " + key
+	}
+	return "/", page
+}
+
 // CommentList - GET /api/v2/comments
 // Fetches comments for a specific page (e.g. ?page=p/aplusb)
 // Supports optional page_type filter: ?page_type=editorial,problem,blog
@@ -49,11 +68,11 @@ func CommentList(c *gin.Context) {
 	if pageType != "" {
 		switch pageType {
 		case "problem":
-			query = query.Where("page LIKE ?", "p/%")
+			query = query.Where("page LIKE ?", "p:%")
 		case "editorial":
-			query = query.Where("page LIKE ?", "e/%")
+			query = query.Where("page LIKE ?", "s:%")
 		case "blog":
-			query = query.Where("page LIKE ?", "blog/%")
+			query = query.Where("page LIKE ?", "b:%")
 		}
 	}
 
@@ -89,20 +108,7 @@ func CommentList(c *gin.Context) {
 
 	items := make([]Item, len(comments))
 	for i, cm := range comments {
-		// Derive link and page title from page field
-		link := "/" + cm.Page
-		pageTitle := cm.Page
-		if len(cm.Page) > 2 && cm.Page[1] == '/' {
-			// Format: p/code, e/code, blog/id
-			switch cm.Page[0] {
-			case 'p':
-				pageTitle = "Problem: " + cm.Page[2:]
-			case 'e':
-				pageTitle = "Editorial: " + cm.Page[2:]
-			case 'b': // blog/
-				pageTitle = "Blog: " + cm.Page[5:]
-			}
-		}
+		link, pageTitle := commentPageLink(cm.Page)
 
 		items[i] = Item{
 			ID:         cm.ID,
@@ -538,4 +544,9 @@ func CommentDelete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "comment deleted",
 	})
+}
+
+func commentLink(page string) string {
+	link, _ := commentPageLink(page)
+	return link
 }

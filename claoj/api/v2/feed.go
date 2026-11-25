@@ -212,7 +212,7 @@ func CommentFeedRSS(c *gin.Context) {
 
 		item := RSSItem{
 			Title:   "Comment by " + username + " on " + cmt.Page,
-			Link:    baseURL + cmt.Page + "#comment-" + strconv.Itoa(int(cmt.ID)),
+			Link:    baseURL + commentLink(cmt.Page) + "#comment-" + strconv.Itoa(int(cmt.ID)),
 			PubDate: cmt.Time.Format(time.RFC1123Z),
 			GUID:    baseURL + "/comments/" + strconv.Itoa(int(cmt.ID)),
 			Author:  username,
@@ -268,7 +268,7 @@ func CommentFeedAtom(c *gin.Context) {
 		entry := AtomEntry{
 			Title: "Comment by " + username + " on " + cmt.Page,
 			Link: AtomLink{
-				Href: baseURL + cmt.Page + "#comment-" + strconv.Itoa(int(cmt.ID)),
+				Href: baseURL + commentLink(cmt.Page) + "#comment-" + strconv.Itoa(int(cmt.ID)),
 			},
 			ID:        baseURL + "/comments/" + strconv.Itoa(int(cmt.ID)),
 			Updated:   cmt.Time.Format(time.RFC3339),

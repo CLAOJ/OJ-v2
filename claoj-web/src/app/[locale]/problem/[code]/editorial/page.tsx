@@ -143,7 +143,7 @@ export default function ProblemEditorialPage() {
 
             {/* Comments Section */}
             <div className="mt-12">
-                <Comments page={`e/${code}`} problemName={problemName || code} contextType="editorial" />
+                <Comments page={`s:${code}`} problemName={problemName || code} contextType="editorial" />
             </div>
         </div>
     );

@@ -33,9 +33,7 @@ import { formatCountdown } from '@/lib/countdown';
 import { formatDuration } from '@/lib/date';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
+import MathRenderer from '@/components/ui/MathRenderer';
 
 // GET /comments list item (claoj/api/v2/comment.go).
 type RecentComment = { id: number; author: string; author_name: string; link: string; page_title: string };
@@ -331,14 +329,7 @@ export default function HomePageContent() {
                                                 </div>
 
                                                 {(post.summary || post.content) && (
-                                                    <div className="prose dark:prose-invert max-w-none text-sm text-muted-foreground">
-                                                        <ReactMarkdown
-                                                            remarkPlugins={[remarkGfm]}
-                                                            rehypePlugins={[rehypeRaw]}
-                                                        >
-                                                            {post.summary || post.content}
-                                                        </ReactMarkdown>
-                                                    </div>
+                                                    <MathRenderer content={post.summary || post.content || ''} className="text-sm" />
                                                 )}
 
                                                 {post.summary && (

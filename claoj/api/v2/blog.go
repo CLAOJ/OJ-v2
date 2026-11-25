@@ -77,9 +77,28 @@ func BlogList(c *gin.Context) {
 		Summary   string    `json:"summary"`
 		// v1 blog-post.html: summary|default(content), so the body is sent only
 		// for posts without a summary.
-		Content string `json:"content,omitempty"`
-		Score   int    `json:"score"`
-		Sticky  bool   `json:"sticky"`
+		Content  string `json:"content,omitempty"`
+		Score    int    `json:"score"`
+		Sticky   bool   `json:"sticky"`
+		Comments int    `json:"comment_count"`
+	}
+
+	// Visible comment counts, one grouped query (v1 page key b:<id>).
+	pages := make([]string, len(posts))
+	for i, p := range posts {
+		pages[i] = "b:" + strconv.Itoa(int(p.ID))
+	}
+	var counts []struct {
+		Page string
+		N    int
+	}
+	if len(pages) > 0 {
+		db.DB.Model(&models.Comment{}).Select("page, COUNT(*) AS n").
+			Where("page IN ? AND hidden = ?", pages, false).Group("page").Scan(&counts)
+	}
+	commentCount := map[string]int{}
+	for _, r := range counts {
+		commentCount[r.Page] = r.N
 	}
 
 	items := make([]Item, len(posts))
@@ -90,7 +109,7 @@ func BlogList(c *gin.Context) {
 		}
 		items[i] = Item{
 			ID: p.ID, Title: p.Title, Slug: p.Slug, Authors: authors, PublishOn: p.PublishOn,
-			Summary: p.Summary, Score: p.Score, Sticky: p.Sticky,
+			Summary: p.Summary, Score: p.Score, Sticky: p.Sticky, Comments: commentCount[pages[i]],
 		}
 		if p.Summary == "" {
 			items[i].Content = p.Content
