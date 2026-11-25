@@ -46,6 +46,7 @@ type SubmitRequest struct {
 // @Param request body SubmitRequest false "Submission details (JSON)"
 // @Param language formData string false "Language key (multipart)"
 // @Param contest_key formData string false "Contest key (multipart)"
+// @Param contest query string false "Contest key (query param, as the web client sends it)"
 // @Param submission_file formData file false "Source file (file-only languages)"
 // @Success 200 {object} map[string]interface{} "Submission queued"
 // @Failure 400 {object} map[string]string "Invalid request"
@@ -86,6 +87,12 @@ func Submit(c *gin.Context) {
 	} else if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	// The web client opens the problem page with ?contest=<key> and submits
+	// there, so the key arrives as a query param rather than a form/JSON field.
+	// Without this fallback those submissions were never linked to the contest.
+	if req.ContestKey == "" {
+		req.ContestKey = c.Query("contest")
 	}
 
 	// 1. Fetch Problem (editor/tester associations loaded for the access check)

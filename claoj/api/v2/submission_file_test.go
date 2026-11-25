@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/jobs"
@@ -53,7 +54,8 @@ func setupSubmitDB(t *testing.T) submitFixture {
 		&models.AuthUserPermission{}, &models.Profile{}, &models.Organization{},
 		&models.ProblemGroup{}, &models.ProblemType{}, &models.Language{},
 		&models.LanguageLimit{}, &models.Problem{}, &models.Submission{},
-		&models.SubmissionSource{},
+		&models.SubmissionSource{}, &models.Contest{}, &models.ContestProblem{},
+		&models.ContestParticipation{}, &models.ContestSubmission{},
 	))
 	db.DB = database
 
@@ -279,6 +281,64 @@ func TestSubmit_RemovesFileWhenTheSubmissionTransactionFails(t *testing.T) {
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	require.Empty(t, entries, "a failed submission must not leave its upload behind")
+}
+
+// The web client submits from the contest problem page with ?contest=<key>;
+// without reading that query param the submission was never linked to the
+// contest (no judge_contestsubmission row, so no scoreboard/participation).
+func TestSubmit_LinksContestFromQueryParam(t *testing.T) {
+	useTempSubmissionFileDir(t)
+	fx := setupSubmitDB(t)
+
+	now := time.Now()
+	contest := models.Contest{
+		Key: "c1", Name: "C1",
+		StartTime: now.Add(-time.Hour), EndTime: now.Add(time.Hour),
+		IsVisible: true,
+	}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&contest).Error)
+	var profile models.Profile
+	require.NoError(t, db.DB.Where("user_id = ?", fx.userID).First(&profile).Error)
+	participation := models.ContestParticipation{ContestID: contest.ID, UserID: profile.ID, RealStart: now}
+	require.NoError(t, db.DB.Omit("Contest", "User").Create(&participation).Error)
+	contestProblem := models.ContestProblem{ContestID: contest.ID, ProblemID: fx.problem.ID, Points: 100, Order: 1}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&contestProblem).Error)
+
+	// JSON path.
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/problem/FILE1/submit?contest=c1",
+		strings.NewReader(`{"language":"C","source":"int main(){}"}`))
+	req.Header.Set("Content-Type", "application/json")
+	authedRouter(fx.userID, http.MethodPost, "/problem/:code/submit", Submit).ServeHTTP(w, req)
+	id := submissionID(t, w)
+
+	var linked models.ContestSubmission
+	require.NoError(t, db.DB.Where("submission_id = ?", id).First(&linked).Error)
+	require.Equal(t, participation.ID, linked.ParticipationID)
+	require.Equal(t, contestProblem.ID, linked.ProblemID, "the link points at the contest problem row")
+	var sub models.Submission
+	require.NoError(t, db.DB.First(&sub, id).Error)
+	require.NotNil(t, sub.ContestObjectID)
+	require.Equal(t, contest.ID, *sub.ContestObjectID)
+
+	// Multipart path, same query param.
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	require.NoError(t, writer.WriteField("language", "ZIP"))
+	part, err := writer.CreateFormFile("submission_file", "answer.zip")
+	require.NoError(t, err)
+	_, err = part.Write([]byte("PK\x03\x04"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/problem/FILE1/submit?contest=c1", &buf)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	authedRouter(fx.userID, http.MethodPost, "/problem/:code/submit", Submit).ServeHTTP(w, req)
+	uploadID := submissionID(t, w)
+
+	var uploadLink models.ContestSubmission
+	require.NoError(t, db.DB.Where("submission_id = ?", uploadID).First(&uploadLink).Error)
+	require.Equal(t, participation.ID, uploadLink.ParticipationID)
 }
 
 func TestSubmissionFileServe(t *testing.T) {
