@@ -7,7 +7,9 @@ import { ContestCalendarItem, ContestCalendarResponse } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link } from '@/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { parseCalendarMonth } from '@/lib/contestView';
 import {
     Calendar,
     ChevronLeft,
@@ -31,9 +33,18 @@ const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function ContestCalendarPage() {
     const t = useTranslations('Contest');
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const today = dayjs();
-    const [currentYear, setCurrentYear] = useState(today.year());
-    const [currentMonth, setCurrentMonth] = useState(today.month() + 1); // 1-indexed
+    // v1 /contests/<year>/<month>/: the month is part of the URL, so a calendar
+    // month can be linked (and survives a reload).
+    const initial = parseCalendarMonth(searchParams.get('year'), searchParams.get('month'), {
+        year: today.year(),
+        month: today.month() + 1,
+    });
+    const [currentYear, setCurrentYear] = useState(initial.year);
+    const [currentMonth, setCurrentMonth] = useState(initial.month); // 1-indexed
 
     const { data: calendarData, isLoading } = useQuery({
         queryKey: ['contest-calendar', currentYear, currentMonth],
@@ -46,6 +57,7 @@ export default function ContestCalendarPage() {
     const goToMonth = (year: number, month: number) => {
         setCurrentYear(year);
         setCurrentMonth(month);
+        router.replace(`${pathname}?year=${year}&month=${month}`, { scroll: false });
     };
 
     const prevMonth = () => {

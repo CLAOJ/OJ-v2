@@ -46,3 +46,13 @@ export function problemPrintPath(code: string, autoPrint = true): string {
 export function problemReportPath(code: string): string {
     return `/ticket/create?problem=${encodeURIComponent(code)}`;
 }
+
+/** v1 /problem/<p>/resubmit/<submission>: the submit form prefilled from it. */
+export function problemResubmitPath(code: string, submissionId: number | string): string {
+    return `/problem/${encodeURIComponent(code)}?resubmit=${encodeURIComponent(String(submissionId))}`;
+}
+
+/** v1 /problem/<p>/tickets: the problem's tickets (gated by the API). */
+export function problemTicketsPath(code: string): string {
+    return `/problem/${encodeURIComponent(code)}/tickets`;
+}

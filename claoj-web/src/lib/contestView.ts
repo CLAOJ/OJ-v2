@@ -43,6 +43,29 @@ export function contestTimeLimitSeconds(micros: number | null | undefined): numb
     return us > 0 ? Math.round(us / 1_000_000) : 0;
 }
 
+export function contestTagPath(name: string): string {
+    return `/contests/tag/${encodeURIComponent(name)}`;
+}
+
+/**
+ * `?year=&month=` → the month to show. Missing or out-of-range values fall
+ * back to the given "today" (v1 /contests/<year>/<month>/ deep links).
+ */
+export function parseCalendarMonth(
+    year: string | null | undefined,
+    month: string | null | undefined,
+    today: { year: number; month: number }
+): { year: number; month: number } {
+    const y = Number(year);
+    const m = Number(month);
+    const validYear = Number.isInteger(y) && y >= 1970 && y <= 2999;
+    const validMonth = Number.isInteger(m) && m >= 1 && m <= 12;
+    return {
+        year: validYear ? y : today.year,
+        month: validMonth ? m : today.month,
+    };
+}
+
 /** Full-score cells per problem column (v1's Total AC row). */
 export function countTotalAc(
     rows: { breakdown?: ({ points?: number } | null)[] }[],

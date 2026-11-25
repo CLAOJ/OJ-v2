@@ -1,11 +1,37 @@
 import {
     buildScoreboardCsv,
+    contestTagPath,
     contestTimeLimitSeconds,
     countTotalAc,
     formatClock,
     formatCountdown,
+    parseCalendarMonth,
     parseContestTab,
 } from '@/lib/contestView';
+
+describe('contestTagPath', () => {
+    it('builds the v1 tag URL and escapes the name', () => {
+        expect(contestTagPath('open-cup')).toBe('/contests/tag/open-cup');
+        expect(contestTagPath('a b')).toBe('/contests/tag/a%20b');
+    });
+});
+
+describe('parseCalendarMonth', () => {
+    const today = { year: 2026, month: 11 };
+
+    it('reads a valid year and month from the URL', () => {
+        expect(parseCalendarMonth('2024', '2', today)).toEqual({ year: 2024, month: 2 });
+    });
+
+    it('falls back to today for missing or invalid values', () => {
+        expect(parseCalendarMonth(null, null, today)).toEqual(today);
+        expect(parseCalendarMonth('', '', today)).toEqual(today);
+        expect(parseCalendarMonth('2024', '13', today)).toEqual({ year: 2024, month: 11 });
+        expect(parseCalendarMonth('2024', '0', today)).toEqual({ year: 2024, month: 11 });
+        expect(parseCalendarMonth('abc', '3', today)).toEqual({ year: 2026, month: 3 });
+        expect(parseCalendarMonth('2024.5', '3', today)).toEqual({ year: 2026, month: 3 });
+    });
+});
 
 describe('parseContestTab', () => {
     it('accepts known tabs', () => {
