@@ -32,6 +32,17 @@ type Config struct {
 	App      AppConfig      `mapstructure:"app"`
 	Email    EmailConfig    `mapstructure:"email"`
 	OAuth    OAuthConfig    `mapstructure:"oauth"`
+	R2       R2Config       `mapstructure:"r2"`
+}
+
+// R2Config: Cloudflare R2 (S3 API). Empty = uploads stay on local disk.
+type R2Config struct {
+	AccountID       string `mapstructure:"account_id"`
+	AccessKeyID     string `mapstructure:"access_key_id"`
+	SecretAccessKey string `mapstructure:"secret_access_key"`
+	Bucket          string `mapstructure:"bucket"`     // public: images
+	PublicURL       string `mapstructure:"public_url"` // e.g. https://media.claoj.edu.vn
+	PDFBucket       string `mapstructure:"pdf_bucket"` // private: statement PDFs
 }
 
 type ServerConfig struct {
@@ -168,6 +179,9 @@ func Load() {
 	v.BindEnv("app.default_language", "DEFAULT_LANG", "DEFAULT_LANGUAGE", "CLAOJ_DEFAULT_LANGUAGE")
 	v.BindEnv("app.v1_media_root", "V1_MEDIA_ROOT", "CLAOJ_APP_V1_MEDIA_ROOT")
 	v.BindEnv("judge.name", "JUDGE_NAME", "CLAOJ_JUDGE_NAME")
+	for _, k := range []string{"account_id", "access_key_id", "secret_access_key", "bucket", "public_url", "pdf_bucket"} {
+		v.BindEnv("r2."+k, "R2_"+strings.ToUpper(k))
+	}
 
 	// Email
 	v.BindEnv("email.smtp_host", "SMTP_HOST", "CLAOJ_SMTP_HOST")

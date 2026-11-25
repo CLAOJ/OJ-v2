@@ -40,10 +40,17 @@ export default function PdfStatementViewer({ code, variant = 'inline' }: PdfStat
     useEffect(() => {
         let created: string | null = null;
         let cancelled = false;
-        api.get(`/problem/${code}/pdf`, { responseType: 'blob' })
-            .then((res) => {
+        api.get(`/problem/${code}/pdf`, { params: { url: 1 }, responseType: 'blob' })
+            .then(async (res) => {
+                let blob = res.data as Blob;
+                if (blob.type.includes('json')) {
+                    const { url } = JSON.parse(await blob.text()) as { url: string };
+                    const r = await fetch(url);
+                    if (!r.ok) throw new Error(`pdf ${r.status}`);
+                    blob = await r.blob();
+                }
                 if (cancelled) return;
-                created = URL.createObjectURL(res.data as Blob);
+                created = URL.createObjectURL(blob);
                 setObjectUrl(created);
             })
             .catch(() => {

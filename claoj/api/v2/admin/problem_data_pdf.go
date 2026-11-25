@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/storage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -50,6 +51,19 @@ func AdminProblemPdfUpload(c *gin.Context) {
 		return
 	}
 
+	if storage.PDFEnabled() {
+		f, err := os.Open(pdfPath)
+		if err == nil {
+			err = storage.PutPDF(c.Request.Context(), storage.PDFKey(pdfFilename, problemCode), f)
+			f.Close()
+		}
+		if err != nil {
+			os.Remove(pdfPath)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to store PDF"})
+			return
+		}
+	}
+
 	// Update the problem's pdf_url field
 	if err := db.DB.Model(&problem).Update("pdf_url", pdfFilename).Error; err != nil {
 		os.Remove(pdfPath) // Clean up uploaded file
@@ -87,6 +101,11 @@ func AdminProblemPdfDelete(c *gin.Context) {
 	// Delete the file
 	if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete PDF file"})
+		return
+	}
+
+	if err := storage.DeletePDF(c.Request.Context(), storage.PDFKey(problem.PdfURL, problemCode)); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to delete stored PDF"})
 		return
 	}
 

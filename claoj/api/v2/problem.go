@@ -13,6 +13,7 @@ import (
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
+	"github.com/CLAOJ/claoj/storage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -501,6 +502,22 @@ func ProblemStatementPDF(c *gin.Context) {
 	// (Django parity: Problem.is_accessible_by).
 	if !auth.CanViewProblem(c, &problem) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	// In R2: hand out a short-lived signed link (the permission check above is
+	// what guards it). ?url=1 answers JSON for the in-page viewer, which fetches
+	// the link itself; otherwise redirect, for plain download links.
+	if link, ok, err := storage.PDFLink(c.Request.Context(), storage.PDFKey(problem.PdfURL, code), code+".pdf"); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "PDF storage unavailable"})
+		return
+	} else if ok {
+		c.Header("Cache-Control", "private, no-store")
+		if c.Query("url") == "1" {
+			c.JSON(http.StatusOK, gin.H{"url": link})
+		} else {
+			c.Redirect(http.StatusFound, link)
+		}
 		return
 	}
 

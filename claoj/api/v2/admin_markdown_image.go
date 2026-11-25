@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/CLAOJ/claoj/storage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -87,6 +88,22 @@ func AdminMarkdownImageUpload(c *gin.Context) {
 		return
 	}
 	name := hex.EncodeToString(random) + ext
+
+	if storage.PublicEnabled() {
+		body, err := file.Open()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+		defer body.Close()
+		url, err := storage.PutPublic(c.Request.Context(), "media/"+name, body, markdownMediaContentTypes[ext])
+		if err != nil {
+			c.JSON(http.StatusBadGateway, apiError("failed to store image"))
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"url": url})
+		return
+	}
 
 	if err := os.MkdirAll(markdownMediaDir, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
