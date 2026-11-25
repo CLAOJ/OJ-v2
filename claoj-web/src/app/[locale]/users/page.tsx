@@ -29,6 +29,11 @@ const RANKINGS: { key: RankBy; icon: typeof Trophy; labelKey: 'points' | 'rating
     { key: 'contribution', icon: ThumbsUp, labelKey: 'contributors' },
 ];
 
+/** `?sort=` values the ranking bar knows; anything else is the points ranking. */
+function rankFromUrl(value: string | null): RankBy {
+    return value === 'rating' || value === 'contribution' ? value : 'points';
+}
+
 export default function UsersListPage() {
     const t = useTranslations('Users');
     const tCommon = useTranslations('Common');
@@ -36,11 +41,19 @@ export default function UsersListPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
-    // Home's "view all" links deep-link the ranking (?sort=rating).
+    // Home's "view all" links deep-link the ranking (?sort=rating). Follow the
+    // URL when it changes, not only on mount: navigating between ranking links
+    // while this page is mounted must reseed the sort. The adjustment runs
+    // during render (React's documented pattern) so the first query already
+    // uses the new value.
     const urlSort = searchParams.get('sort');
-    const [rankBy, setRankBy] = useState<RankBy>(
-        urlSort === 'rating' || urlSort === 'contribution' ? urlSort : 'points'
-    );
+    const [rankBy, setRankBy] = useState<RankBy>(rankFromUrl(urlSort));
+    const [seenUrlSort, setSeenUrlSort] = useState(urlSort);
+    if (urlSort !== seenUrlSort) {
+        setSeenUrlSort(urlSort);
+        setRankBy(rankFromUrl(urlSort));
+        setPage(1);
+    }
 
     // Rankings are always highest-first server-side; only `search` is applied
     // client-side, over the current page.

@@ -15,4 +15,9 @@ describe('formatCountdown', () => {
         expect(formatCountdown(0)).toBe('00:00:00');
         expect(formatCountdown(-5_000)).toBe('00:00:00');
     });
+
+    it('falls back to zero when the duration is not a finite number', () => {
+        expect(formatCountdown(Number.NaN)).toBe('00:00:00');
+        expect(formatCountdown(Number.POSITIVE_INFINITY)).toBe('00:00:00');
+    });
 });

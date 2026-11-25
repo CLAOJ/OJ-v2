@@ -59,10 +59,20 @@ func TestUserList_DisplayNameAndOrganizations(t *testing.T) {
 	require.Len(t, orgs, 1)
 	require.Equal(t, float64(org.ID), orgs[0].(map[string]any)["id"])
 	require.Equal(t, "ACME", orgs[0].(map[string]any)["short_name"])
-	require.Empty(t, byName["plain"]["organizations"], "an empty array, never null")
+
+	plainOrgs, ok := byName["plain"]["organizations"].([]any)
+	require.True(t, ok, "organizations is a JSON array, never null")
+	require.Empty(t, plainOrgs)
 
 	// Home uses sort=contribution for the top-contributors widget.
 	contrib := fetch("?sort=contribution")
 	require.Equal(t, "plain", contrib[0]["username"])
 	require.Equal(t, "named", contrib[1]["username"])
+
+	// Home's top-rating widget uses sort=rating; unrated users sort last.
+	require.NoError(t, db.DB.Model(&named).Update("rating", 1500).Error)
+	rated := fetch("?sort=rating")
+	require.Len(t, rated, 2)
+	require.Equal(t, "named", rated[0]["username"])
+	require.Equal(t, "plain", rated[1]["username"])
 }

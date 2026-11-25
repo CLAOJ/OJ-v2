@@ -66,7 +66,6 @@ export default function Footer() {
                                     nothing useful to prefetch and a missing page would only
                                     log a 404. */}
                                 <li><Link href="/wiki" prefetch={false} className="hover:text-primary transition-colors">{t('wiki')}</Link></li>
-                                <li><Link href="/about" prefetch={false} className="hover:text-primary transition-colors">{t('aboutUs')}</Link></li>
                                 <li><a href="https://www.facebook.com/itclaoj" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">{t('builtBy')}</a></li>
                             </ul>
                         </div>

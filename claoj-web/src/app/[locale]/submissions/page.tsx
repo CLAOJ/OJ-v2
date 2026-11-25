@@ -34,6 +34,19 @@ function toggleValue(values: string[], value: string): string[] {
     return values.includes(value) ? values.filter(v => v !== value) : [...values, value];
 }
 
+// v1 row.html:86-97: no usage figures while a submission is queued/grading or
+// errored, and TLE's time is meaningless.
+const NO_USAGE_STATUSES = ['QU', 'P', 'G', 'CE', 'IE', 'AB'];
+
+function submissionTime(s: Submission): string {
+    if (NO_USAGE_STATUSES.includes(s.status) || s.result === 'TLE' || s.time == null) return '-';
+    return `${(s.time * 1000).toFixed(0)}ms`;
+}
+
+function submissionMemory(s: Submission): string {
+    return NO_USAGE_STATUSES.includes(s.status) ? '-' : formatMemoryMb(s.memory);
+}
+
 export default function SubmissionListPage() {
     const t = useTranslations('Submissions');
     const tCommon = useTranslations('Common');
@@ -276,12 +289,12 @@ export default function SubmissionListPage() {
                                         </td>
                                         <td className="px-6 py-8 text-center">
                                             <span className="text-xs font-mono text-muted-foreground">
-                                                {s.time != null ? `${(s.time * 1000).toFixed(0)}ms` : '-'}
+                                                {submissionTime(s)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-8 text-center">
                                             <span className="text-xs font-mono text-muted-foreground">
-                                                {formatMemoryMb(s.memory)}
+                                                {submissionMemory(s)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-8 text-center">

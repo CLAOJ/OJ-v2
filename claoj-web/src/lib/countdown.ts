@@ -4,7 +4,8 @@
  * more than a couple of days out.
  */
 export function formatCountdown(ms: number): string {
-    const total = Math.max(0, Math.floor(ms / 1000));
+    // An unparsable end time yields NaN; a NaN countdown must not reach the UI.
+    const total = Number.isFinite(ms) ? Math.max(0, Math.floor(ms / 1000)) : 0;
     const days = Math.floor(total / 86400);
     const hms = [Math.floor((total % 86400) / 3600), Math.floor((total % 3600) / 60), total % 60]
         .map(n => String(n).padStart(2, '0'))

@@ -96,11 +96,13 @@ export default function HomePageContent() {
 
     // Fetch top users by rating (limit 10). The API sorts server-side
     // (sort=rating is rating DESC with unrated users last), so no client sort.
+    // Unrated users are dropped rather than printed as "N/A": v1's widget only
+    // lists users that have a rating.
     const { data: topRatingUsers } = useQuery({
         queryKey: ['top-rating-users'],
         queryFn: async () => {
             const res = await api.get<{ data: UserListItem[] }>('/users?sort=rating&page_size=10');
-            return res.data.data || [];
+            return (res.data.data || []).filter(u => u.rating != null);
         }
     });
 
@@ -490,7 +492,7 @@ export default function HomePageContent() {
                                                     {user.username}
                                                 </Link>
                                             </td>
-                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">{user.rating || 'N/A'}</td>
+                                            <td className="px-3 py-2 text-right text-gray-400 font-mono">{user.rating}</td>
                                         </tr>
                                     ))}
                                 </tbody>
