@@ -133,59 +133,76 @@ func AdminContestDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// adminContestCreateInput is the body of POST /admin/contests and of the
+// organization-scoped POST /organization/:id/contests.
+type adminContestCreateInput struct {
+	Key                        string `json:"key" binding:"required"`
+	Name                       string `json:"name" binding:"required"`
+	Description                string `json:"description" binding:"required"`
+	Summary                    string `json:"summary"`
+	StartTime                  string `json:"start_time" binding:"required"`
+	EndTime                    string `json:"end_time" binding:"required"`
+	TimeLimit                  *int64 `json:"time_limit"`
+	IsVisible                  bool   `json:"is_visible"`
+	IsRated                    bool   `json:"is_rated"`
+	ScoreboardVisibility       string `json:"scoreboard_visibility"`
+	ScoreboardCacheTimeout     uint   `json:"scoreboard_cache_timeout"`
+	UseClarifications          *bool  `json:"use_clarifications"`
+	PushAnnouncements          bool   `json:"push_announcements"`
+	RatingFloor                *int   `json:"rating_floor"`
+	RatingCeiling              *int   `json:"rating_ceiling"`
+	PerformanceCeilingOverride *int   `json:"performance_ceiling_override"`
+	RateAll                    bool   `json:"rate_all"`
+	IsPrivate                  bool   `json:"is_private"`
+	HideProblemAuthors         bool   `json:"hide_problem_authors"`
+	ShowShortDisplay           bool   `json:"show_short_display"`
+	LimitJoinOrganizations     bool   `json:"limit_join_organizations"`
+	OgImage                    string `json:"og_image"`
+	LogoOverrideImage          string `json:"logo_override_image"`
+	ProblemLabelScript         string `json:"problem_label_script"`
+	PointsPrecision            *int   `json:"points_precision"`
+	FormatName                 string `json:"format_name"`
+	FormatConfig               string `json:"format_config"`
+	AccessCode                 string `json:"access_code"`
+	HideProblemTags            bool   `json:"hide_problem_tags"`
+	RunPretestsOnly            bool   `json:"run_pretests_only"`
+	IsOrganizationPrivate      bool   `json:"is_organization_private"`
+	AuthorIDs                  []uint `json:"author_ids"`
+	CuratorIDs                 []uint `json:"curator_ids"`
+	TesterIDs                  []uint `json:"tester_ids"`
+	ProblemIDs                 []uint `json:"problem_ids"`
+	TagIDs                     []uint `json:"tag_ids"`
+	OrganizationIDs            []uint `json:"organization_ids"`
+	BannedUserIDs              []uint `json:"banned_user_ids"`
+	PrivateContestantIDs       []uint `json:"private_contestant_ids"`
+	ViewScoreboardUserIDs      []uint `json:"view_scoreboard_user_ids"`
+	JoinOrganizationIDs        []uint `json:"join_organization_ids"`
+	ClassIDs                   []uint `json:"class_ids"`
+}
+
 // AdminContestCreate - POST /api/v2/admin/contests
 func AdminContestCreate(c *gin.Context) {
-	var input struct {
-		Key                        string `json:"key" binding:"required"`
-		Name                       string `json:"name" binding:"required"`
-		Description                string `json:"description" binding:"required"`
-		Summary                    string `json:"summary"`
-		StartTime                  string `json:"start_time" binding:"required"`
-		EndTime                    string `json:"end_time" binding:"required"`
-		TimeLimit                  *int64 `json:"time_limit"`
-		IsVisible                  bool   `json:"is_visible"`
-		IsRated                    bool   `json:"is_rated"`
-		ScoreboardVisibility       string `json:"scoreboard_visibility"`
-		ScoreboardCacheTimeout     uint   `json:"scoreboard_cache_timeout"`
-		UseClarifications          *bool  `json:"use_clarifications"`
-		PushAnnouncements          bool   `json:"push_announcements"`
-		RatingFloor                *int   `json:"rating_floor"`
-		RatingCeiling              *int   `json:"rating_ceiling"`
-		PerformanceCeilingOverride *int   `json:"performance_ceiling_override"`
-		RateAll                    bool   `json:"rate_all"`
-		IsPrivate                  bool   `json:"is_private"`
-		HideProblemAuthors         bool   `json:"hide_problem_authors"`
-		ShowShortDisplay           bool   `json:"show_short_display"`
-		LimitJoinOrganizations     bool   `json:"limit_join_organizations"`
-		OgImage                    string `json:"og_image"`
-		LogoOverrideImage          string `json:"logo_override_image"`
-		ProblemLabelScript         string `json:"problem_label_script"`
-		PointsPrecision            *int   `json:"points_precision"`
-		FormatName                 string `json:"format_name"`
-		FormatConfig               string `json:"format_config"`
-		AccessCode                 string `json:"access_code"`
-		HideProblemTags            bool   `json:"hide_problem_tags"`
-		RunPretestsOnly            bool   `json:"run_pretests_only"`
-		IsOrganizationPrivate      bool   `json:"is_organization_private"`
-		AuthorIDs                  []uint `json:"author_ids"`
-		CuratorIDs                 []uint `json:"curator_ids"`
-		TesterIDs                  []uint `json:"tester_ids"`
-		ProblemIDs                 []uint `json:"problem_ids"`
-		TagIDs                     []uint `json:"tag_ids"`
-		OrganizationIDs            []uint `json:"organization_ids"`
-		BannedUserIDs              []uint `json:"banned_user_ids"`
-		PrivateContestantIDs       []uint `json:"private_contestant_ids"`
-		ViewScoreboardUserIDs      []uint `json:"view_scoreboard_user_ids"`
-		JoinOrganizationIDs        []uint `json:"join_organization_ids"`
-		ClassIDs                   []uint `json:"class_ids"`
-	}
-
+	var input adminContestCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
 	}
+	createContestFromInput(c, input, nil, 0)
+}
+
+// createContestFromInput validates and inserts a contest. A non-nil org forces
+// the organization onto the object (v1 ContestCreateOrganization: organization
+// private, organizations = [org], caller is an author).
+func createContestFromInput(c *gin.Context, input adminContestCreateInput, org *models.Organization, callerProfileID uint) {
 	if !requireElevatedContestFields(c, input.ProblemLabelScript != "", input.PerformanceCeilingOverride != nil) {
 		return
+	}
+
+	authorIDs := input.AuthorIDs
+	if org != nil {
+		input.IsOrganizationPrivate = true
+		input.OrganizationIDs = []uint{org.ID}
+		authorIDs = withProfileID(authorIDs, callerProfileID)
 	}
 
 	// Parse timestamps
@@ -232,7 +249,7 @@ func AdminContestCreate(c *gin.Context) {
 		HideProblemTags:            input.HideProblemTags,
 		RunPretestsOnly:            input.RunPretestsOnly,
 		IsOrganizationPrivate:      input.IsOrganizationPrivate,
-		AuthorIDs:                  input.AuthorIDs,
+		AuthorIDs:                  authorIDs,
 		CuratorIDs:                 input.CuratorIDs,
 		TesterIDs:                  input.TesterIDs,
 		ProblemIDs:                 input.ProblemIDs,

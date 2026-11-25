@@ -508,6 +508,11 @@ func NewRouter() *gin.Engine {
 			protected.GET("/organization/:id/requests", v2.OrganizationRequestList)
 			protected.POST("/organization/request/:rid/handle", v2.HandleOrganizationRequest)
 			protected.POST("/organization/:id/kick", v2.KickUser)
+			// Org-admin scoped content creation (v1 *CreateOrganization views):
+			// create permission + org-admin membership, organization forced.
+			protected.POST("/organization/:id/problems", v2.OrganizationProblemCreate)
+			protected.POST("/organization/:id/contests", v2.OrganizationContestCreate)
+			protected.POST("/organization/:id/blog-posts", v2.OrganizationBlogPostCreate)
 
 			// Notifications
 			protected.GET("/notifications", v2.NotificationList)
