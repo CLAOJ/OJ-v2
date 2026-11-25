@@ -49,7 +49,6 @@ func StartWorker() {
 
 	// Register all task handlers. Judge work (queue "judge") is consumed
 	// by claoj-judge agents, not here.
-	mux.HandleFunc(TypeRescoreProblem, HandleRescoreTask)
 	mux.HandleFunc(TypeRateContest, HandleRateContestTask)
 	mux.HandleFunc(TypeUserExport, HandleUserExportTask)
 	mux.HandleFunc(TypeContestMoss, HandleContestMossTask)
