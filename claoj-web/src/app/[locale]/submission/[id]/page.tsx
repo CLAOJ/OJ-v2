@@ -409,7 +409,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                             className="w-32 px-3 py-2 rounded-xl bg-muted border border-muted-foreground/20 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
                         />
                         <Link
-                            href={compareId ? `/submission/${id}/diff?compare=${compareId}` : '#'}
+                            href={compareId ? `/submissions/diff/${id}?compare=${compareId}` : '#'}
                             className={cn(
                                 "flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-colors",
                                 compareId
