@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
@@ -62,6 +63,34 @@ func AdminContestTagList(c *gin.Context) {
 		}
 	}
 
+	c.JSON(http.StatusOK, apiList(items))
+}
+
+// ContestTagList - GET /api/v2/contest-tags
+// Public read-only tag list for the contest form's tag picker. The staff list
+// adds contest counts; the picker only needs the display fields.
+func ContestTagList(c *gin.Context) {
+	page, pageSize := parsePagination(c)
+	var tags []models.ContestTag
+	q := db.DB.Model(&models.ContestTag{})
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where("name LIKE ? OR description LIKE ?", like, like)
+	}
+	if err := q.Order("name").Offset((page - 1) * pageSize).Limit(pageSize).Find(&tags).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	type Item struct {
+		ID          uint   `json:"id"`
+		Name        string `json:"name"`
+		Color       string `json:"color"`
+		Description string `json:"description"`
+	}
+	items := make([]Item, len(tags))
+	for i, tag := range tags {
+		items[i] = Item{tag.ID, tag.Name, tag.Color, tag.Description}
+	}
 	c.JSON(http.StatusOK, apiList(items))
 }
 

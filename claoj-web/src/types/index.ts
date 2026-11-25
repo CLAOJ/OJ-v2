@@ -1140,8 +1140,26 @@ export interface Organization {
 
 export interface OrganizationDetail extends Organization {
     user_id: number;
+    /** True when the viewer is a member (unlisted members are not in `members`). */
+    viewer_is_member?: boolean;
+    /** True when the viewer administers this organization. */
+    viewer_is_admin?: boolean;
+    /** The viewer's latest join request, if any. */
+    viewer_request?: OrganizationRequest | null;
     members: OrganizationMember[];
     admins: OrganizationMember[];
+}
+
+/** Matches GET /organization/:id/requests rows. */
+export interface OrganizationRequest {
+    id: number;
+    user_id: number;
+    username: string;
+    /** ISO timestamp of the request. */
+    time: string;
+    reason: string;
+    /** P = pending, A = approved, R = rejected. */
+    state: 'P' | 'A' | 'R';
 }
 
 export interface OrganizationMember {

@@ -62,3 +62,28 @@ func ProblemTypeList(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=300")
 	c.JSON(http.StatusOK, apiList(items))
 }
+
+// LicenseList - GET /api/v2/licenses
+// Read-only license metadata for the shared problem form (the staff-only
+// /admin/licenses list is otherwise required for its license select).
+func LicenseList(c *gin.Context) {
+	var licenses []models.License
+	if err := db.DB.Order("name").Find(&licenses).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	type Item struct {
+		ID      uint   `json:"id"`
+		Key     string `json:"key"`
+		Name    string `json:"name"`
+		Link    string `json:"link"`
+		Display string `json:"display"`
+		Icon    string `json:"icon"`
+	}
+	items := make([]Item, len(licenses))
+	for i, l := range licenses {
+		items[i] = Item{l.ID, l.Key, l.Name, l.Link, l.Display, l.Icon}
+	}
+	c.Header("Cache-Control", "public, max-age=300")
+	c.JSON(http.StatusOK, apiList(items))
+}

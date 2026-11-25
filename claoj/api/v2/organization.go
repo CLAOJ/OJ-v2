@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -184,6 +185,32 @@ func OrganizationDetail(c *gin.Context) {
 		viewerProfileID = pid
 	}
 
+	// Viewer-scoped state for the organization page. Membership cannot be read
+	// off the member table: unlisted profiles are filtered out of it, and the
+	// join/request UI must not offer to join an organization you are in.
+	type viewerRequestInfo struct {
+		ID     uint      `json:"id"`
+		State  string    `json:"state"`
+		Time   time.Time `json:"time"`
+		Reason string    `json:"reason"`
+	}
+	viewerIsMember, viewerIsAdmin := false, false
+	var viewerRequest *viewerRequestInfo
+	if viewerProfileID > 0 {
+		var count int64
+		db.DB.Table("judge_profile_organizations").
+			Where("profile_id = ? AND organization_id = ?", viewerProfileID, org.ID).
+			Count(&count)
+		viewerIsMember = count > 0
+		viewerIsAdmin = isOrgAdmin(db.DB, org.ID, viewerProfileID)
+
+		var req models.OrganizationRequest
+		if err := db.DB.Where("user_id = ? AND organization_id = ?", viewerProfileID, org.ID).
+			Order("time DESC, id DESC").First(&req).Error; err == nil {
+			viewerRequest = &viewerRequestInfo{req.ID, req.State, req.Time, req.Reason}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":                 org.ID,
 		"name":               org.Name,
@@ -196,6 +223,9 @@ func OrganizationDetail(c *gin.Context) {
 		"performance_points": org.PerformancePoints,
 		"creation_date":      org.CreationDate,
 		"user_id":            viewerProfileID,
+		"viewer_is_member":   viewerIsMember,
+		"viewer_is_admin":    viewerIsAdmin,
+		"viewer_request":     viewerRequest,
 		"members":            members,
 		"admins":             admins,
 	})
@@ -527,8 +557,16 @@ func RequestJoinOrganization(c *gin.Context) {
 }
 
 // OrganizationRequestList – GET /api/v2/organization/:id/requests (Admin only)
+// ?state=P (default, pending) | A | R | log (approved+rejected) | all mirrors
+// v1 OrganizationRequestView / OrganizationRequestLog.
 func OrganizationRequestList(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := numericParam(c, "id")
+	if !ok {
+		return
+	}
+	if _, ok := loadOrganization(c); !ok {
+		return
+	}
 	_, profile, ok := resolveUserProfile(c)
 	if !ok {
 		return
@@ -539,21 +577,36 @@ func OrganizationRequestList(c *gin.Context) {
 		return
 	}
 
-	var reqs []models.OrganizationRequest
-	if err := db.DB.Preload("User.User").Where("organization_id = ? AND state = 'P'", id).Find(&reqs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+	// Usernames are resolved with an explicit JOIN: request.user_id is a
+	// judge_profile id and Preload("User.User") guesses has-one here (same
+	// trap as judge_ticket/contest participation).
+	q := db.DB.Table("judge_organizationrequest r").
+		Select("r.id, r.user_id, au.username, r.time, r.reason, r.state").
+		Joins("JOIN judge_profile p ON p.id = r.user_id").
+		Joins("JOIN auth_user au ON au.id = p.user_id").
+		Where("r.organization_id = ?", id)
+	switch state := c.DefaultQuery("state", "P"); state {
+	case "P", "A", "R":
+		q = q.Where("r.state = ?", state)
+	case "log":
+		q = q.Where("r.state IN ?", []string{"A", "R"})
+	case "all":
+	default:
+		c.JSON(http.StatusBadRequest, apiUserError("invalid state"))
 		return
 	}
 
-	type Item struct {
+	var items []struct {
 		ID       uint      `json:"id"`
+		UserID   uint      `json:"user_id"`
 		Username string    `json:"username"`
 		Time     time.Time `json:"time"`
 		Reason   string    `json:"reason"`
+		State    string    `json:"state"`
 	}
-	items := make([]Item, len(reqs))
-	for i, r := range reqs {
-		items[i] = Item{r.ID, r.User.User.Username, r.Time, r.Reason}
+	if err := q.Order("r.time DESC, r.id DESC").Scan(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
 	}
 	c.JSON(http.StatusOK, apiList(items))
 }
@@ -775,6 +828,13 @@ func OrganizationProblemList(c *gin.Context) {
 	q := db.DB.Model(&models.Problem{}).
 		Where(visExpr, visArgs...).
 		Where("judge_problem.id IN (SELECT problem_id FROM judge_problem_organizations WHERE organization_id = ?)", org.ID)
+
+	// ?search= narrows by code/name. The org contest form's problem picker
+	// reads the org's problems through this same member-gated list.
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where("(judge_problem.code LIKE ? OR judge_problem.name LIKE ?)", like, like)
+	}
 
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
@@ -43,6 +44,13 @@ func UserList(c *gin.Context) {
 	q := db.DB.Model(&models.Profile{}).
 		Where("judge_profile.is_unlisted = ?", false).
 		Joins("JOIN auth_user au ON au.id = judge_profile.user_id")
+
+	// ?search= matches the username or the display-name override. The contest
+	// staff picker on organization pages searches through this public list.
+	if search := strings.TrimSpace(c.Query("search")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where("(au.username LIKE ? OR judge_profile.username_display_override LIKE ?)", like, like)
+	}
 
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
@@ -93,6 +101,7 @@ func UserList(c *gin.Context) {
 	}
 
 	type Item struct {
+		ID                 uint          `json:"id"`
 		Username           string        `json:"username"`
 		DisplayName        string        `json:"display_name"`
 		Points             float64       `json:"points"`
@@ -111,6 +120,7 @@ func UserList(c *gin.Context) {
 			orgs = []userListOrg{}
 		}
 		items[i] = Item{
+			ID:                 p.ID,
 			Username:           p.User.Username,
 			DisplayName:        p.UsernameDisplayOverride,
 			Points:             p.Points,

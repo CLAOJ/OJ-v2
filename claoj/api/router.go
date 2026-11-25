@@ -357,6 +357,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/license/:key", v2.PublicLicenseDetail)
 		apiv2.GET("/problem-groups", v2.ProblemGroupList)
 		apiv2.GET("/problem-types", v2.ProblemTypeList)
+		apiv2.GET("/licenses", v2.LicenseList)
 		apiv2.GET("/problem/:code", v2.ProblemDetail)
 		apiv2.GET("/problem/:code/stats", v2.ProblemStats)
 		apiv2.GET("/problem/:code/solution", v2.ProblemSolution)
@@ -374,6 +375,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/events", events.ServeWS)
 
 		apiv2.GET("/contests", contestHandlers.ContestList)
+		apiv2.GET("/contest-tags", v2.ContestTagList)
 		apiv2.GET("/contests/calendar", v2.ContestCalendar)
 		apiv2.GET("/contest/:key", contestHandlers.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
@@ -537,6 +539,11 @@ func NewRouter() *gin.Engine {
 			protected.GET("/organization/:id/requests", v2.OrganizationRequestList)
 			protected.POST("/organization/request/:rid/handle", v2.HandleOrganizationRequest)
 			protected.POST("/organization/:id/kick", v2.KickUser)
+			// Org-admin scoped content creation (v1 *CreateOrganization views):
+			// create permission + org-admin membership, organization forced.
+			protected.POST("/organization/:id/problems", v2.OrganizationProblemCreate)
+			protected.POST("/organization/:id/contests", v2.OrganizationContestCreate)
+			protected.POST("/organization/:id/blog-posts", v2.OrganizationBlogPostCreate)
 
 			// Notifications
 			protected.GET("/notifications", v2.NotificationList)

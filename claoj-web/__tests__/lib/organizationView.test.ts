@@ -1,4 +1,4 @@
-import { DEFAULT_MEMBER_SORT, DEFAULT_PROBLEM_SORT, formatPoints, parseOrgTab } from '@/lib/organizationView';
+import { DEFAULT_MEMBER_SORT, DEFAULT_PROBLEM_SORT, formatPoints, parseOrgRequestTab, parseOrgTab } from '@/lib/organizationView';
 
 describe('parseOrgTab', () => {
     it('accepts every organization tab', () => {
@@ -12,6 +12,21 @@ describe('parseOrgTab', () => {
         expect(parseOrgTab(undefined)).toBe('members');
         expect(parseOrgTab('')).toBe('members');
         expect(parseOrgTab('nope')).toBe('members');
+    });
+});
+
+describe('parseOrgRequestTab', () => {
+    it('accepts the request states and the log tab', () => {
+        for (const tab of ['P', 'A', 'R', 'log'] as const) {
+            expect(parseOrgRequestTab(tab)).toBe(tab);
+        }
+    });
+
+    it('falls back to pending (v1 OrganizationRequestView)', () => {
+        expect(parseOrgRequestTab(null)).toBe('P');
+        expect(parseOrgRequestTab(undefined)).toBe('P');
+        expect(parseOrgRequestTab('')).toBe('P');
+        expect(parseOrgRequestTab('all')).toBe('P');
     });
 });
 

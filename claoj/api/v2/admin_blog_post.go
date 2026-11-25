@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/blogpost"
 	"github.com/gin-gonic/gin"
 )
@@ -151,9 +152,21 @@ func AdminBlogPostCreate(c *gin.Context) {
 		return
 	}
 
+	createBlogPostFromInput(c, req, profile.ID, nil)
+}
+
+// createBlogPostFromInput validates and inserts a blog post. A non-nil org
+// forces the organization onto the post (v1 BlogPostCreateOrganization) and
+// keeps the post off the global feed.
+func createBlogPostFromInput(c *gin.Context, req AdminBlogPostCreateRequest, callerProfileID uint, org *models.Organization) {
 	authorIDs := req.AuthorIDs
 	if len(authorIDs) == 0 {
-		authorIDs = []uint{profile.ID}
+		authorIDs = []uint{callerProfileID}
+	}
+	if org != nil {
+		req.OrganizationID = &org.ID
+		req.GlobalPost = false
+		authorIDs = withProfileID(authorIDs, callerProfileID)
 	}
 
 	post, err := getBlogPostService().CreateBlogPost(blogpost.CreateBlogPostRequest{
@@ -171,7 +184,7 @@ func AdminBlogPostCreate(c *gin.Context) {
 	})
 	if err != nil {
 		if err == blogpost.ErrSlugExists {
-			c.JSON(http.StatusBadRequest, apiError("slug already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("slug already exists"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -179,23 +192,23 @@ func AdminBlogPostCreate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "blog post created",
+		"message":   "blog post created",
 		"blog_post": gin.H{"id": post.ID, "slug": post.Slug},
 	})
 }
 
 // AdminBlogPostUpdateRequest - PATCH /api/v2/admin/blog-post/:id
 type AdminBlogPostUpdateRequest struct {
-	Title          *string    `json:"title"`
-	Slug           *string    `json:"slug"`
-	Content        *string    `json:"content"`
-	Summary        *string    `json:"summary"`
-	AuthorIDs      []uint     `json:"author_ids"`
-	PublishOn      *time.Time `json:"publish_on"`
-	Visible        *bool      `json:"visible"`
-	Sticky         *bool      `json:"sticky"`
-	GlobalPost     *bool      `json:"global_post"`
-	OgImage        *string    `json:"og_image"`
+	Title      *string    `json:"title"`
+	Slug       *string    `json:"slug"`
+	Content    *string    `json:"content"`
+	Summary    *string    `json:"summary"`
+	AuthorIDs  []uint     `json:"author_ids"`
+	PublishOn  *time.Time `json:"publish_on"`
+	Visible    *bool      `json:"visible"`
+	Sticky     *bool      `json:"sticky"`
+	GlobalPost *bool      `json:"global_post"`
+	OgImage    *string    `json:"og_image"`
 	// Kept raw so an explicit null (detach from organization) differs from an
 	// omitted key (leave it unchanged). A plain *uint collapses both to nil.
 	OrganizationID json.RawMessage `json:"organization_id"`

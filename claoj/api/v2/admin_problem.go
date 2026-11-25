@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/problem"
 	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/gin-gonic/gin"
@@ -102,42 +103,62 @@ func AdminProblemDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, profile)
 }
 
+// adminProblemCreateInput is the body of POST /admin/problems and of the
+// organization-scoped POST /organization/:id/problems.
+type adminProblemCreateInput struct {
+	Code                           string     `json:"code" binding:"required"`
+	Name                           string     `json:"name" binding:"required"`
+	Description                    string     `json:"description" binding:"required"`
+	Points                         float64    `json:"points" binding:"required"`
+	Partial                        bool       `json:"partial"`
+	IsPublic                       bool       `json:"is_public"`
+	TimeLimit                      float64    `json:"time_limit" binding:"required"`
+	MemoryLimit                    uint       `json:"memory_limit" binding:"required"`
+	GroupID                        uint       `json:"group_id"`
+	TypeIDs                        []uint     `json:"type_ids"`
+	AuthorIDs                      []uint     `json:"author_ids"`
+	CuratorIDs                     []uint     `json:"curator_ids"`
+	TesterIDs                      []uint     `json:"tester_ids"`
+	AllowedLangIDs                 []uint     `json:"allowed_lang_ids"`
+	IsManuallyManaged              bool       `json:"is_manually_managed"`
+	PdfURL                         string     `json:"pdf_url"`
+	Source                         string     `json:"source"`
+	Date                           *time.Time `json:"date"`
+	LicenseID                      *uint      `json:"license_id"`
+	OgImage                        string     `json:"og_image"`
+	Summary                        string     `json:"summary"`
+	IsFullMarkup                   bool       `json:"is_full_markup"`
+	SubmissionSourceVisibilityMode string     `json:"submission_source_visibility_mode"`
+	TestcaseVisibilityMode         string     `json:"testcase_visibility_mode"`
+	IsOrganizationPrivate          bool       `json:"is_organization_private"`
+	OrganizationIDs                []uint     `json:"organization_ids"`
+	BannedUserIDs                  []uint     `json:"banned_user_ids"`
+	SuggesterID                    *uint      `json:"suggester_id"`
+}
+
 // AdminProblemCreate - POST /api/v2/admin/problems
 func AdminProblemCreate(c *gin.Context) {
-	var input struct {
-		Code                           string     `json:"code" binding:"required"`
-		Name                           string     `json:"name" binding:"required"`
-		Description                    string     `json:"description" binding:"required"`
-		Points                         float64    `json:"points" binding:"required"`
-		Partial                        bool       `json:"partial"`
-		IsPublic                       bool       `json:"is_public"`
-		TimeLimit                      float64    `json:"time_limit" binding:"required"`
-		MemoryLimit                    uint       `json:"memory_limit" binding:"required"`
-		GroupID                        uint       `json:"group_id"`
-		TypeIDs                        []uint     `json:"type_ids"`
-		AuthorIDs                      []uint     `json:"author_ids"`
-		CuratorIDs                     []uint     `json:"curator_ids"`
-		TesterIDs                      []uint     `json:"tester_ids"`
-		AllowedLangIDs                 []uint     `json:"allowed_lang_ids"`
-		IsManuallyManaged              bool       `json:"is_manually_managed"`
-		PdfURL                         string     `json:"pdf_url"`
-		Source                         string     `json:"source"`
-		Date                           *time.Time `json:"date"`
-		LicenseID                      *uint      `json:"license_id"`
-		OgImage                        string     `json:"og_image"`
-		Summary                        string     `json:"summary"`
-		IsFullMarkup                   bool       `json:"is_full_markup"`
-		SubmissionSourceVisibilityMode string     `json:"submission_source_visibility_mode"`
-		TestcaseVisibilityMode         string     `json:"testcase_visibility_mode"`
-		IsOrganizationPrivate          bool       `json:"is_organization_private"`
-		OrganizationIDs                []uint     `json:"organization_ids"`
-		BannedUserIDs                  []uint     `json:"banned_user_ids"`
-		SuggesterID                    *uint      `json:"suggester_id"`
-	}
-
+	var input adminProblemCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, apiError(err.Error()))
 		return
+	}
+	createProblemFromInput(c, input, nil, 0)
+}
+
+// createProblemFromInput validates and inserts a problem. A non-nil org forces
+// the organization onto the object (v1 ProblemCreateOrganization: organization
+// private, organizations = [org], caller is an author, date = now).
+func createProblemFromInput(c *gin.Context, input adminProblemCreateInput, org *models.Organization, callerProfileID uint) {
+	authorIDs := input.AuthorIDs
+	if org != nil {
+		input.IsOrganizationPrivate = true
+		input.OrganizationIDs = []uint{org.ID}
+		authorIDs = withProfileID(authorIDs, callerProfileID)
+		if input.Date == nil {
+			now := time.Now()
+			input.Date = &now
+		}
 	}
 
 	profile, err := getProblemService().CreateProblem(problem.CreateProblemRequest{
@@ -151,7 +172,7 @@ func AdminProblemCreate(c *gin.Context) {
 		MemoryLimit:                    input.MemoryLimit,
 		GroupID:                        input.GroupID,
 		TypeIDs:                        input.TypeIDs,
-		AuthorIDs:                      input.AuthorIDs,
+		AuthorIDs:                      authorIDs,
 		CuratorIDs:                     input.CuratorIDs,
 		TesterIDs:                      input.TesterIDs,
 		AllowedLangIDs:                 input.AllowedLangIDs,
