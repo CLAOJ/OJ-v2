@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { adminLicenseApi, adminProblemGroupApi, adminProblemTypeApi } from '@/lib/adminApi';
+import { adminLicenseApi } from '@/lib/adminApi';
 import type { AdminLicense, SubmissionSourceVisibilityMode, TestcaseVisibilityMode } from '@/types';
 import { BasicInfoSection } from './problem-form/BasicInfoSection';
 import type { EntityOption } from './EntityPicker';
@@ -119,16 +119,13 @@ export default function ProblemForm({ initialData, initialAuthors, initialOption
 
     const [description, setDescription] = useState(initialData?.description || '');
 
-    // Problem taxonomy is only exposed under the admin routes
-    // (/admin/problem-groups, /admin/problem-types). The bare /problem/groups
-    // and /problem/types paths this used to call don't exist — worse, they were
-    // swallowed by the /problem/:code route and came back as a "problem not
-    // found" 404, so both selects silently rendered empty on every problem
-    // create/edit page load.
+    // Problem taxonomy is read from the public /problem-groups and
+    // /problem-types lists: the admin lists are staff-only, and organization
+    // admins create problems through this same form.
     const { data: groups } = useQuery<{ data: ProblemGroup[] }>({
         queryKey: ['problem-groups'],
         queryFn: async () => {
-            const res = await adminProblemGroupApi.list(1, TAXONOMY_PAGE_SIZE);
+            const res = await api.get('/problem-groups');
             return res.data;
         }
     });
@@ -136,7 +133,7 @@ export default function ProblemForm({ initialData, initialAuthors, initialOption
     const { data: types } = useQuery<{ data: ProblemType[] }>({
         queryKey: ['problem-types'],
         queryFn: async () => {
-            const res = await adminProblemTypeApi.list(1, TAXONOMY_PAGE_SIZE);
+            const res = await api.get('/problem-types');
             return res.data;
         }
     });

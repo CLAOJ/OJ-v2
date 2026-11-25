@@ -1,23 +1,21 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { OrganizationDetail, OrganizationMember } from '@/types';
+import { OrganizationDetail, OrganizationMember, OrganizationRequest } from '@/types';
 import { Link } from '@/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { parseLeadingId } from '@/utils/route';
+import { parseOrgRequestTab, type OrgRequestTab } from '@/lib/organizationView';
 import {
     Building2,
     Users,
-    UserPlus,
-    UserCheck,
     Shield,
     Crown,
     ArrowLeft,
     Settings,
-    Trash2,
     Loader2,
     Check,
     X,
@@ -26,17 +24,39 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/Dialog';
 import dayjs from 'dayjs';
 
 export default function OrganizationManagePage() {
     const t = useTranslations('Organization');
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const idParam = params.id as string;
     const id = parseLeadingId(idParam);
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'requests' | 'members' | 'edit'>('requests');
+    // v1 request tabs: pending / approved / rejected / log (approved+rejected).
+    const [requestTab, setRequestTab] = useState<OrgRequestTab>(() => parseOrgRequestTab(searchParams.get('state')));
+    const [selectedRequest, setSelectedRequest] = useState<OrganizationRequest | null>(null);
+
+    // Back/forward changes the query string without remounting; follow it.
+    useEffect(() => {
+        setRequestTab(parseOrgRequestTab(searchParams.get('state')));
+    }, [searchParams]);
+
+    const selectRequestTab = (tab: OrgRequestTab) => {
+        setRequestTab(tab);
+        const next = new URLSearchParams(searchParams.toString());
+        next.set('state', tab);
+        router.replace(`?${next.toString()}`, { scroll: false });
+    };
 
     const { data: org, isLoading: orgLoading } = useQuery({
         queryKey: ['organization', id],
@@ -47,12 +67,14 @@ export default function OrganizationManagePage() {
     });
 
     const { data: requests, isLoading: requestsLoading } = useQuery({
-        queryKey: ['organization-requests', id],
+        queryKey: ['organization-requests', id, requestTab],
         queryFn: async () => {
-            const res = await api.get<{ data: OrganizationRequest[] }>(`/organization/${id}/requests`);
+            const res = await api.get<{ data: OrganizationRequest[] }>(`/organization/${id}/requests`, {
+                params: { state: requestTab },
+            });
             return res.data;
         },
-        enabled: !!org?.admins?.some(admin => admin.id === org.user_id)
+        enabled: !!org?.viewer_is_admin
     });
 
     const kickMutation = useMutation({
@@ -72,6 +94,8 @@ export default function OrganizationManagePage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['organization-requests', id] });
+            queryClient.invalidateQueries({ queryKey: ['organization', id] });
+            setSelectedRequest(null);
         }
     });
 
@@ -105,7 +129,7 @@ export default function OrganizationManagePage() {
         );
     }
 
-    const isAdmin = org.admins?.some(admin => admin.id === org.user_id);
+    const isAdmin = org.viewer_is_admin ?? false;
 
     if (!isAdmin) {
         return (
@@ -187,6 +211,27 @@ export default function OrganizationManagePage() {
             {/* Requests Tab */}
             {activeTab === 'requests' && (
                 <div className="space-y-4">
+                    <div className="flex gap-2 overflow-x-auto">
+                        {([
+                            ['P', t('requestPending')],
+                            ['A', t('requestApproved')],
+                            ['R', t('requestRejected')],
+                            ['log', t('requestLog')],
+                        ] as [OrgRequestTab, string][]).map(([tab, label]) => (
+                            <button
+                                key={tab}
+                                onClick={() => selectRequestTab(tab)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors",
+                                    requestTab === tab
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "border-transparent text-muted-foreground hover:bg-muted"
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
                     {requestsLoading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 size={32} className="animate-spin text-muted-foreground" />
@@ -194,38 +239,47 @@ export default function OrganizationManagePage() {
                     ) : requests?.data.length ? (
                         <div className="border rounded-xl overflow-hidden">
                             <div className="bg-muted/30 px-4 py-3 border-b font-medium">
-                                {t('pendingJoinRequests', { count: requests.data.length })}
+                                {t('requestCount', { count: requests.data.length })}
                             </div>
                             <div className="divide-y">
                                 {requests.data.map((request) => (
-                                    <div key={request.id} className="flex items-center gap-4 p-4">
+                                    <div
+                                        key={request.id}
+                                        className="flex items-center gap-4 p-4 hover:bg-muted/20 transition-colors cursor-pointer"
+                                        onClick={() => setSelectedRequest(request)}
+                                    >
                                         <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                                            {request.user.username[0]?.toUpperCase()}
+                                            {request.username[0]?.toUpperCase()}
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="font-medium">{request.user.username}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium flex items-center gap-2">
+                                                {request.username}
+                                                <RequestStateBadge state={request.state} />
+                                            </div>
                                             <div className="text-sm text-muted-foreground">
-                                                {t('requestedAt', { time: dayjs(request.created_at).fromNow() })}
+                                                {t('requestedAt', { time: dayjs(request.time).fromNow() })}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => handleRequest(request.id, 'approve')}
-                                                disabled={handleRequestMutation.isPending}
-                                                className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-colors disabled:opacity-50"
-                                                title={t('approve')}
-                                            >
-                                                <Check size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleRequest(request.id, 'reject')}
-                                                disabled={handleRequestMutation.isPending}
-                                                className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                                                title={t('reject')}
-                                            >
-                                                <X size={18} />
-                                            </button>
-                                        </div>
+                                        {request.state === 'P' && (
+                                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => handleRequest(request.id, 'approve')}
+                                                    disabled={handleRequestMutation.isPending}
+                                                    className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                                    title={t('approve')}
+                                                >
+                                                    <Check size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRequest(request.id, 'reject')}
+                                                    disabled={handleRequestMutation.isPending}
+                                                    className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                                    title={t('reject')}
+                                                >
+                                                    <X size={18} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -233,11 +287,68 @@ export default function OrganizationManagePage() {
                     ) : (
                         <div className="p-8 text-center text-muted-foreground border rounded-xl">
                             <Bell size={48} className="mx-auto mb-4 opacity-20" />
-                            <p className="font-medium">{t('noPendingRequests')}</p>
+                            <p className="font-medium">{t('noRequests')}</p>
                         </div>
                     )}
                 </div>
             )}
+
+            {/* Request detail (v1 OrganizationRequestDetail) */}
+            <Dialog open={!!selectedRequest} onOpenChange={open => !open && setSelectedRequest(null)}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{t('requestDetail')}</DialogTitle>
+                        <DialogDescription>{t('requestDetailDesc')}</DialogDescription>
+                    </DialogHeader>
+                    {selectedRequest && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                                    {selectedRequest.username[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                    <Link
+                                        href={`/user/${selectedRequest.username}`}
+                                        className="font-medium hover:text-primary transition-colors"
+                                    >
+                                        {selectedRequest.username}
+                                    </Link>
+                                    <div className="text-sm text-muted-foreground">
+                                        {t('requestedAt', { time: dayjs(selectedRequest.time).fromNow() })}
+                                    </div>
+                                </div>
+                                <div className="ml-auto">
+                                    <RequestStateBadge state={selectedRequest.state} />
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium mb-1">{t('requestReason')}</div>
+                                <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                                    {selectedRequest.reason || t('noReason')}
+                                </p>
+                            </div>
+                            {selectedRequest.state === 'P' && (
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => handleRequest(selectedRequest.id, 'reject')}
+                                        disabled={handleRequestMutation.isPending}
+                                        className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                    >
+                                        {t('reject')}
+                                    </button>
+                                    <button
+                                        onClick={() => handleRequest(selectedRequest.id, 'approve')}
+                                        disabled={handleRequestMutation.isPending}
+                                        className="px-4 py-2 rounded-xl bg-green-500/10 text-green-500 font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                    >
+                                        {t('approve')}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* Members Tab */}
             {activeTab === 'members' && (
@@ -294,10 +405,16 @@ export default function OrganizationManagePage() {
     );
 }
 
-interface OrganizationRequest {
-    id: number;
-    user: { id: number; username: string };
-    created_at: string;
+/** State badge shared by the request list and the detail dialog. */
+function RequestStateBadge({ state }: { state: OrganizationRequest['state'] }) {
+    const t = useTranslations('Organization');
+    const label = state === 'A' ? t('requestApproved') : state === 'R' ? t('requestRejected') : t('requestPending');
+    const styles = state === 'A'
+        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+        : state === 'R'
+            ? 'bg-red-500/10 text-red-500 border-red-500/20'
+            : 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+    return <Badge className={cn('text-xs font-medium', styles)}>{label}</Badge>;
 }
 
 function EditOrganizationForm({ organization, onSuccess }: { organization: OrganizationDetail; onSuccess: () => void }) {
