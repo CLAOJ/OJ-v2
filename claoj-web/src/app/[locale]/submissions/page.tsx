@@ -19,13 +19,14 @@ import {
 import { cn, getStatusVariant } from '@/lib/utils';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
 import { buildSubmissionListParams } from '@/lib/submissionFilters';
+import { VERDICT_CODES } from '@/lib/submissionStatus';
 import { formatMemoryMb } from '@/lib/submissionDetail';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
 dayjs.extend(relativeTime);
 
-const RESULTS = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'RE', 'IE', 'CE', 'AB'];
+const RESULTS = VERDICT_CODES;
 
 type LanguageOption = { key: string; name: string; short_name?: string };
 

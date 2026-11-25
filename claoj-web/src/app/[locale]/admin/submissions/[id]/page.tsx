@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from 'sonner';
 import { getStatusVariant } from '@/lib/utils';
+import { VERDICT_CODES } from '@/lib/submissionStatus';
 import {
     ArrowLeft,
     BrainCircuit,
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react';
 
 const STATUS_CODES = ['QU', 'P', 'G', 'D', 'IE', 'CE', 'AB'];
-const RESULT_CODES = ['AC', 'WA', 'TLE', 'MLE', 'OLE', 'IR', 'RTE', 'CE', 'IE', 'SC', 'AB'];
+const RESULT_CODES = VERDICT_CODES;
 const field = 'h-9 px-3 rounded-md border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40';
 
 export default function AdminSubmissionDetailPage() {
