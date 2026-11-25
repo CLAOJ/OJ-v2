@@ -188,6 +188,7 @@ func ContestDetail(c *gin.Context) {
 
 	// Get user participation and solve status
 	isJoined := false
+	isInContest := false
 	isVirtual := false
 	canVirtual := hasEnded // Can only do virtual participation after contest ends
 	solvedCodes := make(map[string]bool)
@@ -199,6 +200,12 @@ func ContestDetail(c *gin.Context) {
 			Pluck("id", &partID)
 		if partID > 0 {
 			isJoined = true
+			// v1's "in contest" is profile.current_contest (the session), not
+			// merely having a scoreboard row: leaving clears only the pointer.
+			var currentContestID *uint
+			db.DB.Model(&models.Profile{}).Where("id = ?", profileID).
+				Pluck("current_contest_id", &currentContestID)
+			isInContest = currentContestID != nil && *currentContestID == partID
 			// Check if this is a virtual participation
 			var part models.ContestParticipation
 			if err := db.DB.Where("id = ?", partID).First(&part).Error; err == nil {
@@ -272,6 +279,7 @@ func ContestDetail(c *gin.Context) {
 		"problems":      problems,
 		"announcements": announcementItems,
 		"is_joined":     isJoined,
+		"is_in_contest": isInContest,
 		"is_virtual":    isVirtual,
 		"is_active":     isActive,
 		"has_ended":     hasEnded,

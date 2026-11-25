@@ -97,6 +97,14 @@ func ContestJoin(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start virtual participation"})
 			return
 		}
+		// v1 ContestJoin sets profile.current_contest to the participation so
+		// "leave contest" can detach the session without deleting the scoreboard
+		// row (ContestLeave only clears the pointer).
+		if err := db.DB.Model(&models.Profile{}).Where("id = ?", profile.ID).
+			Update("current_contest_id", part.ID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start virtual participation"})
+			return
+		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"message":      "successfully started virtual participation",
@@ -125,7 +133,14 @@ func ContestJoin(c *gin.Context) {
 	var part models.ContestParticipation
 	err := db.DB.Where("contest_id = ? AND user_id = ?", ct.ID, profile.ID).First(&part).Error
 	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "already joined"})
+		// v1 re-join resumes the existing participation: it re-points
+		// current_contest at it instead of failing.
+		if err := db.DB.Model(&models.Profile{}).Where("id = ?", profile.ID).
+			Update("current_contest_id", part.ID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join contest"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "successfully joined contest"})
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
@@ -148,6 +163,57 @@ func ContestJoin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join contest"})
 		return
 	}
+	if err := db.DB.Model(&models.Profile{}).Where("id = ?", profile.ID).
+		Update("current_contest_id", part.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join contest"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "successfully joined contest"})
+}
+
+// ContestLeave - POST /api/v2/contest/:key/leave
+// v1 ContestLeave (judge/views/contests.py:542) detaches the caller's current
+// contest pointer; the participation row (scoreboard entry, contest
+// submissions, rating) is left intact so a re-join resumes it. It does not
+// refuse mid-contest, so neither do we.
+func ContestLeave(c *gin.Context) {
+	key := c.Param("key")
+
+	var ct models.Contest
+	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
+		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		return
+	}
+	profileID, ok := auth.CurrentProfileID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
+		return
+	}
+
+	var profile models.Profile
+	if err := db.DB.Select("id", "current_contest_id").First(&profile, profileID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+	if profile.CurrentContestID == nil {
+		c.JSON(http.StatusNotFound, apiUserError("you are not in this contest"))
+		return
+	}
+	var count int64
+	db.DB.Model(&models.ContestParticipation{}).
+		Where("id = ? AND contest_id = ?", *profile.CurrentContestID, ct.ID).
+		Count(&count)
+	if count == 0 {
+		c.JSON(http.StatusNotFound, apiUserError("you are not in this contest"))
+		return
+	}
+
+	if err := db.DB.Model(&models.Profile{}).Where("id = ?", profileID).
+		Update("current_contest_id", nil).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "successfully left contest"})
 }

@@ -365,6 +365,7 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/contest/:key", contestHandlers.ContestDetail)
 		apiv2.GET("/contest/:key/ranking", v2.ContestRanking)
 		apiv2.GET("/contest/:key/ranking/pdf", v2.ContestRankingPDF)
+		apiv2.GET("/contest/:key/rank/:problem", v2.ContestProblemRank)
 		apiv2.GET("/contest/:key/stats", contestHandlers.ContestStats)
 		apiv2.GET("/contest/:key/stats/public", contestHandlers.ContestPublicStats)
 		apiv2.GET("/contest/:key/participations", contestHandlers.ParticipationList)
@@ -479,6 +480,8 @@ func NewRouter() *gin.Engine {
 		protected.GET("/user/export/download/:export_id", v2.UserExportDownload)
 
 			protected.POST("/contest/:key/join", v2.ContestJoin)
+			protected.POST("/contest/:key/leave", v2.ContestLeave)
+			protected.POST("/submission/:id/abort", v2.SubmissionAbort)
 			protected.GET("/user/contests", contestHandlers.UserParticipationList)
 
 			// Tickets
