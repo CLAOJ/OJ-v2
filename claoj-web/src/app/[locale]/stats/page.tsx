@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
+import { Link } from '@/navigation';
 
 interface OverallStats {
   total_users: number;
@@ -76,6 +77,19 @@ export default function StatsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">{t('stats.title')}</h1>
+
+      {/* v1 status tabs: /status (judges) | /runtimes | /runtimes/matrix */}
+      <nav className="flex gap-1 border-b mb-8" aria-label={t('stats.title')}>
+        <span aria-current="page" className="px-3 py-2 text-sm font-semibold border-b-2 border-primary">
+          {t('stats.judges')}
+        </span>
+        <Link href="/runtimes" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+          {t('stats.runtimes')}
+        </Link>
+        <Link href="/runtimes/matrix" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+          {t('stats.versionMatrix')}
+        </Link>
+      </nav>
 
       {/* Overall Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
