@@ -100,6 +100,21 @@ CREATE TABLE IF NOT EXISTS moss_result (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
+-- Plagiarism check results (jobs/moss.go), v2-only; v1 MOSS uses judge_contestmoss
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS plagiarism_result (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  contest_id BIGINT UNSIGNED NOT NULL,
+  problem_id BIGINT UNSIGNED NOT NULL,
+  language VARCHAR(20) NOT NULL,
+  submission_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  report_path VARCHAR(255) NULL,
+  created_at DATETIME(6) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_plagiarism_result_contest_id (contest_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
 -- Comment revision history (models/comment.go CommentRevision)
 -- NOTE: uses the judge_ prefix Django reserves for its own migrations.
 -- Not currently claimed by any Django migration, but re-check this before

@@ -8,7 +8,7 @@
 --
 -- Does NOT touch any RETAINED-V2 object (notification, notification_preference,
 -- totp_device, backup_code, oauth_user_link, moss_result,
--- judge_commentrevision, judge_contestclarification, or the judge_solution
+-- plagiarism_result, judge_commentrevision, judge_contestclarification, or the judge_solution
 -- editorial columns) -- those are live features, kept on purpose. See
 -- docs/schema-audit.md and scripts/v2_runtime_tables.sql.
 
