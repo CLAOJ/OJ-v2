@@ -219,6 +219,18 @@ func NewRouter() *gin.Engine {
 			// Organizations
 			admin.GET("/admin/organizations", v2.AdminOrganizationList)
 			admin.GET("/admin/classes", v2.AdminClassList)
+			admin.GET("/admin/class/:id", v2.AdminClassDetail)
+			admin.POST("/admin/classes", auth.RequirePerm("judge.add_class"), v2.AdminClassCreate)
+			admin.PATCH("/admin/class/:id", auth.RequirePerm("judge.change_class"), v2.AdminClassUpdate)
+			admin.DELETE("/admin/class/:id", auth.RequirePerm("judge.delete_class"), v2.AdminClassDelete)
+			// Read-only v1 screens (ProblemPointsVoteAdmin / OrganizationRequestAdmin)
+			admin.GET("/admin/points-votes", v2.AdminPointsVoteList)
+			admin.GET("/admin/organization-requests", v2.AdminOrganizationRequestList)
+			// Comment locks (v1 judge_commentlock)
+			admin.GET("/admin/comment-locks", v2.AdminCommentLockList)
+			admin.POST("/admin/comment-locks", v2.AdminCommentLockCreate)
+			admin.PATCH("/admin/comment-lock/:id", v2.AdminCommentLockUpdate)
+			admin.DELETE("/admin/comment-lock/:id", v2.AdminCommentLockDelete)
 			admin.GET("/admin/organization/:id", v2.AdminOrganizationDetail)
 			admin.POST("/admin/organizations", auth.RequirePerm("judge.add_organization"), v2.AdminOrganizationCreate)
 			admin.PATCH("/admin/organization/:id", auth.RequireOrgEdit(), v2.AdminOrganizationUpdate)
@@ -389,6 +401,10 @@ func NewRouter() *gin.Engine {
 		apiv2.GET("/organization/:id/submissions", v2.OrganizationSubmissionList)
 		apiv2.GET("/languages", v2.LanguageList)
 		apiv2.GET("/judges", v2.JudgeList)
+		// v1 /runtimes + /runtimes/matrix (public; non-staff see only runtimes
+		// reported by online judges)
+		apiv2.GET("/runtimes", v2.RuntimeList)
+		apiv2.GET("/runtimes/matrix", v2.RuntimeMatrix)
 
 		// Stats
 		apiv2.GET("/stats/languages", v2.LanguageStats)
