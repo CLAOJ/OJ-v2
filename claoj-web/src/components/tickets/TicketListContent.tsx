@@ -7,7 +7,7 @@ import { Ticket } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link } from '@/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Ticket as TicketIcon,
     Plus,
@@ -35,7 +35,7 @@ dayjs.extend(relativeTime);
 export default function TicketListContent({ problem }: { problem?: string } = {}) {
     const t = useTranslations('Ticket');
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
     const [search, setSearch] = useState('');
@@ -61,9 +61,20 @@ export default function TicketListContent({ problem }: { problem?: string } = {}
 
     const tickets = data?.items || [];
 
-    if (!isAuthenticated) {
-        router.push('/login');
-        return null;
+    // The session is restored asynchronously: redirecting on the first render
+    // bounced signed-in users to /login before `user` arrived.
+    useEffect(() => {
+        if (!loading && !user) router.push('/login');
+    }, [loading, user, router]);
+
+    if (loading || !isAuthenticated) {
+        return (
+            <div className="max-w-5xl mx-auto space-y-6 mt-4 pb-20">
+                <Skeleton className="h-12 w-64 rounded-xl" />
+                <Skeleton className="h-24 rounded-md" />
+                <Skeleton className="h-96 rounded-md" />
+            </div>
+        );
     }
 
     const newTicketHref = problem
