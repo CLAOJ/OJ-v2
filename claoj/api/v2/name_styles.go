@@ -20,6 +20,7 @@ type nameStyle struct {
 	Color  string `json:"color"`  // #rgb / #rrggbb, "" = keep the rating colour
 	Bold   bool   `json:"bold"`   // bold name
 	Strike bool   `json:"strike"` // struck-through name
+	Italic bool   `json:"italic"` // italic name
 	Prefix string `json:"prefix"` // emoji / short text before the name
 }
 

@@ -68,6 +68,7 @@ type RedisConfig struct {
 
 type AppConfig struct {
 	SecretKey            string `mapstructure:"secret_key"`
+	V1SecretKey          string `mapstructure:"v1_secret_key"` // v1 Django SECRET_KEY, to read v1 2FA keys
 	JwtSecretKey         string `mapstructure:"jwt_secret_key"`
 	RequireTotpForAdmins bool   `mapstructure:"require_totp_for_admins"`
 	SiteFullURL          string `mapstructure:"site_full_url"`
@@ -175,6 +176,7 @@ func Load() {
 	v.BindEnv("server.port", "SERVER_PORT", "CLAOJ_SERVER_PORT")
 	v.BindEnv("server.mode", "SERVER_MODE", "CLAOJ_SERVER_MODE")
 	v.BindEnv("app.secret_key", "SECRET_KEY", "CLAOJ_APP_SECRET_KEY")
+	v.BindEnv("app.v1_secret_key", "V1_SECRET_KEY")
 	v.BindEnv("app.jwt_secret_key", "JWT_SECRET_KEY", "CLAOJ_JWT_SECRET_KEY")
 	v.BindEnv("app.require_totp_for_admins", "REQUIRE_TOTP_FOR_ADMINS", "CLAOJ_REQUIRE_TOTP_FOR_ADMINS")
 	v.BindEnv("app.site_full_url", "SITE_URL", "SITE_FULL_URL", "CLAOJ_SITE_FULL_URL")

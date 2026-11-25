@@ -59,7 +59,7 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
         },
         onSuccess: (data) => {
             setTwoFactorSecret(data);
-            setTwoFactorStep('confirm');
+            setTwoFactorStep('setup'); // show the QR code + code input
         },
         onError: (err: unknown) => {
             const error = err as { response?: { data?: { error?: string } } };
@@ -217,7 +217,8 @@ export function TwoFactorSection({ onStepChange }: TwoFactorSectionProps) {
                 </div>
             )}
 
-            {twoFactorStep === 'confirm' && backupCodes && (
+            {/* Fresh backup codes (after enabling or regenerating) are shown once. */}
+            {backupCodes && (
                 <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                         <p className="text-sm font-medium text-emerald-600 flex items-center gap-2">

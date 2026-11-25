@@ -12,7 +12,7 @@ import { Plus, Save, Trash2 } from 'lucide-react';
 
 type Row = NameStyle & { rank: string };
 
-const blank: Row = { rank: '', color: '', bold: false, strike: false, prefix: '' };
+const blank: Row = { rank: '', color: '', bold: false, strike: false, italic: false, prefix: '' };
 
 // Admin editor for how names look per display rank (v1 hardcoded this in
 // ranks.scss). Rank keys are judge_profile.display_rank values.
@@ -61,6 +61,7 @@ function NameStylesEditor({ data }: { data: NameStylesData }) {
                             <th className="p-3 font-medium">{t('color')}</th>
                             <th className="p-3 font-medium">{t('bold')}</th>
                             <th className="p-3 font-medium">{t('strike')}</th>
+                            <th className="p-3 font-medium">{t('italic')}</th>
                             <th className="p-3 font-medium">{t('prefix')}</th>
                             <th className="p-3 font-medium">{t('preview')}</th>
                             <th className="p-3" />
@@ -106,6 +107,9 @@ function NameStylesEditor({ data }: { data: NameStylesData }) {
                                     <input type="checkbox" checked={r.strike} aria-label={t('strike')} onChange={e => update(i, { strike: e.target.checked })} className="h-4 w-4" />
                                 </td>
                                 <td className="p-3">
+                                    <input type="checkbox" checked={!!r.italic} aria-label={t('italic')} onChange={e => update(i, { italic: e.target.checked })} className="h-4 w-4" />
+                                </td>
+                                <td className="p-3">
                                     <Input value={r.prefix} maxLength={8} aria-label={t('prefix')} onChange={e => update(i, { prefix: e.target.value })} className="h-9 w-20" />
                                 </td>
                                 <td className="p-3 whitespace-nowrap">
@@ -115,6 +119,7 @@ function NameStylesEditor({ data }: { data: NameStylesData }) {
                                             color: r.color || undefined,
                                             fontWeight: r.bold ? 700 : undefined,
                                             textDecoration: r.strike ? 'line-through' : undefined,
+                                            fontStyle: r.italic ? 'italic' : undefined,
                                         }}
                                     >
                                         {r.prefix && <span className="mr-[.2em]">{r.prefix}</span>}

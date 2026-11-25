@@ -2983,6 +2983,7 @@
       "color": "Colour",
       "bold": "Bold",
       "strike": "Strikethrough",
+      "italic": "Italic",
       "prefix": "Prefix",
       "preview": "Preview",
       "remove": "Remove rank",

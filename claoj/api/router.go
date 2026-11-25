@@ -73,9 +73,6 @@ func NewRouter() *gin.Engine {
 		apiv2.POST("/auth/totp/verify", v2.TotpVerify)
 		apiv2.POST("/auth/totp/verify-backup", v2.TotpBackupVerify)
 		// WebAuthn/2FA
-		apiv2.GET("/auth/webauthn/status", v2.WebAuthnStatus)
-		apiv2.POST("/auth/webauthn/register/begin", v2.WebAuthnBeginRegistration)
-		apiv2.POST("/auth/webauthn/register/finish", v2.WebAuthnFinishRegistration)
 		apiv2.POST("/auth/webauthn/login/begin", v2.WebAuthnBeginLogin)
 		apiv2.POST("/auth/webauthn/login/finish", v2.WebAuthnFinishLogin)
 		// WebAuthn Credentials (Protected)
@@ -495,7 +492,11 @@ func NewRouter() *gin.Engine {
 			protected.POST("/auth/totp/disable", v2.TotpDisable)
 			protected.POST("/auth/totp/backup-codes", v2.TotpBackupCodesGenerate)
 			// WebAuthn Credential Management
-			protected.GET("/auth/webauthn/credentials", v2.WebAuthnCredentialsList)
+			// Status and registration act on the signed-in user (they read user_id).
+		protected.GET("/auth/webauthn/status", v2.WebAuthnStatus)
+		protected.POST("/auth/webauthn/register/begin", v2.WebAuthnBeginRegistration)
+		protected.POST("/auth/webauthn/register/finish", v2.WebAuthnFinishRegistration)
+		protected.GET("/auth/webauthn/credentials", v2.WebAuthnCredentialsList)
 			protected.PATCH("/auth/webauthn/credentials/:id", v2.WebAuthnCredentialUpdate)
 			protected.DELETE("/auth/webauthn/credentials/:id", v2.WebAuthnCredentialDelete)
 			protected.POST("/problem/:code/submit", v2.Submit)

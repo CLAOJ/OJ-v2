@@ -170,7 +170,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Check if TOTP is required for admins
-	if config.C.App.RequireTotpForAdmins && user.IsStaff && !CheckTOTPRequired(user.ID) {
+	if config.C.App.RequireTotpForAdmins && user.IsStaff && !auth.TOTPRequired(user.ID) {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":   "TOTP required for admin accounts",
 			"message": "Administrator accounts must enable two-factor authentication. Please contact the system administrator.",
@@ -179,10 +179,11 @@ func Login(c *gin.Context) {
 	}
 
 	// Check if TOTP is required (for all users who have it enabled)
-	if CheckTOTPRequired(user.ID) {
-		// Return TOTP challenge
+	if auth.TOTPRequired(user.ID) {
+		// Return TOTP challenge; the code step must present totp_token.
 		c.JSON(http.StatusOK, gin.H{
 			"requires_totp": true,
+			"totp_token":    auth.TOTPChallenge(user.ID),
 			"username":      user.Username,
 			"message":       "Please enter your TOTP code",
 		})
@@ -416,9 +417,3 @@ func RevokeAllSessions(c *gin.Context) {
 	})
 }
 
-// CheckTOTPRequired checks if the user has TOTP enabled
-func CheckTOTPRequired(userID uint) bool {
-	var totp models.TotpDevice
-	err := db.DB.Where("user_id = ?", userID).First(&totp).Error
-	return err == nil && totp.Confirmed
-}

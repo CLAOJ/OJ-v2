@@ -33,9 +33,10 @@ func InitWebAuthn() error {
 		RPID:                  siteURL.Host,
 		RPOrigins:             []string{config.C.App.SiteFullURL},
 		AttestationPreference: protocol.PreferDirectAttestation,
+		// No attachment restriction: CrossPlatform excluded built-in passkeys
+		// (Windows Hello, Touch ID, phones).
 		AuthenticatorSelection: protocol.AuthenticatorSelection{
-			AuthenticatorAttachment: protocol.CrossPlatform,
-			UserVerification:        protocol.VerificationPreferred,
+			UserVerification: protocol.VerificationPreferred,
 		},
 	}
 

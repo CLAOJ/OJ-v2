@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -345,6 +346,7 @@ func TotpDisable(c *gin.Context) {
 type TotpVerifyRequest struct {
 	Username string `json:"username" binding:"required"`
 	Code     string `json:"code" binding:"required"`
+	Token    string `json:"totp_token" binding:"required"` // from the password step
 }
 
 func TotpVerify(c *gin.Context) {
@@ -361,17 +363,25 @@ func TotpVerify(c *gin.Context) {
 		return
 	}
 
-	// Get TOTP device
-	var device models.TotpDevice
-	if err := db.DB.Where("user_id = ? AND confirmed = ?", user.ID, true).First(&device).Error; err != nil {
-		c.JSON(http.StatusBadRequest, apiError("TOTP not enabled for this account"))
+	if !auth.ValidTOTPChallenge(req.Token, user.ID) {
+		c.JSON(http.StatusUnauthorized, apiError("login expired, enter your password again"))
 		return
 	}
 
-	// Decrypt secret
-	secret, err := decryptSecret(device.Secret)
-	if err != nil {
+	// The v2 device, else the key v1 stored (2FA set up on the old site).
+	var secret string
+	var device models.TotpDevice
+	if err := db.DB.Where("user_id = ? AND confirmed = ?", user.ID, true).First(&device).Error; err == nil {
+		if secret, err = decryptSecret(device.Secret); err != nil {
+			c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
+			return
+		}
+	} else if s, err := auth.V1TOTPSecret(user.ID); err != nil {
+		log.Printf("totp: v1 key for user %d: %v", user.ID, err)
 		c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
+		return
+	} else if secret = s; secret == "" {
+		c.JSON(http.StatusBadRequest, apiError("TOTP not enabled for this account"))
 		return
 	}
 
@@ -471,6 +481,7 @@ func TotpBackupCodesGenerate(c *gin.Context) {
 type TotpBackupVerifyRequest struct {
 	Username string `json:"username" binding:"required"`
 	Code     string `json:"code" binding:"required"`
+	Token    string `json:"totp_token" binding:"required"` // from the password step
 }
 
 func TotpBackupVerify(c *gin.Context) {
@@ -484,6 +495,10 @@ func TotpBackupVerify(c *gin.Context) {
 	var user models.AuthUser
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, apiError("invalid credentials"))
+		return
+	}
+	if !auth.ValidTOTPChallenge(req.Token, user.ID) {
+		c.JSON(http.StatusUnauthorized, apiError("login expired, enter your password again"))
 		return
 	}
 
@@ -573,12 +588,6 @@ func generateBackupCodes(userID uint) ([]string, error) {
 	return codes, nil
 }
 
-// CheckTOTPRequired checks if user has TOTP enabled
-func CheckTOTPRequired(userID uint) bool {
-	var device models.TotpDevice
-	err := db.DB.Where("user_id = ? AND confirmed = ?", userID, true).First(&device).Error
-	return err == nil
-}
 
 // GenerateTempToken generates a temporary token for TOTP challenge
 func GenerateTempToken(userID uint, username string) (string, error) {

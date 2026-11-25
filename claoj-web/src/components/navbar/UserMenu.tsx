@@ -3,7 +3,7 @@
 import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { User, LogOut, ChevronDown, Crown } from 'lucide-react';
+import { User, LogOut, ChevronDown, Crown, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef, useEffect } from 'react';
@@ -122,6 +122,7 @@ export default function UserMenu({
                             onClick={onClose}
                             role="menuitem"
                         >
+                            <Settings size={16} />
                             <span>{t('editProfile')}</span>
                         </Link>
                         <hr className="my-1 border-border" />

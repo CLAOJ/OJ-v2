@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import api, { webauthnApi } from '@/lib/api';
 import axios, { AxiosRequestConfig } from 'axios';
 import { User } from '@/types';
@@ -30,6 +30,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    // Proof of the password step, required by /auth/totp/verify.
+    const totpToken = useRef<string | null>(null);
 
     const login = async (username: string, password: string, rememberMe?: boolean): Promise<LoginResponse> => {
         const res = await api.post('/auth/login', { username, password, remember_me: rememberMe });
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Check if TOTP is required
         if (requires_totp || requiresTotp) {
+            totpToken.current = res.data.totp_token ?? null;
             return { requiresTotp: true, username: res.data.username };
         }
 
@@ -51,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const loginTotp = async (username: string, code: string): Promise<User> => {
-        const res = await api.post('/auth/totp/verify', { username, code });
+        const res = await api.post('/auth/totp/verify', { username, code, totp_token: totpToken.current });
         // Tokens are set via httpOnly cookies by the server - no localStorage storage
         const userData = res.data.user as User;
         setUser(userData);

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	claojauth "github.com/CLAOJ/claoj/auth"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -135,7 +136,15 @@ func TestTotpVerify_SetsAuthCookiesAndStoresRefreshToken(t *testing.T) {
 	router := gin.New()
 	router.POST("/auth/totp/verify", TotpVerify)
 
-	body := map[string]interface{}{"username": user.Username, "code": code}
+	// Without the password step's token the code alone must not log in.
+	noToken, _ := json.Marshal(map[string]interface{}{"username": user.Username, "code": code})
+	w0 := httptest.NewRecorder()
+	r0 := httptest.NewRequest(http.MethodPost, "/auth/totp/verify", bytes.NewBuffer(noToken))
+	r0.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w0, r0)
+	assert.NotEqual(t, http.StatusOK, w0.Code)
+
+	body := map[string]interface{}{"username": user.Username, "code": code, "totp_token": claojauth.TOTPChallenge(user.ID)}
 	jsonBody, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, "/auth/totp/verify", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -185,7 +194,7 @@ func TestTotpBackupVerify_SetsAuthCookiesAndStoresRefreshToken(t *testing.T) {
 	router := gin.New()
 	router.POST("/auth/totp/verify-backup", TotpBackupVerify)
 
-	body := map[string]interface{}{"username": user.Username, "code": plainCode}
+	body := map[string]interface{}{"username": user.Username, "code": plainCode, "totp_token": claojauth.TOTPChallenge(user.ID)}
 	jsonBody, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, "/auth/totp/verify-backup", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")

@@ -7,6 +7,7 @@ export interface NameStyle {
     color: string;
     bold: boolean;
     strike: boolean;
+    italic?: boolean;
     prefix: string;
 }
 
@@ -20,12 +21,13 @@ const cssString = (s: string) => `"${s.replace(/[\\"]/g, '\\$&').replace(/[\r\n<
 
 // nameStylesCss turns the admin-configured rank styles (v1 ranks.scss) into
 // rules on every link to a styled user's profile, so no page needs to know
-// about display ranks. Avatar links (containing an <img>) are left alone.
+// about display ranks. Avatar links (containing an <img>) and menu items
+// (e.g. the user menu's own-profile entry) are left alone.
 export function nameStylesCss({ styles, users }: NameStylesData): string {
     const byRank: Record<string, string[]> = {};
     for (const [username, rank] of Object.entries(users)) {
         if (!styles[rank]) continue;
-        (byRank[rank] ??= []).push(`a[href$=${cssString('/user/' + username)}]:not(:has(img))`);
+        (byRank[rank] ??= []).push(`a[href$=${cssString('/user/' + username)}]:not(:has(img)):not([role=menuitem])`);
     }
     const out: string[] = [];
     for (const [rank, sels] of Object.entries(byRank)) {
@@ -34,6 +36,7 @@ export function nameStylesCss({ styles, users }: NameStylesData): string {
             s.color && COLOR.test(s.color) ? `color:${s.color}!important` : '',
             s.bold ? 'font-weight:700!important' : '',
             s.strike ? 'text-decoration:line-through!important' : '',
+            s.italic ? 'font-style:italic!important' : '',
         ].filter(Boolean).join(';');
         if (decl) out.push(`${sels.flatMap(x => [x, `${x} *`]).join(',')}{${decl}}`);
         if (s.prefix) out.push(`${sels.map(x => `${x}::before`).join(',')}{content:${cssString(s.prefix)};margin-right:.2em}`);

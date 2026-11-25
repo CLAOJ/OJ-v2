@@ -44,6 +44,9 @@ func main() {
 	}
 
 	events.InitHub()
+	if err := v2.InitWebAuthn(); err != nil {
+		log.Printf("warning: passkeys disabled: %v", err)
+	}
 	v2.SetBridgeServer(jobs.JudgeAborter{})
 
 	r := api.NewRouter()
