@@ -107,14 +107,24 @@ func TestAdminPointsVoteList_MappingSearchFilter(t *testing.T) {
 	require.Equal(t, "ccc", body.Data[0]["problem"])
 }
 
-func TestAdminPointsVoteList_RequiresStaff(t *testing.T) {
+func TestAdminLeftoverLists_RequireStaff(t *testing.T) {
 	setupAdminLeftoversDB(t)
 	plain := models.AuthUser{Username: "plain", IsActive: true}
 	require.NoError(t, db.DB.Create(&plain).Error)
 
-	w := doRequest(leftoversRouter(plain.ID, http.MethodGet, "/admin/points-votes", nil, AdminPointsVoteList),
-		http.MethodGet, "/admin/points-votes", "")
-	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	lists := []struct {
+		path    string
+		handler gin.HandlerFunc
+	}{
+		{"/admin/points-votes", AdminPointsVoteList},
+		{"/admin/organization-requests", AdminOrganizationRequestList},
+		{"/admin/comment-locks", AdminCommentLockList},
+	}
+	for _, list := range lists {
+		w := doRequest(leftoversRouter(plain.ID, http.MethodGet, list.path, nil, list.handler),
+			http.MethodGet, list.path, "")
+		require.Equal(t, http.StatusForbidden, w.Code, list.path+": "+w.Body.String())
+	}
 }
 
 func TestAdminOrganizationRequestList_Filters(t *testing.T) {
