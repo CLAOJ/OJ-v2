@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { contestCalendarApi } from '@/lib/api';
-import { ContestCalendarItem, ContestCalendarResponse } from '@/types';
+import { ContestCalendarItem } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Link } from '@/navigation';
