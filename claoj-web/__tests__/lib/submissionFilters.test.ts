@@ -1,4 +1,4 @@
-import { buildSubmissionListParams } from '@/lib/submissionFilters';
+import { buildSubmissionListParams, addFilterValue, removeFilterValue } from '@/lib/submissionFilters';
 
 describe('buildSubmissionListParams', () => {
     it('omits empty filters and keeps paging', () => {
@@ -45,5 +45,15 @@ describe('buildSubmissionListParams', () => {
         expect(params.get('problem')).toBe('P01');
         expect(params.get('organization')).toBe('7');
         expect(params.get('result')).toBe('AC');
+    });
+});
+
+describe('multi-value filter tags', () => {
+    it('adds without duplicating and removes by value', () => {
+        expect(addFilterValue([], 'WA')).toEqual(['WA']);
+        expect(addFilterValue(['WA'], 'WA')).toEqual(['WA']);
+        expect(addFilterValue(['WA'], 'TLE')).toEqual(['WA', 'TLE']);
+        expect(removeFilterValue(['WA', 'TLE'], 'WA')).toEqual(['TLE']);
+        expect(removeFilterValue(['WA'], 'AC')).toEqual(['WA']);
     });
 });

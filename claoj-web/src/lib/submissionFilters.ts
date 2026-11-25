@@ -33,3 +33,13 @@ export function buildSubmissionListParams(q: SubmissionListQuery): URLSearchPara
     if (q.pageSize !== undefined) params.set('page_size', String(q.pageSize));
     return params;
 }
+
+/** Adds a value to a multi-value filter, ignoring duplicates. */
+export function addFilterValue(values: string[], value: string): string[] {
+    return values.includes(value) ? values : [...values, value];
+}
+
+/** Removes a value from a multi-value filter. */
+export function removeFilterValue(values: string[], value: string): string[] {
+    return values.filter(v => v !== value);
+}

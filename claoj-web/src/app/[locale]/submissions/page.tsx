@@ -14,11 +14,12 @@ import {
     Hash,
     Building2,
     BrainCircuit,
-    RefreshCw
+    RefreshCw,
+    X
 } from 'lucide-react';
 import { cn, getStatusVariant } from '@/lib/utils';
 import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
-import { buildSubmissionListParams } from '@/lib/submissionFilters';
+import { buildSubmissionListParams, addFilterValue, removeFilterValue } from '@/lib/submissionFilters';
 import { VERDICT_CODES } from '@/lib/submissionStatus';
 import { formatMemoryMb } from '@/lib/submissionDetail';
 import dayjs from 'dayjs';
@@ -29,11 +30,6 @@ dayjs.extend(relativeTime);
 const RESULTS = VERDICT_CODES;
 
 type LanguageOption = { key: string; name: string; short_name?: string };
-
-/** Toggle one value in a chip-list filter. */
-function toggleValue(values: string[], value: string): string[] {
-    return values.includes(value) ? values.filter(v => v !== value) : [...values, value];
-}
 
 // v1 row.html:86-97: no usage figures while a submission is queued/grading or
 // errored, and TLE's time is meaningless.
@@ -153,12 +149,7 @@ export default function SubmissionListPage() {
         setPage(1);
     };
 
-    const chipClass = (active: boolean) => cn(
-        'px-2.5 py-1 rounded-md border text-xs font-medium cursor-pointer select-none transition-colors',
-        active
-            ? 'bg-primary/10 border-primary/40 text-primary'
-            : 'bg-muted/30 border-transparent hover:bg-muted text-muted-foreground'
-    );
+        const filterSelectClass = 'w-full h-12 bg-muted/30 border border-transparent rounded-md px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:bg-background focus:border-muted-foreground/10 transition-all outline-none cursor-pointer';
 
     return (
         <div className="max-w-7xl mx-auto space-y-4 mt-4 pb-20">
@@ -244,38 +235,82 @@ export default function SubmissionListPage() {
                     </div>
                 </div>
 
+                {/* v1's multi-select shape: chosen values as removable tags
+                    above one closed "add" select, instead of a chip cloud. */}
                 <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('verdictLabel')}</label>
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto py-1">
-                        {RESULTS.map(r => (
-                            <label key={r} className={chipClass(resultFilters.includes(r))}>
-                                <input
-                                    type="checkbox"
-                                    className="sr-only"
-                                    checked={resultFilters.includes(r)}
-                                    onChange={() => { setResultFilters(prev => toggleValue(prev, r)); setPage(1); }}
-                                />
-                                {r}
-                            </label>
+                    <label htmlFor="verdict-filter" className="text-xs font-medium text-muted-foreground ml-1">{t('verdictLabel')}</label>
+                    {resultFilters.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {resultFilters.map(r => (
+                                <span key={r} className="inline-flex items-center gap-1 pl-2.5 pr-1 h-7 rounded-md bg-primary/15 text-primary text-xs font-medium">
+                                    {r}
+                                    <button
+                                        type="button"
+                                        aria-label={t('removeFilter', { name: r })}
+                                        onClick={() => { setResultFilters(removeFilterValue(resultFilters, r)); setPage(1); }}
+                                        className="p-0.5 rounded hover:bg-primary/20 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    <select
+                        id="verdict-filter"
+                        value=""
+                        className={filterSelectClass}
+                        onChange={(e) => {
+                            if (!e.target.value) return;
+                            setResultFilters(addFilterValue(resultFilters, e.target.value));
+                            setPage(1);
+                        }}
+                    >
+                        <option value="">{t('addVerdictPlaceholder')}</option>
+                        {RESULTS.filter(r => !resultFilters.includes(r)).map(r => (
+                            <option key={r} value={r}>{r}</option>
                         ))}
-                    </div>
+                    </select>
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
-                    <label className="text-xs font-medium text-muted-foreground ml-1">{t('language')}</label>
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto py-1">
-                        {(languages ?? []).map(l => (
-                            <label key={l.key} className={chipClass(langFilters.includes(l.key))} title={l.name}>
-                                <input
-                                    type="checkbox"
-                                    className="sr-only"
-                                    checked={langFilters.includes(l.key)}
-                                    onChange={() => { setLangFilters(prev => toggleValue(prev, l.key)); setPage(1); }}
-                                />
-                                {l.short_name || l.key}
-                            </label>
+                    <label htmlFor="language-filter" className="text-xs font-medium text-muted-foreground ml-1">{t('language')}</label>
+                    {langFilters.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {langFilters.map(key => {
+                                const lang = (languages ?? []).find(l => l.key === key);
+                                const label = lang?.short_name || key;
+                                return (
+                                    <span key={key} title={lang?.name} className="inline-flex items-center gap-1 pl-2.5 pr-1 h-7 rounded-md bg-primary/15 text-primary text-xs font-medium">
+                                        {label}
+                                        <button
+                                            type="button"
+                                            aria-label={t('removeFilter', { name: label })}
+                                            onClick={() => { setLangFilters(removeFilterValue(langFilters, key)); setPage(1); }}
+                                            className="p-0.5 rounded hover:bg-primary/20 transition-colors"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <select
+                        id="language-filter"
+                        value=""
+                        className={filterSelectClass}
+                        onChange={(e) => {
+                            if (!e.target.value) return;
+                            setLangFilters(addFilterValue(langFilters, e.target.value));
+                            setPage(1);
+                        }}
+                    >
+                        <option value="">{t('addLanguagePlaceholder')}</option>
+                        {(languages ?? []).filter(l => !langFilters.includes(l.key)).map(l => (
+                            <option key={l.key} value={l.key}>{l.short_name || l.key}</option>
                         ))}
-                    </div>
+                    </select>
                 </div>
             </div>
 
