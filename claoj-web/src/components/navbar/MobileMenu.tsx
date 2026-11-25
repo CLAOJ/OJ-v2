@@ -10,7 +10,7 @@ import { useTranslations } from 'next-intl';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
 import { rememberLoginRedirect } from '@/lib/loginRedirect';
-import { findActiveKey, type NavLink } from '@/lib/navbar';
+import { findActiveKeys, type NavLink } from '@/lib/navbar';
 
 interface MobileMenuProps {
     isOpen: boolean;
@@ -23,7 +23,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
     const pathname = usePathname();
     const t = useTranslations('Navbar');
     const reduceMotion = useReducedMotion();
-    const activeKey = findActiveKey(links, pathname);
+    const activeKeys = findActiveKeys(links, pathname);
 
     const mobileMenuContainerRef = useFocusTrap({
         isActive: isOpen,
@@ -89,20 +89,41 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                             </div>
 
                             <div className="flex flex-col gap-6 px-4 py-6">
-                                {/* Nav Links */}
+                                {/* Nav Links: same hierarchy as the DB/v1 tree, children indented */}
                                 {links.map((link) => (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        onClick={onToggle}
-                                        aria-current={link.key === activeKey ? 'page' : undefined}
-                                        className={cn(
-                                            "text-xl font-semibold tracking-tight",
-                                            link.key === activeKey ? "text-primary" : "text-muted-foreground"
-                                        )}
-                                    >
-                                        {link.label ?? t(link.tKey ?? link.key)}
-                                    </Link>
+                                    <div key={link.href} className="flex flex-col gap-3">
+                                        <Link
+                                            href={link.href}
+                                            onClick={onToggle}
+                                            aria-current={activeKeys.has(link.key) ? 'page' : undefined}
+                                            className={cn(
+                                                "text-xl font-semibold tracking-tight",
+                                                activeKeys.has(link.key) ? "text-primary" : "text-muted-foreground"
+                                            )}
+                                        >
+                                            {link.label ?? t(link.tKey ?? link.key)}
+                                        </Link>
+                                        {link.children?.length ? (
+                                            <div className="ml-2 flex flex-col gap-3 border-l border-border pl-4">
+                                                {link.children.map((child) => (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        onClick={onToggle}
+                                                        aria-current={activeKeys.has(child.key) ? 'page' : undefined}
+                                                        className={cn(
+                                                            "text-base font-medium tracking-tight",
+                                                            activeKeys.has(child.key)
+                                                                ? "text-primary"
+                                                                : "text-muted-foreground hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        {child.label ?? t(child.tKey ?? child.key)}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 ))}
                                 <Link
                                     href="/problems/random"

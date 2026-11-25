@@ -18,6 +18,8 @@ export interface NavLink {
     tKey?: string;
     /** v1 highlight regex (Python); a path prefix is used when it cannot run. */
     regex?: string;
+    /** DB children, rendered as a dropdown (v1's nested mptt_tree). */
+    children?: NavLink[];
 }
 
 // v1's routes that v2 serves elsewhere. Everything else keeps its path minus
@@ -60,12 +62,6 @@ export function translateDbLabel(
     return labels?.[label] ?? label;
 }
 
-function flatten(items: NavigationItem[]): NavigationItem[] {
-    // v1 hangs children under their parent as a dropdown; the v2 header is a
-    // single row, so children follow their parent instead of disappearing.
-    return items.flatMap((item) => [item, ...flatten(item.children ?? [])]);
-}
-
 export function buildNavLinks(
     items: NavigationItem[] | null | undefined,
     extras: NavLink[] = [],
@@ -73,25 +69,42 @@ export function buildNavLinks(
 ): NavLink[] {
     const links: NavLink[] = [];
     const seen = new Set<string>();
-    const add = (link: NavLink) => {
-        if (seen.has(link.href)) return;
+    const add = (link: NavLink): boolean => {
+        if (seen.has(link.href)) return false;
         seen.add(link.href);
-        links.push(link);
+        return true;
+    };
+
+    // Children stay nested: v1 renders them as a dropdown under the parent.
+    const toLink = (item: NavigationItem): NavLink | null => {
+        const link: NavLink = {
+            key: item.key,
+            label: translateDbLabel(item.label, dbLabels),
+            href: normalizeNavPath(item.path),
+            regex: item.regex,
+        };
+        if (!add(link)) return null;
+        const children = (item.children ?? [])
+            .map(toLink)
+            .filter((child): child is NavLink => child !== null);
+        if (children.length) link.children = children;
+        return link;
     };
 
     if (items?.length) {
-        for (const item of flatten(items)) {
-            add({
-                key: item.key,
-                label: translateDbLabel(item.label, dbLabels),
-                href: normalizeNavPath(item.path),
-                regex: item.regex,
-            });
+        for (const item of items) {
+            const link = toLink(item);
+            if (link) links.push(link);
         }
     } else {
-        FALLBACK_NAV_LINKS.forEach(add);
+        for (const link of FALLBACK_NAV_LINKS) {
+            if (add(link)) links.push(link);
+        }
     }
-    extras.forEach(add);
+    // v2-only entries are always top level and only appear once.
+    for (const extra of extras) {
+        if (add(extra)) links.push(extra);
+    }
     return links;
 }
 
@@ -127,7 +140,25 @@ export function isActiveLink(link: NavLink, pathname: string): boolean {
     return prefixMatches(link.href, pathname);
 }
 
-/** v1 marks the first row whose regex matches the request path. */
-export function findActiveKey(links: NavLink[], pathname: string): string | null {
-    return links.find((link) => isActiveLink(link, pathname))?.key ?? null;
+/**
+ * v1 marks the first row whose regex matches the request path, plus its
+ * ancestors (`nav_tab`), so a dropdown parent lights up for its children too.
+ */
+export function findActiveKeys(links: NavLink[], pathname: string): Set<string> {
+    const active = new Set<string>();
+
+    const walk = (nodes: NavLink[], ancestors: string[]): boolean => {
+        for (const node of nodes) {
+            const trail = [...ancestors, node.key];
+            if (isActiveLink(node, pathname)) {
+                trail.forEach((key) => active.add(key));
+                return true;
+            }
+            if (node.children?.length && walk(node.children, trail)) return true;
+        }
+        return false;
+    };
+
+    walk(links, []);
+    return active;
 }
