@@ -10,6 +10,7 @@ Tokenizing is done with Pygments; --src is never written.
 """
 
 import argparse
+import ast
 import builtins
 import json
 import keyword
@@ -109,8 +110,252 @@ def _insert_after(toks, j, s):
 
 
 # --- identifier renaming -------------------------------------------------------
+# Only names the file itself declares are renamed (under-renaming is safe, over-renaming
+# breaks the copy). Detection is heuristic per language.
+
+_CPP_QUAL = {"const", "static", "constexpr", "inline", "extern", "register", "volatile",
+             "typedef", "struct", "class", "enum", "union", "mutable"}
+_CPP_TYPEKW = {"auto", "unsigned", "signed"}
+_CPP_FOLLOW = {"=", ";", "(", ")", "[", ",", "{", ":"}
+_TPL_OK = {",", "*", "&", "<", ">", ">>", ":"}
+
+
+def _is_code_tok(t):
+    return t not in Token.Comment or t in Token.Comment.Preproc or t in Token.Comment.PreprocFile
+
+
+def _cpp_declared(sig):
+    vals = [v for _, v in sig]
+    n = len(sig)
+    vals += [""] * 4
+
+    def is_name(i):
+        return i < n and sig[i][0] in Token.Name and sig[i][0] not in Token.Name.Builtin
+
+    def skip_tpl(k):
+        depth, m = 0, k
+        while m < n:
+            t, v = sig[m]
+            if v == "<":
+                depth += 1
+            elif v in (">", ">>"):
+                depth -= len(v)
+            elif not (t in Token.Name or t in Token.Keyword or t in Token.Literal.Number
+                      or v in _TPL_OK):
+                return None
+            m += 1
+            if depth <= 0:
+                return m
+        return None
+
+    def skip_type(i):
+        k, has = i, False
+        while k < n and (vals[k] in _CPP_QUAL or sig[k][0] in Token.Keyword.Type
+                         or vals[k] in _CPP_TYPEKW):
+            has = has or vals[k] not in _CPP_QUAL
+            k += 1
+        if not has:
+            if k >= n or sig[k][0] not in Token.Name:
+                return None
+            k += 1
+            while vals[k] == ":" and vals[k + 1] == ":" and k + 2 < n and sig[k + 2][0] in Token.Name:
+                k += 3
+            if vals[k] == "<":
+                k = skip_tpl(k)
+                if k is None:
+                    return None
+        while k < n and vals[k] in ("*", "&", "&&", "const"):
+            k += 1
+        return k
+
+    def decl_name(i):
+        k = skip_type(i)
+        return k if k is not None and is_name(k) and vals[k + 1] in _CPP_FOLLOW else None
+
+    brace, depth_at = 0, []
+    for v in vals[:n]:
+        depth_at.append(brace)
+        brace += v == "{"
+        brace -= v == "}"
+
+    declared = set()
+
+    def params(m):
+        depth, j = 0, m
+        while j < n:
+            v = vals[j]
+            if v in ("(", "[", "{"):
+                depth += 1
+                if depth == 1 and v == "(":
+                    k = decl_name(j + 1)
+                    if k is not None:
+                        declared.add(vals[k])
+            elif v in (")", "]", "}"):
+                depth -= 1
+                if depth == 0:
+                    return
+            elif v == "," and depth == 1:
+                k = decl_name(j + 1)
+                if k is not None:
+                    declared.add(vals[k])
+            j += 1
+
+    for i in range(n):
+        v = vals[i]
+        if v in ("struct", "class", "union", "enum") and is_name(i + 1) and vals[i + 2] in ("{", ";", ":"):
+            declared.add(vals[i + 1])
+        if v == "using" and is_name(i + 1) and vals[i + 2] == "=":
+            declared.add(vals[i + 1])
+        start = (i == 0 or vals[i - 1] in (";", "{", "}") or sig[i - 1][0] in Token.Comment.Preproc
+                 or sig[i - 1][0] in Token.Comment.PreprocFile
+                 or (vals[i - 1] == "(" and i >= 2 and vals[i - 2] == "for"))
+        if not start:
+            continue
+        k = decl_name(i)
+        if k is None:
+            continue
+        declared.add(vals[k])
+        if vals[k + 1] == "(" and depth_at[k] == 0:
+            params(k + 1)
+        m, depth = k + 1, 0
+        while m < n:
+            w = vals[m]
+            if w in ("(", "[", "{"):
+                if w == "{" and depth == 0 and vals[m - 1] == ")":
+                    break  # function body
+                depth += 1
+            elif w in (")", "]", "}"):
+                if depth == 0:
+                    break
+                depth -= 1
+            elif depth == 0 and w in (";", ":"):
+                break
+            elif depth == 0 and w == ",":
+                j = m + 1
+                while vals[j] in ("*", "&"):
+                    j += 1
+                if is_name(j) and vals[j + 1] in _CPP_FOLLOW:
+                    declared.add(vals[j])
+            m += 1
+    # names inside #define/#if etc. (macro names and what macro bodies use) must stay
+    blocked = set()
+    for t, v in sig:
+        if t in Token.Comment.Preproc:
+            blocked.update(_IDENT.findall(v))
+    return declared - blocked
+
+
+def _py_declared(text):
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return set()
+    names, blocked = set(), set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            names.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.add(node.name)
+        elif isinstance(node, ast.keyword) and node.arg:
+            blocked.add(node.arg)  # f(x=1): the callee may be a library
+        elif isinstance(node, ast.ImportFrom) and any(a.name == "*" for a in node.names):
+            return set()
+        elif isinstance(node, ast.JoinedStr):
+            blocked.update(s.id for s in ast.walk(node) if isinstance(s, ast.Name))
+    return names - blocked
+
+
+def _pas_declared(sig):
+    vals = [v.lower() for _, v in sig] + [""] * 4
+    n = len(sig)
+    declared = set()
+
+    def is_name(i):
+        return i < n and sig[i][0] in Token.Name
+
+    def name_list(j):
+        names = []
+        while is_name(j):
+            names.append(j)
+            j += 1
+            if vals[j] != ",":
+                break
+            j += 1
+        return names, j
+
+    def skip_entry(j):
+        depth = 0
+        while j < n:
+            v = vals[j]
+            if v in ("(", "["):
+                depth += 1
+            elif v in (")", "]"):
+                depth -= 1
+            elif v == "record" and depth == 0:
+                return j + 1  # fields follow as entries
+            elif v == ";" and depth == 0:
+                return j + 1
+            j += 1
+        return j
+
+    def section(i):
+        while i < n:
+            if vals[i] == "end" and sig[i][0] in Token.Keyword:
+                i = skip_entry(i)
+                continue
+            names, j = name_list(i)
+            if names and vals[j] in (":", "="):
+                declared.update(vals[k] for k in names)
+                i = skip_entry(j)
+            else:
+                return i
+        return i
+
+    def routine(i):
+        if is_name(i) and vals[i + 1] != ".":
+            declared.add(vals[i])
+        i += 1
+        if vals[i] != "(":
+            return i
+        j = i + 1
+        while j < n and vals[j] != ")":
+            if sig[j][0] in Token.Keyword and vals[j] in ("var", "const", "out"):
+                j += 1
+            names, j = name_list(j)
+            if names and vals[j] == ":":
+                declared.update(vals[k] for k in names)
+            depth = 0
+            while j < n:
+                v = vals[j]
+                if v in ("(", "["):
+                    depth += 1
+                elif v in (")", "]"):
+                    if depth == 0:
+                        break
+                    depth -= 1
+                elif v == ";" and depth == 0:
+                    j += 1
+                    break
+                j += 1
+        return j
+
+    i = 0
+    while i < n:
+        if sig[i][0] in Token.Keyword and vals[i] in ("var", "const", "type", "label"):
+            i = section(i + 1)
+        elif sig[i][0] in Token.Keyword and vals[i] in _PAS_ROUTINE:
+            i = routine(i + 1)
+        else:
+            i += 1
+    return declared
+
 
 def rename_identifiers(text, lang, rng):
+    text = _normalize(text)
     toks = _lex(lang, text)
     fold = lang == "pas"
 
@@ -142,7 +387,15 @@ def rename_identifiers(text, lang, rng):
         if prev1 == "." or (prev1 == ":" and prev2 == ":") or (prev1 == ">" and prev2 == "-") \
                 or ln in skip_lines:
             blocked.add(key(v))
-    targets = sorted(n for n in names - blocked if not n.startswith("__"))
+    code = [(t, v) for t, v, _ in sig if _is_code_tok(t)]
+    if lang == "cpp":
+        declared = _cpp_declared(code)
+    elif lang == "py":
+        declared = _py_declared(text)
+    else:
+        declared = _pas_declared(code)
+    targets = sorted(n for n in (names & {key(d) for d in declared}) - blocked
+                     if not n.startswith("__"))
 
     taken = {v.lower() for _, v in toks}
     mapping = {}
@@ -269,6 +522,8 @@ def _py_items(text):
     items, prev_decorated = [], False
     for lines in blocks:
         body = "".join(lines)
+        if not body.endswith("\n"):
+            body += "\n"  # a moved block must not glue onto the next line
         m = re.match(r"def\s+(\w+)", lines[0])
         movable = bool(m) and not prev_decorated
         items.append((movable, m.group(1) if movable else None, _refs(body, "py"), body))
@@ -386,21 +641,30 @@ def _swap_cpp(text):
         if i in repl:
             continue
         t, v = toks[i]
-        if t not in Token.Keyword.Type:
+        if v != "int" or t not in Token.Keyword.Type:
             continue
         prev = toks[sig_idx[k - 1]][1] if k >= 1 else ""
         nxt = toks[sig_idx[k + 1]][1] if k + 1 < len(sig_idx) else ""
-        if v == "int":
-            if prev in ("long", "short") or nxt == "main":
-                continue
-            repl[i] = "long long"
-        elif v == "long" and nxt == "long" and prev not in ("long", "short"):
-            after = toks[sig_idx[k + 2]][1] if k + 2 < len(sig_idx) else ""
-            if after == "int":
-                continue
-            repl[i] = "int"
-            repl[sig_idx[k + 1]] = ""
+        if prev in ("long", "short") or nxt == "main":
+            continue
+        if nxt == "(":  # `int(x)` cast style stays
+            continue
+        repl[i] = "long long"
+    # never touch main's parameter list
+    for k, i in enumerate(sig_idx):
+        if toks[i][1] == "main" and k + 1 < len(sig_idx) and toks[sig_idx[k + 1]][1] == "(":
+            depth = 0
+            for j in sig_idx[k + 1:]:
+                depth += toks[j][1] == "("
+                depth -= toks[j][1] == ")"
+                repl.pop(j, None)
+                if depth == 0:
+                    break
     return "".join(repl.get(i, v) for i, (t, v) in enumerate(toks))
+
+
+# Any of these makes a wider int change meaning or break overload/format matching.
+_SWAP_SKIP = ("printf", "scanf", "max(", "min(", "swap(", "abs(", "gcd(", "lcm(", "%d", "sizeof(int)")
 
 
 def _swap_pas(text):
@@ -408,7 +672,7 @@ def _swap_pas(text):
     for t, v in _lex("pas", text):
         low = v.lower()
         if not _is_ws(t, v) and (t in Token.Keyword.Type or t in Token.Name) and low in ("integer", "longint"):
-            out.append("longint" if low == "integer" else "integer")
+            out.append("longint" if low == "integer" else v)
         else:
             out.append(v)
     return "".join(out)
@@ -417,7 +681,7 @@ def _swap_pas(text):
 def swap_int_types(text, lang, rng):
     text = _normalize(text)
     if lang == "cpp":
-        return _swap_cpp(text)
+        return text if any(s in text for s in _SWAP_SKIP) else _swap_cpp(text)
     if lang == "pas":
         return _swap_pas(text)
     return text
@@ -430,11 +694,21 @@ def insert_dead_code(text, lang, rng):
     toks = _lex(lang, text)
     taken = {v.lower() for _, v in toks}
     if lang == "cpp":
-        i = next((k for k, (t, v) in enumerate(toks) if t in Token.Name and v == "main"), None)
-        if i is None:
-            return text
-        j = next((k for k in range(i + 1, len(toks))
-                  if toks[k][0] in Token.Punctuation and toks[k][1] == "{"), None)
+        sig_idx = [k for k, (t, v) in enumerate(toks) if not _is_ws(t, v) and t not in Token.Comment]
+        j = None  # first `main ( ... ) {` is the definition; `main();` is a prototype
+        for q, i in enumerate(sig_idx):
+            if toks[i][0] in Token.Name and toks[i][1] == "main" and q + 1 < len(sig_idx) \
+                    and toks[sig_idx[q + 1]][1] == "(":
+                depth = 0
+                for r in range(q + 1, len(sig_idx)):
+                    depth += toks[sig_idx[r]][1] == "("
+                    depth -= toks[sig_idx[r]][1] == ")"
+                    if depth == 0:
+                        if r + 1 < len(sig_idx) and toks[sig_idx[r + 1]][1] == "{":
+                            j = sig_idx[r + 1]
+                        break
+            if j is not None:
+                break
         if j is None:
             return text
         var = _fresh_name(rng, taken)
@@ -443,19 +717,24 @@ def insert_dead_code(text, lang, rng):
         var = _fresh_name(rng, taken)
         sep = "\n" if text and not text.endswith("\n") else ""
         return text + sep + f"\ndef {var}():\n    return 0\n"
-    # pas: the main block is the last begin at nesting depth 0
-    j, depth = None, 0
+    # pas: the main block is the last begin at nesting depth 0. A `case` directly inside a
+    # `record` has no `end` of its own; any unbalanced `end` means we are unsure, so skip.
+    j, stack = None, []
     for k, (t, v) in enumerate(toks):
         if t not in Token.Keyword:
             continue
         low = v.lower()
-        if low == "begin" and depth == 0:
+        if low == "begin" and not stack:
             j = k
+        if low == "case" and stack and stack[-1] == "record":
+            continue
         if low in _PAS_OPEN:
-            depth += 1
+            stack.append(low)
         elif low == "end":
-            depth -= 1
-    if j is None:
+            if not stack:
+                return text
+            stack.pop()
+    if j is None or stack:
         return text
     return _insert_after(toks, j, " if false then begin end;")
 
@@ -496,6 +775,8 @@ def _counted_for(toks, k):
     if len(parts) != 3:
         return None
     init, cond, step = (_join(p).strip() for p in parts)
+    if not cond:
+        return None  # `while ()` is invalid; leave the loop alone
     m = re.fullmatch(r"\+\+(\w+)|(\w+)\+\+", "".join(v for _, v in _sig(parts[2])))
     if not m:
         return None
@@ -567,6 +848,10 @@ def disguise(text, lang, rng):
 
 def disguise_tree(src, out, per_problem=3, seed=1):
     src, out = Path(src), Path(out)
+    if out.exists() and any(out.iterdir()):
+        raise SystemExit(f"refusing: --out {out} exists and is not empty")
+    if out.resolve().is_relative_to(src.resolve()):
+        raise SystemExit(f"refusing: --out {out} is inside --src {src}")
     out.mkdir(parents=True, exist_ok=True)
     rng = random.Random(seed)
     groups = {}
@@ -584,6 +869,9 @@ def disguise_tree(src, out, per_problem=3, seed=1):
         for user, f, ext in rng.sample(entries, min(per_problem, len(entries))):
             text = f.read_bytes().decode("utf-8", errors="surrogateescape")
             new, applied = disguise(text, ext, rng)
+            if not applied:
+                continue  # nothing changed: a byte-identical "copy" would be a free true positive
+            # ponytail: review item 11 (rare case) not handled; add when it shows up in real data
             copy_rel = Path(problem, lang, f"{user}__copy", f"main.{ext}")
             (out / copy_rel).parent.mkdir(parents=True, exist_ok=True)
             (out / copy_rel).write_bytes(new.encode("utf-8", errors="surrogateescape"))

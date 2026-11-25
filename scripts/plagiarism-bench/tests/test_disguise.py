@@ -219,19 +219,46 @@ class ReorderFunctions(Base):
         self.check_reorders(PAS_SRC, "pas")
 
 
+CPP_WIDEN = r'''#include <iostream>
+using namespace std;
+int main() {
+    int n = 3;
+    long long big = 5;
+    cout << n + big << endl;
+    return 0;
+}
+'''
+
+
 class SwapIntTypes(Base):
-    def test_cpp(self):
-        out = disguise.swap_int_types(CPP_SRC, "cpp", random.Random(1))
-        self.assertNotEqual(out, CPP_SRC)
-        self.assertIn("long long n;", out)
-        self.assertRegex(out, r"\bint\s+big")  # long long -> int leaves a double space
+    def test_cpp_widens_only(self):
+        out = disguise.swap_int_types(CPP_WIDEN, "cpp", random.Random(1))
+        self.assertNotEqual(out, CPP_WIDEN)
+        self.assertIn("long long n = 3;", out)
+        self.assertIn("long long big = 5;", out)  # never narrowed
         self.assertIn("int main", out)
         self.assert_valid(out, "cpp")
 
-    def test_pas(self):
+    def test_cpp_skips_risky_files(self):
+        for risky in (CPP_SRC,  # scanf/printf/%d
+                      "#include <algorithm>\nint main(){int x=5; x=std::max(x,0); return x;}\n",
+                      "int main(){int x=5; x=abs(x); return x;}\n"):
+            self.assertEqual(disguise.swap_int_types(risky, "cpp", random.Random(1)), risky)
+
+    def test_cpp_main_args_untouched(self):
+        src = "int main(int argc, char** argv) { int x = argc; return x; }\n"
+        out = disguise.swap_int_types(src, "cpp", random.Random(1))
+        self.assertIn("int main(int argc, char** argv)", out)
+        self.assertIn("long long x", out)
+        self.assert_valid(out, "cpp")
+
+    def test_pas_widens_only(self):
         out = disguise.swap_int_types(PAS_SRC, "pas", random.Random(1))
         self.assertNotEqual(out, PAS_SRC)
         self.assertIn("longint", out.lower())
+        self.assertNotIn("integer", out.lower())
+        src2 = "program P; var a: longint; begin a := 1 end."
+        self.assertEqual(disguise.swap_int_types(src2, "pas", random.Random(1)), src2)
         self.assert_valid(out, "pas")
 
     def test_py_has_no_int_types(self):
@@ -344,6 +371,98 @@ class Cli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(SystemExit):
                 disguise.main(["--src", tmp, "--out", tmp])
+
+
+class ReviewFixes(Base):
+    def test_define_and_array_survive_rename(self):
+        src = '#include <cstdio>\n#define N 100\nint a[N];\nint main(){a[0]=1;printf("%d",a[0]);}\n'
+        out = disguise.rename_identifiers(src, "cpp", random.Random(1))
+        self.assertNotEqual(out, src)
+        self.assertIn("#define N 100", out)
+        self.assert_valid(out, "cpp")
+
+    def test_cpp_library_names_not_renamed(self):
+        src = ('#include <bits/stdc++.h>\nusing namespace std;\nint a[10];\n'
+               'int main(){fill(a,a+10,0); vector<int> v(3); iota(v.begin(),v.end(),0); '
+               'bitset<8> b; cout<<max_element(v.begin(),v.end())-v.begin();}\n')
+        out = disguise.rename_identifiers(src, "cpp", random.Random(1))
+        for kept in ("fill(", "iota(", "bitset<8>", "max_element("):
+            self.assertIn(kept, out)
+        self.assert_valid(out, "cpp")
+
+    def test_main_params_valid(self):
+        src = "int main(int argc,char**argv){return 0;}\n"
+        self.assert_valid(disguise.rename_identifiers(src, "cpp", random.Random(1)), "cpp")
+
+    def test_py_star_import_renames_nothing(self):
+        src = "from math import *\nx=sqrt(4)\nprint(floor(x))\n"
+        self.assertEqual(disguise.rename_identifiers(src, "py", random.Random(1)), src)
+
+    def test_py_fstring_and_kwarg_names_survive(self):
+        src = "def f(n):\n    k = n * 2\n    return f'{k}'\nprint(sorted(['a'], key=len), f(2))\n"
+        out = disguise.rename_identifiers(src, "py", random.Random(1))
+        self.assert_valid(out, "py")
+        ns = {}
+        exec(compile(out, "x", "exec"), ns)  # f-string must still resolve its name
+
+    def test_py_reorder_without_trailing_newline(self):
+        for src in ("def a():\n    return 1\ndef b():\n    return a()",
+                    "def b():\n    return 1\ndef a():\n    return 2"):
+            for seed in range(8):
+                out = disguise.reorder_functions(src, "py", random.Random(seed))
+                self.assert_valid(out, "py")
+
+    def test_for_to_while_empty_condition_unchanged(self):
+        src = "int main(){int s=0; for(int i=0;;i++){ if(i>3)break; s+=i;} return s;}\n"
+        self.assertEqual(disguise.for_to_while(src, "cpp", random.Random(1)), src)
+
+    def test_pas_mixed_case_rename_is_one_name(self):
+        src = "program P;\nvar Foo: longint;\nbegin\n  foo := 1; FOO := Foo + 2; writeln(foo)\nend.\n"
+        out = disguise.rename_identifiers(src, "pas", random.Random(1))
+        self.assertNotEqual(out, src)
+        self.assertEqual(len(set(re.findall(r"\b[a-z]{8}\b", out.lower()))), 1, out)
+        self.assert_valid(out, "pas")
+
+    def test_pas_record_case_dead_code_valid(self):
+        src = ("program P;\ntype R = record\n  case tag: integer of\n    0: (a: integer);\n"
+               "    1: (b: integer);\n  end;\nvar x: R;\nbegin\n  x.tag := 0\nend.\n")
+        out = disguise.insert_dead_code(src, "pas", random.Random(1))
+        if out != src:  # skipping is acceptable; inserting must land in the main block
+            self.assertGreater(out.lower().index("if false"), out.lower().index("var x"))
+            self.assert_valid(out, "pas")
+
+    def test_cpp_dead_code_skips_main_prototype(self):
+        src = "int main();\nint helper(){ return 1; }\nint main(){ return helper(); }\n"
+        out = disguise.insert_dead_code(src, "cpp", random.Random(1))
+        self.assertIn("int main();", out)
+        self.assertGreater(out.index("if (0)"), out.index("int main(){"))
+        self.assert_valid(out, "cpp")
+
+
+class TreeGuards(unittest.TestCase):
+    def test_refuses_nonempty_out_and_out_inside_src(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "src"
+            (src / "p" / "cpp" / "u").mkdir(parents=True)
+            (src / "p" / "cpp" / "u" / "main.cpp").write_text(CPP_WIDEN, encoding="utf-8")
+            out = root / "out"
+            out.mkdir()
+            (out / "keep.txt").write_text("x", encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                disguise.disguise_tree(src, out)
+            with self.assertRaises(SystemExit):
+                disguise.disguise_tree(src, src / "sub")
+
+    def test_unchanged_file_gets_no_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            f = root / "src" / "p" / "cpp" / "u" / "main.cpp"
+            f.parent.mkdir(parents=True)
+            f.write_text("", encoding="utf-8")
+            manifest = disguise.disguise_tree(root / "src", root / "out")
+            self.assertEqual(manifest, [])
+            self.assertFalse((root / "out" / "p" / "cpp" / "u__copy").exists())
 
 
 if __name__ == "__main__":
