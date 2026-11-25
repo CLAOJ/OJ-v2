@@ -249,6 +249,7 @@
     "allGroups": "All groups",
     "hasEditorial": "Has editorial",
     "acCount": "# AC",
+    "license": "License",
     "suggestions": "Suggestions",
     "suggest": {
       "title": "Suggested problems",
@@ -257,8 +258,31 @@
       "error": "Could not load suggested problems. Please try again.",
       "empty": "No suggestions are waiting for review.",
       "suggester": "Suggester",
-      "date": "Date"
+      "date": "Date",
+      "newSuggestion": "Suggest a problem",
+      "form": {
+        "title": "Suggest a new problem",
+        "subtitle": "Reviewers will see the suggestion in the queue. It stays hidden until they publish it.",
+        "backToQueue": "Back to suggestions",
+        "groupRequired": "Choose a problem group",
+        "submit": "Submit suggestion",
+        "submitting": "Submitting...",
+        "submitFailed": "Could not submit the suggestion. Please try again."
+      }
     }
+  },
+  "License": {
+    "source": "Source",
+    "notFound": "License not found."
+  },
+  "EmailChange": {
+    "working": "Confirming your email change...",
+    "successTitle": "Email changed",
+    "success": "The email attached to your account has been updated.",
+    "failedTitle": "Email change failed",
+    "failed": "The activation link is invalid or has expired.",
+    "invalid": "This link is missing its activation key.",
+    "backToSettings": "Back to settings"
   },
   "ProblemPrint": {
     "print": "Print / Save as PDF",
@@ -1116,6 +1140,12 @@
     "resendVerificationEmail": "Resend Verification Email",
     "verificationEmailSentDefault": "Verification email sent successfully",
     "verificationEmailError": "Failed to send verification email",
+    "emailChangeTitle": "Change Email",
+    "emailChangeDesc": "We send a confirmation link to the new address and a notice to your current one. The change only takes effect after the link is opened.",
+    "emailChangeNewLabel": "New email address",
+    "emailChangeSubmit": "Request email change",
+    "emailChangeSent": "Check {email} for the confirmation link.",
+    "emailChangeError": "Failed to request the email change",
     "twoFactorDesc": "Add an extra layer of security to your account by enabling two-factor authentication.",
     "passwordLabel": "Password",
     "enterPasswordContinue": "Enter your password to continue",

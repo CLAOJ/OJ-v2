@@ -33,6 +33,7 @@ import {
     Flag,
     Printer,
     Upload,
+    Scale,
     X
 } from 'lucide-react';
 import { cn, formatMemoryLimit } from '@/lib/utils';
@@ -436,6 +437,20 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                                 </span>
                                 <span className="text-sm font-medium truncate">{problem.group}</span>
                             </div>
+                            {/* v1 problem.html: license link labelled display or name. */}
+                            {problem.license && (
+                                <div className="bg-muted/30 border border-dashed rounded-md p-6 flex flex-col gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                                        <Scale size={12} /> {t('license')}
+                                    </span>
+                                    <Link
+                                        href={`/license/${problem.license.key}`}
+                                        className="text-sm font-medium hover:text-primary transition-colors"
+                                    >
+                                        {problem.license.display || problem.license.name}
+                                    </Link>
+                                </div>
+                            )}
                         </div>
 
                         {/* Problem Clarifications */}
