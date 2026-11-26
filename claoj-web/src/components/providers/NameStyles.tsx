@@ -22,13 +22,16 @@ const cssString = (s: string) => `"${s.replace(/[\\"]/g, '\\$&').replace(/[\r\n<
 
 // nameStylesCss turns the admin-configured rank styles (v1 ranks.scss) into
 // rules on every link to a styled user's profile, so no page needs to know
-// about display ranks. Avatar links (containing an <img>) and menu items
-// (e.g. the user menu's own-profile entry) are left alone.
+// about display ranks. A link that marks its name with [data-name] (e.g. one
+// that also holds an avatar, @handle and organizations) styles only that
+// element; avatar links (containing an <img>) and menu items (e.g. the user
+// menu's own-profile entry) are left alone.
 export function nameStylesCss({ styles, users }: NameStylesData): string {
     const byRank: Record<string, string[]> = {};
     for (const [username, rank] of Object.entries(users)) {
         if (!styles[rank]) continue;
-        (byRank[rank] ??= []).push(`a[href$=${cssString('/user/' + username)}]:not(:has(img)):not([role=menuitem])`);
+        const a = `a[href$=${cssString('/user/' + username)}]`;
+        (byRank[rank] ??= []).push(`${a}:not(:has(img,[data-name])):not([role=menuitem])`, `${a} [data-name]`);
     }
     const out: string[] = [];
     for (const [rank, sels] of Object.entries(byRank)) {

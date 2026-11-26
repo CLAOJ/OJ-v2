@@ -194,11 +194,15 @@ export default function UsersListPage({ initialRank = 'points' }: { initialRank?
                                         </td>
                                         <td className="px-6 py-8">
                                             <Link href={`/user/${user.username}`} className="flex items-center gap-3 group/user outline-none">
-                                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-primary font-semibold text-lg transition-all">
-                                                    {user.display_name?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()}
-                                                </div>
+                                                {user.avatar_url ? (
+                                                    <img src={user.avatar_url} alt="" className="w-12 h-12 rounded-xl bg-muted object-cover shrink-0" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-primary font-semibold text-lg shrink-0">
+                                                        {user.display_name?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()}
+                                                    </div>
+                                                )}
                                                 <div className="flex flex-col gap-1">
-                                                    <span className="font-semibold text-lg group-hover/user:text-primary transition-colors">
+                                                    <span data-name className="font-semibold text-lg group-hover/user:text-primary transition-colors">
                                                         {user.display_name || user.username}
                                                     </span>
                                                     <span className="text-xs font-mono text-muted-foreground">@{user.username}</span>

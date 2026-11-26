@@ -127,7 +127,7 @@ export default function RatingsPageContent() {
                                                 alt={entry.username}
                                                 className="w-10 h-10 rounded-full border-2 border-muted"
                                             />
-                                            <span className="font-medium text-base hover:text-primary transition-colors">
+                                            <span data-name className="font-medium text-base hover:text-primary transition-colors">
                                                 {entry.username}
                                             </span>
                                         </Link>

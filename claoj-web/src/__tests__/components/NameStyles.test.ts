@@ -9,13 +9,15 @@ describe('nameStylesCss', () => {
             },
             users: { alice: 'staff', 'ev"il': 'bad', bob: 'unknown' },
         });
-        expect(css).toContain('a[href$="/user/alice"]:not(:has(img)){color:#ff888a!important;font-weight:700!important}'.split('{')[0]);
         expect(css).toContain('color:#ff888a!important;font-weight:700!important');
         expect(css).toContain('content:"🔥"');
         expect(css).not.toContain('display:none');
         expect(css).toContain('a[href$="/user/ev\\"il"]');
         expect(css).toContain('content:"\\"}x"');
         expect(css).not.toContain('bob');
+        // A link that marks its name styles only that element.
+        expect(css).toContain('a[href$="/user/alice"] [data-name]::before');
+        expect(css).toContain('a[href$="/user/alice"]:not(:has(img,[data-name]))');
     });
 
     it('sets the configured decoration, and none when unset', () => {
