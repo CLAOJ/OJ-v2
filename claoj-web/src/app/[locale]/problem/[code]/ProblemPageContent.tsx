@@ -8,6 +8,7 @@ import api, { problemClarificationApi, problemPdfApi, problemSubmitApi } from '@
 import { ProblemDetail, ProblemClarification } from '@/types';
 import MathRenderer from '@/components/ui/MathRenderer';
 import CodeEditor from '@/components/ui/CodeEditor';
+import { isStockSource, templateFor } from '@/lib/codeLanguage';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useState, useEffect, useRef, use } from 'react';
@@ -69,7 +70,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
     const t = useTranslations('Problems');
     const tAuth = useTranslations('Auth');
     const { requireAuth } = useRequireAuth();
-    const [codeValue, setCodeValue] = useState('// Your code here\n#include <iostream>\n\nint main() {\n    return 0;\n}');
+    const [codeValue, setCodeValue] = useState('');
     // Empty until the problem's allowed languages arrive — see the effect below.
     // This used to default to the literal 'cpp', which is not a language key the
     // backend knows (the keys are C, CPP17, PY3, ...). No <option> matched it, so
@@ -106,6 +107,13 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
             ?? allowed[0];
         setLanguage(preferred.key);
     }, [problem, language]);
+
+    // Swap the starter template with the language, but never clobber code the
+    // user (or a resubmit prefill) put in the editor.
+    useEffect(() => {
+        if (!language) return;
+        setCodeValue(prev => (isStockSource(prev) ? templateFor(language) : prev));
+    }, [language]);
 
     // v1 /problem/<p>/resubmit/<submission>: prefill the editor from an earlier
     // submission. The API decides whether this viewer may read it (owner, or
