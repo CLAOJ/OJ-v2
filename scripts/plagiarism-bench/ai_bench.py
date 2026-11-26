@@ -131,7 +131,7 @@ def cmd_recall(args):
             for kind in shares:
                 subs = sorted(str(p) for p in (base / kind).iterdir())
                 out = base / ("out_" + kind)
-                subprocess.run([args.python, "-m", "compare50", *subs, "-a", str(arch), "--archive-only",
+                subprocess.run([args.python, "-m", "compare50", *subs, "-a", *[str(p) for p in sorted(arch.iterdir())], "--archive-only",
                                 "-n", "999", "-o", str(out)], check=True)
                 rf = out / "results.json"
                 res = json.loads(rf.read_text()) if rf.exists() else {"pairs": []}
