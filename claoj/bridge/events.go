@@ -1,49 +1,36 @@
 package bridge
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
-	"fmt"
-	"strconv"
+	"encoding/json"
+	"log"
 
+	v2 "github.com/CLAOJ/claoj/api/v2"
 	"github.com/CLAOJ/claoj/cache"
-	"github.com/CLAOJ/claoj/config"
 )
 
-// getIDSecret mimics Submission.get_id_secret() in Django.
-func getIDSecret(id uint) string {
-	secret := config.C.App.SecretKey
-	h := sha1.New()
-	h.Write([]byte(strconv.FormatUint(uint64(id), 10)))
-	h.Write([]byte(secret))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-// PostEvent posts a payload to the Redis pub/sub event daemon.
-// Channel is usually sub_<secret> or contest_<id> or submissions.
+// PostEvent publishes a payload for the websocket hub (events package).
+// Channel is sub_<secret>, contest_<key> or submissions.
 func PostEvent(channel string, payload map[string]interface{}) {
-	cache.Publish(channel, payload)
+	b, err := json.Marshal(payload)
+	if err == nil {
+		err = cache.Publish(channel, b)
+	}
+	if err != nil {
+		log.Printf("bridge: post event %s: %v", channel, err)
+	}
 }
 
 // PostSubmissionState posts the per-submission channel update.
 func PostSubmissionState(subID uint, state string, extra map[string]interface{}) {
-	secret := getIDSecret(subID)
-	channel := fmt.Sprintf("sub_%s", secret)
-
-	payload := map[string]interface{}{
-		"type": state,
-	}
+	payload := map[string]interface{}{"type": state}
 	for k, v := range extra {
 		payload[k] = v
 	}
-
-	PostEvent(channel, payload)
+	PostEvent(v2.SubmissionEventChannel(subID), payload)
 }
 
 // PostGlobalSubmissionUpdate posts to the global 'submissions' channel.
 func PostGlobalSubmissionUpdate(subID uint, state string, done bool) {
-	// In the real system, this fetches problem, user, organizations, etc.
-	// For now, we stub it out or just send minimal info.
 	PostEvent("submissions", map[string]interface{}{
 		"type":  "update-submission",
 		"state": state,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { useWebSocket, WebSocketStatus, WebSocketMessage } from '../hooks/useWebSocket';
 
 interface WebSocketContextValue {
@@ -11,6 +11,7 @@ interface WebSocketContextValue {
     unsubscribe: (channel: string) => void;
     send: (message: WebSocketMessage) => void;
     subscribedChannels: Set<string>;
+    addListener: (fn: (message: WebSocketMessage) => void) => () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | undefined>(undefined);
@@ -40,6 +41,7 @@ export function WebSocketProvider({
         unsubscribe,
         send,
         subscribedChannels,
+        addListener,
     } = useWebSocket({
         url,
         reconnectInterval,
@@ -56,7 +58,8 @@ export function WebSocketProvider({
         unsubscribe,
         send,
         subscribedChannels,
-    }), [status, connect, disconnect, subscribe, unsubscribe, send, subscribedChannels]);
+        addListener,
+    }), [status, connect, disconnect, subscribe, unsubscribe, send, subscribedChannels, addListener]);
 
     return (
         <WebSocketContext.Provider value={value}>
@@ -71,6 +74,22 @@ export function useWebSocketContext() {
         throw new Error('useWebSocketContext must be used within a WebSocketProvider');
     }
     return context;
+}
+
+/**
+ * Subscribes to one backend event channel while mounted and calls onEvent with
+ * each message's data. A falsy channel subscribes to nothing.
+ */
+export function useEventChannel(channel: string | undefined | null, onEvent: (data: unknown) => void) {
+    const { subscribe, unsubscribe, addListener } = useWebSocketContext();
+    const handler = useRef(onEvent);
+    useEffect(() => { handler.current = onEvent; });
+    useEffect(() => {
+        if (!channel) return;
+        subscribe(channel);
+        const off = addListener((m) => { if (m.channel === channel) handler.current(m.data); });
+        return () => { off(); unsubscribe(channel); };
+    }, [channel, subscribe, unsubscribe, addListener]);
 }
 
 export { WebSocketContext };

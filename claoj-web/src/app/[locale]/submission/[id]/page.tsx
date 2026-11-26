@@ -38,7 +38,7 @@ import { statusKey } from '@/lib/submissionStatus';
 import { formatMemoryMb, summarizeTestScore } from '@/lib/submissionDetail';
 import { problemResubmitPath } from '@/lib/submissionFile';
 import dayjs from 'dayjs';
-import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { useWebSocketContext, useEventChannel } from '@/contexts/WebSocketContext';
 import type { ApiError } from '@/lib/api';
 
 interface TestCase {
@@ -57,6 +57,7 @@ interface TestCase {
 
 interface SubmissionDetail {
     id: number;
+    event_channel?: string;
     problem: string;
     problem_name?: string;
     problem_points?: number;
@@ -134,7 +135,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
     const confirm = useConfirm();
     const { user } = useAuth();
     const queryClient = useQueryClient();
-    const { subscribe, unsubscribe } = useWebSocketContext();
+    const { status: wsStatus } = useWebSocketContext();
     const [isRejudging, setIsRejudging] = useState(false);
     const [rejudgeError, setRejudgeError] = useState<string | null>(null);
     const [isAborting, setIsAborting] = useState(false);
@@ -154,23 +155,18 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
         refetchInterval: (query) => {
             const submission = query.state.data;
             if (!submission) return 1000;
-            // Poll every 2 seconds if processing/grading
+            // While grading: live events drive refetches; polling is the fallback.
             if (['QU', 'P', 'G'].includes(submission.status)) {
-                return 2000;
+                return wsStatus === 'connected' ? 15000 : 2000;
             }
             return false;
         }
     });
 
-    // Subscribe to submission-specific WebSocket channel for live updates
-    useEffect(() => {
-        const submissionChannel = `sub_${id}`;
-        subscribe(submissionChannel);
-
-        return () => {
-            unsubscribe(submissionChannel);
-        };
-    }, [id, subscribe, unsubscribe]);
+    // Live grading progress (bridge publishes to the submission's secret channel).
+    useEventChannel(sub?.event_channel, () => {
+        queryClient.invalidateQueries({ queryKey: ['submission', id] });
+    });
 
     // Track last update time
     useEffect(() => {

@@ -29,7 +29,6 @@ import {
     Lock,
     Play,
     CheckCircle2,
-    HelpCircle,
     Info,
     Activity,
     Wifi,
@@ -46,7 +45,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from '@/navigation';
 import Comments from '@/components/common/Comments';
 import MathRenderer from '@/components/ui/MathRenderer';
-import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { useWebSocketContext, useEventChannel } from '@/contexts/WebSocketContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { toast } from 'sonner';
 import type { ApiError } from '@/lib/api';
@@ -84,7 +83,7 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         setParticipationPage(1);
     }
     const queryClient = useQueryClient();
-    const { subscribe, unsubscribe, status } = useWebSocketContext();
+    const { status } = useWebSocketContext();
 
     const selectTab = (tab: ContestTab) => {
         setActiveTab(tab);
@@ -202,16 +201,11 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
         return () => clearInterval(interval);
     }, [contest, t]);
 
-    useEffect(() => {
-        if (!key) return;
-
-        const contestChannel = `contest_${key}`;
-        subscribe(contestChannel);
-
-        return () => {
-            unsubscribe(contestChannel);
-        };
-    }, [key, subscribe, unsubscribe]);
+    // A graded contest submission changed someone's score.
+    useEventChannel(key ? `contest_${key}` : null, () => {
+        queryClient.invalidateQueries({ queryKey: ['contest-ranking', key] });
+        queryClient.invalidateQueries({ queryKey: ['contest-participations', key] });
+    });
 
     // "Updated N ago" only means something while the live socket is feeding the board.
     const lastLiveUpdate = activeTab === 'scoreboard' && status === 'connected' && rankingUpdatedAt ? new Date(rankingUpdatedAt) : null;
@@ -497,13 +491,9 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                                     </Link>
                                                 </td>
                                                 <td className="px-6 py-6 text-center">
-                                                    {prob.is_solved ? (
+                                                    {prob.is_solved && (
                                                         <div className="inline-flex items-center justify-center p-2 rounded-full bg-emerald-500/10 text-emerald-500">
                                                             <CheckCircle2 size={24} />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="inline-flex items-center justify-center p-2 rounded-full bg-muted/30 text-muted-foreground/20">
-                                                            <HelpCircle size={24} />
                                                         </div>
                                                     )}
                                                 </td>

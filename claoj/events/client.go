@@ -51,11 +51,10 @@ func (c *Client) readPump() {
 			break
 		}
 
-		// The client (browser) sends a JSON array to subscribe to channels:
-		// e.g., ["sub_xxxxxx", "submissions"]
-		var channels []string
-		if err := json.Unmarshal(message, &channels); err == nil {
-			c.hub.register <- SubscriptionRequest{client: c, channels: channels}
+		// {"type":"subscribe"|"unsubscribe","channel":"sub_<secret>"}
+		var req struct{ Type, Channel string }
+		if json.Unmarshal(message, &req) == nil && req.Channel != "" && (req.Type == "subscribe" || req.Type == "unsubscribe") {
+			c.hub.subscribe <- subRequest{client: c, channel: req.Channel, on: req.Type == "subscribe"}
 		}
 	}
 }

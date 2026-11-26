@@ -59,10 +59,11 @@ func OrganizationList(c *gin.Context) {
 		IsUnlisted  bool    `json:"is_unlisted"`
 		MemberCount int     `json:"member_count"`
 		PP          float64 `json:"performance_points"`
+		Logo        string  `json:"logo_override_image"`
 	}
 	items := make([]Item, len(orgs))
 	for i, o := range orgs {
-		items[i] = Item{o.ID, o.Name, o.Slug, o.ShortName, o.About, o.IsOpen, o.IsUnlisted, o.MemberCount, o.PerformancePoints}
+		items[i] = Item{o.ID, o.Name, o.Slug, o.ShortName, o.About, o.IsOpen, o.IsUnlisted, o.MemberCount, o.PerformancePoints, o.LogoOverrideImage}
 	}
 	c.JSON(http.StatusOK, apiListWithTotal(items, total))
 }
@@ -212,22 +213,23 @@ func OrganizationDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":                 org.ID,
-		"name":               org.Name,
-		"slug":               org.Slug,
-		"short_name":         org.ShortName,
-		"about":              org.About,
-		"is_open":            org.IsOpen,
-		"is_unlisted":        org.IsUnlisted,
-		"member_count":       org.MemberCount,
-		"performance_points": org.PerformancePoints,
-		"creation_date":      org.CreationDate,
-		"user_id":            viewerProfileID,
-		"viewer_is_member":   viewerIsMember,
-		"viewer_is_admin":    viewerIsAdmin,
-		"viewer_request":     viewerRequest,
-		"members":            members,
-		"admins":             admins,
+		"id":                  org.ID,
+		"name":                org.Name,
+		"slug":                org.Slug,
+		"short_name":          org.ShortName,
+		"about":               org.About,
+		"is_open":             org.IsOpen,
+		"is_unlisted":         org.IsUnlisted,
+		"member_count":        org.MemberCount,
+		"performance_points":  org.PerformancePoints,
+		"logo_override_image": org.LogoOverrideImage,
+		"creation_date":       org.CreationDate,
+		"user_id":             viewerProfileID,
+		"viewer_is_member":    viewerIsMember,
+		"viewer_is_admin":     viewerIsAdmin,
+		"viewer_request":      viewerRequest,
+		"members":             members,
+		"admins":              admins,
 	})
 }
 
@@ -305,10 +307,10 @@ func PublicOrganizationCreate(c *gin.Context) {
 	}
 
 	created, err := getOrgService().CreateOrganization(organization.CreateOrganizationRequest{
-		Name:              req.Name,
-		Slug:              req.Slug,
-		ShortName:         shortName,
-		About:             req.About,
+		Name:      req.Name,
+		Slug:      req.Slug,
+		ShortName: shortName,
+		About:     req.About,
 		// v1 defaults a new organization to unlisted and closed.
 		IsUnlisted:        true,
 		LogoOverrideImage: req.LogoOverrideImage,

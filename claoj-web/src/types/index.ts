@@ -1173,6 +1173,7 @@ export interface Organization {
     slots?: number;
     member_count: number;
     performance_points: number;
+    logo_override_image?: string;
 }
 
 export interface OrganizationDetail extends Organization {

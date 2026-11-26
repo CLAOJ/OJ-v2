@@ -139,9 +139,13 @@ export default function OrganizationsListPage() {
                         >
                             <div className="bg-card border rounded-md p-4 shadow-sm hover:border-primary/30 transition-all h-full flex flex-col">
                                 <div className="flex items-start justify-between mb-6">
-                                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center text-primary font-semibold text-2xl">
-                                        {org.name[0]?.toUpperCase()}
-                                    </div>
+                                    {org.logo_override_image ? (
+                                        <img src={org.logo_override_image} alt="" className="w-16 h-16 rounded-md object-cover bg-muted" />
+                                    ) : (
+                                        <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center text-primary font-semibold text-2xl">
+                                            {org.name[0]?.toUpperCase()}
+                                        </div>
+                                    )}
                                     <div className="flex gap-2">
                                         {org.is_open && (
                                             <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">

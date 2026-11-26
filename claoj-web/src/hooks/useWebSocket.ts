@@ -24,6 +24,8 @@ interface WebSocketHook {
     unsubscribe: (channel: string) => void;
     send: (message: WebSocketMessage) => void;
     subscribedChannels: Set<string>;
+    /** Calls fn for every incoming message; returns the remover. */
+    addListener: (fn: (message: WebSocketMessage) => void) => () => void;
 }
 
 function getDefaultWebSocketUrl(): string {
@@ -36,7 +38,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
     const {
         url = process.env.NEXT_PUBLIC_WS_URL || getDefaultWebSocketUrl(),
         reconnectInterval = 3000,
-        maxReconnectAttempts = 5,
+        maxReconnectAttempts = Infinity, // a deploy restart must not kill live updates for good
         channels = [],
         onMessage,
     } = options;
@@ -48,6 +50,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const reconnectAttemptsRef = useRef(0);
     const manualCloseRef = useRef(false);
+    const listenersRef = useRef(new Set<(message: WebSocketMessage) => void>());
     // The reconnect timer calls the latest connect, so connect never references itself.
     const connectRef = useRef<() => void>(() => {});
     // Read by onopen, which outlives the render that created it.
@@ -94,7 +97,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
                         reconnectTimeoutRef.current = setTimeout(() => {
                             setStatus('connecting');
                             connectRef.current();
-                        }, reconnectInterval);
+                        }, Math.min(reconnectInterval * reconnectAttemptsRef.current, 30000));
                     }
                 }
             };
@@ -107,9 +110,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
                 try {
                     const message: WebSocketMessage = JSON.parse(event.data);
 
-                    if (onMessage) {
-                        onMessage(message);
-                    }
+                    onMessage?.(message);
+                    listenersRef.current.forEach((fn) => fn(message));
                 } catch (err) {
                     // Failed to parse message - silently ignore
                 }
@@ -161,6 +163,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
         // Silently ignore if not connected - will be handled by connection state
     }, []);
 
+    const addListener = useCallback((fn: (message: WebSocketMessage) => void) => {
+        listenersRef.current.add(fn);
+        return () => { listenersRef.current.delete(fn); };
+    }, []);
+
     // Initial connection and channel subscriptions
     useEffect(() => {
         connect();
@@ -189,6 +196,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHook {
         unsubscribe,
         send,
         subscribedChannels,
+        addListener,
     };
 }
 

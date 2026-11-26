@@ -4,34 +4,29 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/CLAOJ/claoj/cache"
-	"github.com/redis/go-redis/v9"
 )
 
-// Hub maintains the set of active clients and broadcasts messages to them.
+// Hub fans Redis pub/sub messages out to the websocket clients subscribed to
+// each channel. Only run() touches clients, so no lock is needed.
 type Hub struct {
-	// Registered clients map: map[channel]map[*Client]bool
-	clients map[string]map[*Client]bool
-
-	// Inbound messages from Redis
-	broadcast chan *redis.Message
-
-	// Register requests from the clients.
-	// Structure: struct{ client *Client; channels []string }
-	register chan SubscriptionRequest
-
-	// Unregister requests from clients.
+	clients    map[string]map[*Client]bool
+	broadcast  chan outbound
+	subscribe  chan subRequest
 	unregister chan *Client
-
-	mu sync.RWMutex
 }
 
-type SubscriptionRequest struct {
-	client   *Client
-	channels []string
+type subRequest struct {
+	client  *Client
+	channel string
+	on      bool // false = unsubscribe
+}
+
+type outbound struct {
+	channel string
+	payload []byte
 }
 
 // GlobalHub is the singleton hub instance
@@ -39,12 +34,11 @@ var GlobalHub *Hub
 
 func InitHub() {
 	GlobalHub = &Hub{
-		broadcast:  make(chan *redis.Message, 256),
-		register:   make(chan SubscriptionRequest),
-		unregister: make(chan *Client),
 		clients:    make(map[string]map[*Client]bool),
+		broadcast:  make(chan outbound, 256),
+		subscribe:  make(chan subRequest),
+		unregister: make(chan *Client),
 	}
-
 	go GlobalHub.run()
 	go GlobalHub.subscribeRedis()
 }
@@ -52,78 +46,56 @@ func InitHub() {
 func (h *Hub) run() {
 	for {
 		select {
-		case req := <-h.register:
-			h.mu.Lock()
-			for _, ch := range req.channels {
-				if h.clients[ch] == nil {
-					h.clients[ch] = make(map[*Client]bool)
+		case req := <-h.subscribe:
+			if req.on {
+				if h.clients[req.channel] == nil {
+					h.clients[req.channel] = make(map[*Client]bool)
 				}
-				h.clients[ch][req.client] = true
+				h.clients[req.channel][req.client] = true
+			} else {
+				h.remove(req.channel, req.client)
 			}
-			h.mu.Unlock()
 
 		case client := <-h.unregister:
-			h.mu.Lock()
-			for ch, clMap := range h.clients {
-				if _, ok := clMap[client]; ok {
-					delete(clMap, client)
-					close(client.send)
-					if len(clMap) == 0 {
-						delete(h.clients, ch)
-					}
-				}
+			for ch := range h.clients {
+				h.remove(ch, client)
 			}
-			h.mu.Unlock()
+			close(client.send)
 
-		case message := <-h.broadcast:
-			// message.Channel e.g., "submissions", "sub_<secret>"
-			h.mu.RLock()
-			clients := h.clients[message.Channel]
-
-			// We must construct the payload format expected by the frontend.
-			// The original node app wraps it like: [channel, payload_json]
-			var rawPayload interface{}
-			json.Unmarshal([]byte(message.Payload), &rawPayload)
-
-			outboundMsg, err := json.Marshal([]interface{}{message.Channel, rawPayload})
-			if err != nil {
-				h.mu.RUnlock()
-				continue
-			}
-
-			for client := range clients {
+		case msg := <-h.broadcast:
+			for client := range h.clients[msg.channel] {
 				select {
-				case client.send <- outboundMsg:
-				default:
-					// Cannot send, client is stuck or dead
-					close(client.send)
-					delete(h.clients[message.Channel], client)
+				case client.send <- msg.payload:
+				default: // client too slow: drop this message for it
 				}
 			}
-			h.mu.RUnlock()
 		}
 	}
 }
 
+func (h *Hub) remove(channel string, client *Client) {
+	delete(h.clients[channel], client)
+	if len(h.clients[channel]) == 0 {
+		delete(h.clients, channel)
+	}
+}
+
 func (h *Hub) subscribeRedis() {
-	log.Println("events: subscribing to Redis pub/sub channels")
-	// The original Node daemon allows clients to subscribe to specific channels.
-	// We'll use PSUBSCRIBE to listen to all channels that match our interested patterns.
-	pubsub := cache.Client.PSubscribe(context.Background(), "submissions", "sub_*", "contest_*")
-	defer pubsub.Close()
-
-	ch := pubsub.Channel()
-
 	for {
-		msg, ok := <-ch
-		if !ok {
-			// Backoff and reconnect if Redis drops
-			time.Sleep(5 * time.Second)
-			pubsub = cache.Client.PSubscribe(context.Background(), "submissions", "sub_*", "contest_*")
-			ch = pubsub.Channel()
-			continue
+		pubsub := cache.Client.PSubscribe(context.Background(), "submissions", "sub_*", "contest_*")
+		log.Println("events: subscribed to Redis pub/sub")
+		for msg := range pubsub.Channel() {
+			// Same shape the frontend's useWebSocket expects.
+			payload, err := json.Marshal(map[string]interface{}{
+				"type":    "message",
+				"channel": msg.Channel,
+				"data":    json.RawMessage(msg.Payload),
+			})
+			if err == nil {
+				h.broadcast <- outbound{msg.Channel, payload}
+			}
 		}
-
-		h.broadcast <- msg
+		pubsub.Close()
+		time.Sleep(5 * time.Second) // Redis dropped; reconnect
 	}
 }

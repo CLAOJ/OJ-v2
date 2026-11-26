@@ -390,9 +390,13 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 <div className="relative z-10">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
                         <div className="flex items-center gap-6">
-                            <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center text-primary font-semibold text-5xl">
-                                {org.name[0]?.toUpperCase()}
-                            </div>
+                            {org.logo_override_image ? (
+                                <img src={org.logo_override_image} alt="" className="w-24 h-24 rounded-md object-cover bg-muted" />
+                            ) : (
+                                <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center text-primary font-semibold text-5xl">
+                                    {org.name[0]?.toUpperCase()}
+                                </div>
+                            )}
                             <div>
                                 <h1 className="text-4xl md:text-5xl font-semibold tracking-tighter mb-2">{org.name}</h1>
                                 {org.short_name && (

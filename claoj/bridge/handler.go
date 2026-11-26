@@ -267,6 +267,7 @@ func onGradingEnd(subID uint) error {
 		if err := cf.UpdateParticipation(&cSub.Participation); err != nil {
 			log.Printf("bridge: sub %d: update contest participation: %v", subID, err)
 		}
+		PostEvent("contest_"+cSub.Participation.Contest.Key, map[string]interface{}{"type": "update"})
 	}
 	return nil
 }

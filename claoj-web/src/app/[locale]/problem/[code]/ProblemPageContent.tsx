@@ -21,7 +21,6 @@ import {
     Loader2,
     CheckCircle2,
     XCircle,
-    HelpCircle,
     Activity,
     ArrowUpRight,
     Trophy,
@@ -252,11 +251,7 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
                         <div className="p-4 rounded-full bg-amber-700 text-white">
                             <XCircle size={40} />
                         </div>
-                    ) : (
-                        <div className="p-4 rounded-full bg-muted text-muted-foreground/30">
-                            <HelpCircle size={40} />
-                        </div>
-                    )}
+                    ) : null}
 
                     <div className="text-center space-y-1">
                         <p className="text-xs font-medium text-muted-foreground">

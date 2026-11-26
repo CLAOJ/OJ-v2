@@ -211,6 +211,7 @@ export default function ProblemForm({ initialData, initialAuthors, initialOption
                 selectedLangs={selectedLangs}
                 onAuthorsChange={(ids) => setValue('author_ids', ids)}
                 onLangToggle={(langId, checked) => handleMultiSelect('allowed_lang_ids', langId, checked)}
+                onLangsChange={(ids) => setValue('allowed_lang_ids', ids)}
             />
 
             <PeopleSection

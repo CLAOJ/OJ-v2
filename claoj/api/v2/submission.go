@@ -1,13 +1,18 @@
 package v2
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/submission"
@@ -325,7 +330,18 @@ func SubmissionDetail(c *gin.Context) {
 		"case_total":         sub.CaseTotal,
 		"test_cases":         testCases,
 		"can_view_testcases": canViewTest,
+		// Websocket channel with live grading events; unguessable, so only
+		// viewers of this page learn it.
+		"event_channel": SubmissionEventChannel(sub.ID),
 	})
+}
+
+// SubmissionEventChannel is the per-submission websocket channel the bridge
+// publishes grading progress to.
+func SubmissionEventChannel(id uint) string {
+	m := hmac.New(sha256.New, []byte(config.C.App.SecretKey))
+	fmt.Fprintf(m, "submission-event:%d", id)
+	return "sub_" + hex.EncodeToString(m.Sum(nil))[:32]
 }
 
 // viewerOutputPrefix is v1's prefix_length: a contest submission viewed by

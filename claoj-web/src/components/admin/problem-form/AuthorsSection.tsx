@@ -17,6 +17,7 @@ interface AuthorsSectionProps {
     selectedLangs: number[];
     onAuthorsChange: (ids: number[]) => void;
     onLangToggle: (langId: number, checked: boolean) => void;
+    onLangsChange: (langIds: number[]) => void;
 }
 
 export function AuthorsSection({
@@ -25,9 +26,13 @@ export function AuthorsSection({
     initialAuthors,
     selectedLangs,
     onAuthorsChange,
-    onLangToggle
+    onLangToggle,
+    onLangsChange
 }: AuthorsSectionProps) {
     const t = useTranslations('Problems');
+    const tCommon = useTranslations('Common');
+    const allLangIds = languages?.data.map(l => l.id) ?? [];
+    const allSelected = allLangIds.length > 0 && allLangIds.every(id => selectedLangs.includes(id));
 
     return (
         <div className="bg-card rounded-md border p-6 space-y-4">
@@ -44,9 +49,19 @@ export function AuthorsSection({
             />
 
             <div>
-                <label htmlFor="allowed-languages" className="text-sm font-medium text-muted-foreground block mb-2">
-                    {t('allowedLanguages')}
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="allowed-languages" className="text-sm font-medium text-muted-foreground">
+                        {t('allowedLanguages')}
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => onLangsChange(allSelected ? [] : allLangIds)}
+                        disabled={allLangIds.length === 0}
+                        className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                    >
+                        {allSelected ? tCommon('deselectAll') : tCommon('selectAll')}
+                    </button>
+                </div>
                 <div id="allowed-languages" className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="allowed-languages">
                     {languages?.data.map(lang => (
                         <label key={lang.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/30">
