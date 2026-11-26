@@ -187,3 +187,45 @@ func TestLLMGenerator_RetriesOn429(t *testing.T) {
 	require.Equal(t, "int main(){}", code)
 	require.Equal(t, int32(2), hits.Load())
 }
+
+// slowGen answers the first `fast` calls at once and blocks the rest until ctx ends.
+type slowGen struct {
+	calls atomic.Int32
+	fast  int32
+}
+
+func (s *slowGen) Model() string { return "slow" }
+func (s *slowGen) Generate(ctx context.Context, _ GenerateInput) (string, error) {
+	if s.calls.Add(1) <= s.fast {
+		return "quick code", nil
+	}
+	<-ctx.Done()
+	return "", ctx.Err()
+}
+
+func TestEnsureAllReferences_BudgetAbandonsSlowCalls(t *testing.T) {
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	f.problem.Description = longStatement()
+	gen := &slowGen{fast: 3}
+	start := time.Now()
+	notes, err := EnsureAllReferences(context.Background(), database, gen,
+		[]aiGenTarget{{f.problem, "C++"}}, 200*time.Millisecond)
+	require.NoError(t, err)
+	require.Less(t, time.Since(start), 5*time.Second)
+	require.Equal(t, "generation_failed: time budget", notes[[2]string{f.problem.Code, "C++"}])
+	require.Equal(t, int64(3), countRefs(t, database, f.problem.ID, "C++", "generated"), "finished refs are kept")
+}
+
+func TestEnsureAllReferences_SharedPoolAcrossTargets(t *testing.T) {
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	f.problem.Description = longStatement()
+	gen := &fakeGen{}
+	notes, err := EnsureAllReferences(context.Background(), database, gen,
+		[]aiGenTarget{{f.problem, "C++"}, {f.problem, "Python"}}, time.Minute)
+	require.NoError(t, err)
+	require.Empty(t, notes)
+	require.Equal(t, int32(2*aiRefsPerLang), gen.calls.Load())
+	require.Equal(t, int64(aiRefsPerLang), countRefs(t, database, f.problem.ID, "Python", "generated"))
+}

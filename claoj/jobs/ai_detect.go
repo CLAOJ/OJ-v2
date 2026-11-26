@@ -108,14 +108,14 @@ func aiRewrites(chain []aiAttempt) (n int, ids []uint) {
 
 // aiCheck runs the reference check for one problem x language and returns its
 // summary plus one candidate row per contestant (before S4 and listing).
-func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, gen Generator, tmp, reportRoot string, l aiLang) (AIProblem, []AIRow, error) {
-	note, err := EnsureReferences(ctx, tx, gen, l.Problem, l.Lang)
-	if err != nil {
-		return AIProblem{}, nil, err
-	}
+// note comes from EnsureAllReferences; "no_references_table" skips the lookup
+// because the table was never created.
+func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, tmp, reportRoot string, l aiLang, note string) (AIProblem, []AIRow, error) {
 	var refs []models.PlagiarismAIReference
-	if err := tx.Where("problem_id = ? AND language = ?", l.Problem.ID, l.Lang).Order("id ASC").Find(&refs).Error; err != nil {
-		return AIProblem{}, nil, err
+	if note != "no_references_table" {
+		if err := tx.Where("problem_id = ? AND language = ?", l.Problem.ID, l.Lang).Order("id ASC").Find(&refs).Error; err != nil {
+			return AIProblem{}, nil, err
+		}
 	}
 	prob := AIProblem{ProblemCode: l.Problem.Code, Language: l.Lang, Contestants: len(l.Best), Note: note}
 	for _, r := range refs {
