@@ -84,6 +84,10 @@ func (g *llmGenerator) Generate(ctx context.Context, in GenerateInput) (string, 
 	body, err := json.Marshal(map[string]any{
 		"model":       g.model,
 		"temperature": 0.8,
+		// DeepSeek V4 thinks by default: ~36k reasoning tokens and 200+ s per
+		// solution on prod, past aiGenTimeout. Off: ~4 s.
+		// ponytail: DeepSeek-only field; gate it on the URL if another provider rejects it.
+		"thinking": map[string]string{"type": "disabled"},
 		"messages": []map[string]string{
 			{"role": "system", "content": aiGenSystemPrompt},
 			{"role": "user", "content": fmt.Sprintf("Language: %s\nTime limit: %g seconds\nMemory limit: %d KB\n\n%s",

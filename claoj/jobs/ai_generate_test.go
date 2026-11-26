@@ -164,6 +164,8 @@ func TestLLMGenerator_ExtractsFencedCode(t *testing.T) {
 	require.Equal(t, "/v1/chat/completions", gotPath)
 	require.Equal(t, "Bearer secret-key", gotAuth)
 	require.Equal(t, "test-model", gotBody["model"])
+	// Thinking mode took 208 s per call on prod (deepseek-flash) and hit the timeout.
+	require.Equal(t, map[string]any{"type": "disabled"}, gotBody["thinking"])
 }
 
 func TestLLMGenerator_RetriesOn429(t *testing.T) {
