@@ -151,7 +151,7 @@ jobs:
           key: docker-go-${{ hashFiles('claoj/go.sum') }}-${{ github.sha }}
           restore-keys: docker-go-${{ hashFiles('claoj/go.sum') }}-
       - name: Go caches into BuildKit
-        uses: reproducible-containers/buildkit-cache-dance@v3.4.0
+        uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
         with:
           cache-map: |
             {"go-mod": "/go/pkg/mod", "go-build": "/root/.cache/go-build"}
@@ -197,7 +197,7 @@ jobs:
           key: docker-web-${{ hashFiles('claoj-web/package-lock.json') }}-${{ github.sha }}
           restore-keys: docker-web-${{ hashFiles('claoj-web/package-lock.json') }}-
       - name: npm and Next caches into BuildKit
-        uses: reproducible-containers/buildkit-cache-dance@v3.4.0
+        uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
         with:
           cache-map: |
             {"npm-cache": "/root/.npm", "next-cache": "/app/.next/cache"}

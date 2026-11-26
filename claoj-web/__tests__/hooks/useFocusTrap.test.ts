@@ -129,4 +129,22 @@ describe('useFocusTrap', () => {
 
         document.body.removeChild(previousActive);
     });
+    it('keeps focus where the user is typing when the parent re-renders', () => {
+        jest.useFakeTimers();
+        const { result, rerender } = renderHook(
+            ({ active, onEscape }) => useFocusTrap({ isActive: active, onEscape }),
+            { initialProps: { active: false, onEscape: () => {} } },
+        );
+        (result.current as { current: HTMLDivElement | null }).current = container;
+        rerender({ active: true, onEscape: () => {} });
+        act(() => { jest.runAllTimers(); });
+        expect(document.activeElement?.id).toBe('btn1'); // opened: first field
+
+        (container.querySelector('#input1') as HTMLElement).focus();
+        // Typing re-renders the dialog with a fresh onEscape each time.
+        rerender({ active: true, onEscape: () => {} });
+        act(() => { jest.runAllTimers(); });
+        expect(document.activeElement?.id).toBe('input1');
+        jest.useRealTimers();
+    });
 });
