@@ -141,6 +141,8 @@ jobs:
         with:
           submodules: true
       - uses: docker/setup-buildx-action@v3
+      # Keyed on the sources: an exact hit means nothing to compile, and then
+      # the (slow) save step is skipped via skip-extraction.
       - name: Go caches
         id: gocache
         uses: actions/cache@v4
@@ -148,7 +150,7 @@ jobs:
           path: |
             go-mod
             go-build
-          key: docker-go-${{ hashFiles('claoj/go.sum') }}-${{ github.sha }}
+          key: docker-go-${{ hashFiles('claoj/go.sum') }}-${{ hashFiles('claoj/**/*.go') }}
           restore-keys: docker-go-${{ hashFiles('claoj/go.sum') }}-
       - name: Go caches into BuildKit
         uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
@@ -194,7 +196,7 @@ jobs:
           path: |
             npm-cache
             next-cache
-          key: docker-web-${{ hashFiles('claoj-web/package-lock.json') }}-${{ github.sha }}
+          key: docker-web-${{ hashFiles('claoj-web/package-lock.json') }}-${{ hashFiles('claoj-web/src/**', 'claoj-web/public/**') }}
           restore-keys: docker-web-${{ hashFiles('claoj-web/package-lock.json') }}-
       - name: npm and Next caches into BuildKit
         uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
