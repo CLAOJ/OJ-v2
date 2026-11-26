@@ -36,7 +36,7 @@ func TestCompare50Check_RelativeLabelsAndAbsoluteOut(t *testing.T) {
 	}
 	t.Chdir(dir)
 
-	require.NoError(t, Compare50{MaxPairs: 7}.Check(context.Background(), subsDir, filepath.Join("rel", "out")))
+	require.NoError(t, Compare50{MaxPairs: 7}.Check(context.Background(), subsDir, "", filepath.Join("rel", "out")))
 
 	b, err := os.ReadFile(rec)
 	require.NoError(t, err)
@@ -53,4 +53,69 @@ func TestCompare50Check_RelativeLabelsAndAbsoluteOut(t *testing.T) {
 	require.True(t, filepath.IsAbs(wantOut))
 	// os.ReadDir sorts: "-b" before "a".
 	require.Equal(t, "-m compare50 ./-b ./a -o "+wantOut+" -n 7", strings.TrimSpace(lines[1]))
+}
+
+// The archive run passes each archive folder after one -a, plus the archive-only flags.
+func TestCompare50Check_ArchiveRunPassesFlags(t *testing.T) {
+	dir := t.TempDir()
+	var script, body string
+	if runtime.GOOS == "windows" {
+		script = filepath.Join(dir, "fakepy.bat")
+		body = "@echo off\r\ncd > \"%COMPARE50_REC%\"\r\necho %* >> \"%COMPARE50_REC%\"\r\n"
+	} else {
+		script = filepath.Join(dir, "fakepy.sh")
+		body = "#!/bin/sh\npwd > \"$COMPARE50_REC\"\necho \"$@\" >> \"$COMPARE50_REC\"\n"
+	}
+	require.NoError(t, os.WriteFile(script, []byte(body), 0o755))
+	rec := filepath.Join(dir, "rec.txt")
+	t.Setenv("COMPARE50_REC", rec)
+	old := Compare50Python
+	Compare50Python = script
+	t.Cleanup(func() { Compare50Python = old })
+
+	subsDir := filepath.Join(dir, "subs")
+	archiveDir := filepath.Join(dir, "archive")
+	for _, n := range []string{"a", "b"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(subsDir, n), 0o755))
+	}
+	for _, n := range []string{"ref_1", "ref_2"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(archiveDir, n), 0o755))
+	}
+	outDir := filepath.Join(dir, "out")
+
+	readArgv := func(t *testing.T) []string {
+		b, err := os.ReadFile(rec)
+		require.NoError(t, err)
+		lines := strings.Split(strings.TrimSpace(strings.ReplaceAll(string(b), "\r\n", "\n")), "\n")
+		require.Len(t, lines, 2)
+		return strings.Fields(lines[1])
+	}
+
+	t.Run("archive", func(t *testing.T) {
+		require.NoError(t, Compare50{MaxPairs: 7}.Check(context.Background(), subsDir, archiveDir, outDir))
+		argv := readArgv(t)
+		require.Contains(t, argv, "-a")
+		require.Contains(t, argv, filepath.Join(archiveDir, "ref_1"))
+		require.Contains(t, argv, filepath.Join(archiveDir, "ref_2"))
+		require.Contains(t, argv, "--archive-only")
+		require.Contains(t, argv, "--llm-pairs")
+		require.Equal(t, "0", argv[indexOf(argv, "--llm-pairs")+1])
+	})
+
+	t.Run("code run", func(t *testing.T) {
+		require.NoError(t, Compare50{MaxPairs: 7}.Check(context.Background(), subsDir, "", outDir))
+		argv := readArgv(t)
+		require.NotContains(t, argv, "-a")
+		require.NotContains(t, argv, "--archive-only")
+		require.NotContains(t, argv, "--llm-pairs")
+	})
+}
+
+func indexOf(s []string, v string) int {
+	for i, x := range s {
+		if x == v {
+			return i
+		}
+	}
+	return -1
 }

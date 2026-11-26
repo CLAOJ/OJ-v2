@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,11 +23,14 @@ import (
 // its content, then writes outDir/index.html (or returns err).
 type fakeChecker struct {
 	calls    []map[string]string
+	archives []string          // archiveDir per Check call ("" for the code-copy run)
+	results  map[string]string // last three outDir elements joined with "/" -> results.json body
 	err      error
 	noReport bool // like compare50 with no similar pairs: exit 0, no -o dir
 }
 
-func (f *fakeChecker) Check(_ context.Context, subsDir, outDir string) error {
+func (f *fakeChecker) Check(_ context.Context, subsDir, archiveDir, outDir string) error {
+	f.archives = append(f.archives, archiveDir)
 	got := map[string]string{}
 	folders, err := os.ReadDir(subsDir)
 	if err != nil {
@@ -48,6 +52,18 @@ func (f *fakeChecker) Check(_ context.Context, subsDir, outDir string) error {
 	f.calls = append(f.calls, got)
 	if f.err != nil {
 		return f.err
+	}
+	parts := strings.Split(filepath.ToSlash(filepath.Clean(outDir)), "/")
+	if len(parts) > 3 {
+		parts = parts[len(parts)-3:]
+	}
+	if body, ok := f.results[strings.Join(parts, "/")]; ok {
+		if err := os.MkdirAll(outDir, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(outDir, "results.json"), []byte(body), 0o644); err != nil {
+			return err
+		}
 	}
 	if f.noReport {
 		return nil

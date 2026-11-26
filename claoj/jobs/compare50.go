@@ -13,8 +13,10 @@ import (
 )
 
 // Checker writes one HTML report for the submission folders under subsDir into outDir.
+// archiveDir == "" is the code-copy run; otherwise each folder in archiveDir is an
+// archive (reference) submission and the run keeps only archive-vs-submission pairs.
 type Checker interface {
-	Check(ctx context.Context, subsDir, outDir string) error
+	Check(ctx context.Context, subsDir, archiveDir, outDir string) error
 }
 
 var PlagiarismDir = filepath.Join("data", "plagiarism") // swapped in tests
@@ -29,7 +31,7 @@ const (
 // Compare50 runs the local compare50 fork (python -m compare50).
 type Compare50 struct{ MaxPairs int }
 
-func (c Compare50) Check(ctx context.Context, subsDir, outDir string) error {
+func (c Compare50) Check(ctx context.Context, subsDir, archiveDir, outDir string) error {
 	// compare50 creates outDir itself but fails when its parent is missing.
 	if err := os.MkdirAll(filepath.Dir(outDir), 0o755); err != nil {
 		return err
@@ -53,6 +55,27 @@ func (c Compare50) Check(ctx context.Context, subsDir, outDir string) error {
 		if e.IsDir() {
 			args = append(args, "./"+e.Name())
 		}
+	}
+	if archiveDir != "" {
+		archives, err := os.ReadDir(archiveDir)
+		if err != nil {
+			return err
+		}
+		var refs []string
+		for _, e := range archives {
+			if e.IsDir() {
+				abs, err := filepath.Abs(filepath.Join(archiveDir, e.Name()))
+				if err != nil {
+					return err
+				}
+				refs = append(refs, abs)
+			}
+		}
+		if len(refs) > 0 {
+			args = append(args, "-a")
+			args = append(args, refs...)
+		}
+		args = append(args, "--archive-only", "--llm-pairs", "0")
 	}
 	// AI review settings (COMPARE50_LLM_*, incl. _LANGUAGE) reach compare50 through the inherited env.
 	args = append(args, "-o", absOut, "-n", strconv.Itoa(maxPairs))

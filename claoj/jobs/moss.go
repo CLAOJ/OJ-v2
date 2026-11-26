@@ -109,7 +109,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			}
 			row := models.PlagiarismResult{ContestID: contestID, ProblemID: p.ID, Language: lang, SubmissionCount: uint(len(ents)), CreatedAt: now}
 			if len(ents) >= 2 {
-				if err := chk.Check(ctx, subsDir, filepath.Join(reportRoot, p.Code, slug)); err != nil {
+				if err := chk.Check(ctx, subsDir, "", filepath.Join(reportRoot, p.Code, slug)); err != nil {
 					return 0, fmt.Errorf("plagiarism %s/%s: %w", p.Code, lang, err)
 				}
 				// compare50 exits 0 without creating -o when there are no similar pairs.
