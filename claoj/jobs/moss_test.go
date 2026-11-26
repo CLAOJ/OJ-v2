@@ -90,7 +90,7 @@ func setupMossDB(t *testing.T) *gorm.DB {
 	require.NoError(t, database.AutoMigrate(
 		&models.AuthUser{}, &models.Profile{}, &models.Language{}, &models.Problem{}, &models.Contest{},
 		&models.ContestParticipation{}, &models.Submission{}, &models.SubmissionSource{}, &models.ContestSubmission{},
-		&models.ContestMoss{}, &models.PlagiarismResult{}, &models.PlagiarismAIReference{},
+		&models.ContestMoss{}, &models.PlagiarismResult{}, &models.PlagiarismAIReference{}, &models.Rating{},
 	))
 	require.NoError(t, database.Migrator().DropTable("judge_contestproblem"))
 	require.NoError(t, database.Migrator().CreateTable(&models.ContestProblem{}))
@@ -165,7 +165,7 @@ func TestRunContestMoss_WritesReportsAndRows(t *testing.T) {
 	c := seed(t, database)
 	chk := &fakeChecker{}
 
-	n, err := RunContestMoss(context.Background(), database, c.ID, chk)
+	n, err := RunContestMoss(context.Background(), database, c.ID, chk, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, n, "one row per language present")
 	require.Equal(t, []map[string]string{{
@@ -192,7 +192,7 @@ func TestRunContestMoss_SingleSubmissionSkipsChecker(t *testing.T) {
 	addSubmission(t, database, f, py, "alice", 0, 10, "print(1)")
 	chk := &fakeChecker{}
 
-	n, err := RunContestMoss(context.Background(), database, f.contest.ID, chk)
+	n, err := RunContestMoss(context.Background(), database, f.contest.ID, chk, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
 	require.Empty(t, chk.calls)
@@ -214,7 +214,7 @@ func TestRunContestMoss_FailureKeepsOldRowsAndFiles(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(ContestReportDir(c.ID), "old"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(ContestReportDir(c.ID), "old", "index.html"), []byte("old"), 0o644))
 
-	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{err: errors.New("compare50 exploded")})
+	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{err: errors.New("compare50 exploded")}, nil)
 	require.Error(t, err)
 
 	var rows []models.PlagiarismResult
@@ -239,7 +239,7 @@ func TestRunContestMoss_NoPairsLeavesReportPathNil(t *testing.T) {
 	addSubmission(t, database, f, py, "alice", 0, 10, "print(1)")
 	addSubmission(t, database, f, py, "bob", 0, 10, "print(2)")
 
-	_, err := RunContestMoss(context.Background(), database, f.contest.ID, &fakeChecker{noReport: true})
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, &fakeChecker{noReport: true}, nil)
 	require.NoError(t, err)
 
 	var nullPaths, count int64
@@ -260,7 +260,7 @@ func TestRunContestMoss_TieOnPointsPicksLowestID(t *testing.T) {
 	addSubmission(t, database, f, cpp, "bob", 0, 50, "bob")
 	chk := &fakeChecker{}
 
-	_, err := RunContestMoss(context.Background(), database, f.contest.ID, chk)
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, chk, nil)
 	require.NoError(t, err)
 	require.Equal(t, "first", chk.calls[0]["alice/main.cpp"])
 }
@@ -283,7 +283,7 @@ func TestRunContestMoss_SkipsUnsafeProblemCodes(t *testing.T) {
 	addSubmission(t, database, badF, cpp, "bob", 0, 100, "b")
 	chk := &fakeChecker{}
 
-	n, err := RunContestMoss(context.Background(), database, f.contest.ID, chk)
+	n, err := RunContestMoss(context.Background(), database, f.contest.ID, chk, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
 	require.Len(t, chk.calls, 1)
@@ -295,13 +295,13 @@ func TestRunContestMoss_DBFailureRollsBackSwap(t *testing.T) {
 	useTempPlagiarismDir(t)
 	database := setupMossDB(t)
 	c := seed(t, database)
-	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{})
+	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{}, nil)
 	require.NoError(t, err)
 	marker := filepath.Join(ContestReportDir(c.ID), "knap", "cpp", "marker.txt")
 	require.NoError(t, os.WriteFile(marker, []byte("old"), 0o644))
 
 	require.NoError(t, database.Migrator().DropTable(&models.PlagiarismResult{}))
-	_, err = RunContestMoss(context.Background(), database, c.ID, &fakeChecker{})
+	_, err = RunContestMoss(context.Background(), database, c.ID, &fakeChecker{}, nil)
 	require.Error(t, err)
 
 	b, readErr := os.ReadFile(marker)
@@ -321,7 +321,7 @@ func TestRunContestMoss_LeavesV1TableAlone(t *testing.T) {
 	url := "http://moss/report"
 	require.NoError(t, database.Create(&models.ContestMoss{ContestID: c.ID, ProblemID: 1, Language: "C++", SubmissionCount: 4, URL: &url}).Error)
 
-	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{})
+	_, err := RunContestMoss(context.Background(), database, c.ID, &fakeChecker{}, nil)
 	require.NoError(t, err)
 
 	var v1 []models.ContestMoss
@@ -342,7 +342,7 @@ func TestRunContestMoss_SafeFolderNames(t *testing.T) {
 	}
 	chk := &fakeChecker{}
 
-	_, err := RunContestMoss(context.Background(), database, f.contest.ID, chk)
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, chk, nil)
 	require.NoError(t, err)
 	require.Len(t, chk.calls, 1)
 	require.Equal(t, map[string]string{
@@ -421,4 +421,40 @@ func TestMossRunError_NilCacheIsSafe(t *testing.T) {
 		setMossRunError(1, "boom")
 		clearMossRunError(1)
 	})
+}
+
+// addAttempt adds a submission reusing the user's participation in the contest.
+func addAttempt(t *testing.T, database *gorm.DB, f fixture, lang models.Language, username string, at time.Time, result string, points float64, source string) models.Submission {
+	t.Helper()
+	var u models.AuthUser
+	database.Where("username = ?", username).First(&u)
+	if u.ID == 0 {
+		u = models.AuthUser{Username: username, IsActive: true}
+		require.NoError(t, database.Create(&u).Error)
+	}
+	var prof models.Profile
+	database.Where("user_id = ?", u.ID).First(&prof)
+	if prof.ID == 0 {
+		prof = models.Profile{UserID: u.ID, Timezone: "UTC"}
+		require.NoError(t, database.Omit(clause.Associations).Create(&prof).Error)
+	}
+	var part models.ContestParticipation
+	database.Where("contest_id = ? AND user_id = ?", f.contest.ID, prof.ID).First(&part)
+	if part.ID == 0 {
+		part = models.ContestParticipation{ContestID: f.contest.ID, UserID: prof.ID, RealStart: f.contest.StartTime, Virtual: 0}
+		require.NoError(t, database.Omit(clause.Associations).Create(&part).Error)
+	}
+	contestID := f.contest.ID
+	sub := models.Submission{UserID: prof.ID, ProblemID: f.problem.ID, LanguageID: lang.ID, Status: "D", Result: &result, Points: &points, Date: at, ContestObjectID: &contestID}
+	require.NoError(t, database.Omit(clause.Associations).Create(&sub).Error)
+	require.NoError(t, database.Omit(clause.Associations).Create(&models.SubmissionSource{SubmissionID: sub.ID, Source: source}).Error)
+	require.NoError(t, database.Omit(clause.Associations).Create(&models.ContestSubmission{SubmissionID: sub.ID, ProblemID: f.cp.ID, ParticipationID: part.ID}).Error)
+	return sub
+}
+
+func addRef(t *testing.T, database *gorm.DB, problemID uint, lang, source, origin string) models.PlagiarismAIReference {
+	t.Helper()
+	r := models.PlagiarismAIReference{ProblemID: problemID, Language: lang, Source: source, Origin: origin, CreatedAt: time.Now()}
+	require.NoError(t, database.Create(&r).Error)
+	return r
 }

@@ -30,7 +30,7 @@ var ErrMossAlreadyRunning = errors.New("moss: a run for this contest is already 
 // Each live/spectating contestant's best-scored source is used. Reports and
 // rows are replaced only after every check succeeded, so a failed run keeps
 // the previous results.
-func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checker) (int, error) {
+func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checker, gen Generator) (int, error) {
 	var problems []models.Problem
 	if err := tx.Table("judge_problem").
 		Select("judge_problem.*").
@@ -51,18 +51,28 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 
 	now := time.Now()
 	var rows []models.PlagiarismResult
+	var aiRows []AIRow
+	var aiProbs []AIProblem
+	aiUsers := map[string]uint{} // username -> profile id
+	aiACs := map[uint]*aiUser{}  // profile id -> S4 data
+	aiProblems := map[string]models.Problem{}
 	for _, p := range problems {
 		if !safeProblemCode.MatchString(p.Code) {
 			log.Printf("jobs: plagiarism: skipping problem with unsafe code %q", p.Code)
 			continue
 		}
 		var subs []struct {
-			Language string
-			Username string
-			Source   string
+			Language  string
+			Username  string
+			Source    string
+			ID        uint
+			Date      time.Time
+			Result    *string
+			ProfileID uint
+			RealStart time.Time
 		}
 		if err := tx.Table("judge_submission s").
-			Select("l.common_name AS language, u.username AS username, src.source AS source").
+			Select("l.common_name AS language, u.username AS username, src.source AS source, s.id AS id, s.date AS date, s.result AS result, pr.id AS profile_id, part.start AS real_start").
 			Joins("JOIN judge_submissionsource src ON src.submission_id = s.id").
 			Joins("JOIN judge_language l ON l.id = s.language_id").
 			Joins("JOIN judge_profile pr ON pr.id = s.user_id").
@@ -77,11 +87,31 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		}
 
 		// subs is ordered by points, so the first entry per (language, user) is the best one.
-		type entry struct{ user, source string }
+		type entry struct {
+			user, source string
+			id           uint
+		}
 		byLang := map[string][]entry{}
+		attempts := map[string]map[string][]aiAttempt{} // language -> user -> attempts
 		var langs []string
 		seen := map[[2]string]bool{}
+		aiProblems[p.Code] = p
 		for _, s := range subs {
+			aiUsers[s.Username] = s.ProfileID
+			if attempts[s.Language] == nil {
+				attempts[s.Language] = map[string][]aiAttempt{}
+			}
+			attempts[s.Language][s.Username] = append(attempts[s.Language][s.Username], aiAttempt{ID: s.ID, Date: s.Date, Username: s.Username, Source: s.Source})
+			if s.Result != nil && *s.Result == "AC" {
+				u := aiACs[s.ProfileID]
+				if u == nil {
+					u = &aiUser{start: s.RealStart, solved: map[uint]SolvedProblem{}}
+					aiACs[s.ProfileID] = u
+				}
+				if cur, ok := u.solved[p.ID]; !ok || s.Date.Before(cur.ACAt) {
+					u.solved[p.ID] = SolvedProblem{ProblemID: p.ID, Points: p.Points, ACAt: s.Date}
+				}
+			}
 			k := [2]string{s.Language, s.Username}
 			if seen[k] {
 				continue
@@ -90,7 +120,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			if _, ok := byLang[s.Language]; !ok {
 				langs = append(langs, s.Language)
 			}
-			byLang[s.Language] = append(byLang[s.Language], entry{s.Username, s.Source})
+			byLang[s.Language] = append(byLang[s.Language], entry{s.Username, s.Source, s.ID})
 		}
 		sort.Strings(langs)
 
@@ -119,7 +149,44 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 				}
 			}
 			rows = append(rows, row)
+
+			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang]}
+			for _, e := range ents {
+				chain := l.Attempts[e.user]
+				sort.SliceStable(chain, func(i, j int) bool {
+					if !chain[i].Date.Equal(chain[j].Date) {
+						return chain[i].Date.Before(chain[j].Date)
+					}
+					return chain[i].ID < chain[j].ID
+				})
+				l.Best = append(l.Best, aiAttempt{ID: e.id, Username: e.user, Source: e.source})
+			}
+			prob, cands, err := aiCheck(ctx, tx, chk, gen, tmp, reportRoot, l)
+			if err != nil {
+				return 0, err
+			}
+			aiProbs = append(aiProbs, prob)
+			aiRows = append(aiRows, cands...)
 		}
+	}
+
+	var contest models.Contest
+	if err := tx.First(&contest, contestID).Error; err != nil {
+		return 0, err
+	}
+	report, err := buildAIReport(tx, contest, aiRows, aiProbs, aiUsers, aiACs, aiProblems)
+	if err != nil {
+		return 0, err
+	}
+	aiJSON, err := json.Marshal(report)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.MkdirAll(reportRoot, 0o755); err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(filepath.Join(reportRoot, "ai.json"), aiJSON, 0o644); err != nil {
+		return 0, err
 	}
 
 	// Swap the new report dir in. The old one is moved aside first because
@@ -149,7 +216,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		movedIn = true
 	}
 
-	err := tx.Transaction(func(t *gorm.DB) error {
+	err = tx.Transaction(func(t *gorm.DB) error {
 		if err := t.Where("contest_id = ?", contestID).Delete(&models.PlagiarismResult{}).Error; err != nil {
 			return err
 		}
@@ -262,7 +329,7 @@ func HandleContestMossTask(ctx context.Context, t *asynq.Task) error {
 		}
 	}()
 	clearMossRunError(p.ContestID)
-	n, err := RunContestMoss(ctx, db.DB, p.ContestID, Compare50{})
+	n, err := RunContestMoss(ctx, db.DB, p.ContestID, Compare50{}, LLMGeneratorFromEnv())
 	if err != nil {
 		log.Printf("jobs: plagiarism check for contest %d failed: %v", p.ContestID, err)
 		setMossRunError(p.ContestID, err.Error())
