@@ -45,10 +45,13 @@ def fp_rates(out_dir, contests):
 
 
 def best_pct(results):
-    """Highest pct_a per submission (a = submission side, b = archive)."""
+    """Highest pct per submission: the non-archive side of each pair (mirrors ai_detect.go)."""
     best = {}
     for p in results.get("pairs", []):
-        best[p["a"]] = max(best.get(p["a"], 0), p["pct_a"])
+        if bool(p.get("archive_a")) == bool(p.get("archive_b")):
+            continue
+        path, pct = (p["b"], p["pct_b"]) if p.get("archive_a") else (p["a"], p["pct_a"])
+        best[path] = max(best.get(path, 0), pct)
     return best
 
 

@@ -86,17 +86,19 @@ local_sql "$LOCAL_DB" -e "
 # Load the reduced TSVs through a file inside the container (server-side LOAD DATA).
 load_tsv() { # $1 table, $2 tsv file name, $3 column list
   docker exec -i "$LOCAL_CONTAINER" sh -c "cat > /tmp/$2" < "$DUMPS/$2"
-  local_sql "$LOCAL_DB" -e "LOAD DATA INFILE '/tmp/$2' INTO TABLE $1 CHARACTER SET utf8mb4 FIELDS TERMINATED BY '\t' ($3)"
+  local_sql "$LOCAL_DB" -e "LOAD DATA INFILE '/tmp/$2' INTO TABLE $1 CHARACTER SET utf8mb4 FIELDS TERMINATED BY '\t' ($3) ${4:-}"
   docker exec "$LOCAL_CONTAINER" rm -f "/tmp/$2"
 }
 load_tsv auth_user auth_user.tsv "id, username"
-load_tsv judge_profile judge_profile.tsv "id, user_id, rating"
+# mariadb -N -B writes SQL NULL as the text NULL, so map it back.
+load_tsv judge_profile judge_profile.tsv "id, user_id, @rating" "SET rating = NULLIF(@rating, 'NULL')"
 
 # Non-contest submissions: only the history columns. sql_mode='' lets the other
 # NOT NULL columns take their implicit defaults; INSERT IGNORE skips existing ids.
 docker exec -i "$LOCAL_CONTAINER" sh -c "cat > /tmp/sub_nc.tsv" < "$DUMPS/submissions_noncontest.tsv"
 local_sql "$LOCAL_DB" -e "SET SESSION sql_mode=''; CREATE TEMPORARY TABLE sub_nc (id INT, user_id INT, problem_id INT, language_id INT, date DATETIME(6), result VARCHAR(3), points DOUBLE, status VARCHAR(2));
-  LOAD DATA INFILE '/tmp/sub_nc.tsv' INTO TABLE sub_nc CHARACTER SET utf8mb4 FIELDS TERMINATED BY '\t';
+  LOAD DATA INFILE '/tmp/sub_nc.tsv' INTO TABLE sub_nc CHARACTER SET utf8mb4 FIELDS TERMINATED BY '\t' (id, user_id, problem_id, language_id, date, @result, @points, @status)
+    SET result = NULLIF(@result, 'NULL'), points = NULLIF(@points, 'NULL'), status = NULLIF(@status, 'NULL');
   INSERT IGNORE INTO judge_submission (id, user_id, problem_id, language_id, date, result, points, status) SELECT id, user_id, problem_id, language_id, date, result, points, status FROM sub_nc;"
 docker exec "$LOCAL_CONTAINER" rm -f /tmp/sub_nc.tsv
 

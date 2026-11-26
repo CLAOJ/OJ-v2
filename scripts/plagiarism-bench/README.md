@@ -67,6 +67,7 @@ python scripts/plagiarism-bench/ai_bench.py fp --out scripts/plagiarism-bench/da
 python scripts/plagiarism-bench/ai_bench.py recall --contest claojre1 --per-problem 3 --python /path/to/compare50/venv/python
 ```
 
+The Go command refuses any DSN host other than 127.0.0.1/localhost and forces `parseTime=true`.
 `-out` holds one report dir per contest id (`<out>/<id>/ai.json`). Both the job and
 `recall` call the LLM through `COMPARE50_LLM_URL`, `_KEY`, `_MODEL`; they cost tokens.
 `fp` prints flagged rows over contestant x problem rows, per signal and combined.
