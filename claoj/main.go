@@ -10,6 +10,7 @@ import (
 	authHandlers "github.com/CLAOJ/claoj/api/v2/auth"
 	"github.com/CLAOJ/claoj/auditlog"
 	"github.com/CLAOJ/claoj/auth/tokenstore"
+	"github.com/CLAOJ/claoj/bridge"
 	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/config"
 	"github.com/CLAOJ/claoj/db"
@@ -44,6 +45,7 @@ func main() {
 	}
 
 	events.InitHub()
+	go bridge.WatchSubmissions(2 * time.Second) // v1-graded submissions, while v1 shares the DB
 	if err := v2.InitWebAuthn(); err != nil {
 		log.Printf("warning: passkeys disabled: %v", err)
 	}
