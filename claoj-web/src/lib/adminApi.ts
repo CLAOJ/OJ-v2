@@ -1043,7 +1043,62 @@ export const adminMossApi = {
     // Optional LLM second opinion written next to the report; 404 when the LLM is off.
     llmReview: (key: string, reportPath: string) =>
         api.get<LLMReview>(`/admin/contest/${key}/plagiarism/report/${reportPath}/llm.json`),
+    // AI-submission suspects (ai.json); 404 when no run yet.
+    aiReport: (key: string) =>
+        api.get<AIReport>(`/admin/contest/${key}/plagiarism/report/ai.json`),
+    references: (key: string) =>
+        api.get<{ references: AIReference[] }>(`/admin/contest/${key}/plagiarism/references`),
+    addReference: (key: string, body: { problem_code: string; language: string; source: string }) =>
+        api.post<{ id: number }>(`/admin/contest/${key}/plagiarism/references`, body),
+    deleteReference: (key: string, id: number) =>
+        api.delete<{ deleted: number }>(`/admin/contest/${key}/plagiarism/references/${id}`),
+    // Drops the generated references of one problem; the next run regenerates them.
+    regenerate: (key: string, problemCode: string) =>
+        api.delete<{ deleted: number }>(`/admin/contest/${key}/plagiarism/references`, { params: { problem_code: problemCode, origin: 'generated' } }),
 };
+
+export interface AIRow {
+    username: string;
+    problem_code: string;
+    language: string;
+    best_submission_id: number;
+    first_submission_id: number;
+    ai_match: { pct: number; report_path: string; match: number } | null;
+    rewrites: number;
+    rewrite_submission_ids: number[] | null;
+    above_history: boolean | null;
+    prev_max_points: number | null;
+    rating_before: number | null;
+    speed_inversion: boolean;
+    signals: unknown;
+}
+
+export interface AIProblem {
+    problem_code: string;
+    language: string;
+    generated: number;
+    admin: number;
+    contestants: number;
+    matched: number;
+    trivial: number;
+    note: string;
+}
+
+export interface AIReport {
+    generated_at: string;
+    rows: AIRow[] | null;
+    problems: AIProblem[] | null;
+}
+
+export interface AIReference {
+    id: number;
+    problem_code: string;
+    language: string;
+    origin: string;
+    model: string;
+    source: string;
+    created_at: string;
+}
 
 export interface LLMReviewPair {
     match: number; // match_<n>.html

@@ -13,8 +13,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
 import dayjs from 'dayjs';
+import AiTab from './AiTab';
 
-const KEYS = ['contest'] as const;
+const KEYS = ['contest', 'tab'] as const;
 const LIST_SIZE = 20;
 
 type ApiError = { response?: { data?: { error?: string } } };
@@ -74,6 +75,7 @@ export default function AdminMossPage() {
     const queryClient = useQueryClient();
     const { filters, setFilters } = useListParams(KEYS);
     const contestKey = filters.contest ?? '';
+    const tab = filters.tab === 'ai' ? 'ai' : 'code';
     const [term, setTerm] = useState('');
     const debounced = useDebounce(term.trim(), 250);
 
@@ -203,13 +205,29 @@ export default function AdminMossPage() {
                         </div>
                     </header>
 
+                    <div role="tablist" className="flex gap-1 px-4 pt-2 border-b">
+                        {(['code', 'ai'] as const).map(k => (
+                            <button
+                                key={k}
+                                role="tab"
+                                aria-selected={tab === k}
+                                onClick={() => setFilters({ tab: k === 'code' ? '' : k })}
+                                className={`px-3 py-1.5 text-sm -mb-px border-b-2 ${tab === k ? 'border-primary font-semibold text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                            >
+                                {t(k === 'code' ? 'moss.tabCode' : 'moss.tabAi')}
+                            </button>
+                        ))}
+                    </div>
+
                     {data?.error && (
                         <p className="px-4 py-2 text-sm text-destructive bg-destructive/10 border-b">
                             {t('moss.errorLabel')} {data.error}
                         </p>
                     )}
 
-                    {isLoading ? (
+                    {tab === 'ai' ? (
+                        <AiTab contestKey={contestKey} languages={[...new Set((data?.results ?? []).map(r => r.language))]} />
+                    ) : isLoading ? (
                         <div className="p-4 space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-5 w-full" />)}</div>
                     ) : isError ? (
                         <p className="px-4 py-8 text-center text-sm text-destructive">{errorText(error)}</p>
