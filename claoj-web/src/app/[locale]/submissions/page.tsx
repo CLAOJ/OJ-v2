@@ -67,13 +67,18 @@ export default function SubmissionListPage() {
     // The API decides visibility (contest admins and participants included),
     // so no client-side filtering can hide rows. At most one refetch a second.
     const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    useEventChannel('submissions', () => {
+    const scheduleRefetch = () => {
         if (refetchTimer.current) return;
         refetchTimer.current = setTimeout(() => {
             refetchTimer.current = null;
             queryClient.invalidateQueries({ queryKey: ['submissions'] });
         }, 1000);
-    });
+    };
+    // The global channel carries only events this account may see (the hub
+    // filters per viewer); a contest list also follows its contest channel,
+    // which the server only opens to viewers of that contest's scoreboard.
+    useEventChannel('submissions', scheduleRefetch);
+    useEventChannel(searchParams.get('contest') ? `contest_${searchParams.get('contest')}` : null, scheduleRefetch);
     const [rejudging, setRejudging] = useState<number | null>(null);
     const rejudge = async (id: number) => {
         if (!(await confirm(t('rejudgeConfirm')))) return;

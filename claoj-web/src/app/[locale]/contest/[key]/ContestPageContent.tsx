@@ -202,7 +202,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
     }, [contest, t]);
 
     // A graded contest submission changed someone's score.
-    useEventChannel(key ? `contest_${key}` : null, () => {
+    useEventChannel(key ? `contest_${key}` : null, (data) => {
+        if ((data as { type?: string } | null)?.type !== 'update') return;
         queryClient.invalidateQueries({ queryKey: ['contest-ranking', key] });
         queryClient.invalidateQueries({ queryKey: ['contest-participations', key] });
     });

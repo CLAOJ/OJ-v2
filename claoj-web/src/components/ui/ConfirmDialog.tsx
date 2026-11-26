@@ -94,7 +94,7 @@ export function ConfirmDialog({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-md">
-                <DialogHeader className="gap-4">
+                <DialogHeader className="flex-col items-start gap-3">
                     <div className="flex items-center gap-3">
                         <div className={cn(
                             'p-2 rounded-full bg-muted',
@@ -104,7 +104,7 @@ export function ConfirmDialog({
                         </div>
                         <DialogTitle>{title}</DialogTitle>
                     </div>
-                    <DialogDescription>{description}</DialogDescription>
+                    <DialogDescription className="mt-0 leading-relaxed">{description}</DialogDescription>
                 </DialogHeader>
 
                 {children && (

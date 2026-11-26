@@ -4,8 +4,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
+	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -29,6 +33,12 @@ type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
 	send chan []byte
+
+	// Who is connected, for per-message filtering in the hub.
+	profileID uint // 0 = anonymous
+	seeAll    bool // judge.view_all_submission
+	// allowed reports whether this viewer may subscribe to a channel.
+	allowed func(channel string) bool
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -53,8 +63,14 @@ func (c *Client) readPump() {
 
 		// {"type":"subscribe"|"unsubscribe","channel":"sub_<secret>"}
 		var req struct{ Type, Channel string }
-		if json.Unmarshal(message, &req) == nil && req.Channel != "" && (req.Type == "subscribe" || req.Type == "unsubscribe") {
-			c.hub.subscribe <- subRequest{client: c, channel: req.Channel, on: req.Type == "subscribe"}
+		if json.Unmarshal(message, &req) != nil || req.Channel == "" {
+			continue
+		}
+		switch {
+		case req.Type == "unsubscribe":
+			c.hub.subscribe <- subRequest{client: c, channel: req.Channel, on: false}
+		case req.Type == "subscribe" && c.allowed(req.Channel):
+			c.hub.subscribe <- subRequest{client: c, channel: req.Channel, on: true}
 		}
 	}
 }
@@ -109,10 +125,35 @@ func ServeWS(c *gin.Context) {
 		return
 	}
 
-	client := &Client{hub: GlobalHub, conn: conn, send: make(chan []byte, 256)}
+	profileID, _ := auth.CurrentProfileID(c)
+	client := &Client{
+		hub: GlobalHub, conn: conn, send: make(chan []byte, 256),
+		profileID: profileID,
+		seeAll:    auth.HasPerm(c, "judge.view_all_submission"),
+		allowed:   func(channel string) bool { return canSubscribe(c, channel) },
+	}
 
-	// Allow collection of memory referenced by the caller by doing all work in
-	// new goroutines.
 	go client.writePump()
-	go client.readPump()
+	// readPump stays on the handler goroutine: allowed() reads this request's
+	// gin context, which gin recycles as soon as ServeWS returns.
+	client.readPump()
+}
+
+// canSubscribe is the per-account gate for a channel.
+//   - submissions: anyone; the hub filters each message per viewer
+//   - sub_<secret>: anyone holding the secret, which only the submission page
+//     (itself permission-checked) hands out
+//   - contest_<key>: viewers who may see that contest and its scoreboard
+func canSubscribe(c *gin.Context, channel string) bool {
+	switch {
+	case channel == "submissions", strings.HasPrefix(channel, "sub_"):
+		return true
+	case strings.HasPrefix(channel, "contest_"):
+		var ct models.Contest
+		if db.DB.Where("`key` = ?", strings.TrimPrefix(channel, "contest_")).First(&ct).Error != nil {
+			return false
+		}
+		return auth.CanViewContest(c, &ct) && auth.CanSeeContestScoreboard(c, &ct)
+	}
+	return false
 }

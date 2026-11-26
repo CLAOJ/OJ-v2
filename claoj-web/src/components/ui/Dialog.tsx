@@ -49,6 +49,12 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
     const all = React.Children.toArray(children);
     const triggers = all.filter((c) => React.isValidElement(c) && c.type === DialogTrigger);
     const body = all.filter((c) => !(React.isValidElement(c) && c.type === DialogTrigger));
+    // Callers size the dialog on DialogContent (`max-w-2xl`, `sm:max-w-md`);
+    // the width limit has to sit on the panel, which is what the user sees.
+    const contentWidth = body.flatMap((c) =>
+        React.isValidElement<{ className?: string }>(c) && c.type === DialogContent
+            ? (c.props.className ?? '').split(/s+/).filter((k) => /^(w+:)?max-w-/.test(k))
+            : []);
 
     return (
         <DialogContext.Provider value={{ open, onOpenChange, titleId, descriptionId, setTitleId, setDescriptionId }}>
@@ -77,7 +83,8 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
                             exit={{ opacity: 0 }}
                             transition={{ duration: reduceMotion ? 0 : 0.2 }}
                             className={cn(
-                                "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-popover p-6 shadow-lg outline-none",
+                                "fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[90vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-popover p-6 shadow-lg outline-none",
+                                contentWidth,
                                 className
                             )}
                             onClick={(e) => e.stopPropagation()}

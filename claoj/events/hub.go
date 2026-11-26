@@ -27,6 +27,14 @@ type subRequest struct {
 type outbound struct {
 	channel string
 	payload []byte
+	// Who may receive it: everyone when public, else the submitter
+	// (owner, a judge_profile id) and view_all_submission holders.
+	public bool
+	owner  uint
+}
+
+func (m outbound) visibleTo(c *Client) bool {
+	return m.public || c.seeAll || (m.owner != 0 && m.owner == c.profileID)
 }
 
 // GlobalHub is the singleton hub instance
@@ -64,6 +72,9 @@ func (h *Hub) run() {
 
 		case msg := <-h.broadcast:
 			for client := range h.clients[msg.channel] {
+				if !msg.visibleTo(client) {
+					continue
+				}
 				select {
 				case client.send <- msg.payload:
 				default: // client too slow: drop this message for it
@@ -91,9 +102,21 @@ func (h *Hub) subscribeRedis() {
 				"channel": msg.Channel,
 				"data":    json.RawMessage(msg.Payload),
 			})
-			if err == nil {
-				h.broadcast <- outbound{msg.Channel, payload}
+			if err != nil {
+				continue
 			}
+			out := outbound{channel: msg.Channel, payload: payload, public: true}
+			if msg.Channel == "submissions" {
+				// The bridge marks each global event with its audience; an
+				// unmarked or unreadable one reaches privileged viewers only.
+				var meta struct {
+					User   uint `json:"user"`
+					Public bool `json:"public"`
+				}
+				_ = json.Unmarshal([]byte(msg.Payload), &meta)
+				out.public, out.owner = meta.Public, meta.User
+			}
+			h.broadcast <- out
 		}
 		pubsub.Close()
 		time.Sleep(5 * time.Second) // Redis dropped; reconnect
