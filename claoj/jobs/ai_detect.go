@@ -20,8 +20,8 @@ import (
 const (
 	aiRefsPerLang        = 5   // generated reference solutions kept per problem x language
 	aiStatementMinChars  = 300 // shorter statements are too thin to generate references from
-	aiMatchPct           = 50  // percent of a submission's lines matched to a reference to flag it
-	aiTrivialShare       = 0.5 // share of trivial lines; above this a match does not count
+	aiMatchPct           = 50  // percent of a submission's characters matched by a reference to flag it
+	aiTrivialShare       = 0.5 // share of contestants matched at or above which the problem is trivial
 	rewriteMaxSimilarity = 0.3 // max similarity to the original for a rewrite to count
 	rewriteMinLines      = 5   // min lines a rewritten solution needs to be judged
 	rewritesToFlag       = 2   // rewrites needed before a submission is flagged
@@ -84,6 +84,7 @@ type aiLang struct {
 	Attempts    map[string][]aiAttempt // username -> all attempts in (date, id) order
 	Rewrites    map[string]int         // username -> rewrites summed over all language chains
 	RewriteSubs map[string][]uint      // username -> later attempt of each rewrite, all languages
+	RewriteLang map[string]string      // username -> the one language whose row carries the totals
 }
 
 // aiUser holds, per participant, what S4 needs: the participation start and
@@ -107,14 +108,14 @@ func aiRewrites(chain []aiAttempt) (n int, ids []uint) {
 
 // aiCheck runs the reference check for one problem x language and returns its
 // summary plus one candidate row per contestant (before S4 and listing).
-func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, gen Generator, tmp, reportRoot string, l aiLang) (AIProblem, []AIRow, error) {
-	note, err := EnsureReferences(ctx, tx, gen, l.Problem, l.Lang)
-	if err != nil {
-		return AIProblem{}, nil, err
-	}
+// note comes from EnsureAllReferences; "no_references_table" skips the lookup
+// because the table was never created.
+func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, tmp, reportRoot string, l aiLang, note string) (AIProblem, []AIRow, error) {
 	var refs []models.PlagiarismAIReference
-	if err := tx.Where("problem_id = ? AND language = ?", l.Problem.ID, l.Lang).Order("id ASC").Find(&refs).Error; err != nil {
-		return AIProblem{}, nil, err
+	if note != "no_references_table" {
+		if err := tx.Where("problem_id = ? AND language = ?", l.Problem.ID, l.Lang).Order("id ASC").Find(&refs).Error; err != nil {
+			return AIProblem{}, nil, err
+		}
 	}
 	prob := AIProblem{ProblemCode: l.Problem.Code, Language: l.Lang, Contestants: len(l.Best), Note: note}
 	for _, r := range refs {
@@ -133,7 +134,9 @@ func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, gen Generator, tmp, 
 	for _, b := range l.Best {
 		chain := l.Attempts[b.Username]
 		row := &AIRow{Username: b.Username, ProblemCode: l.Problem.Code, Language: l.Lang, BestSubmission: b.ID, FirstSubmission: chain[0].ID}
-		row.Rewrites, row.RewriteSubs = l.Rewrites[b.Username], l.RewriteSubs[b.Username]
+		if l.RewriteLang[b.Username] == l.Lang {
+			row.Rewrites, row.RewriteSubs = l.Rewrites[b.Username], l.RewriteSubs[b.Username]
+		}
 		rows = append(rows, row)
 		byUser[b.Username] = row
 	}

@@ -56,6 +56,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 	aiUsers := map[string]uint{} // username -> profile id
 	aiACs := map[uint]*aiUser{}  // profile id -> S4 data
 	aiProblems := map[string]models.Problem{}
+	var aiLangs []aiLang
 	for _, p := range problems {
 		if !safeProblemCode.MatchString(p.Code) {
 			log.Printf("jobs: plagiarism: skipping problem with unsafe code %q", p.Code)
@@ -95,6 +96,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		attempts := map[string]map[string][]aiAttempt{} // language -> user -> attempts
 		var langs []string
 		seen := map[[2]string]bool{}
+		bestLang := map[string]string{} // username -> language of the best-scored submission
 		aiProblems[p.Code] = p
 		for _, s := range subs {
 			aiUsers[s.Username] = s.ProfileID
@@ -112,6 +114,9 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 					u.solved[p.ID] = SolvedProblem{ProblemID: p.ID, Points: p.Points, ACAt: s.Date}
 				}
 			}
+			if _, ok := bestLang[s.Username]; !ok {
+				bestLang[s.Username] = s.Language
+			}
 			k := [2]string{s.Language, s.Username}
 			if seen[k] {
 				continue
@@ -124,11 +129,19 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		}
 		sort.Strings(langs)
 
-		// S3: rewrites are summed over all of a user's language chains for this problem.
+		// S3: rewrites are summed over all of a user's language chains for this
+		// problem and carried by one row only (most attempts; ties go to the best
+		// submission's language), so the evidence is not repeated per language.
 		rewrites := map[string]int{}
 		rewriteSubs := map[string][]uint{}
-		for _, langChains := range attempts {
+		rewriteLang := map[string]string{}
+		for lang, langChains := range attempts {
 			for user, chain := range langChains {
+				cur, ok := rewriteLang[user]
+				if n, c := len(chain), len(attempts[cur][user]); !ok || n > c ||
+					(n == c && (lang == bestLang[user] || (cur != bestLang[user] && lang < cur))) {
+					rewriteLang[user] = lang
+				}
 				sort.SliceStable(chain, func(i, j int) bool {
 					if !chain[i].Date.Equal(chain[j].Date) {
 						return chain[i].Date.Before(chain[j].Date)
@@ -170,17 +183,42 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			}
 			rows = append(rows, row)
 
-			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang], Rewrites: rewrites, RewriteSubs: rewriteSubs}
+			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang], Rewrites: rewrites, RewriteSubs: rewriteSubs, RewriteLang: rewriteLang}
 			for _, e := range ents {
 				l.Best = append(l.Best, aiAttempt{ID: e.id, Username: e.user, Source: e.source})
 			}
-			prob, cands, err := aiCheck(ctx, tx, chk, gen, tmp, reportRoot, l)
-			if err != nil {
-				return 0, err
-			}
-			aiProbs = append(aiProbs, prob)
-			aiRows = append(aiRows, cands...)
+			aiLangs = append(aiLangs, l)
 		}
+	}
+
+	// Generate all missing references up front through one shared pool, then check.
+	// Without the table (v2_runtime_tables.sql not applied) the AI part degrades to a note.
+	haveRefTable := tx.Migrator().HasTable(&models.PlagiarismAIReference{})
+	if !haveRefTable {
+		log.Printf("jobs: plagiarism: plagiarism_ai_reference is missing; skipping AI checks")
+	}
+	var notes map[[2]string]string
+	if haveRefTable {
+		targets := make([]aiGenTarget, len(aiLangs))
+		for i, l := range aiLangs {
+			targets[i] = aiGenTarget{l.Problem, l.Lang}
+		}
+		var err error
+		if notes, err = EnsureAllReferences(ctx, tx, gen, targets, aiGenerateBudget); err != nil {
+			return 0, err
+		}
+	}
+	for _, l := range aiLangs {
+		note := notes[[2]string{l.Problem.Code, l.Lang}]
+		if !haveRefTable {
+			note = "no_references_table"
+		}
+		prob, cands, err := aiCheck(ctx, tx, chk, tmp, reportRoot, l, note)
+		if err != nil {
+			return 0, err
+		}
+		aiProbs = append(aiProbs, prob)
+		aiRows = append(aiRows, cands...)
 	}
 
 	var contest models.Contest

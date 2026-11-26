@@ -160,63 +160,125 @@ func aiGenExtractCode(reply string) string {
 	return strings.TrimSpace(rest)
 }
 
-// EnsureReferences tops up "generated" references for one problem x language to
-// aiRefsPerLang. Returns a note for ai.json ("" when fine) and only returns an
-// error for DB failures.
+// aiGenerateBudget is the total time all of a run's generation calls may take
+// (a var so tests can shrink it). The job's asynq timeout is 30 minutes.
+var aiGenerateBudget = 10 * time.Minute
+
+var errAIBudget = errors.New("time budget")
+
+type aiGenTarget struct {
+	Problem models.Problem
+	Lang    string
+}
+
+// EnsureReferences tops up "generated" references for one problem x language.
 func EnsureReferences(ctx context.Context, tx *gorm.DB, gen Generator, p models.Problem, lang string) (note string, err error) {
-	if gen == nil {
-		return "no_llm", nil
+	notes, err := EnsureAllReferences(ctx, tx, gen, []aiGenTarget{{p, lang}}, aiGenerateBudget)
+	return notes[[2]string{p.Code, lang}], err
+}
+
+// EnsureAllReferences tops up "generated" references to aiRefsPerLang for every
+// target through one shared pool of aiGenWorkers, within budget in total. Calls
+// not finished in time are abandoned and their target gets a "time budget" note.
+// Notes are keyed by {problem code, language}; "" means fine. Only DB failures
+// return an error.
+func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, targets []aiGenTarget, budget time.Duration) (map[[2]string]string, error) {
+	notes := map[[2]string]string{}
+	type job struct {
+		t  int
+		in GenerateInput
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(p.Description)) < aiStatementMinChars {
-		return "no_statement", nil
+	var jobs []job
+	for i, t := range targets {
+		key := [2]string{t.Problem.Code, t.Lang}
+		if gen == nil {
+			notes[key] = "no_llm"
+			continue
+		}
+		p := t.Problem
+		if utf8.RuneCountInString(strings.TrimSpace(p.Description)) < aiStatementMinChars {
+			notes[key] = "no_statement"
+			continue
+		}
+		var have int64
+		if err := tx.Model(&models.PlagiarismAIReference{}).
+			Where("problem_id = ? AND language = ? AND origin = ?", p.ID, t.Lang, "generated").
+			Count(&have).Error; err != nil {
+			return nil, err
+		}
+		in := GenerateInput{Statement: p.Description, Language: t.Lang, TimeLimit: p.TimeLimit, MemoryLimitKB: int(p.MemoryLimit)}
+		for range int(aiRefsPerLang - have) {
+			jobs = append(jobs, job{i, in})
+		}
 	}
-	var have int64
-	if err := tx.Model(&models.PlagiarismAIReference{}).
-		Where("problem_id = ? AND language = ? AND origin = ?", p.ID, lang, "generated").
-		Count(&have).Error; err != nil {
-		return "", err
-	}
-	need := int(aiRefsPerLang - have)
-	if need <= 0 {
-		return "", nil
+	if len(jobs) == 0 {
+		return notes, nil
 	}
 
-	in := GenerateInput{Statement: p.Description, Language: lang, TimeLimit: p.TimeLimit, MemoryLimitKB: int(p.MemoryLimit)}
-	sources := make([]string, need)
-	errs := make([]error, need)
+	bctx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+	sources := make([]string, len(jobs))
+	errs := make([]error, len(jobs))
+	next := make(chan int)
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, aiGenWorkers)
-	for i := range need {
+	for range aiGenWorkers {
 		wg.Add(1)
-		sem <- struct{}{}
 		go func() {
 			defer wg.Done()
-			defer func() { <-sem }()
-			sources[i], errs[i] = gen.Generate(ctx, in)
+			for i := range next {
+				if bctx.Err() != nil {
+					errs[i] = errAIBudget
+					continue
+				}
+				type res struct {
+					src string
+					err error
+				}
+				done := make(chan res, 1)
+				go func() { src, err := gen.Generate(bctx, jobs[i].in); done <- res{src, err} }()
+				select {
+				case r := <-done:
+					sources[i], errs[i] = r.src, r.err
+					if r.err != nil && bctx.Err() != nil {
+						errs[i] = errAIBudget
+					}
+				case <-bctx.Done():
+					errs[i] = errAIBudget // abandoned; the goroutine ends when Generate sees ctx
+				}
+			}
 		}()
 	}
+	for i := range jobs {
+		next <- i
+	}
+	close(next)
 	wg.Wait()
 
 	model := gen.Model()
 	now := time.Now()
-	var firstErr error
-	for i, src := range sources {
-		if errs[i] != nil {
-			if firstErr == nil {
-				firstErr = errs[i]
+	firstErr := map[int]error{}
+	for i, j := range jobs {
+		src, err := sources[i], errs[i]
+		if err == nil && strings.TrimSpace(src) == "" {
+			err = errors.New("empty reply")
+		}
+		if err != nil {
+			if firstErr[j.t] == nil {
+				firstErr[j.t] = err
 			}
 			continue
 		}
-		ref := models.PlagiarismAIReference{ProblemID: p.ID, Language: lang, Source: src, Origin: "generated",
+		p := targets[j.t].Problem
+		ref := models.PlagiarismAIReference{ProblemID: p.ID, Language: targets[j.t].Lang, Source: src, Origin: "generated",
 			Model: &model, CreatedAt: now}
 		if err := tx.Create(&ref).Error; err != nil {
-			return "", err
+			return nil, err
 		}
 	}
-	if firstErr != nil {
-		return "generation_failed: " + aiGenClip(firstErr.Error(), 200), nil
+	for t, err := range firstErr {
+		notes[[2]string{targets[t].Problem.Code, targets[t].Lang}] = "generation_failed: " + aiGenClip(err.Error(), 200)
 	}
-	return "", nil
+	return notes, nil
 }
 
 // aiGenRetryable lists the statuses compare50 retries: rate limits and overload.

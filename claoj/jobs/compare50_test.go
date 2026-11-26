@@ -100,6 +100,8 @@ func TestCompare50Check_ArchiveRunPassesFlags(t *testing.T) {
 		require.Contains(t, argv, "--archive-only")
 		require.Contains(t, argv, "--llm-pairs")
 		require.Equal(t, "0", argv[indexOf(argv, "--llm-pairs")+1])
+		// every submission folder keeps its best pair: -n is the folder count, not the cap
+		require.Equal(t, "2", argv[indexOf(argv, "-n")+1])
 	})
 
 	t.Run("code run", func(t *testing.T) {
@@ -108,6 +110,7 @@ func TestCompare50Check_ArchiveRunPassesFlags(t *testing.T) {
 		require.NotContains(t, argv, "-a")
 		require.NotContains(t, argv, "--archive-only")
 		require.NotContains(t, argv, "--llm-pairs")
+		require.Equal(t, "7", argv[indexOf(argv, "-n")+1], "code-copy run keeps its cap")
 	})
 }
 

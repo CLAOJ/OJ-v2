@@ -241,9 +241,28 @@ func TestAIDetect_RewritesSumAcrossLanguages(t *testing.T) {
 	require.NoError(t, err)
 	r := readAI(t, f.contest.ID)
 	require.NotEmpty(t, r.Rows)
+	carriers := 0
 	for _, row := range r.Rows {
 		require.Equal(t, "alice", row.Username)
-		require.Equal(t, 2, row.Rewrites)
-		require.Len(t, row.RewriteSubs, 2)
+		if row.Rewrites > 0 {
+			carriers++
+			require.Equal(t, 2, row.Rewrites)
+		}
 	}
+	require.Equal(t, 1, carriers, "the rewrite total is carried by exactly one language row")
+}
+
+func TestAIDetect_MissingReferenceTableDegrades(t *testing.T) {
+	database, f, cpp, _ := aiFixture(t)
+	at := f.contest.StartTime.Add(time.Minute)
+	addAttempt(t, database, f, cpp, "alice", at, "AC", 100, lines("a"))
+	addAttempt(t, database, f, cpp, "bob", at, "AC", 100, lines("b"))
+	require.NoError(t, database.Migrator().DropTable(&models.PlagiarismAIReference{}))
+	chk := &fakeChecker{}
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, chk, &fakeGen{})
+	require.NoError(t, err)
+	r := readAI(t, f.contest.ID)
+	require.Len(t, r.Problems, 1)
+	require.Equal(t, "no_references_table", r.Problems[0].Note)
+	require.FileExists(t, filepath.Join(ContestReportDir(f.contest.ID), "knap", "cpp", "index.html"), "code-copy report still produced")
 }

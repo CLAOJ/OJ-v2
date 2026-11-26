@@ -62,12 +62,16 @@ Objects created (see `docs/schema-audit.md` §3 for the decision record):
 | `totp_device`, `backup_code` | TOTP 2FA |
 | `oauth_user_link` | OAuth login linking |
 | `moss_result` | MOSS plagiarism-check cache |
+| `plagiarism_result` | Compare50 code-copy check results |
+| `plagiarism_ai_reference` | AI submission detection reference solutions |
 | `judge_commentrevision` | comment edit history |
 | `judge_contestclarification` | contest Q&A |
 | `judge_solution` + `is_official, valid_until, summary, language` | editorial solution fields |
 
 If you ever decommission v1-era experimental tables, `scripts/cleanup_v2_tables.sql`
 removes the retired ones — review before running.
+
+**Apply `scripts/v2_runtime_tables.sql` before rolling out** a build that has the plagiarism check: without `plagiarism_result` and `plagiarism_ai_reference` the Code copy tab fails (a missing `plagiarism_ai_reference` only skips the AI check, with a `no_references_table` note).
 
 Requires MySQL 8.0.29+ / MariaDB 10.3+ for `ADD COLUMN IF NOT EXISTS`.
 

@@ -1080,7 +1080,7 @@ export interface AIProblem {
     admin: number;
     contestants: number;
     matched: number;
-    trivial: number;
+    trivial: boolean;
     note: string;
 }
 
