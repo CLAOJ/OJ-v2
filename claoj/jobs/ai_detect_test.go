@@ -241,9 +241,13 @@ func TestAIDetect_RewritesSumAcrossLanguages(t *testing.T) {
 	require.NoError(t, err)
 	r := readAI(t, f.contest.ID)
 	require.NotEmpty(t, r.Rows)
+	carriers := 0
 	for _, row := range r.Rows {
 		require.Equal(t, "alice", row.Username)
-		require.Equal(t, 2, row.Rewrites)
-		require.Len(t, row.RewriteSubs, 2)
+		if row.Rewrites > 0 {
+			carriers++
+			require.Equal(t, 2, row.Rewrites)
+		}
 	}
+	require.Equal(t, 1, carriers, "the rewrite total is carried by exactly one language row")
 }

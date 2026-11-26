@@ -84,6 +84,7 @@ type aiLang struct {
 	Attempts    map[string][]aiAttempt // username -> all attempts in (date, id) order
 	Rewrites    map[string]int         // username -> rewrites summed over all language chains
 	RewriteSubs map[string][]uint      // username -> later attempt of each rewrite, all languages
+	RewriteLang map[string]string      // username -> the one language whose row carries the totals
 }
 
 // aiUser holds, per participant, what S4 needs: the participation start and
@@ -133,7 +134,9 @@ func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, gen Generator, tmp, 
 	for _, b := range l.Best {
 		chain := l.Attempts[b.Username]
 		row := &AIRow{Username: b.Username, ProblemCode: l.Problem.Code, Language: l.Lang, BestSubmission: b.ID, FirstSubmission: chain[0].ID}
-		row.Rewrites, row.RewriteSubs = l.Rewrites[b.Username], l.RewriteSubs[b.Username]
+		if l.RewriteLang[b.Username] == l.Lang {
+			row.Rewrites, row.RewriteSubs = l.Rewrites[b.Username], l.RewriteSubs[b.Username]
+		}
 		rows = append(rows, row)
 		byUser[b.Username] = row
 	}

@@ -95,6 +95,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		attempts := map[string]map[string][]aiAttempt{} // language -> user -> attempts
 		var langs []string
 		seen := map[[2]string]bool{}
+		bestLang := map[string]string{} // username -> language of the best-scored submission
 		aiProblems[p.Code] = p
 		for _, s := range subs {
 			aiUsers[s.Username] = s.ProfileID
@@ -112,6 +113,9 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 					u.solved[p.ID] = SolvedProblem{ProblemID: p.ID, Points: p.Points, ACAt: s.Date}
 				}
 			}
+			if _, ok := bestLang[s.Username]; !ok {
+				bestLang[s.Username] = s.Language
+			}
 			k := [2]string{s.Language, s.Username}
 			if seen[k] {
 				continue
@@ -124,11 +128,19 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		}
 		sort.Strings(langs)
 
-		// S3: rewrites are summed over all of a user's language chains for this problem.
+		// S3: rewrites are summed over all of a user's language chains for this
+		// problem and carried by one row only (most attempts; ties go to the best
+		// submission's language), so the evidence is not repeated per language.
 		rewrites := map[string]int{}
 		rewriteSubs := map[string][]uint{}
-		for _, langChains := range attempts {
+		rewriteLang := map[string]string{}
+		for lang, langChains := range attempts {
 			for user, chain := range langChains {
+				cur, ok := rewriteLang[user]
+				if n, c := len(chain), len(attempts[cur][user]); !ok || n > c ||
+					(n == c && (lang == bestLang[user] || (cur != bestLang[user] && lang < cur))) {
+					rewriteLang[user] = lang
+				}
 				sort.SliceStable(chain, func(i, j int) bool {
 					if !chain[i].Date.Equal(chain[j].Date) {
 						return chain[i].Date.Before(chain[j].Date)
@@ -170,7 +182,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			}
 			rows = append(rows, row)
 
-			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang], Rewrites: rewrites, RewriteSubs: rewriteSubs}
+			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang], Rewrites: rewrites, RewriteSubs: rewriteSubs, RewriteLang: rewriteLang}
 			for _, e := range ents {
 				l.Best = append(l.Best, aiAttempt{ID: e.id, Username: e.user, Source: e.source})
 			}
