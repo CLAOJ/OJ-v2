@@ -64,20 +64,40 @@ func DefaultConfig() Config {
 	}
 }
 
+func safeMethod(m string) bool { return m == "GET" || m == "HEAD" || m == "OPTIONS" }
+
+// plant makes sure the browser holds a token cookie (once per request).
+func plant(c *gin.Context, config Config) {
+	if _, done := c.Get("csrf_token"); done {
+		return
+	}
+	token, err := c.Cookie(CSRFTokenCookie)
+	if err != nil {
+		if token, err = generateToken(); err == nil {
+			setCSRFCookie(c, token, config)
+		}
+	}
+	c.Set("csrf_token", token)
+}
+
+// Plant sets the token cookie on every safe request. Without it the cookie
+// only came from GETs to the protected groups, so a page that reads public
+// endpoints only (e.g. admin name styles) had no token for its first write.
+func Plant(config Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if safeMethod(c.Request.Method) {
+			plant(c, config)
+		}
+		c.Next()
+	}
+}
+
 // Middleware returns the CSRF protection middleware
 func Middleware(config Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip CSRF for safe methods
-		if c.Request.Method == "GET" || c.Request.Method == "HEAD" || c.Request.Method == "OPTIONS" {
-			// Generate token for GET requests if not exists
-			token, err := c.Cookie(CSRFTokenCookie)
-			if err != nil {
-				token, err = generateToken()
-				if err == nil {
-					setCSRFCookie(c, token, config)
-				}
-			}
-			c.Set("csrf_token", token)
+		if safeMethod(c.Request.Method) {
+			plant(c, config)
 			c.Next()
 			return
 		}
@@ -94,7 +114,7 @@ func Middleware(config Config) gin.HandlerFunc {
 		cookieToken, err := c.Cookie(CSRFTokenCookie)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "csrf_token_missing",
+				"error":   "csrf_token_missing",
 				"message": "CSRF token cookie not found",
 			})
 			return
@@ -104,7 +124,7 @@ func Middleware(config Config) gin.HandlerFunc {
 		headerToken := c.GetHeader(CSRFTokenHeader)
 		if headerToken == "" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "csrf_token_missing",
+				"error":   "csrf_token_missing",
 				"message": "CSRF token header not found",
 			})
 			return
@@ -113,7 +133,7 @@ func Middleware(config Config) gin.HandlerFunc {
 		// Validate tokens match
 		if cookieToken != headerToken {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "csrf_token_invalid",
+				"error":   "csrf_token_invalid",
 				"message": "CSRF token validation failed",
 			})
 			return
@@ -127,12 +147,12 @@ func Middleware(config Config) gin.HandlerFunc {
 // setCSRFCookie sets the CSRF token cookie
 func setCSRFCookie(c *gin.Context, token string, config Config) {
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     CSRFTokenCookie,
-		Value:    token,
-		MaxAge:   86400, // 24 hours
-		Path:     config.Path,
-		Domain:   config.Domain,
-		Secure:   config.Secure,
+		Name:   CSRFTokenCookie,
+		Value:  token,
+		MaxAge: 86400, // 24 hours
+		Path:   config.Path,
+		Domain: config.Domain,
+		Secure: config.Secure,
 		// Double-submit pattern: the client must read this cookie to echo
 		// it in the X-CSRF-Token header, so it cannot be HttpOnly. Its
 		// value is not a secret from same-origin JS — the protection comes

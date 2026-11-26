@@ -84,6 +84,7 @@ func NewRouter() *gin.Engine {
 		// Optional Auth (for user-specific logic on public pages like problem solved status)
 		// We'll apply this globally to the main apiv2 group since it doesn't block unauthenticated requests.
 		apiv2.Use(auth.OptionalMiddleware())
+		apiv2.Use(csrf.Plant(csrf.DefaultConfig()))
 
 		// =======================================================
 		// ADMIN ROUTES (Admin Required)
