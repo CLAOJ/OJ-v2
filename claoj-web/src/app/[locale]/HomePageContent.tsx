@@ -33,6 +33,7 @@ import { formatCountdown } from '@/lib/countdown';
 import { formatDuration } from '@/lib/date';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { UserLinks } from '@/components/ui/UserLinks';
 import MathRenderer from '@/components/ui/MathRenderer';
 
 // GET /comments list item (claoj/api/v2/comment.go).
@@ -316,7 +317,7 @@ export default function HomePageContent() {
                                                 <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 flex-wrap">
                                                     <span className="flex items-center gap-1">
                                                         <Users size={12} />
-                                                        {post.authors?.map(a => a.username).join(', ')}
+                                                        <UserLinks users={post.authors ?? []} />
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <Clock size={12} />

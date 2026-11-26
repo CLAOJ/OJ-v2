@@ -67,6 +67,7 @@ func BlogList(c *gin.Context) {
 
 	type Author struct {
 		Username string `json:"username"`
+		Rating   *int   `json:"rating"`
 	}
 	type Item struct {
 		ID        uint      `json:"id"`
@@ -105,7 +106,7 @@ func BlogList(c *gin.Context) {
 	for i, p := range posts {
 		authors := make([]Author, len(p.Authors))
 		for j, a := range p.Authors {
-			authors[j] = Author{a.User.Username}
+			authors[j] = Author{a.User.Username, a.Rating}
 		}
 		items[i] = Item{
 			ID: p.ID, Title: p.Title, Slug: p.Slug, Authors: authors, PublishOn: p.PublishOn,
@@ -162,10 +163,11 @@ func BlogDetail(c *gin.Context) {
 	// Serialize authors as clean DTOs instead of leaking full GORM models
 	type AuthorDTO struct {
 		Username string `json:"username"`
+		Rating   *int   `json:"rating"`
 	}
 	authorDTOs := make([]AuthorDTO, len(post.Authors))
 	for i, a := range post.Authors {
-		authorDTOs[i] = AuthorDTO{a.User.Username}
+		authorDTOs[i] = AuthorDTO{a.User.Username, a.Rating}
 	}
 
 	// can_edit drives the "edit post" link on the post page; it is the same

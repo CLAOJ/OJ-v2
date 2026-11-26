@@ -330,7 +330,7 @@ export interface BlogPost {
     id: number;
     title: string;
     slug: string;
-    authors: { username: string }[];
+    authors: { username: string; rating?: number | null }[];
     publish_on: string;
     summary: string;
     content?: string;

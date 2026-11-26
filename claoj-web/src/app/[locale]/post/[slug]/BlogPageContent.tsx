@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
+import { UserLinks } from '@/components/ui/UserLinks';
 import { Link, useRouter } from '@/navigation';
 import MathRenderer from '@/components/ui/MathRenderer';
 import Comments from '@/components/common/Comments';
@@ -129,7 +130,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                             <div className="flex flex-col">
                                 <span className="text-xs font-medium text-muted-foreground">{t('authors')}</span>
                                 <span className="text-sm font-medium">
-                                    {post.authors.map(a => `@${a.username}`).join(', ')}
+                                    <UserLinks users={post.authors} />
                                 </span>
                             </div>
                         </div>

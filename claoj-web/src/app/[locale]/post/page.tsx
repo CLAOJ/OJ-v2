@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { BlogPost, PaginatedList, Contest, UserDetail } from '@/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
+import { UserLinks } from '@/components/ui/UserLinks';
 import { Link } from '@/navigation';
 import {
     Newspaper,
@@ -136,7 +137,7 @@ export default function BlogListPage() {
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-medium text-muted-foreground ">{t('authors')}</span>
                                                 <span className="text-sm font-medium">
-                                                    {post.authors.map(a => `@${a.username}`).join(', ')}
+                                                    <UserLinks users={post.authors} />
                                                 </span>
                                             </div>
                                         </div>
