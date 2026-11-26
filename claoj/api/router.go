@@ -507,6 +507,12 @@ func NewRouter() *gin.Engine {
 			protected.POST("/problem/:code/submit", v2.Submit)
 			protected.GET("/user/me", v2.CurrentUser)
 			protected.PATCH("/user/me", v2.UpdateProfile)
+			// Markdown images (comments, blog posts): any signed-in user, as
+			// v1's martor upload. ponytail: only BunkerWeb's per-IP request
+			// limit caps volume; add a per-user quota if uploads get abused.
+			protected.POST("/user/uploads/image/sign", v2.UserImageUploadSign)
+			protected.POST("/user/markdown/image/commit", v2.AdminMarkdownImageCommit)
+			protected.POST("/user/markdown/image", v2.AdminMarkdownImageUpload)
 			protected.POST("/user/avatar/sign", v2.AvatarUploadSign)
 			protected.PUT("/user/avatar", v2.AvatarSet)
 			protected.DELETE("/user/avatar", v2.AvatarDelete)

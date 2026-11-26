@@ -8,9 +8,13 @@ import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { normalizeDmojMarkdown } from '@/lib/markdown';
 import Spoiler from '@/components/common/Spoiler';
+import { cn } from '@/lib/utils';
 
 interface MarkdownProps {
     content: string;
+    /** User-written content (comments): raw HTML is not rendered. */
+    safe?: boolean;
+    className?: string;
 }
 
 function hasSpoilerClass(className: unknown): boolean {
@@ -29,16 +33,18 @@ const components: Components = {
     },
 };
 
-export default function Markdown({ content }: MarkdownProps) {
+export default function Markdown({ content, safe, className }: MarkdownProps) {
     return (
-        <div className="prose dark:prose-invert max-w-none text-foreground">
+        <div className={cn('prose dark:prose-invert max-w-none text-foreground', className)}>
             <ReactMarkdown
                 remarkPlugins={[[remarkGfm, { singleTilde: false }], remarkMath]}
                 // rehype-raw must run before rehype-katex: it parses the raw
                 // `<blockquote class="spoiler">` HTML into the tree, then katex
                 // processes any math inside. Editorials are authored by trusted
                 // problem setters (same trust tier as full-markup statements).
-                rehypePlugins={[rehypeRaw, rehypeKatex]}
+                // safe: anyone can write it, so HTML stays text (react-markdown
+                // drops raw HTML without rehype-raw and filters unsafe URLs).
+                rehypePlugins={safe ? [rehypeKatex] : [rehypeRaw, rehypeKatex]}
                 components={components}
             >
                 {normalizeDmojMarkdown(content)}

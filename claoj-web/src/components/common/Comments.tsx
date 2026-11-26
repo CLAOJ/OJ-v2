@@ -13,6 +13,7 @@ import { useCommentMutations } from '@/hooks/useCommentMutations';
 import { buildCommentTree, CommentNode } from '@/utils/commentTree';
 import CommentNodeComponent from '@/components/comments/CommentNode';
 import { CommentDialogs } from '@/components/comments/CommentDialogs';
+import { MarkdownEditor } from '@/components/common/MarkdownEditor';
 
 interface CommentsProps {
     page: string;
@@ -62,7 +63,12 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
 
     const handlePost = (body: string) => {
         if (!body.trim()) return;
-        postComment.mutate({ body, parent_id: replyTo });
+        postComment.mutate({ body, parent_id: replyTo }, {
+            onSuccess: () => {
+                if (replyTo === null) setCommentBody('');
+                setReplyTo(null);
+            },
+        });
     };
 
     const renderContextHeader = () => {
@@ -125,11 +131,11 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                 <div className="space-y-4">
                     {renderContextHeader()}
                     <div className="p-8 rounded-md bg-card border border-dashed hover:border-primary/50 transition-colors space-y-4">
-                        <textarea
+                        <MarkdownEditor
                             value={commentBody}
-                            onChange={(e) => setCommentBody(e.target.value)}
+                            onChange={setCommentBody}
                             placeholder={contextTranslations('placeholder')}
-                            className="w-full h-32 p-6 rounded-md bg-muted/30 border outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none text-base font-medium"
+                            onSubmit={() => !postComment.isPending && handlePost(commentBody)}
                         />
                         <div className="flex justify-end">
                             <button
@@ -182,7 +188,7 @@ export default function Comments({ page, problemName, contextType }: CommentsPro
                 deletingComment={deletingComment}
                 revisionHistory={revisionHistory}
                 onEditCancel={() => setEditingComment(null)}
-                onEditSubmit={(id, body, reason) => editComment.mutate({ id, body, reason })}
+                onEditSubmit={(id, body, reason) => editComment.mutate({ id, body, reason }, { onSuccess: () => setEditingComment(null) })}
                 onDeleteCancel={() => setDeletingComment(null)}
                 onDeleteConfirm={(id) => deleteComment.mutate(id)}
                 onRevisionClose={() => setRevisionHistory(null)}

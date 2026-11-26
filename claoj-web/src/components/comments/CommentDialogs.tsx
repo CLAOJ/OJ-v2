@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Comment, CommentRevision } from '@/types';
 import { Edit2, Trash2, History, User, Clock, Loader2 } from 'lucide-react';
 import dayjs from 'dayjs';
+import { useState } from 'react';
+import { MarkdownEditor } from '@/components/common/MarkdownEditor';
 
 interface CommentDialogsProps {
     editingComment: Comment | null;
@@ -67,10 +69,17 @@ interface EditCommentDialogProps {
 }
 
 function EditCommentDialog({ editingComment, onEditCancel, onEditSubmit, isEditing, t }: EditCommentDialogProps) {
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, reason: string) => {
-        if (e.key === 'Enter' && editingComment) {
-            onEditSubmit(editingComment.id, editingComment.body, reason);
-        }
+    const [body, setBody] = useState('');
+    const [reason, setReason] = useState('');
+    const [editingId, setEditingId] = useState<number | null>(null);
+    if ((editingComment?.id ?? null) !== editingId) {
+        // A different comment opened: start from its current text.
+        setEditingId(editingComment?.id ?? null);
+        setBody(editingComment?.body ?? '');
+        setReason('');
+    }
+    const submit = () => {
+        if (editingComment && body.trim() && !isEditing) onEditSubmit(editingComment.id, body, reason || undefined);
     };
 
     return (
@@ -82,24 +91,23 @@ function EditCommentDialog({ editingComment, onEditCancel, onEditSubmit, isEditi
                         {t('editCommentDesc')}
                     </DialogDescription>
                 </DialogHeader>
-                <textarea
-                    value={editingComment?.body || ''}
-                    onChange={(e) => onEditCancel()}
-                    className="w-full h-40 p-4 rounded-lg border outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                />
+                <MarkdownEditor value={body} onChange={setBody} rows={8} onSubmit={submit} />
                 <input
                     type="text"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
                     placeholder={t('editReason')}
-                    className="w-full p-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary/20"
-                    onKeyDown={(e) => editingComment && handleKeyDown(e, e.currentTarget.value)}
+                    aria-label={t('editReason')}
+                    className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    onKeyDown={(e) => e.key === 'Enter' && submit()}
                 />
                 <DialogFooter>
                     <Button variant="outline" onClick={onEditCancel}>
                         {t('cancel')}
                     </Button>
                     <Button
-                        onClick={() => editingComment && onEditSubmit(editingComment.id, editingComment.body)}
-                        disabled={isEditing}
+                        onClick={submit}
+                        disabled={isEditing || !body.trim()}
                     >
                         {isEditing ? <Loader2 className="animate-spin mr-2" size={16} /> : <Edit2 className="mr-2" size={16} />}
                         {t('edit')}

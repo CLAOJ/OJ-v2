@@ -13,6 +13,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { Comment } from '@/types';
 import { CommentActions } from './CommentActions';
 import { CommentReplyForm } from './CommentReplyForm';
+import Markdown from '@/components/common/Markdown';
 import { useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 
@@ -118,9 +119,7 @@ export default function CommentNode({
                         {t('hiddenComment')}
                     </div>
                 ) : (
-                    <div className="pl-1 text-[15px] font-medium leading-relaxed text-muted-foreground/90 whitespace-pre-wrap">
-                        {node.body}
-                    </div>
+                    <Markdown content={node.body} safe className="pl-1 prose-sm text-[15px] break-words" />
                 )}
 
                 <div className="flex items-center gap-8 pt-2">

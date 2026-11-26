@@ -1,6 +1,7 @@
 'use client';
 
 import { Send, Loader2 } from 'lucide-react';
+import { MarkdownEditor } from '@/components/common/MarkdownEditor';
 import { Dispatch, SetStateAction } from 'react';
 import { motion } from 'framer-motion';
 
@@ -30,12 +31,13 @@ export function CommentReplyForm({
             exit={{ opacity: 0, scale: 0.95 }}
             className="pt-6 space-y-4"
         >
-            <textarea
+            <MarkdownEditor
                 value={replyBody}
-                onChange={(e) => setReplyBody(e.target.value)}
+                onChange={setReplyBody}
                 autoFocus
+                rows={4}
                 placeholder={`${t('reply')} @${authorName}...`}
-                className="w-full h-24 p-5 rounded-md bg-muted border outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none text-sm font-medium"
+                onSubmit={() => !isPosting && replyBody.trim() && onReply()}
             />
             <div className="flex justify-end gap-3">
                 <button

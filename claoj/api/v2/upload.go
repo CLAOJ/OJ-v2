@@ -198,6 +198,10 @@ func AdminProblemPdfCommit(c *gin.Context) {
 // AvatarUploadSign - POST /api/user/avatar/sign {content_type, size}
 func AvatarUploadSign(c *gin.Context) { signUpload(c, purposeAvatar) }
 
+// UserImageUploadSign - POST /api/user/uploads/image/sign {content_type, size}:
+// a markdown image for any signed-in user (committed by AdminMarkdownImageCommit).
+func UserImageUploadSign(c *gin.Context) { signUpload(c, purposeImage) }
+
 // AvatarSet - PUT /api/user/avatar {key}: use an uploaded image as the avatar.
 func AvatarSet(c *gin.Context) {
 	profileID, _ := auth.CurrentProfileID(c)
