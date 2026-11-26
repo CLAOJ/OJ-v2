@@ -105,6 +105,7 @@ func onSubmissionAcknowledged(subID uint) error {
 		return err
 	}
 	PostSubmissionState(subID, "processing", nil)
+	PostGlobalSubmissionUpdate(subID, "processing", false)
 	return nil
 }
 
@@ -126,6 +127,7 @@ func onGradingBegin(judge *models.Judge, subID uint) error {
 		return err
 	}
 	PostSubmissionState(subID, "grading-begin", nil)
+	PostGlobalSubmissionUpdate(subID, "grading-begin", false)
 	return nil
 }
 

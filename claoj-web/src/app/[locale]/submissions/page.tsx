@@ -8,7 +8,8 @@ import { APIResponse, Submission, PaginatedList, ContestDetail } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useEventChannel } from '@/contexts/WebSocketContext';
 import {
     User,
     Hash,
@@ -61,6 +62,18 @@ export default function SubmissionListPage() {
     const confirm = useConfirm();
     const queryClient = useQueryClient();
     const isAdmin = !!(user?.is_admin || user?.is_staff);
+
+    // Live list: any judged/queued submission refetches the current page.
+    // The API decides visibility (contest admins and participants included),
+    // so no client-side filtering can hide rows. At most one refetch a second.
+    const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEventChannel('submissions', () => {
+        if (refetchTimer.current) return;
+        refetchTimer.current = setTimeout(() => {
+            refetchTimer.current = null;
+            queryClient.invalidateQueries({ queryKey: ['submissions'] });
+        }, 1000);
+    });
     const [rejudging, setRejudging] = useState<number | null>(null);
     const rejudge = async (id: number) => {
         if (!(await confirm(t('rejudgeConfirm')))) return;
