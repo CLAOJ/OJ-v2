@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { adminMossApi, adminErrorMessage, type AIProblem } from '@/lib/adminApi';
+import { adminContestApi, adminMossApi, adminErrorMessage, type AIProblem } from '@/lib/adminApi';
 import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Textarea } from '@/components/ui/Textarea';
@@ -33,6 +33,11 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
     const refs = useQuery({
         queryKey: ['admin-contest-moss-refs', contestKey],
         queryFn: async () => (await adminMossApi.references(contestKey)).data.references,
+    });
+    // Contest problems exist before any run, so a PDF-only problem can get a reference first.
+    const contest = useQuery({
+        queryKey: ['admin-contest-detail-problems', contestKey],
+        queryFn: async () => (await adminContestApi.detail(contestKey)).data,
     });
     const refsChanged = () => {
         queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-refs', contestKey] });
@@ -70,8 +75,11 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
         }
         return [...map.values()].sort((a, b) => a.problem_code.localeCompare(b.problem_code) || a.language.localeCompare(b.language));
     }, [report.data, refs.data]);
-    const problemCodes = [...new Set([...problems, ...entries.map(e => e.problem_code)])].sort();
+    const problemCodes = [...new Set([...(contest.data?.problems ?? []).map(p => p.code), ...problems, ...entries.map(e => e.problem_code)])].sort();
     const langOptions = [...new Set([...languages, ...entries.map(e => e.language)])].sort();
+
+    // Codes may arrive after the dialog opens: fall back to the first one.
+    const selected = problem || problemCodes[0] || '';
 
     const noteText = (note: string) => {
         if (!note) return null;
@@ -211,7 +219,7 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
                 <div className="px-4 py-3 border-t">
                     <button
                         type="button"
-                        onClick={() => { setAdding(true); setProblem(problemCodes[0] ?? ''); setLang(langOptions[0] ?? ''); setSource(''); }}
+                        onClick={() => { setAdding(true); setProblem(''); setLang(langOptions[0] ?? ''); setSource(''); }}
                         className="inline-flex items-center gap-1 h-8 px-3 rounded-md border text-sm hover:bg-muted"
                     >
                         <Plus size={14} /> {t('moss.ai.add')}
@@ -225,7 +233,7 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
                     <div className="space-y-3 px-1">
                         <label className="block text-sm">
                             <span className="text-muted-foreground">{t('moss.ai.colProblem')}</span>
-                            <select value={problem} onChange={e => setProblem(e.target.value)} className="mt-1 w-full h-9 px-2 rounded-md border bg-card text-sm">
+                            <select value={selected} onChange={e => setProblem(e.target.value)} className="mt-1 w-full h-9 px-2 rounded-md border bg-card text-sm">
                                 {problemCodes.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </label>
@@ -244,8 +252,8 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
                         <button type="button" onClick={() => setAdding(false)} className="h-8 px-3 rounded-md border text-sm hover:bg-muted">{t('moss.ai.cancel')}</button>
                         <button
                             type="button"
-                            disabled={add.isPending || !problem || !lang || !source.trim()}
-                            onClick={() => add.mutate({ problem_code: problem, language: lang, source })}
+                            disabled={add.isPending || !selected || !lang || !source.trim()}
+                            onClick={() => add.mutate({ problem_code: selected, language: lang, source })}
                             className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                         >
                             {t('moss.ai.save')}

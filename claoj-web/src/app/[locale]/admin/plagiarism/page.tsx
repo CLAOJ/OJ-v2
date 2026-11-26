@@ -99,12 +99,10 @@ export default function AdminMossPage() {
     // A finished run (running true -> false) changes ai.json and the generated references.
     const wasRunning = useRef(false);
     useEffect(() => {
-        if (wasRunning.current && data && !data.running) {
-            queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-ai', contestKey] });
-            queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-refs', contestKey] });
-        }
+        if (wasRunning.current && data && !data.running) refreshAi();
         wasRunning.current = !!data?.running;
-    }, [data, contestKey, queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data]);
 
     const run = useMutation({
         mutationFn: () => adminMossApi.run(contestKey),
