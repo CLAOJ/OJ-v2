@@ -71,7 +71,7 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
         for (const p of report.data?.problems ?? []) map.set(`${p.problem_code}/${p.language}`, p);
         for (const r of refs.data ?? []) {
             const k = `${r.problem_code}/${r.language}`;
-            if (!map.has(k)) map.set(k, { problem_code: r.problem_code, language: r.language, generated: 0, admin: 0, contestants: 0, matched: 0, trivial: 0, note: '' });
+            if (!map.has(k)) map.set(k, { problem_code: r.problem_code, language: r.language, generated: 0, admin: 0, contestants: 0, matched: 0, trivial: false, note: '' });
         }
         return [...map.values()].sort((a, b) => a.problem_code.localeCompare(b.problem_code) || a.language.localeCompare(b.language));
     }, [report.data, refs.data]);
@@ -181,8 +181,13 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
                                             {t('moss.ai.refCounts', { generated: mine.filter(r => r.origin === 'generated').length, admin: mine.filter(r => r.origin !== 'generated').length })}
                                         </span>
                                         <span className="text-xs text-muted-foreground tabular-nums">
-                                            {t('moss.ai.matched', { matched: e.matched, total: e.contestants, trivial: e.trivial })}
+                                            {t('moss.ai.matched', { matched: e.matched, total: e.contestants })}
                                         </span>
+                                        {e.trivial && (
+                                            <span className="text-xs rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-400">
+                                                {t('moss.ai.trivial')}
+                                            </span>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={async () => { if (await confirm(t('moss.ai.regenerateConfirm'), { variant: 'danger' })) regen.mutate(e.problem_code); }}

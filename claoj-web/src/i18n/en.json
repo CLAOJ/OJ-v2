@@ -2970,11 +2970,13 @@
         "refs": "Reference solutions",
         "refsHint": "Contestant code is compared with these. Changes apply on the next run.",
         "refCounts": "{generated} generated, {admin} added by admin",
-        "matched": "{matched} of {total} contestants matched ({trivial} trivial)",
+        "matched": "{matched} of {total} contestants matched",
+        "trivial": "Trivial problem: an AI match alone is not listed",
         "note": {
           "no_llm": "No LLM is configured, so no references were generated.",
           "no_statement": "The problem has no statement to generate from.",
           "no_references": "No reference solutions are available.",
+          "no_references_table": "The reference table is missing; apply scripts/v2_runtime_tables.sql.",
           "generation_failed": "Generation failed"
         },
         "add": "Add reference",

@@ -116,7 +116,10 @@ export default function AdminMossPage() {
 
     const clear = useMutation({
         mutationFn: () => adminMossApi.clear(contestKey),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-contest-moss', contestKey] }),
+        onSuccess: () => {
+            refreshAi();
+            queryClient.invalidateQueries({ queryKey: ['admin-contest-moss', contestKey] });
+        },
         onError: e => toast.error(errorText(e)),
     });
 
