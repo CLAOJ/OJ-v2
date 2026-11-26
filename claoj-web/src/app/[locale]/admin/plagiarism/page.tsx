@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useConfirm } from '@/components/providers/ConfirmProvider';
@@ -92,10 +92,25 @@ export default function AdminMossPage() {
         refetchInterval: q => (q.state.data?.running ? 5000 : false),
     });
 
+    const refreshAi = () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-ai', contestKey] });
+        queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-refs', contestKey] });
+    };
+    // A finished run (running true -> false) changes ai.json and the generated references.
+    const wasRunning = useRef(false);
+    useEffect(() => {
+        if (wasRunning.current && data && !data.running) {
+            queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-ai', contestKey] });
+            queryClient.invalidateQueries({ queryKey: ['admin-contest-moss-refs', contestKey] });
+        }
+        wasRunning.current = !!data?.running;
+    }, [data, contestKey, queryClient]);
+
     const run = useMutation({
         mutationFn: () => adminMossApi.run(contestKey),
         onSuccess: () => {
             toast.success(t('moss.queued'));
+            refreshAi();
             queryClient.invalidateQueries({ queryKey: ['admin-contest-moss', contestKey] });
         },
         onError: e => toast.error(errorText(e)),
@@ -226,7 +241,7 @@ export default function AdminMossPage() {
                     )}
 
                     {tab === 'ai' ? (
-                        <AiTab contestKey={contestKey} languages={[...new Set((data?.results ?? []).map(r => r.language))]} />
+                        <AiTab contestKey={contestKey} languages={[...new Set((data?.results ?? []).map(r => r.language))]} problems={[...new Set((data?.results ?? []).map(r => r.problem_code))]} />
                     ) : isLoading ? (
                         <div className="p-4 space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-5 w-full" />)}</div>
                     ) : isError ? (

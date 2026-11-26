@@ -15,12 +15,13 @@ import { Link } from '@/navigation';
 type ApiError = { response?: { status?: number; data?: { error?: string } } };
 const errorText = (e: unknown) => (e as ApiError)?.response?.data?.error ?? String(e);
 
-export default function AiTab({ contestKey, languages }: { contestKey: string; languages: string[] }) {
+export default function AiTab({ contestKey, languages, problems }: { contestKey: string; languages: string[]; problems: string[] }) {
     const t = useTranslations('Admin');
     const confirm = useConfirm();
     const queryClient = useQueryClient();
     const [filter, setFilter] = useState('');
-    const [adding, setAdding] = useState<string | null>(null); // problem code being added to
+    const [adding, setAdding] = useState(false);
+    const [problem, setProblem] = useState('');
     const [lang, setLang] = useState('');
     const [source, setSource] = useState('');
 
@@ -40,7 +41,7 @@ export default function AiTab({ contestKey, languages }: { contestKey: string; l
 
     const add = useMutation({
         mutationFn: (p: { problem_code: string; language: string; source: string }) => adminMossApi.addReference(contestKey, p),
-        onSuccess: () => { setAdding(null); setSource(''); refsChanged(); },
+        onSuccess: () => { setAdding(false); setSource(''); refsChanged(); },
         onError: e => toast.error(adminErrorMessage(e, errorText(e))),
     });
     const del = useMutation({
@@ -69,7 +70,7 @@ export default function AiTab({ contestKey, languages }: { contestKey: string; l
         }
         return [...map.values()].sort((a, b) => a.problem_code.localeCompare(b.problem_code) || a.language.localeCompare(b.language));
     }, [report.data, refs.data]);
-    const problemCodes = [...new Set(entries.map(e => e.problem_code))];
+    const problemCodes = [...new Set([...problems, ...entries.map(e => e.problem_code)])].sort();
     const langOptions = [...new Set([...languages, ...entries.map(e => e.language)])].sort();
 
     const noteText = (note: string) => {
@@ -207,26 +208,27 @@ export default function AiTab({ contestKey, languages }: { contestKey: string; l
                         })}
                     </ul>
                 )}
-                {problemCodes.length > 0 && (
-                    <div className="px-4 py-3 border-t flex flex-wrap gap-2">
-                        {problemCodes.map(code => (
-                            <button
-                                key={code}
-                                type="button"
-                                onClick={() => { setAdding(code); setLang(langOptions[0] ?? ''); setSource(''); }}
-                                className="inline-flex items-center gap-1 h-7 px-2 rounded-md border text-xs hover:bg-muted"
-                            >
-                                <Plus size={12} /> {t('moss.ai.add')} ({code})
-                            </button>
-                        ))}
-                    </div>
-                )}
+                <div className="px-4 py-3 border-t">
+                    <button
+                        type="button"
+                        onClick={() => { setAdding(true); setProblem(problemCodes[0] ?? ''); setLang(langOptions[0] ?? ''); setSource(''); }}
+                        className="inline-flex items-center gap-1 h-8 px-3 rounded-md border text-sm hover:bg-muted"
+                    >
+                        <Plus size={14} /> {t('moss.ai.add')}
+                    </button>
+                </div>
             </section>
 
-            <Dialog open={adding !== null} onOpenChange={o => { if (!o) setAdding(null); }}>
+            <Dialog open={adding} onOpenChange={o => { if (!o) setAdding(false); }}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>{t('moss.ai.addTitle')} — {adding}</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>{t('moss.ai.addTitle')}</DialogTitle></DialogHeader>
                     <div className="space-y-3 px-1">
+                        <label className="block text-sm">
+                            <span className="text-muted-foreground">{t('moss.ai.colProblem')}</span>
+                            <select value={problem} onChange={e => setProblem(e.target.value)} className="mt-1 w-full h-9 px-2 rounded-md border bg-card text-sm">
+                                {problemCodes.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </label>
                         <label className="block text-sm">
                             <span className="text-muted-foreground">{t('moss.ai.language')}</span>
                             <select value={lang} onChange={e => setLang(e.target.value)} className="mt-1 w-full h-9 px-2 rounded-md border bg-card text-sm">
@@ -239,11 +241,11 @@ export default function AiTab({ contestKey, languages }: { contestKey: string; l
                         </label>
                     </div>
                     <DialogFooter>
-                        <button type="button" onClick={() => setAdding(null)} className="h-8 px-3 rounded-md border text-sm hover:bg-muted">{t('moss.ai.cancel')}</button>
+                        <button type="button" onClick={() => setAdding(false)} className="h-8 px-3 rounded-md border text-sm hover:bg-muted">{t('moss.ai.cancel')}</button>
                         <button
                             type="button"
-                            disabled={add.isPending || !lang || !source.trim()}
-                            onClick={() => adding && add.mutate({ problem_code: adding, language: lang, source })}
+                            disabled={add.isPending || !problem || !lang || !source.trim()}
+                            onClick={() => add.mutate({ problem_code: problem, language: lang, source })}
                             className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                         >
                             {t('moss.ai.save')}
