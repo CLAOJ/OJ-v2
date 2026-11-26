@@ -90,7 +90,7 @@ func setupMossDB(t *testing.T) *gorm.DB {
 	require.NoError(t, database.AutoMigrate(
 		&models.AuthUser{}, &models.Profile{}, &models.Language{}, &models.Problem{}, &models.Contest{},
 		&models.ContestParticipation{}, &models.Submission{}, &models.SubmissionSource{}, &models.ContestSubmission{},
-		&models.ContestMoss{}, &models.PlagiarismResult{},
+		&models.ContestMoss{}, &models.PlagiarismResult{}, &models.PlagiarismAIReference{},
 	))
 	require.NoError(t, database.Migrator().DropTable("judge_contestproblem"))
 	require.NoError(t, database.Migrator().CreateTable(&models.ContestProblem{}))

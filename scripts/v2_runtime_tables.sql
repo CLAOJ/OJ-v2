@@ -115,6 +115,23 @@ CREATE TABLE IF NOT EXISTS plagiarism_result (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
+-- AI reference solutions for the AI submission detection check
+-- (models/plagiarism.go PlagiarismAIReference), v2-only.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS plagiarism_ai_reference (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  problem_id BIGINT UNSIGNED NOT NULL,
+  language VARCHAR(20) NOT NULL,
+  source LONGTEXT NOT NULL,
+  origin VARCHAR(10) NOT NULL,
+  model VARCHAR(100) NULL,
+  created_by BIGINT UNSIGNED NULL,
+  created_at DATETIME(6) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_plagiarism_ai_reference_problem (problem_id, language)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
 -- Comment revision history (models/comment.go CommentRevision)
 -- NOTE: uses the judge_ prefix Django reserves for its own migrations.
 -- Not currently claimed by any Django migration, but re-check this before
