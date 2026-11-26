@@ -89,7 +89,7 @@ func onJudgeStatus(judge *models.Judge, pkt Packet, clientIP string) error {
 		updates["last_ip"] = clientIP
 	}
 	if ping, ok := pkt["ping"].(float64); ok && ping >= 0 {
-		updates["ping"] = ping
+		updates["ping"] = ping / 1000 // agent sends ms; judge_judge.ping is seconds (v1)
 	}
 	if load, ok := pkt["load"].(float64); ok && load >= 0 {
 		updates["load"] = load

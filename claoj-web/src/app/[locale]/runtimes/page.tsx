@@ -36,7 +36,7 @@ export default function RuntimesPage() {
                     <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
                 </div>
                 <nav className="flex gap-1 border-b w-full sm:w-auto" aria-label={t('title')}>
-                    <Link href="/stats" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                    <Link href="/status" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
                         {t('tabJudges')}
                     </Link>
                     <span aria-current="page" className="px-3 py-2 text-sm font-semibold border-b-2 border-primary">

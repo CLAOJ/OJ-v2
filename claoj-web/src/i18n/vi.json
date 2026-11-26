@@ -1020,7 +1020,16 @@
     "matrixEmpty": "Hiện không có máy chấm trực tuyến nào báo cáo môi trường chạy.",
     "legendLatest": "Mới nhất",
     "legendOutdated": "Lỗi thời",
-    "legendBlank": "Không báo cáo"
+    "legendBlank": "Không báo cáo",
+    "statusTitle": "Trạng thái",
+    "statusSubtitle": "Các máy chấm đang trực tuyến",
+    "colJudge": "Máy chấm",
+    "colUptime": "Thời gian hoạt động",
+    "colPing": "Ping",
+    "colLoad": "Tải",
+    "colRuntimes": "Môi trường chạy",
+    "statusEmpty": "Hiện không có máy chấm nào trực tuyến.",
+    "statusLoadFailed": "Không tải được danh sách máy chấm."
   },
   "stats": {
     "title": "Thống kê trang web",

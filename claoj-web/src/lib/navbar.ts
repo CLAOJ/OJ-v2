@@ -30,7 +30,6 @@ const PATH_MAP: Record<string, string> = {
     '/users/': '/users',
     '/organizations/': '/organizations',
     '/contests/': '/contests',
-    '/status/': '/stats',
 };
 
 export function normalizeNavPath(raw: string): string {
@@ -50,7 +49,7 @@ export const FALLBACK_NAV_LINKS: NavLink[] = [
     { key: 'users', href: '/users', tKey: 'users' },
     { key: 'ratings', href: '/ratings', tKey: 'ratings' },
     { key: 'organizations', href: '/organizations', tKey: 'organizations' },
-    { key: 'stats', href: '/stats', tKey: 'stats' },
+    { key: 'stats', href: '/status', tKey: 'stats' },
 ];
 
 // v1 passes every DB label through gettext (`{{ _(node.label) }}`). Labels the

@@ -1020,7 +1020,16 @@
     "matrixEmpty": "No online judge is reporting runtimes right now.",
     "legendLatest": "Up to date",
     "legendOutdated": "Outdated",
-    "legendBlank": "Not reported"
+    "legendBlank": "Not reported",
+    "statusTitle": "Status",
+    "statusSubtitle": "Judges that are online now",
+    "colJudge": "Judge",
+    "colUptime": "Uptime",
+    "colPing": "Ping",
+    "colLoad": "Load",
+    "colRuntimes": "Runtimes",
+    "statusEmpty": "No judge is online right now.",
+    "statusLoadFailed": "Could not load the judge list."
   },
   "stats": {
     "title": "Site Statistics",

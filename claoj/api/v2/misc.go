@@ -46,16 +46,49 @@ func JudgeList(c *gin.Context) {
 		return
 	}
 
+	// v1 /status lists each judge's runtimes (judge_judge_runtimes).
+	type Runtime struct {
+		Key  string `json:"key"`
+		Name string `json:"name"`
+	}
 	type Item struct {
 		Name      string      `json:"name"`
 		Online    bool        `json:"online"`
 		Ping      *float64    `json:"ping"`
 		Load      *float64    `json:"load"`
 		StartTime interface{} `json:"start_time"`
+		Runtimes  []Runtime   `json:"runtimes"`
+	}
+	ids := make([]uint, len(judges))
+	for i, j := range judges {
+		ids[i] = j.ID
+	}
+	var rows []struct {
+		JudgeID uint
+		Key     string
+		Name    string
+	}
+	if len(ids) > 0 {
+		if err := db.DB.Table("judge_judge_runtimes jr").
+			Select("jr.judge_id, l.`key`, l.name").
+			Joins("JOIN judge_language l ON l.id = jr.language_id").
+			Where("jr.judge_id IN ?", ids).
+			Order("l.name").Scan(&rows).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
+			return
+		}
+	}
+	byJudge := map[uint][]Runtime{}
+	for _, r := range rows {
+		byJudge[r.JudgeID] = append(byJudge[r.JudgeID], Runtime{r.Key, r.Name})
 	}
 	items := make([]Item, len(judges))
 	for i, j := range judges {
-		items[i] = Item{j.Name, j.Online, j.Ping, j.Load, j.StartTime}
+		rt := byJudge[j.ID]
+		if rt == nil {
+			rt = []Runtime{}
+		}
+		items[i] = Item{j.Name, j.Online, j.Ping, j.Load, j.StartTime, rt}
 	}
 	c.JSON(http.StatusOK, apiList(items))
 }

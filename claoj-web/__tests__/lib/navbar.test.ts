@@ -24,7 +24,7 @@ describe('normalizeNavPath', () => {
         ['/users/', '/users'],
         ['/organizations/', '/organizations'],
         ['/contests/', '/contests'],
-        ['/status/', '/stats'],
+        ['/status/', '/status'],
         ['/', '/'],
         ['/about/', '/about'],
         ['/devlog/', '/devlog'],
@@ -48,7 +48,7 @@ describe('buildNavLinks', () => {
             item({ key: 'problem', label: 'Problems', path: '/problems/', regex: '^/problems/' }),
             item({ key: 'judge', label: 'Judges', path: '/status/' }),
         ]);
-        expect(links.map((l) => l.href)).toEqual(['/', '/problems', '/stats']);
+        expect(links.map((l) => l.href)).toEqual(['/', '/problems', '/status']);
         expect(links.map((l) => l.label)).toEqual(['Home', 'Problems', 'Judges']);
     });
 
@@ -71,7 +71,7 @@ describe('buildNavLinks', () => {
         expect(links[1].children?.map((l) => l.key)).toEqual(['ServerStat', 'status', 'devlog']);
         expect(links[1].children?.map((l) => l.href)).toEqual([
             'https://status.claoj.edu.vn',
-            '/stats',
+            '/status',
             '/devlog',
         ]);
         expect(links[0].children).toBeUndefined();
@@ -103,7 +103,7 @@ describe('buildNavLinks', () => {
             '/users',
             '/ratings',
             '/organizations',
-            '/stats',
+            '/status',
         ]);
     });
 

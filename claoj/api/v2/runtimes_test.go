@@ -126,3 +126,28 @@ func TestCompareVersionLists(t *testing.T) {
 	// Unparseable segments fall back to 0 instead of failing the page.
 	require.Zero(t, compareVersionLists([]string{"dev"}, []string{"0"}))
 }
+func TestJudgeList_IncludesRuntimes(t *testing.T) {
+	setupAdminLeftoversDB(t)
+	require.NoError(t, db.DB.Exec("CREATE TABLE IF NOT EXISTS judge_judge_runtimes (id integer primary key, judge_id integer, language_id integer)").Error)
+	py := createRuntimeLanguage(t, "PY3", "Python 3")
+	j := createRuntimeJudge(t, "w1", true)
+	createRuntimeJudge(t, "w2", true)
+	require.NoError(t, db.DB.Exec("INSERT INTO judge_judge_runtimes (judge_id, language_id) VALUES (?, ?)", j.ID, py.ID).Error)
+
+	w := doRequest(authedRouter(0, http.MethodGet, "/judges", JudgeList), http.MethodGet, "/judges", "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body struct {
+		Data []struct {
+			Name     string `json:"name"`
+			Runtimes []struct {
+				Key  string `json:"key"`
+				Name string `json:"name"`
+			} `json:"runtimes"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Len(t, body.Data, 2)
+	require.Equal(t, "PY3", body.Data[0].Runtimes[0].Key)
+	require.NotNil(t, body.Data[1].Runtimes)
+	require.Empty(t, body.Data[1].Runtimes)
+}

@@ -31,7 +31,7 @@ export default function RuntimeMatrixPage() {
                     <p className="text-muted-foreground mt-1">{t('matrixSubtitle')}</p>
                 </div>
                 <nav className="flex gap-1 border-b w-full sm:w-auto" aria-label={t('title')}>
-                    <Link href="/stats" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                    <Link href="/status" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
                         {t('tabJudges')}
                     </Link>
                     <Link href="/runtimes" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">

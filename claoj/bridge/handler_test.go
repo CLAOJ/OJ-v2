@@ -266,7 +266,7 @@ func TestEvent_JudgeStatusRecordsPingLoadAndIP(t *testing.T) {
 	var j models.Judge
 	require.NoError(t, db.DB.First(&j, judge.ID).Error)
 	require.NotNil(t, j.Ping)
-	assert.InDelta(t, 42.5, *j.Ping, 1e-9)
+	assert.InDelta(t, 0.0425, *j.Ping, 1e-9, "agent ms stored as seconds, v1's unit")
 	require.NotNil(t, j.Load)
 	assert.InDelta(t, 0.03, *j.Load, 1e-9)
 	require.NotNil(t, j.LastIP)
