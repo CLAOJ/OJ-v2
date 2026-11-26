@@ -123,7 +123,7 @@ func AdminContestDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, contest.ErrContestNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -184,7 +184,7 @@ type adminContestCreateInput struct {
 func AdminContestCreate(c *gin.Context) {
 	var input adminContestCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	createContestFromInput(c, input, nil, 0)
@@ -208,12 +208,12 @@ func createContestFromInput(c *gin.Context, input adminContestCreateInput, org *
 	// Parse timestamps
 	startTime, err := parseRFC3339(input.StartTime)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid start_time format"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid start_time format"))
 		return
 	}
 	endTime, err := parseRFC3339(input.EndTime)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid end_time format"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid end_time format"))
 		return
 	}
 
@@ -264,14 +264,14 @@ func createContestFromInput(c *gin.Context, input adminContestCreateInput, org *
 	if err != nil {
 		switch {
 		case errors.Is(err, contest.ErrInvalidFormatConfig):
-			c.JSON(http.StatusBadRequest, apiError("invalid format_config JSON"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid format_config JSON"))
 		case errors.Is(err, contest.ErrInvalidScoreboardVisibility),
 			errors.Is(err, contest.ErrInvalidPointsPrecision),
 			errors.Is(err, contest.ErrFieldTooLong),
 			errors.Is(err, relations.ErrUnknownID):
 			c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
 		default:
-			c.JSON(http.StatusBadRequest, apiError(err.Error()))
+			c.JSON(http.StatusBadRequest, apiClientError(err))
 		}
 		return
 	}
@@ -342,7 +342,7 @@ func AdminContestUpdate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	// A nil pointer means "unchanged", and a value equal to the stored one is
@@ -412,7 +412,7 @@ func AdminContestUpdate(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, contest.ErrContestNotFound):
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		case errors.Is(err, contest.ErrContestProblemHasSubmissions):
 			c.JSON(http.StatusConflict, apiUserError(err.Error()))
 		case errors.Is(err, contest.ErrInvalidTime),
@@ -427,7 +427,7 @@ func AdminContestUpdate(c *gin.Context) {
 			errors.Is(err, relations.ErrUnknownID):
 			c.JSON(http.StatusBadRequest, apiUserError(err.Error()))
 		default:
-			c.JSON(http.StatusBadRequest, apiError(err.Error()))
+			c.JSON(http.StatusBadRequest, apiClientError(err))
 		}
 		return
 	}
@@ -446,10 +446,10 @@ func AdminContestDelete(c *gin.Context) {
 		ContestKey: key,
 	}); err != nil {
 		if errors.Is(err, contest.ErrContestNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -467,7 +467,7 @@ func AdminContestLock(c *gin.Context) {
 		LockedAfter *string `json:"locked_after"` // ISO 8601 format, or null to unlock
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -477,14 +477,14 @@ func AdminContestLock(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, contest.ErrContestNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		if errors.Is(err, contest.ErrInvalidLockedAfter) {
-			c.JSON(http.StatusBadRequest, apiError("invalid locked_after format, use ISO 8601"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid locked_after format, use ISO 8601"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -518,7 +518,7 @@ func AdminContestClone(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -533,22 +533,22 @@ func AdminContestClone(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, contest.ErrContestNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		if errors.Is(err, contest.ErrContestKeyExists) {
-			c.JSON(http.StatusBadRequest, apiError("contest key already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("contest key already exists"))
 			return
 		}
 		if errors.Is(err, contest.ErrInvalidStartTime) {
-			c.JSON(http.StatusBadRequest, apiError("invalid new_start_time format"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid new_start_time format"))
 			return
 		}
 		if errors.Is(err, contest.ErrInvalidEndTime) {
-			c.JSON(http.StatusBadRequest, apiError("invalid new_end_time format"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid new_end_time format"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -570,7 +570,7 @@ func AdminContestParticipationDisqualify(c *gin.Context) {
 
 	var participationID uint
 	if err := parseUint(participationIDStr, &participationID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid participation id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid participation id"))
 		return
 	}
 
@@ -579,11 +579,11 @@ func AdminContestParticipationDisqualify(c *gin.Context) {
 		ParticipationID: participationID,
 	}); err != nil {
 		if errors.Is(err, contest.ErrContestNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		if errors.Is(err, contest.ErrParticipationNotFound) {
-			c.JSON(http.StatusNotFound, apiError("participation not found"))
+			c.JSON(http.StatusNotFound, apiUserError("participation not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -606,7 +606,7 @@ func AdminContestParticipationUndisqualify(c *gin.Context) {
 
 	var participationID uint
 	if err := parseUint(participationIDStr, &participationID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid participation id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid participation id"))
 		return
 	}
 
@@ -615,11 +615,11 @@ func AdminContestParticipationUndisqualify(c *gin.Context) {
 		ParticipationID: participationID,
 	}); err != nil {
 		if errors.Is(err, contest.ErrContestNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		if errors.Is(err, contest.ErrParticipationNotFound) {
-			c.JSON(http.StatusNotFound, apiError("participation not found"))
+			c.JSON(http.StatusNotFound, apiUserError("participation not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

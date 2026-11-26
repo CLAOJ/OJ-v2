@@ -1882,6 +1882,7 @@
       "loadDetailFailed": "Không tải được thông tin thẻ"
     },
     "problems": {
+      "createError": "Không thể tạo bài tập.",
       "title": "Bài tập",
       "subtitle": "Quản lý bài tập và cài đặt của chúng",
       "searchPlaceholder": "Tìm kiếm bài tập...",

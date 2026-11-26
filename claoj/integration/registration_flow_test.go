@@ -87,7 +87,7 @@ func TestRegistrationFlow_DuplicateUsername(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
 	// Note: apiError() returns generic message for security
-	assert.Equal(t, "An error occurred. Please try again.", resp.JSONBody["error"])
+	assert.Equal(t, "username already taken", resp.JSONBody["error"])
 }
 
 // TestRegistrationFlow_DuplicateEmail tests registration with existing email
@@ -115,7 +115,7 @@ func TestRegistrationFlow_DuplicateEmail(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
 	// Note: apiError() returns generic message for security
-	assert.Equal(t, "An error occurred. Please try again.", resp.JSONBody["error"])
+	assert.Equal(t, "email already taken", resp.JSONBody["error"])
 }
 
 // TestRegistrationFlow_InvalidUsername tests registration with invalid username formats
@@ -216,7 +216,7 @@ func TestRegistrationFlow_WeakPassword(t *testing.T) {
 
 			assert.Equal(t, http.StatusBadRequest, resp.Code)
 			// Note: apiError() returns generic message for security
-			assert.Equal(t, "An error occurred. Please try again.", resp.JSONBody["error"])
+			assert.Equal(t, tt.wantErr, resp.JSONBody["error"])
 		})
 	}
 }
@@ -330,7 +330,7 @@ func TestRegistrationFlow_VerifyEmail_InvalidToken(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
 	// Note: apiError() returns generic message for security
-	assert.Equal(t, "An error occurred. Please try again.", resp.JSONBody["error"])
+	assert.Equal(t, "invalid or expired verification token", resp.JSONBody["error"])
 }
 
 // TestRegistrationFlow_ResendVerification tests resending verification email

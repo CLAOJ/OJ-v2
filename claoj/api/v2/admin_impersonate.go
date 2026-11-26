@@ -72,7 +72,7 @@ func AdminImpersonateStart(c *gin.Context) {
 	}
 
 	if err := startSession(c, target, actor.UserID); err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate tokens"))
 		return
 	}
 
@@ -137,7 +137,7 @@ func AdminImpersonateExit(c *gin.Context) {
 	}
 
 	if err := startSession(c, actor, 0); err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate tokens"))
 		return
 	}
 

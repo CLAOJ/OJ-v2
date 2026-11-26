@@ -26,6 +26,7 @@ import {
 import { getStatusVariant, cn } from '@/lib/utils';
 import { formatMemoryMb } from '@/lib/submissionDetail';
 import { VERDICT_CODES } from '@/lib/submissionStatus';
+import { apiErrorMessage } from '@/lib/api';
 
 const FILTER_KEYS = ['user', 'problem', 'result', 'status', 'language'] as const;
 const PAGE_SIZE = 50;
@@ -83,7 +84,7 @@ export default function AdminSubmissionPage() {
             toast.success(t('submissions.rescoreSuccess'));
             queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
         },
-        onError: () => toast.error(t('submissions.rescoreError')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('submissions.rescoreError'))),
     });
 
     // Recomputes scores from stored per-case results (e.g. after changing
@@ -94,7 +95,7 @@ export default function AdminSubmissionPage() {
             toast.success(t('submissions.rescoreAllSuccess', { count: res.data.rescored, total: res.data.total }));
             queryClient.invalidateQueries({ queryKey: ['admin-submissions'] });
         },
-        onError: () => toast.error(t('submissions.rescoreError')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('submissions.rescoreError'))),
     });
 
     const submissions = data?.data || [];

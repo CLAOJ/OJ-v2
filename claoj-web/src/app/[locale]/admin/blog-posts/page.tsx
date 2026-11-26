@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Switch } from '@/components/ui/Switch';
 import { Select } from '@/components/ui/Select';
 import { EntityPicker, EntityOption } from '@/components/admin/EntityPicker';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
 import { searchUsers } from '@/lib/adminSearch';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -35,6 +36,7 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Eye, EyeOff, Pin } from 'lucide-react';
 import { formatDateTime } from '@/lib/date';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 const emptyForm: AdminBlogPostCreateRequest = {
     title: '',
@@ -61,6 +63,7 @@ export default function BlogPostAdminPage() {
     const [visibleFilter, setVisibleFilter] = useState<'' | 'true' | 'false'>('');
     const debouncedSearch = useDebounce(search.trim(), 300);
 
+    const { user } = useAuth();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<AdminBlogPost | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -86,7 +89,7 @@ export default function BlogPostAdminPage() {
             setPosts(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('blogPosts.loadFailed'));
+            toast.error(apiErrorMessage(error, t('blogPosts.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -106,8 +109,9 @@ export default function BlogPostAdminPage() {
     }, [page, debouncedSearch, visibleFilter]);
 
     const openCreateDialog = () => {
-        setFormData({ ...emptyForm, publish_on: new Date().toISOString() });
-        setAuthorOptions([]);
+        const meId = user?.profile?.id;
+        setFormData({ ...emptyForm, publish_on: new Date().toISOString(), author_ids: meId ? [meId] : [] });
+        setAuthorOptions(meId && user ? [{ id: meId, label: user.username }] : []);
         setEditingPost(null);
         setEditingOrg(null);
         setIsCreateDialogOpen(true);
@@ -138,7 +142,7 @@ export default function BlogPostAdminPage() {
             setEditingPost(post);
             setIsEditDialogOpen(true);
         } catch (error) {
-            toast.error(t('blogPosts.loadDetailFailed'));
+            toast.error(apiErrorMessage(error, t('blogPosts.loadDetailFailed')));
         }
     };
 
@@ -199,7 +203,7 @@ export default function BlogPostAdminPage() {
             toast.success(post.visible ? t('blogPosts.hiddenToast') : t('blogPosts.visibleToast'));
             loadPosts();
         } catch (error) {
-            toast.error(t('blogPosts.updateError'));
+            toast.error(apiErrorMessage(error, t('blogPosts.updateError')));
         }
     };
 
@@ -209,7 +213,7 @@ export default function BlogPostAdminPage() {
             toast.success(post.sticky ? t('blogPosts.unstickyToast') : t('blogPosts.stickyToast'));
             loadPosts();
         } catch (error) {
-            toast.error(t('blogPosts.updateError'));
+            toast.error(apiErrorMessage(error, t('blogPosts.updateError')));
         }
     };
 
@@ -406,7 +410,7 @@ export default function BlogPostAdminPage() {
                 setIsCreateDialogOpen(open);
                 setIsEditDialogOpen(open);
             }}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>
                             {editingPost ? t('blogPosts.editDialogTitle') : t('blogPosts.createDialogTitle')}

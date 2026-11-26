@@ -230,7 +230,7 @@ func problemTypeIDs(c *gin.Context) (ids []uint, requested bool) {
 // @Router /problems/suggest [get]
 func SuggestProblemList(c *gin.Context) {
 	if !auth.HasPerm(c, "judge.suggest_new_problem") {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to view problem suggestions"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to view problem suggestions"))
 		return
 	}
 	page, pageSize := parsePagination(c)
@@ -282,7 +282,7 @@ func RandomProblem(c *gin.Context) {
 	var p models.Problem
 	visExpr, visArgs := auth.VisibleProblemFilter(c)
 	if err := db.DB.Where(visExpr, visArgs...).Order("RAND()").First(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to find a random problem"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to find a random problem"))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": p.Code})
@@ -323,14 +323,14 @@ func ProblemDetail(c *gin.Context) {
 		Preload("License").
 		Where("code = ?", code).
 		First(&p).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	// Django parity (Problem.is_accessible_by): hidden problems stay 404
 	// unless the viewer is privileged (superuser, see_private_problem,
 	// editor, or tester).
 	if !auth.CanViewProblem(c, &p) {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 

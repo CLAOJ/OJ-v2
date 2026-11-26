@@ -1882,6 +1882,7 @@
       "loadDetailFailed": "Failed to load tag details"
     },
     "problems": {
+      "createError": "Could not create the problem.",
       "title": "Problems",
       "subtitle": "Manage problems and their settings",
       "searchPlaceholder": "Search problems...",

@@ -95,7 +95,7 @@ func AdminNavigationBarDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid navigation bar id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid navigation bar id"))
 		return
 	}
 
@@ -135,7 +135,7 @@ func AdminNavigationBarCreate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -163,7 +163,7 @@ func AdminNavigationBarUpdate(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid navigation bar id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid navigation bar id"))
 		return
 	}
 
@@ -178,11 +178,11 @@ func AdminNavigationBarUpdate(c *gin.Context) {
 	// distinguishable from an absent key (leave the parent unchanged).
 	body, err := c.GetRawData()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	var fields map[string]json.RawMessage
@@ -214,7 +214,7 @@ func AdminNavigationBarDelete(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid navigation bar id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid navigation bar id"))
 		return
 	}
 

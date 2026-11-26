@@ -102,12 +102,12 @@ func NotificationMarkRead(c *gin.Context) {
 		Update("read", true)
 
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to mark notification as read"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to mark notification as read"))
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, apiError("notification not found"))
+		c.JSON(http.StatusNotFound, apiUserError("notification not found"))
 		return
 	}
 
@@ -124,7 +124,7 @@ func NotificationMarkAllRead(c *gin.Context) {
 		Update("read", true)
 
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to mark notifications as read"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to mark notifications as read"))
 		return
 	}
 
@@ -143,12 +143,12 @@ func NotificationDelete(c *gin.Context) {
 	result := db.DB.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&models.Notification{})
 
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to delete notification"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to delete notification"))
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, apiError("notification not found"))
+		c.JSON(http.StatusNotFound, apiUserError("notification not found"))
 		return
 	}
 
@@ -176,7 +176,7 @@ func NotificationPreferencesGet(c *gin.Context) {
 				WebOnTicketReply:        true,
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, apiError("failed to get preferences"))
+			c.JSON(http.StatusInternalServerError, apiUserError("failed to get preferences"))
 			return
 		}
 	}
@@ -207,7 +207,7 @@ func NotificationPreferencesUpdate(c *gin.Context) {
 
 	var req NotificationPreferencesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -227,7 +227,7 @@ func NotificationPreferencesUpdate(c *gin.Context) {
 				WebOnTicketReply:        true,
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, apiError("failed to get preferences"))
+			c.JSON(http.StatusInternalServerError, apiUserError("failed to get preferences"))
 			return
 		}
 	}
@@ -253,7 +253,7 @@ func NotificationPreferencesUpdate(c *gin.Context) {
 	}
 
 	if err := db.DB.Save(&prefs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to update preferences"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to update preferences"))
 		return
 	}
 

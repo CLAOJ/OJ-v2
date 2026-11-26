@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/problem"
 	"github.com/CLAOJ/claoj/service/relations"
@@ -93,7 +94,7 @@ func AdminProblemDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problem.ErrProblemNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -140,10 +141,11 @@ type adminProblemCreateInput struct {
 func AdminProblemCreate(c *gin.Context) {
 	var input adminProblemCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
-	createProblemFromInput(c, input, nil, 0)
+	callerProfileID, _ := auth.CurrentProfileID(c)
+	createProblemFromInput(c, input, nil, callerProfileID)
 }
 
 // createProblemFromInput validates and inserts a problem. A non-nil org forces
@@ -151,6 +153,9 @@ func AdminProblemCreate(c *gin.Context) {
 // private, organizations = [org], caller is an author, date = now).
 func createProblemFromInput(c *gin.Context, input adminProblemCreateInput, org *models.Organization, callerProfileID uint) {
 	authorIDs := input.AuthorIDs
+	if len(authorIDs) == 0 && callerProfileID != 0 {
+		authorIDs = []uint{callerProfileID} // the creator, unless others were picked
+	}
 	if org != nil {
 		input.IsOrganizationPrivate = true
 		input.OrganizationIDs = []uint{org.ID}
@@ -195,7 +200,7 @@ func createProblemFromInput(c *gin.Context, input adminProblemCreateInput, org *
 		if errors.Is(err, problem.ErrInvalidVisibilityMode) || errors.Is(err, problem.ErrInvalidLicense) ||
 			errors.Is(err, problem.ErrInvalidSuggester) || errors.Is(err, problem.ErrFieldTooLong) ||
 			errors.Is(err, relations.ErrUnknownID) {
-			c.JSON(http.StatusBadRequest, apiError(err.Error()))
+			c.JSON(http.StatusBadRequest, apiClientError(err))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -256,7 +261,7 @@ func AdminProblemUpdate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -302,10 +307,10 @@ func AdminProblemUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problem.ErrProblemNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -323,10 +328,10 @@ func AdminProblemDelete(c *gin.Context) {
 		ProblemCode: code,
 	}); err != nil {
 		if errors.Is(err, problem.ErrProblemNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 

@@ -24,6 +24,7 @@ import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Link as LinkIcon, Layers } from 'lucide-react';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function NavigationBarsAdminPage() {
     const t = useTranslations('Admin');
@@ -58,7 +59,7 @@ export default function NavigationBarsAdminPage() {
             setNavBars(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('navigationBars.loadFailed'));
+            toast.error(apiErrorMessage(error, t('navigationBars.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -95,7 +96,7 @@ export default function NavigationBarsAdminPage() {
             setEditingDetail(response.data);
             setIsCreateDialogOpen(true);
         } catch (error) {
-            toast.error(t('navigationBars.loadDetailFailed'));
+            toast.error(apiErrorMessage(error, t('navigationBars.loadDetailFailed')));
         }
     };
 

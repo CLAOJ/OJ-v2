@@ -32,6 +32,7 @@ import { formatDateTime } from '@/lib/date';
 import { EntityPicker } from '@/components/admin/EntityPicker';
 import { searchUsers } from '@/lib/adminSearch';
 import { commentUpdatePayload } from '@/lib/adminForms';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function CommentAdminPage() {
     const t = useTranslations('Admin');
@@ -69,7 +70,7 @@ export default function CommentAdminPage() {
             setComments(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('comments.loadFailed'));
+            toast.error(apiErrorMessage(error, t('comments.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -110,7 +111,7 @@ export default function CommentAdminPage() {
             setIsEditDialogOpen(false);
             loadComments();
         } catch (error) {
-            toast.error(t('comments.updateError'));
+            toast.error(apiErrorMessage(error, t('comments.updateError')));
         }
     };
 
@@ -137,7 +138,7 @@ export default function CommentAdminPage() {
             setBulkHidden(null);
             loadComments();
         } catch (error) {
-            toast.error(t('comments.bulkError'));
+            toast.error(apiErrorMessage(error, t('comments.bulkError')));
         }
     };
 
@@ -149,7 +150,7 @@ export default function CommentAdminPage() {
             toast.success(comment.hidden ? t('comments.unhiddenToast') : t('comments.hiddenToast'));
             loadComments();
         } catch (error) {
-            toast.error(t('comments.updateError'));
+            toast.error(apiErrorMessage(error, t('comments.updateError')));
         }
     };
 
@@ -160,7 +161,7 @@ export default function CommentAdminPage() {
             setDeleteConfirmId(null);
             loadComments();
         } catch (error) {
-            toast.error(t('comments.deleteError'));
+            toast.error(apiErrorMessage(error, t('comments.deleteError')));
         }
     };
 

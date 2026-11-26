@@ -42,7 +42,7 @@ type ContestCalendarResponse struct {
 func ContestCalendar(c *gin.Context) {
 	var req ContestCalendarRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid year or month"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid year or month"))
 		return
 	}
 

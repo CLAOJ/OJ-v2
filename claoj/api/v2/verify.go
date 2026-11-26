@@ -26,7 +26,7 @@ type VerifyEmailRequest struct {
 func VerifyEmail(c *gin.Context) {
 	var req VerifyEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -35,11 +35,11 @@ func VerifyEmail(c *gin.Context) {
 	// expired".
 	uid, ok, err := authHandlers.OneTimeTokens.Consume(tokenstore.KindEmailVerify, req.Token)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 	if !ok {
-		c.JSON(http.StatusBadRequest, apiError("invalid or expired verification token"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid or expired verification token"))
 		return
 	}
 
@@ -52,7 +52,7 @@ func VerifyEmail(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to verify email"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to verify email"))
 		return
 	}
 
@@ -81,13 +81,13 @@ func ResendVerification(c *gin.Context) {
 	if exists && userID != nil && userID.(uint) > 0 {
 		// Authenticated user - use their account
 		if err := db.DB.First(&user, userID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, apiError("user not found"))
+			c.JSON(http.StatusUnauthorized, apiUserError("user not found"))
 			return
 		}
 	} else {
 		// Unauthenticated - require email
 		if req.Email == "" {
-			c.JSON(http.StatusBadRequest, apiError("email is required"))
+			c.JSON(http.StatusBadRequest, apiUserError("email is required"))
 			return
 		}
 		// Find user by email
@@ -97,7 +97,7 @@ func ResendVerification(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"message": "If the email exists and is not verified, a verification link has been sent"})
 				return
 			}
-			c.JSON(http.StatusInternalServerError, apiError("database error"))
+			c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 			return
 		}
 	}
@@ -116,7 +116,7 @@ func ResendVerification(c *gin.Context) {
 	// Generate new verification token
 	token := make([]byte, 32)
 	if _, err := rand.Read(token); err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate token"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate token"))
 		return
 	}
 	tokenStr := hex.EncodeToString(token)
@@ -124,7 +124,7 @@ func ResendVerification(c *gin.Context) {
 	// Store the token in the one-time token store (Redis-backed, outside
 	// the shared MySQL schema) instead of a v2-only DB table.
 	if err := authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailVerify, tokenStr, user.ID, 24*time.Hour); err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to create verification token"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to create verification token"))
 		return
 	}
 

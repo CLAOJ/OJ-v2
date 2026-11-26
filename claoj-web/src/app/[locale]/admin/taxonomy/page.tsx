@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/Label';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Folder, Tag } from 'lucide-react';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 type TabType = 'groups' | 'types';
 
@@ -81,7 +82,7 @@ export default function ProblemTaxonomyAdminPage() {
             setGroups(response.data.data);
             setGroupTotal(response.data.total);
         } catch (error) {
-            toast.error(t('taxonomy.loadGroupsFailed'));
+            toast.error(apiErrorMessage(error, t('taxonomy.loadGroupsFailed')));
         } finally {
             setGroupLoading(false);
         }
@@ -94,7 +95,7 @@ export default function ProblemTaxonomyAdminPage() {
             setTypes(response.data.data);
             setTypeTotal(response.data.total);
         } catch (error) {
-            toast.error(t('taxonomy.loadTypesFailed'));
+            toast.error(apiErrorMessage(error, t('taxonomy.loadTypesFailed')));
         } finally {
             setTypeLoading(false);
         }
@@ -126,8 +127,8 @@ export default function ProblemTaxonomyAdminPage() {
             setEditingGroupProblemCount(response.data.problem_count ?? 0);
             setEditingGroup(group);
             setIsEditGroupDialogOpen(true);
-        } catch {
-            toast.error(t('taxonomy.loadDetailFailed'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('taxonomy.loadDetailFailed')));
         }
     };
 
@@ -187,9 +188,9 @@ export default function ProblemTaxonomyAdminPage() {
             setTypeProblemOptions((response.data.problems ?? []).map((p) => ({ id: p.id, label: p.code, detail: p.name })));
             setEditingType(ptype);
             setIsEditTypeDialogOpen(true);
-        } catch {
+        } catch (err) {
             // Never open with an unknown selection: saving would clear the type's problems.
-            toast.error(t('taxonomy.loadDetailFailed'));
+            toast.error(apiErrorMessage(err, t('taxonomy.loadDetailFailed')));
         }
     };
 

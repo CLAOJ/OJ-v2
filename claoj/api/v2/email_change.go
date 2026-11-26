@@ -147,7 +147,7 @@ func EmailChangeStart(c *gin.Context) {
 
 	token, err := newEmailChangeToken(user.ID, req.NewEmail)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate token"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate token"))
 		return
 	}
 	// Only one live request per user: a new one revokes the previous link.
@@ -155,7 +155,7 @@ func EmailChangeStart(c *gin.Context) {
 		// Best-effort; Issue would still overwrite the value below.
 	}
 	if err := authHandlers.OneTimeTokens.Issue(tokenstore.KindEmailChange, token, user.ID, emailChangeTTL); err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to create email change token"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to create email change token"))
 		return
 	}
 
@@ -224,7 +224,7 @@ func EmailChangeConfirm(c *gin.Context) {
 	}
 
 	if err := db.DB.Model(&models.AuthUser{}).Where("id = ?", userID).Update("email", newEmail).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to change email"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to change email"))
 		return
 	}
 

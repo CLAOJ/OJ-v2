@@ -50,7 +50,7 @@ func AdminProblemGroupDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid problem group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid problem group id"))
 		return
 	}
 
@@ -59,7 +59,7 @@ func AdminProblemGroupDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problemgroup.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -89,13 +89,13 @@ func AdminProblemGroupCreate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	var req AdminProblemGroupCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -105,15 +105,15 @@ func AdminProblemGroupCreate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problemgroup.ErrGroupNameExists) {
-			c.JSON(http.StatusBadRequest, apiError("problem group name already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("problem group name already exists"))
 			return
 		}
 		if errors.Is(err, problemgroup.ErrEmptyGroupName) {
-			c.JSON(http.StatusBadRequest, apiError("problem group name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("problem group name cannot be empty"))
 			return
 		}
 		if errors.Is(err, problemgroup.ErrEmptyGroupFullName) {
-			c.JSON(http.StatusBadRequest, apiError("problem group full name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("problem group full name cannot be empty"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -140,20 +140,20 @@ func AdminProblemGroupUpdate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid problem group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid problem group id"))
 		return
 	}
 
 	var req AdminProblemGroupUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -163,7 +163,7 @@ func AdminProblemGroupUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problemgroup.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -185,14 +185,14 @@ func AdminProblemGroupDelete(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid problem group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid problem group id"))
 		return
 	}
 
@@ -200,7 +200,7 @@ func AdminProblemGroupDelete(c *gin.Context) {
 	var problemCount int64
 	db.DB.Model(&models.Problem{}).Where("group_id = ?", id).Count(&problemCount)
 	if problemCount > 0 {
-		c.JSON(http.StatusBadRequest, apiError("cannot delete problem group used by problems"))
+		c.JSON(http.StatusBadRequest, apiUserError("cannot delete problem group used by problems"))
 		return
 	}
 
@@ -208,7 +208,7 @@ func AdminProblemGroupDelete(c *gin.Context) {
 		GroupID: id,
 	}); err != nil {
 		if errors.Is(err, problemgroup.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

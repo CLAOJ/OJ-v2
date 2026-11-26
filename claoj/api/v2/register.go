@@ -108,26 +108,26 @@ func createAccount(tx *gorm.DB, a newAccount) (models.Profile, error) {
 func Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// 1. Validate Username
 	if !usernameRegex.MatchString(req.Username) || len(req.Username) > 30 {
-		c.JSON(http.StatusBadRequest, apiError("invalid username: must be 1-30 chars, alphanumeric or underscore"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid username: must be 1-30 chars, alphanumeric or underscore"))
 		return
 	}
 
 	// 2. Validate Password Strength
 	if err := validatePasswordStrength(req.Password); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
 	// 3. Hash Password
 	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to hash password"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to hash password"))
 		return
 	}
 
@@ -147,7 +147,7 @@ func Register(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 

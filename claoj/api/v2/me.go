@@ -102,6 +102,7 @@ func CurrentUser(c *gin.Context) {
 		"is_superuser": authUser.IsSuperuser,
 		"date_joined":  authUser.DateJoined,
 		"profile": gin.H{
+			"id":            profile.ID, // judge_profile id: what author pickers store
 			"points":        profile.Points,
 			"rating":        profile.Rating,
 			"about":         profile.About,

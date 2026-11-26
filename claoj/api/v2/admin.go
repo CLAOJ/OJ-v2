@@ -191,7 +191,7 @@ func AdminProblemClone(c *gin.Context) {
 	var sourceProblem models.Problem
 	if err := db.DB.Where("code = ?", code).First(&sourceProblem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -210,14 +210,14 @@ func AdminProblemClone(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Check if new code already exists
 	var existing models.Problem
 	if err := db.DB.Where("code = ?", input.NewCode).First(&existing).Error; err == nil {
-		c.JSON(http.StatusBadRequest, apiError("problem code already exists"))
+		c.JSON(http.StatusBadRequest, apiUserError("problem code already exists"))
 		return
 	}
 

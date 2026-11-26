@@ -24,13 +24,13 @@ import (
 // (an empty list clears it).
 func AdminUserReplaceGroups(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user id"))
 		return
 	}
 
@@ -38,7 +38,7 @@ func AdminUserReplaceGroups(c *gin.Context) {
 		GroupIDs *[]uint `json:"group_ids"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	if input.GroupIDs == nil {
@@ -89,13 +89,13 @@ func AdminUserReplaceGroups(c *gin.Context) {
 // supplied permission id list (an empty list clears them).
 func AdminUserReplacePermissions(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user id"))
 		return
 	}
 
@@ -103,7 +103,7 @@ func AdminUserReplacePermissions(c *gin.Context) {
 		PermissionIDs *[]uint `json:"permission_ids"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	if input.PermissionIDs == nil {
@@ -157,13 +157,13 @@ func AdminUserReplacePermissions(c *gin.Context) {
 // own setup flow, which proves possession of the second factor.
 func AdminUserSecurity(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user id"))
 		return
 	}
 
@@ -172,7 +172,7 @@ func AdminUserSecurity(c *gin.Context) {
 		WebauthnEnabled *bool `json:"webauthn_enabled"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	if input.TotpEnabled == nil && input.WebauthnEnabled == nil {
@@ -187,7 +187,7 @@ func AdminUserSecurity(c *gin.Context) {
 	var profile models.Profile
 	if err := db.DB.First(&profile, profileID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

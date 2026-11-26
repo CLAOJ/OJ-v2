@@ -84,18 +84,18 @@ func AdminSubmissionRejudge(c *gin.Context) {
 	idParam := c.Param("id")
 	submissionID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission ID"))
 		return
 	}
 
 	// Django parity: rejudging a submission requires being able to rejudge its problem.
 	var sub models.Submission
 	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 	if !auth.CanRejudge(c, &sub.Problem) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to rejudge this submission"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to rejudge this submission"))
 		return
 	}
 
@@ -103,11 +103,11 @@ func AdminSubmissionRejudge(c *gin.Context) {
 		SubmissionID: uint(submissionID),
 	}); err != nil {
 		if errors.Is(err, submission.ErrSubmissionNotFound) {
-			c.JSON(http.StatusNotFound, apiError("submission not found"))
+			c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 			return
 		}
 		if errors.Is(err, submission.ErrSubmissionLocked) {
-			c.JSON(http.StatusBadRequest, apiError("submission is locked and cannot be rejudged"))
+			c.JSON(http.StatusBadRequest, apiUserError("submission is locked and cannot be rejudged"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -125,13 +125,13 @@ func AdminSubmissionAbort(c *gin.Context) {
 	idParam := c.Param("id")
 	submissionID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission ID"))
 		return
 	}
 
 	// Django parity: aborting another user's submission requires judge.abort_any_submission.
 	if !auth.HasPerm(c, "judge.abort_any_submission") {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to abort submissions"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to abort submissions"))
 		return
 	}
 
@@ -139,15 +139,15 @@ func AdminSubmissionAbort(c *gin.Context) {
 		SubmissionID: uint(submissionID),
 	}); err != nil {
 		if errors.Is(err, submission.ErrSubmissionNotFound) {
-			c.JSON(http.StatusNotFound, apiError("submission not found"))
+			c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 			return
 		}
 		if errors.Is(err, submission.ErrSubmissionNotProcessing) {
-			c.JSON(http.StatusBadRequest, apiError("submission is not being processed"))
+			c.JSON(http.StatusBadRequest, apiUserError("submission is not being processed"))
 			return
 		}
 		if errors.Is(err, submission.ErrBridgeServerNotAvailable) {
-			c.JSON(http.StatusInternalServerError, apiError("bridge server not available"))
+			c.JSON(http.StatusInternalServerError, apiUserError("bridge server not available"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -180,13 +180,13 @@ func AdminSubmissionBatchRejudge(c *gin.Context) {
 	}
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid request body"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid request body"))
 		return
 	}
 
 	// Django parity: bulk rejudge requires judge.rejudge_submission_lot.
 	if !auth.HasPerm(c, "judge.rejudge_submission_lot") {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to batch-rejudge submissions"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to batch-rejudge submissions"))
 		return
 	}
 
@@ -235,18 +235,18 @@ func AdminSubmissionRescore(c *gin.Context) {
 	submissionIDStr := c.Param("id")
 	var submissionID uint
 	if err := parseUint(submissionIDStr, &submissionID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid submission ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission ID"))
 		return
 	}
 
 	// Django parity: rescoring a submission requires being able to rejudge its problem.
 	var sub models.Submission
 	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 	if !auth.CanRejudge(c, &sub.Problem) {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
@@ -254,10 +254,10 @@ func AdminSubmissionRescore(c *gin.Context) {
 		SubmissionID: submissionID,
 	}); err != nil {
 		if errors.Is(err, submission.ErrSubmissionNotFound) {
-			c.JSON(http.StatusNotFound, apiError("submission not found"))
+			c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, apiError("failed to requeue submission"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to requeue submission"))
 		return
 	}
 
@@ -280,13 +280,13 @@ type AdminSubmissionBatchRescoreRequest struct {
 func AdminSubmissionBatchRescore(c *gin.Context) {
 	// Django parity: a bulk rescore is a "lot" operation.
 	if !auth.HasPerm(c, "judge.rejudge_submission_lot") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	var req AdminSubmissionBatchRescoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -325,11 +325,11 @@ func AdminProblemRescoreAll(c *gin.Context) {
 	// scoped to that problem.
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").Where("code = ?", code).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	if !auth.CanRejudge(c, &problem) || !auth.HasPerm(c, "judge.rejudge_submission_lot") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
@@ -338,7 +338,7 @@ func AdminProblemRescoreAll(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, submission.ErrProblemNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -369,7 +369,7 @@ func AdminSubmissionDelete(c *gin.Context) {
 	// submissions of problems they author or curate.
 	var sub models.Submission
 	if err := db.DB.Preload("Problem.Authors").Preload("Problem.Curators").First(&sub, submissionID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 	if !auth.CanEditProblem(c, &sub.Problem) {
@@ -380,7 +380,7 @@ func AdminSubmissionDelete(c *gin.Context) {
 	if err := getSubmissionService().Delete(submission.DeleteRequest{SubmissionID: submissionID}); err != nil {
 		switch {
 		case errors.Is(err, submission.ErrSubmissionNotFound):
-			c.JSON(http.StatusNotFound, apiError("submission not found"))
+			c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		case errors.Is(err, submission.ErrSubmissionInProgress):
 			c.JSON(http.StatusConflict, apiUserError("submission is still being judged; abort it first"))
 		default:
@@ -413,7 +413,7 @@ func AdminSubmissionDetail(c *gin.Context) {
 		Preload("Source").
 		Preload("TestCases", "1=1 ORDER BY `case` ASC").
 		First(&sub, submissionID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 
@@ -499,7 +499,7 @@ func AdminSubmissionDetail(c *gin.Context) {
 func AdminProblemSubmissionDiff(c *gin.Context) {
 	var problem models.Problem
 	if err := db.DB.Where("code = ?", c.Param("code")).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 
@@ -514,7 +514,7 @@ func AdminProblemSubmissionDiff(c *gin.Context) {
 
 	var subs []models.Submission
 	if err := q.Preload("Language").Find(&subs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to load submissions"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to load submissions"))
 		return
 	}
 
@@ -527,7 +527,7 @@ func AdminProblemSubmissionDiff(c *gin.Context) {
 		var testCases []models.SubmissionTestCase
 		if err := db.DB.Where("submission_id IN ?", ids).Order("`case` ASC").
 			Find(&testCases).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, apiError("failed to load test cases"))
+			c.JSON(http.StatusInternalServerError, apiUserError("failed to load test cases"))
 			return
 		}
 		for _, tc := range testCases {
@@ -659,7 +659,7 @@ func AdminSubmissionUpdate(c *gin.Context) {
 
 	var sub models.Submission
 	if err := db.DB.First(&sub, submissionID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 

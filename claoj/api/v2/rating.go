@@ -121,7 +121,7 @@ func UserRatingDetail(c *gin.Context) {
 		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("au.username = ?", username).
 		First(&profile).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 

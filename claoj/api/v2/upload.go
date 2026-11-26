@@ -52,12 +52,12 @@ func randomHex(n int) (string, error) {
 // signUpload answers {upload_url, key, content_type} for one file.
 func signUpload(c *gin.Context, p uploadPurpose) {
 	if !p.bucket.Enabled() {
-		c.JSON(http.StatusNotImplemented, apiError("direct upload is not configured"))
+		c.JSON(http.StatusNotImplemented, apiUserError("direct upload is not configured"))
 		return
 	}
 	profileID, ok := auth.CurrentProfileID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, apiError("login required"))
+		c.JSON(http.StatusUnauthorized, apiUserError("login required"))
 		return
 	}
 	var req struct {
@@ -65,7 +65,7 @@ func signUpload(c *gin.Context, p uploadPurpose) {
 		Size        int64  `json:"size"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid request"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid request"))
 		return
 	}
 	ext, allowed := p.types[req.ContentType]
@@ -85,7 +85,7 @@ func signUpload(c *gin.Context, p uploadPurpose) {
 	key := p.tmpPrefix(profileID) + id + ext
 	url, err := storage.PresignPut(c.Request.Context(), p.bucket, key, req.ContentType)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, apiError("could not sign upload"))
+		c.JSON(http.StatusBadGateway, apiUserError("could not sign upload"))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"upload_url": url, "key": key, "content_type": req.ContentType})
@@ -97,14 +97,14 @@ func signUpload(c *gin.Context, p uploadPurpose) {
 func commitUpload(c *gin.Context, p uploadPurpose, finalName string) (string, bool) {
 	profileID, ok := auth.CurrentProfileID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, apiError("login required"))
+		c.JSON(http.StatusUnauthorized, apiUserError("login required"))
 		return "", false
 	}
 	var req struct {
 		Key string `json:"key"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || !strings.HasPrefix(req.Key, p.tmpPrefix(profileID)) || strings.Contains(req.Key, "..") {
-		c.JSON(http.StatusBadRequest, apiError("invalid upload key"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid upload key"))
 		return "", false
 	}
 	ctx := c.Request.Context()
@@ -122,7 +122,7 @@ func commitUpload(c *gin.Context, p uploadPurpose, finalName string) (string, bo
 	}
 	final := p.prefix + finalName + ext
 	if err := storage.Promote(ctx, p.bucket, req.Key, final, mime); err != nil {
-		c.JSON(http.StatusBadGateway, apiError("could not store upload"))
+		c.JSON(http.StatusBadGateway, apiUserError("could not store upload"))
 		return "", false
 	}
 	return final, true
@@ -136,16 +136,16 @@ func AdminUploadSign(c *gin.Context) {
 	case "pdf":
 		var problem models.Problem
 		if err := db.DB.Preload("Authors").Preload("Curators").Where("code = ?", c.Query("problem")).First(&problem).Error; err != nil {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
 		if !auth.CanEditProblem(c, &problem) {
-			c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem"))
+			c.JSON(http.StatusForbidden, apiUserError("you do not have permission to edit this problem"))
 			return
 		}
 		signUpload(c, purposePDF)
 	default:
-		c.JSON(http.StatusBadRequest, apiError("unknown upload purpose"))
+		c.JSON(http.StatusBadRequest, apiUserError("unknown upload purpose"))
 	}
 }
 
@@ -168,7 +168,7 @@ func AdminProblemPdfCommit(c *gin.Context) {
 	code := c.Param("code")
 	var problem models.Problem
 	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	id, err := randomHex(8)
@@ -184,7 +184,7 @@ func AdminProblemPdfCommit(c *gin.Context) {
 	pdfURL := name + ".pdf"
 	if err := db.DB.Model(&problem).Update("pdf_url", pdfURL).Error; err != nil {
 		_ = storage.Delete(c.Request.Context(), storage.Private, key)
-		c.JSON(http.StatusInternalServerError, apiError("failed to update problem"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to update problem"))
 		return
 	}
 	// The previous v2 upload is now unreferenced (v1-migrated /pdf/ files are
@@ -216,7 +216,7 @@ func AvatarSet(c *gin.Context) {
 	row := models.ProfileAvatar{ProfileID: profileID, URL: url, UpdatedAt: time.Now().UTC()}
 	if err := db.DB.Save(&row).Error; err != nil {
 		_ = storage.Delete(c.Request.Context(), storage.Public, key)
-		c.JSON(http.StatusInternalServerError, apiError("failed to save avatar"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to save avatar"))
 		return
 	}
 	if hadPrev {
@@ -231,7 +231,7 @@ func AvatarDelete(c *gin.Context) {
 	var prev models.ProfileAvatar
 	if db.DB.Where("profile_id = ?", profileID).First(&prev).Error == nil {
 		if err := db.DB.Delete(&prev).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, apiError("failed to remove avatar"))
+			c.JSON(http.StatusInternalServerError, apiUserError("failed to remove avatar"))
 			return
 		}
 		deleteAvatarObject(c, prev.URL)

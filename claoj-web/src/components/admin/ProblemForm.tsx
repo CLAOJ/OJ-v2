@@ -95,7 +95,7 @@ export default function ProblemForm({ initialData, initialAuthors, initialOption
             pdf_url: initialData?.pdf_url || '',
             group_id: initialData?.group_id,
             type_ids: initialData?.type_ids ?? [],
-            author_ids: initialData?.author_ids ?? [],
+            author_ids: initialData?.author_ids ?? initialAuthors?.map(a => a.id) ?? [],
             allowed_lang_ids: initialData?.allowed_lang_ids ?? [],
             source: initialData?.source || '',
             date: initialData?.date || '',

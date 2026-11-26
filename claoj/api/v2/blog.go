@@ -37,7 +37,7 @@ func BlogList(c *gin.Context) {
 		// v1 UserBlogPage: one author's personal (non-organization) posts.
 		profileID, ok := resolveAuthorProfileID(author)
 		if !ok {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		query = query.Joins("JOIN judge_blogpost_authors jba ON jba.blogpost_id = judge_blogpost.id").
@@ -145,7 +145,7 @@ func BlogDetail(c *gin.Context) {
 	if err := db.DB.Preload("Authors.User").
 		Preload("Organization").
 		First(&post, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("blog post not found"))
+		c.JSON(http.StatusNotFound, apiUserError("blog post not found"))
 		return
 	}
 
@@ -154,7 +154,7 @@ func BlogDetail(c *gin.Context) {
 		// Only authors or superadmins should see
 		_, profile, ok := resolveUserProfile(c)
 		if !ok || !canEditBlog(db.DB, &post, profile.ID) {
-			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			c.JSON(http.StatusNotFound, apiUserError("blog post not found"))
 			return
 		}
 	}
@@ -397,12 +397,12 @@ func BlogVoteHandler(c *gin.Context) {
 	}
 
 	if profile.Mute {
-		c.JSON(http.StatusForbidden, apiError("you are muted and cannot vote"))
+		c.JSON(http.StatusForbidden, apiUserError("you are muted and cannot vote"))
 		return
 	}
 
 	if profile.ProblemCount == 0 {
-		c.JSON(http.StatusBadRequest, apiError("you must solve at least one problem to vote"))
+		c.JSON(http.StatusBadRequest, apiUserError("you must solve at least one problem to vote"))
 		return
 	}
 
@@ -410,11 +410,11 @@ func BlogVoteHandler(c *gin.Context) {
 		Delta int `json:"delta" binding:"required"` // 1 or -1
 	}
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	if reqBody.Delta != 1 && reqBody.Delta != -1 {
-		c.JSON(http.StatusBadRequest, apiError("invalid delta"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid delta"))
 		return
 	}
 
@@ -483,7 +483,7 @@ func BlogVoteHandler(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 

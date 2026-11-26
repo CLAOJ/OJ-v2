@@ -28,6 +28,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, ArrowRight } from 'lucide-react';
+import { apiErrorMessage } from '@/lib/api';
 
 const emptyForm: AdminRedirectCreateRequest = { old_path: '', new_path: '' };
 
@@ -55,8 +56,8 @@ export default function RedirectsAdminPage() {
             const response = await adminRedirectApi.list(page, pageSize, debouncedSearch || undefined);
             setRedirects(response.data.data);
             setTotal(response.data.total);
-        } catch {
-            toast.error(t('redirects.loadFailed'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('redirects.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -84,8 +85,8 @@ export default function RedirectsAdminPage() {
             setFormData({ old_path: response.data.old_path, new_path: response.data.new_path });
             setEditing(response.data);
             setIsCreateDialogOpen(true);
-        } catch {
-            toast.error(t('redirects.loadDetailFailed'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('redirects.loadDetailFailed')));
         }
     };
 

@@ -116,8 +116,8 @@ export default function AdminClassesPage() {
             setMemberOptions(classDetail.members.map((p) => ({ id: p.id, label: p.username })));
             setEditingId(id);
             setDialogOpen(true);
-        } catch {
-            toast.error(t('classes.loadDetailFailed'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('classes.loadDetailFailed')));
         }
     };
 
@@ -266,7 +266,7 @@ export default function AdminClassesPage() {
             <PaginationBar page={page} onPageChange={setPage} total={data?.total} pageSize={PAGE_SIZE} />
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{editingId === null ? t('classes.createTitle') : t('classes.editTitle')}</DialogTitle>
                         <DialogDescription>{t('classes.formDesc')}</DialogDescription>

@@ -27,7 +27,7 @@ func AdminUserCreate(c *gin.Context) {
 		IsActive *bool  `json:"is_active"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -46,7 +46,7 @@ func AdminUserCreate(c *gin.Context) {
 
 	hashedPassword, err := auth.HashPassword(input.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to hash password"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to hash password"))
 		return
 	}
 
@@ -99,7 +99,7 @@ func AdminUserSetPassword(c *gin.Context) {
 		Password string `json:"password" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	if err := validatePasswordStrength(input.Password); err != nil {
@@ -110,7 +110,7 @@ func AdminUserSetPassword(c *gin.Context) {
 	var profile models.Profile
 	if err := db.DB.Preload("User").First(&profile, uint(profileID)).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -126,7 +126,7 @@ func AdminUserSetPassword(c *gin.Context) {
 
 	hashedPassword, err := auth.HashPassword(input.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to hash password"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to hash password"))
 		return
 	}
 	if err := db.DB.Model(&models.AuthUser{}).Where("id = ?", profile.UserID).

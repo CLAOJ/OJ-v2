@@ -73,7 +73,7 @@ func AdminLanguageDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid language id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid language id"))
 		return
 	}
 
@@ -82,7 +82,7 @@ func AdminLanguageDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if err == language.ErrLanguageNotFound {
-			c.JSON(http.StatusNotFound, apiError("language not found"))
+			c.JSON(http.StatusNotFound, apiUserError("language not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -133,13 +133,13 @@ func AdminLanguageCreate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	var req AdminLanguageCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -160,7 +160,7 @@ func AdminLanguageCreate(c *gin.Context) {
 	})
 	if err != nil {
 		if err == language.ErrLanguageKeyExists {
-			c.JSON(http.StatusBadRequest, apiError("language key already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("language key already exists"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -195,20 +195,20 @@ func AdminLanguageUpdate(c *gin.Context) {
 	// v1 gates the change form with judge.change_language (HasPerm also lets
 	// superusers through).
 	if !auth.HasPerm(c, "judge.change_language") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid language id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid language id"))
 		return
 	}
 
 	var req AdminLanguageUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -229,7 +229,7 @@ func AdminLanguageUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if err == language.ErrLanguageNotFound {
-			c.JSON(http.StatusNotFound, apiError("language not found"))
+			c.JSON(http.StatusNotFound, apiUserError("language not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -246,14 +246,14 @@ func AdminLanguageUpdate(c *gin.Context) {
 // Delete a language
 func AdminLanguageDelete(c *gin.Context) {
 	if !auth.HasPerm(c, "judge.delete_language") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid language id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid language id"))
 		return
 	}
 
@@ -261,11 +261,11 @@ func AdminLanguageDelete(c *gin.Context) {
 		LanguageID: uint(id),
 	}); err != nil {
 		if err == language.ErrLanguageNotFound {
-			c.JSON(http.StatusNotFound, apiError("language not found"))
+			c.JSON(http.StatusNotFound, apiUserError("language not found"))
 			return
 		}
 		if err == language.ErrLanguageInUse {
-			c.JSON(http.StatusBadRequest, apiError("cannot delete language with existing submissions"))
+			c.JSON(http.StatusBadRequest, apiUserError("cannot delete language with existing submissions"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

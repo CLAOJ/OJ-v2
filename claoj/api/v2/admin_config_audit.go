@@ -53,7 +53,7 @@ func AdminMiscConfigDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid config id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid config id"))
 		return
 	}
 
@@ -62,7 +62,7 @@ func AdminMiscConfigDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, miscconfig.ErrConfigNotFound) {
-			c.JSON(http.StatusNotFound, apiError("config not found"))
+			c.JSON(http.StatusNotFound, apiUserError("config not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -108,7 +108,7 @@ func AdminMiscConfigUpdate(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid config id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid config id"))
 		return
 	}
 
@@ -126,7 +126,7 @@ func AdminMiscConfigUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, miscconfig.ErrConfigNotFound) {
-			c.JSON(http.StatusNotFound, apiError("config not found"))
+			c.JSON(http.StatusNotFound, apiUserError("config not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -141,7 +141,7 @@ func AdminMiscConfigDelete(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid config id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid config id"))
 		return
 	}
 
@@ -149,7 +149,7 @@ func AdminMiscConfigDelete(c *gin.Context) {
 		ConfigID: id,
 	}); err != nil {
 		if errors.Is(err, miscconfig.ErrConfigNotFound) {
-			c.JSON(http.StatusNotFound, apiError("config not found"))
+			c.JSON(http.StatusNotFound, apiUserError("config not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -223,7 +223,7 @@ func AdminAuditLogList(c *gin.Context) {
 func AdminAuditLogDetail(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, apiError("invalid log id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid log id"))
 		return
 	}
 
@@ -233,7 +233,7 @@ func AdminAuditLogDetail(c *gin.Context) {
 		return
 	}
 	if entry == nil {
-		c.JSON(http.StatusNotFound, apiError("log not found"))
+		c.JSON(http.StatusNotFound, apiUserError("log not found"))
 		return
 	}
 

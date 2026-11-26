@@ -60,7 +60,7 @@ func OrganizationProblemCreate(c *gin.Context) {
 	}
 	var input adminProblemCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	createProblemFromInput(c, input, &org, profile.ID)
@@ -78,7 +78,7 @@ func OrganizationContestCreate(c *gin.Context) {
 	}
 	var input adminContestCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	createContestFromInput(c, input, &org, profile.ID)
@@ -96,7 +96,7 @@ func OrganizationBlogPostCreate(c *gin.Context) {
 	}
 	var req AdminBlogPostCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 	createBlogPostFromInput(c, req, profile.ID, &org)

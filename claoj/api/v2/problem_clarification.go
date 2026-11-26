@@ -21,7 +21,7 @@ func ProblemClarificationList(c *gin.Context) {
 	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
 		Where("code = ?", code).First(&problem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -30,7 +30,7 @@ func ProblemClarificationList(c *gin.Context) {
 	// Do not expose clarifications of a problem the user may not see
 	// (organization-private / hidden problems).
 	if !auth.CanViewProblem(c, &problem) {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 
@@ -69,7 +69,7 @@ func ProblemClarificationCreate(c *gin.Context) {
 	var problem models.Problem
 	if err := db.DB.Where("code = ?", code).First(&problem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("problem not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -80,7 +80,7 @@ func ProblemClarificationCreate(c *gin.Context) {
 		Description string `json:"description" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -116,7 +116,7 @@ func ProblemClarificationUpdate(c *gin.Context) {
 	var clarification models.ProblemClarification
 	if err := db.DB.First(&clarification, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("clarification not found"))
+			c.JSON(http.StatusNotFound, apiUserError("clarification not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -127,11 +127,11 @@ func ProblemClarificationUpdate(c *gin.Context) {
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").
 		First(&problem, clarification.ProblemID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	if !auth.CanEditProblem(c, &problem) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to edit this problem"))
 		return
 	}
 
@@ -139,7 +139,7 @@ func ProblemClarificationUpdate(c *gin.Context) {
 		Description string `json:"description" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -167,7 +167,7 @@ func ProblemClarificationDelete(c *gin.Context) {
 	var clarification models.ProblemClarification
 	if err := db.DB.First(&clarification, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("clarification not found"))
+			c.JSON(http.StatusNotFound, apiUserError("clarification not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -178,11 +178,11 @@ func ProblemClarificationDelete(c *gin.Context) {
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").
 		First(&problem, clarification.ProblemID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	if !auth.CanEditProblem(c, &problem) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to edit this problem"))
 		return
 	}
 

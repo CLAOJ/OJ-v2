@@ -139,7 +139,7 @@ func AdminUserDetail(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return
 	}
 
@@ -148,7 +148,7 @@ func AdminUserDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -265,7 +265,7 @@ func AdminUserUpdate(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return
 	}
 
@@ -300,7 +300,7 @@ func AdminUserUpdate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -314,7 +314,7 @@ func AdminUserUpdate(c *gin.Context) {
 	var target models.Profile
 	if err := db.DB.Preload("User").First(&target, uint(userID)).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -345,7 +345,7 @@ func AdminUserUpdate(c *gin.Context) {
 	orgAdminTargets := append(append([]uint{}, input.AddOrganizationAdmin...), input.RemoveOrganizationAdmin...)
 	for _, orgID := range orgAdminTargets {
 		if !auth.CanEditOrganization(c, orgID) {
-			c.JSON(http.StatusForbidden, apiError("you do not have permission to manage administrators of organization "+strconv.FormatUint(uint64(orgID), 10)))
+			c.JSON(http.StatusForbidden, apiUserError("you do not have permission to manage administrators of organization "+strconv.FormatUint(uint64(orgID), 10)))
 			return
 		}
 	}
@@ -391,7 +391,7 @@ func AdminUserUpdate(c *gin.Context) {
 	// lands in auth_user (a different primary key than judge_profile.id,
 	// resolved above) inside the service transaction.
 	if (input.IsStaff != nil || input.IsSuperuser != nil) && !callerIsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required to change staff/superuser status"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required to change staff/superuser status"))
 		return
 	}
 
@@ -434,7 +434,7 @@ func AdminUserUpdate(c *gin.Context) {
 		AddOrganizationAdmin:    input.AddOrganizationAdmin,
 	}); err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		if errors.Is(err, user.ErrUsernameTaken) || errors.Is(err, user.ErrEmailTaken) {
@@ -474,7 +474,7 @@ func authorizeAccountAction(c *gin.Context, profileID uint) (models.Profile, boo
 	var target models.Profile
 	if err := db.DB.Preload("User").First(&target, profileID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return target, false
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -493,7 +493,7 @@ func AdminUserDelete(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return
 	}
 
@@ -510,10 +510,10 @@ func AdminUserDelete(c *gin.Context) {
 		UserID: uint(userID),
 	}); err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -533,7 +533,7 @@ func AdminUserBan(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return
 	}
 
@@ -554,7 +554,7 @@ func AdminUserBan(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -563,10 +563,10 @@ func AdminUserBan(c *gin.Context) {
 		Reason: input.Reason,
 	}); err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -581,7 +581,7 @@ func AdminUserUnban(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return
 	}
 
@@ -593,10 +593,10 @@ func AdminUserUnban(c *gin.Context) {
 		UserID: uint(userID),
 	}); err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 

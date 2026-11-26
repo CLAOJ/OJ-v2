@@ -5,6 +5,7 @@ import (
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/sanitization"
+	"github.com/CLAOJ/claoj/service/relations"
 	"gorm.io/gorm"
 )
 
@@ -65,10 +66,10 @@ func (s *BlogPostService) ListBlogPosts(req ListBlogPostsRequest) (*ListBlogPost
 	}
 
 	return &ListBlogPostsResponse{
-		BlogPosts:  result,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
+		BlogPosts: result,
+		Total:     total,
+		Page:      req.Page,
+		PageSize:  req.PageSize,
 	}, nil
 }
 
@@ -112,6 +113,9 @@ func (s *BlogPostService) CreateBlogPost(req CreateBlogPostRequest) (*BlogPost, 
 		return nil, ErrEmptyTitle
 	}
 	if req.Slug == "" {
+		req.Slug = Slugify(req.Title) // v1's admin pre-fills the slug from the title
+	}
+	if req.Slug == "" {
 		return nil, ErrEmptySlug
 	}
 	if req.Content == "" {
@@ -137,16 +141,19 @@ func (s *BlogPostService) CreateBlogPost(req CreateBlogPostRequest) (*BlogPost, 
 		OrganizationID: req.OrganizationID,
 	}
 
-	if err := db.DB.Create(&post).Error; err != nil {
-		return nil, err
-	}
-
-	// Associate authors if provided
-	if len(req.AuthorIDs) > 0 {
-		var authors []models.Profile
-		if err := db.DB.Where("id IN ?", req.AuthorIDs).Find(&authors).Error; err == nil {
-			db.DB.Model(&post).Association("Authors").Append(&authors)
+	// Post and authors together: appending full Profile rows made GORM
+	// upsert the profiles too, which failed silently and left no authors.
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&post).Error; err != nil {
+			return err
 		}
+		if len(req.AuthorIDs) == 0 {
+			return nil
+		}
+		return relations.Sync[models.Profile](tx, &post, "Authors", &req.AuthorIDs, nil, nil)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Reload post with relations
@@ -215,14 +222,10 @@ func (s *BlogPostService) UpdateBlogPost(req UpdateBlogPostRequest) (*BlogPost, 
 		}
 	}
 
-	// Update authors if provided
+	// Update authors if provided (empty list clears them)
 	if req.AuthorIDs != nil {
-		db.DB.Model(&post).Association("Authors").Clear()
-		if len(req.AuthorIDs) > 0 {
-			var authors []models.Profile
-			if err := db.DB.Where("id IN ?", req.AuthorIDs).Find(&authors).Error; err == nil {
-				db.DB.Model(&post).Association("Authors").Append(&authors)
-			}
+		if err := relations.Sync[models.Profile](db.DB, &post, "Authors", &req.AuthorIDs, nil, nil); err != nil {
+			return nil, err
 		}
 	}
 

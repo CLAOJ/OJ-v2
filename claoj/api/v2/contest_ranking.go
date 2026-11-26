@@ -268,27 +268,27 @@ func ContestProblemRank(c *gin.Context) {
 	var ct models.Contest
 	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 	if !auth.CanViewContest(c, &ct) {
-		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		return
 	}
 	// v1 ForceContestMixin.access_check: a contest that has not started is not
 	// readable without judge.see_private_contest (superusers hold every perm).
 	if time.Now().Before(ct.StartTime) && !auth.HasPerm(c, "judge.see_private_contest") {
-		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		return
 	}
 
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").
 		Where("code = ?", code).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	var contestProblems []models.ContestProblem
@@ -301,7 +301,7 @@ func ContestProblemRank(c *gin.Context) {
 		}
 	}
 	if idx < 0 {
-		c.JSON(http.StatusNotFound, apiError("problem is not in this contest"))
+		c.JSON(http.StatusNotFound, apiUserError("problem is not in this contest"))
 		return
 	}
 	cp := contestProblems[idx]

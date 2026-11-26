@@ -22,11 +22,11 @@ var enqueueContestMoss = jobs.EnqueueContestMoss
 func contestForMoss(c *gin.Context) (models.Contest, bool) {
 	var contest models.Contest
 	if !auth.HasPerm(c, "judge.moss_contest") {
-		c.JSON(http.StatusForbidden, apiError("you are not allowed to run MOSS"))
+		c.JSON(http.StatusForbidden, apiUserError("you are not allowed to run MOSS"))
 		return contest, false
 	}
 	if err := db.DB.Where("`key` = ?", c.Param("key")).First(&contest).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		return contest, false
 	}
 	return contest, true
@@ -112,7 +112,7 @@ func AdminContestMossReport(c *gin.Context) {
 	raw := c.Param("path")
 	for _, seg := range strings.FieldsFunc(raw, func(r rune) bool { return r == '/' || r == '\\' }) {
 		if seg == ".." {
-			c.JSON(http.StatusNotFound, apiError("report not found"))
+			c.JSON(http.StatusNotFound, apiUserError("report not found"))
 			return
 		}
 	}
@@ -120,18 +120,18 @@ func AdminContestMossReport(c *gin.Context) {
 	full := filepath.Join(root, filepath.Clean("/"+raw))
 	rel, err := filepath.Rel(root, full)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		c.JSON(http.StatusNotFound, apiError("report not found"))
+		c.JSON(http.StatusNotFound, apiUserError("report not found"))
 		return
 	}
 	f, err := os.Open(full)
 	if err != nil {
-		c.JSON(http.StatusNotFound, apiError("report not found"))
+		c.JSON(http.StatusNotFound, apiUserError("report not found"))
 		return
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil || info.IsDir() {
-		c.JSON(http.StatusNotFound, apiError("report not found"))
+		c.JSON(http.StatusNotFound, apiUserError("report not found"))
 		return
 	}
 	c.Header("Content-Security-Policy", "sandbox allow-scripts allow-popups")

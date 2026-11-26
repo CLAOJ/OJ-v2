@@ -69,7 +69,7 @@ func AdminRegistrationList(c *gin.Context) {
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
@@ -88,7 +88,7 @@ func AdminRegistrationList(c *gin.Context) {
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Scan(&rows).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
@@ -135,16 +135,16 @@ func AdminRegistrationList(c *gin.Context) {
 func registrationTarget(c *gin.Context) (models.AuthUser, bool) {
 	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return models.AuthUser{}, false
 	}
 	var u models.AuthUser
 	if err := db.DB.First(&u, uint(userID)).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return u, false
 		}
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return u, false
 	}
 	return u, true
@@ -158,7 +158,7 @@ func registrationTarget(c *gin.Context) (models.AuthUser, bool) {
 // only lets the user log in. Idempotent.
 func AdminRegistrationActivate(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
@@ -187,7 +187,7 @@ func AdminRegistrationActivate(c *gin.Context) {
 			Updates(map[string]any{"activated": true, "activation_key": ""}).Error
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to activate account"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to activate account"))
 		return
 	}
 
@@ -212,7 +212,7 @@ func AdminRegistrationActivate(c *gin.Context) {
 // a 400: there is nothing left to verify.
 func AdminRegistrationResend(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
@@ -230,7 +230,7 @@ func AdminRegistrationResend(c *gin.Context) {
 	// so a resend cannot be used to fan out links to the same account.
 	if err := SendVerificationEmailOnRegistration(target.ID, target.Email, target.Username); err != nil {
 		log.Printf("admin registrations: resend verification to user %d: %v", target.ID, err)
-		c.JSON(http.StatusInternalServerError, apiError("failed to send verification email"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to send verification email"))
 		return
 	}
 

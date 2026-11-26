@@ -153,6 +153,8 @@ export interface User {
     performance_points?: number;
     /** GET /user/me: the caller's own profile stats (blog gate, etc.). */
     profile?: {
+        /** judge_profile id (author/curator pickers use these, not user.id). */
+        id?: number;
         points?: number;
         rating?: number | null;
         about?: string | null;

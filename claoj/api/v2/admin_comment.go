@@ -128,14 +128,14 @@ func AdminCommentUpdate(c *gin.Context) {
 	}
 
 	if !auth.HasPerm(c, "judge.change_comment") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	commentIDStr := c.Param("id")
 	var commentID uint
 	if err := parseUint(commentIDStr, &commentID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid comment id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid comment id"))
 		return
 	}
 
@@ -148,7 +148,7 @@ func AdminCommentUpdate(c *gin.Context) {
 		Reason   string          `json:"reason,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -195,7 +195,7 @@ func AdminCommentUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, comment.ErrCommentNotFound) {
-			c.JSON(http.StatusNotFound, apiError("comment not found"))
+			c.JSON(http.StatusNotFound, apiUserError("comment not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -216,14 +216,14 @@ func AdminCommentDelete(c *gin.Context) {
 	}
 
 	if !auth.HasPerm(c, "judge.change_comment") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	commentIDStr := c.Param("id")
 	var commentID uint
 	if err := parseUint(commentIDStr, &commentID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid comment id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid comment id"))
 		return
 	}
 
@@ -231,7 +231,7 @@ func AdminCommentDelete(c *gin.Context) {
 		CommentID: commentID,
 	}); err != nil {
 		if errors.Is(err, comment.ErrCommentNotFound) {
-			c.JSON(http.StatusNotFound, apiError("comment not found"))
+			c.JSON(http.StatusNotFound, apiUserError("comment not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -253,7 +253,7 @@ func AdminCommentBulkHide(c *gin.Context) {
 	}
 
 	if !auth.HasPerm(c, "judge.change_comment") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
@@ -262,7 +262,7 @@ func AdminCommentBulkHide(c *gin.Context) {
 		Hidden *bool  `json:"hidden"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 

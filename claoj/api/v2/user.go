@@ -160,7 +160,7 @@ func UserDetail(c *gin.Context) {
 		Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("au.username = ?", username).
 		First(&profile).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -215,7 +215,7 @@ func UserSolvedProblems(c *gin.Context) {
 
 	if err := db.DB.Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("au.username = ?", username).First(&profile).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -263,7 +263,7 @@ func UserRatingHistory(c *gin.Context) {
 
 	if err := db.DB.Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("au.username = ?", username).First(&profile).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -297,7 +297,7 @@ func UserPPBreakdown(c *gin.Context) {
 
 	if err := db.DB.Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("au.username = ?", username).First(&profile).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -326,7 +326,7 @@ func UserAnalytics(c *gin.Context) {
 
 	if err := db.DB.Joins("JOIN auth_user au ON au.id = judge_profile.user_id").
 		Where("au.username = ?", username).First(&profile).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 

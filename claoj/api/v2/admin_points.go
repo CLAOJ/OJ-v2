@@ -24,7 +24,7 @@ func AdminRecalculatePoints(c *gin.Context) {
 		return
 	}
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 

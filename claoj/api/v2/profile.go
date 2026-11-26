@@ -63,7 +63,7 @@ func UpdateProfile(c *gin.Context) {
 
 	var req ProfileUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 

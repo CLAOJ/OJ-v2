@@ -36,6 +36,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { apiErrorMessage } from '@/lib/api';
 
 const emptyForm: AdminFlatPageCreateRequest = {
     url: '',
@@ -68,8 +69,8 @@ export default function FlatPagesAdminPage() {
             const response = await adminFlatPageApi.list(page, pageSize, debouncedSearch || undefined);
             setPages(response.data.data);
             setTotal(response.data.total);
-        } catch {
-            toast.error(t('flatPages.loadFailed'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('flatPages.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -104,8 +105,8 @@ export default function FlatPagesAdminPage() {
             });
             setEditingPage(response.data);
             setIsCreateDialogOpen(true);
-        } catch {
-            toast.error(t('flatPages.loadDetailFailed'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('flatPages.loadDetailFailed')));
         }
     };
 
@@ -256,7 +257,7 @@ export default function FlatPagesAdminPage() {
             </div>
 
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>
                             {editingPage ? t('flatPages.editDialogTitle') : t('flatPages.createDialogTitle')}

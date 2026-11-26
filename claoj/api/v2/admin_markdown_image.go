@@ -98,7 +98,7 @@ func AdminMarkdownImageUpload(c *gin.Context) {
 		defer body.Close()
 		url, err := storage.PutPublic(c.Request.Context(), "media/"+name, body, markdownMediaContentTypes[ext])
 		if err != nil {
-			c.JSON(http.StatusBadGateway, apiError("failed to store image"))
+			c.JSON(http.StatusBadGateway, apiUserError("failed to store image"))
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"url": url})

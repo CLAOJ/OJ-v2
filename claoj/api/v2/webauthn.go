@@ -142,14 +142,14 @@ func WebAuthnBeginRegistration(c *gin.Context) {
 
 	var req WebAuthnBeginRegistrationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Verify password
 	var user models.AuthUser
 	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -162,7 +162,7 @@ func WebAuthnBeginRegistration(c *gin.Context) {
 	// Check if WebAuthn is already enabled
 	var profile models.Profile
 	if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
@@ -174,7 +174,7 @@ func WebAuthnBeginRegistration(c *gin.Context) {
 	// Load existing credentials
 	creds, err := loadWebAuthnCredentials(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to load credentials"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to load credentials"))
 		return
 	}
 
@@ -214,7 +214,7 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 
 	var req WebAuthnFinishRegistrationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -227,20 +227,20 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 
 	sessionData, err := base64.StdEncoding.DecodeString(sessionCookie)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid registration session"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid registration session"))
 		return
 	}
 
 	var session webauthn.SessionData
 	if err := json.Unmarshal(sessionData, &session); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid registration session data"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid registration session data"))
 		return
 	}
 
 	// Load existing credentials
 	creds, err := loadWebAuthnCredentials(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to load credentials"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to load credentials"))
 		return
 	}
 
@@ -254,21 +254,21 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 	responseJSON, _ := json.Marshal(req.Response)
 	parsedResponse, err := protocol.ParseCredentialCreationResponseBytes(responseJSON)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(fmt.Sprintf("failed to parse response: %v", err)))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid passkey response; please try again"))
 		return
 	}
 
 	// Validate the response
 	credential, err := WebAuthnConfig.CreateCredential(u, session, parsedResponse)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(fmt.Sprintf("registration failed: %v", err)))
+		c.JSON(http.StatusBadRequest, apiUserError("passkey registration failed; please try again"))
 		return
 	}
 
 	// Store credential in database (user_id column is a judge_profile.id FK)
 	credProfileID, err := webauthnProfileID(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("profile not found"))
+		c.JSON(http.StatusInternalServerError, apiUserError("profile not found"))
 		return
 	}
 	newCred := models.WebAuthnCredential{
@@ -293,7 +293,7 @@ func WebAuthnFinishRegistration(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to store credential"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to store credential"))
 		return
 	}
 
@@ -317,7 +317,7 @@ func WebAuthnBeginLogin(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -331,7 +331,7 @@ func WebAuthnBeginLogin(c *gin.Context) {
 	// Check if WebAuthn is enabled for this user
 	var profile models.Profile
 	if err := db.DB.Where("user_id = ?", user.ID).First(&profile).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
@@ -343,7 +343,7 @@ func WebAuthnBeginLogin(c *gin.Context) {
 	// Load credentials
 	creds, err := loadWebAuthnCredentials(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to load credentials"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to load credentials"))
 		return
 	}
 
@@ -379,7 +379,7 @@ type WebAuthnFinishLoginRequest struct {
 func WebAuthnFinishLogin(c *gin.Context) {
 	var req WebAuthnFinishLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -392,41 +392,41 @@ func WebAuthnFinishLogin(c *gin.Context) {
 
 	sessionData, err := base64.StdEncoding.DecodeString(sessionCookie)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid login session"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid login session"))
 		return
 	}
 
 	var session webauthn.SessionData
 	if err := json.Unmarshal(sessionData, &session); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid login session data"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid login session data"))
 		return
 	}
 
 	// Find user by ID stored in session
 	userID := session.UserID
 	if len(userID) == 0 {
-		c.JSON(http.StatusBadRequest, apiError("invalid session"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid session"))
 		return
 	}
 
 	// Parse user ID from string
 	var uid uint
 	if _, err := fmt.Sscanf(string(userID), "%d", &uid); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user ID"))
 		return
 	}
 
 	// Get user
 	var user models.AuthUser
 	if err := db.DB.First(&user, uid).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, apiError("user not found"))
+		c.JSON(http.StatusUnauthorized, apiUserError("user not found"))
 		return
 	}
 
 	// Load credentials
 	creds, err := loadWebAuthnCredentials(uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to load credentials"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to load credentials"))
 		return
 	}
 
@@ -440,14 +440,14 @@ func WebAuthnFinishLogin(c *gin.Context) {
 	responseJSON, _ := json.Marshal(req.Response)
 	parsedResponse, err := protocol.ParseCredentialRequestResponseBytes(responseJSON)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(fmt.Sprintf("failed to parse response: %v", err)))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid passkey response; please try again"))
 		return
 	}
 
 	// Validate the response
 	cred, err := WebAuthnConfig.ValidateLogin(u, session, parsedResponse)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, apiError(fmt.Sprintf("login failed: %v", err)))
+		c.JSON(http.StatusUnauthorized, apiUserError("passkey not recognized or verification failed"))
 		return
 	}
 
@@ -469,7 +469,7 @@ func WebAuthnFinishLogin(c *gin.Context) {
 	// access token expired.
 	accessToken, refreshToken, err := issueAuthSession(c, user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate tokens"))
 		return
 	}
 
@@ -489,13 +489,13 @@ func WebAuthnCredentialsList(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	profileID, err := webauthnProfileID(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
 	var creds []models.WebAuthnCredential
 	if err := db.DB.Where("user_id = ?", profileID).Find(&creds).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
@@ -526,14 +526,14 @@ func WebAuthnCredentialUpdate(c *gin.Context) {
 
 	var req WebAuthnCredentialUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Find and update credential (user_id column is a judge_profile.id FK)
 	profileID, err := webauthnProfileID(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 	result := db.DB.Model(&models.WebAuthnCredential{}).
@@ -541,7 +541,7 @@ func WebAuthnCredentialUpdate(c *gin.Context) {
 		Update("name", req.Name)
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, apiError("credential not found"))
+		c.JSON(http.StatusNotFound, apiUserError("credential not found"))
 		return
 	}
 
@@ -559,14 +559,14 @@ func WebAuthnCredentialDelete(c *gin.Context) {
 		Password string `json:"password" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Verify password
 	var user models.AuthUser
 	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -579,7 +579,7 @@ func WebAuthnCredentialDelete(c *gin.Context) {
 	// judge_webauthncredential.user_id is a judge_profile.id FK
 	delProfileID, err := webauthnProfileID(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 
@@ -608,9 +608,9 @@ func WebAuthnCredentialDelete(c *gin.Context) {
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("credential not found"))
+			c.JSON(http.StatusNotFound, apiUserError("credential not found"))
 		} else {
-			c.JSON(http.StatusInternalServerError, apiError("failed to delete credential"))
+			c.JSON(http.StatusInternalServerError, apiUserError("failed to delete credential"))
 		}
 		return
 	}
@@ -626,7 +626,7 @@ func WebAuthnStatus(c *gin.Context) {
 
 	var profile models.Profile
 	if err := db.DB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("database error"))
+		c.JSON(http.StatusInternalServerError, apiUserError("database error"))
 		return
 	}
 

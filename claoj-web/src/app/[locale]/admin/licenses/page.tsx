@@ -29,6 +29,7 @@ import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Scale } from 'lucide-react';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function LicenseAdminPage() {
     const t = useTranslations('Admin');
@@ -60,7 +61,7 @@ export default function LicenseAdminPage() {
             setLicenses(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('licenses.loadFailed'));
+            toast.error(apiErrorMessage(error, t('licenses.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -97,7 +98,7 @@ export default function LicenseAdminPage() {
             setEditingLicense(license);
             setIsEditDialogOpen(true);
         } catch (error) {
-            toast.error(t('licenses.loadDetailFailed'));
+            toast.error(apiErrorMessage(error, t('licenses.loadDetailFailed')));
         }
     };
 
@@ -285,7 +286,7 @@ export default function LicenseAdminPage() {
                 setIsCreateDialogOpen(open);
                 setIsEditDialogOpen(open);
             }}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>
                             {editingLicense ? t('licenses.editDialogTitle') : t('licenses.createDialogTitle')}

@@ -2,6 +2,7 @@ package v2
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/CLAOJ/claoj/auth"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/CLAOJ/claoj/service/blogpost"
+	"github.com/CLAOJ/claoj/service/relations"
 	"github.com/gin-gonic/gin"
 )
 
@@ -83,7 +85,7 @@ func AdminBlogPostDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid blog post id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid blog post id"))
 		return
 	}
 
@@ -92,7 +94,7 @@ func AdminBlogPostDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if err == blogpost.ErrBlogPostNotFound {
-			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			c.JSON(http.StatusNotFound, apiUserError("blog post not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -121,9 +123,9 @@ func AdminBlogPostDetail(c *gin.Context) {
 // AdminBlogPostCreateRequest - POST /api/v2/admin/blog-posts
 type AdminBlogPostCreateRequest struct {
 	Title          string    `json:"title" binding:"required"`
-	Slug           string    `json:"slug" binding:"required"`
+	Slug           string    `json:"slug"` // empty: generated from the title
 	Content        string    `json:"content" binding:"required"`
-	Summary        string    `json:"summary" binding:"required"`
+	Summary        string    `json:"summary"` // optional, as in v1
 	AuthorIDs      []uint    `json:"author_ids"`
 	PublishOn      time.Time `json:"publish_on" binding:"required"`
 	Visible        bool      `json:"visible"`
@@ -142,13 +144,13 @@ func AdminBlogPostCreate(c *gin.Context) {
 	}
 
 	if !auth.HasPerm(c, "judge.edit_all_post") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	var req AdminBlogPostCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiUserError("title, content and publish date are required"))
 		return
 	}
 
@@ -185,6 +187,14 @@ func createBlogPostFromInput(c *gin.Context, req AdminBlogPostCreateRequest, cal
 	if err != nil {
 		if err == blogpost.ErrSlugExists {
 			c.JSON(http.StatusBadRequest, apiUserError("slug already exists"))
+			return
+		}
+		if errors.Is(err, relations.ErrUnknownID) {
+			c.JSON(http.StatusBadRequest, apiUserError("one of the selected authors no longer exists"))
+			return
+		}
+		if err == blogpost.ErrEmptySlug || err == blogpost.ErrEmptyTitle || err == blogpost.ErrEmptyContent {
+			c.JSON(http.StatusBadRequest, apiUserError("title (with letters or digits) and content are required"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -239,26 +249,26 @@ func AdminBlogPostUpdate(c *gin.Context) {
 	}
 
 	if !auth.HasPerm(c, "judge.edit_all_post") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid blog post id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid blog post id"))
 		return
 	}
 
 	var req AdminBlogPostUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	organizationID, clearOrganization, validOrg := parseOrgID(req.OrganizationID)
 	if !validOrg {
-		c.JSON(http.StatusBadRequest, apiError("invalid organization_id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid organization_id"))
 		return
 	}
 
@@ -279,11 +289,15 @@ func AdminBlogPostUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if err == blogpost.ErrBlogPostNotFound {
-			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			c.JSON(http.StatusNotFound, apiUserError("blog post not found"))
 			return
 		}
 		if err == blogpost.ErrSlugExists {
-			c.JSON(http.StatusBadRequest, apiError("slug already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("slug already exists"))
+			return
+		}
+		if errors.Is(err, relations.ErrUnknownID) {
+			c.JSON(http.StatusBadRequest, apiUserError("one of the selected authors no longer exists"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -305,14 +319,14 @@ func AdminBlogPostDelete(c *gin.Context) {
 	}
 
 	if !auth.HasPerm(c, "judge.edit_all_post") {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid blog post id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid blog post id"))
 		return
 	}
 
@@ -320,7 +334,7 @@ func AdminBlogPostDelete(c *gin.Context) {
 		BlogPostID: uint(id),
 	}); err != nil {
 		if err == blogpost.ErrBlogPostNotFound {
-			c.JSON(http.StatusNotFound, apiError("blog post not found"))
+			c.JSON(http.StatusNotFound, apiUserError("blog post not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

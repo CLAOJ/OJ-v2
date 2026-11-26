@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function EditContestPage() {
     const t = useTranslations('Admin');
@@ -39,7 +40,7 @@ export default function EditContestPage() {
         },
         onError: (err: unknown) => {
             const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? String(err);
-            toast.error(t('contests.saveFailed', { error: msg }));
+            toast.error(apiErrorMessage(err, t('contests.saveFailed', { error: msg })));
         },
     });
 

@@ -9,10 +9,15 @@ import { type ProblemFormData } from '@/components/admin/ProblemForm';
 import ProblemForm from '@/components/admin/ProblemForm';
 import { Code2, ArrowLeft } from 'lucide-react';
 import { Link } from '@/navigation';
+import { toast } from 'sonner';
+import { apiErrorMessage } from '@/lib/api';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function CreateProblemPage() {
     const t = useTranslations('Admin');
     const router = useRouter();
+    const { user } = useAuth();
+    const meId = user?.profile?.id;
 
     const createMutation = useMutation({
         mutationFn: (data: ProblemFormData) => adminProblemApi.create(problemFormToCreate(data)),
@@ -20,7 +25,8 @@ export default function CreateProblemPage() {
             if (response.data.problem?.code) {
                 router.push(`/admin/problems`);
             }
-        }
+        },
+        onError: (err) => toast.error(apiErrorMessage(err, t('problems.createError'))),
     });
 
     const handleSubmit = async (data: ProblemFormData) => {
@@ -49,7 +55,11 @@ export default function CreateProblemPage() {
             </div>
 
             {/* Form */}
+            {/* The creator starts as an author; picking adds others. Remount once
+                the session has loaded so the default applies. */}
             <ProblemForm
+                key={meId ?? 0}
+                initialAuthors={meId && user ? [{ id: meId, label: user.username }] : undefined}
                 onSubmit={handleSubmit}
                 isLoading={createMutation.isPending}
             />

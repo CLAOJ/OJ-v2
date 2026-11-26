@@ -44,14 +44,14 @@ func AdminGroupList(c *gin.Context) {
 func AdminGroupDetail(c *gin.Context) {
 	var id uint
 	if err := parseUint(c.Param("id"), &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 
 	detail, err := getGroupService().GetGroup(id)
 	if err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -78,7 +78,7 @@ func AdminGroupDetail(c *gin.Context) {
 // AdminGroupCreate - POST /api/admin/groups
 func AdminGroupCreate(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
@@ -87,22 +87,22 @@ func AdminGroupCreate(c *gin.Context) {
 		PermissionIDs []uint `json:"permission_ids"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	created, err := getGroupService().CreateGroup(input.Name, input.PermissionIDs)
 	if err != nil {
 		if errors.Is(err, group.ErrGroupNameExists) {
-			c.JSON(http.StatusBadRequest, apiError("group name already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("group name already exists"))
 			return
 		}
 		if errors.Is(err, group.ErrEmptyGroupName) {
-			c.JSON(http.StatusBadRequest, apiError("group name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("group name cannot be empty"))
 			return
 		}
 		if errors.Is(err, group.ErrUnknownPermissionID) {
-			c.JSON(http.StatusBadRequest, apiError("one or more permission IDs do not exist"))
+			c.JSON(http.StatusBadRequest, apiUserError("one or more permission IDs do not exist"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -115,13 +115,13 @@ func AdminGroupCreate(c *gin.Context) {
 // AdminGroupUpdate - PATCH /api/admin/group/:id
 func AdminGroupUpdate(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var id uint
 	if err := parseUint(c.Param("id"), &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 
@@ -130,25 +130,25 @@ func AdminGroupUpdate(c *gin.Context) {
 		PermissionIDs *[]uint `json:"permission_ids"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	if err := getGroupService().UpdateGroup(id, input.Name, input.PermissionIDs); err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		if errors.Is(err, group.ErrGroupNameExists) {
-			c.JSON(http.StatusBadRequest, apiError("group name already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("group name already exists"))
 			return
 		}
 		if errors.Is(err, group.ErrEmptyGroupName) {
-			c.JSON(http.StatusBadRequest, apiError("group name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("group name cannot be empty"))
 			return
 		}
 		if errors.Is(err, group.ErrUnknownPermissionID) {
-			c.JSON(http.StatusBadRequest, apiError("one or more permission IDs do not exist"))
+			c.JSON(http.StatusBadRequest, apiUserError("one or more permission IDs do not exist"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -161,19 +161,19 @@ func AdminGroupUpdate(c *gin.Context) {
 // AdminGroupDelete - DELETE /api/admin/group/:id
 func AdminGroupDelete(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var id uint
 	if err := parseUint(c.Param("id"), &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 
 	if err := getGroupService().DeleteGroup(id); err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -215,7 +215,7 @@ func resolveAuthUserID(c *gin.Context, profileID uint) (uint, bool) {
 	var profile models.Profile
 	if err := db.DB.Select("user_id").First(&profile, profileID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return 0, false
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -227,13 +227,13 @@ func resolveAuthUserID(c *gin.Context, profileID uint) (uint, bool) {
 // AdminUserAddGroup - POST /api/admin/user/:id/groups
 func AdminUserAddGroup(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user id"))
 		return
 	}
 
@@ -241,7 +241,7 @@ func AdminUserAddGroup(c *gin.Context) {
 		GroupID uint `json:"group_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -252,11 +252,11 @@ func AdminUserAddGroup(c *gin.Context) {
 
 	if err := getGroupService().AddUserToGroup(authUserID, input.GroupID); err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		if errors.Is(err, group.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -269,18 +269,18 @@ func AdminUserAddGroup(c *gin.Context) {
 // AdminUserRemoveGroup - DELETE /api/admin/user/:id/groups/:groupId
 func AdminUserRemoveGroup(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var profileID uint
 	if err := parseUint(c.Param("id"), &profileID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user id"))
 		return
 	}
 	var groupID uint
 	if err := parseUint(c.Param("groupId"), &groupID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 
@@ -291,7 +291,7 @@ func AdminUserRemoveGroup(c *gin.Context) {
 
 	if err := getGroupService().RemoveUserFromGroup(authUserID, groupID); err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -308,7 +308,7 @@ func AdminUserRemoveGroup(c *gin.Context) {
 func AdminGroupMembers(c *gin.Context) {
 	var groupID uint
 	if err := parseUint(c.Param("id"), &groupID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 	page, pageSize := parsePagination(c)
@@ -321,7 +321,7 @@ func AdminGroupMembers(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -353,13 +353,13 @@ func AdminGroupMembers(c *gin.Context) {
 // racy for large groups and wipes members added concurrently.
 func AdminGroupAddMember(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var groupID uint
 	if err := parseUint(c.Param("id"), &groupID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 
@@ -369,7 +369,7 @@ func AdminGroupAddMember(c *gin.Context) {
 		UserID uint `json:"user_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -380,11 +380,11 @@ func AdminGroupAddMember(c *gin.Context) {
 
 	if err := getGroupService().AddUserToGroup(authUserID, groupID); err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		if errors.Is(err, group.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, apiError("user not found"))
+			c.JSON(http.StatusNotFound, apiUserError("user not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -399,18 +399,18 @@ func AdminGroupAddMember(c *gin.Context) {
 // :userId is a judge_profile.id, like AdminGroupAddMember's body.
 func AdminGroupRemoveMember(c *gin.Context) {
 	if !auth.GetAccess(c).IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("superuser access required"))
+		c.JSON(http.StatusForbidden, apiUserError("superuser access required"))
 		return
 	}
 
 	var groupID uint
 	if err := parseUint(c.Param("id"), &groupID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid group id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid group id"))
 		return
 	}
 	var profileID uint
 	if err := parseUint(c.Param("userId"), &profileID); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid user id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid user id"))
 		return
 	}
 
@@ -421,7 +421,7 @@ func AdminGroupRemoveMember(c *gin.Context) {
 
 	if err := getGroupService().RemoveUserFromGroup(authUserID, groupID); err != nil {
 		if errors.Is(err, group.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, apiError("group not found"))
+			c.JSON(http.StatusNotFound, apiUserError("group not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

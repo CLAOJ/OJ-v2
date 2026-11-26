@@ -182,12 +182,12 @@ func ContestLeave(c *gin.Context) {
 
 	var ct models.Contest
 	if err := db.DB.Where("`key` = ?", key).First(&ct).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		return
 	}
 	profileID, ok := auth.CurrentProfileID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, apiError("unauthorized"))
+		c.JSON(http.StatusUnauthorized, apiUserError("unauthorized"))
 		return
 	}
 

@@ -97,11 +97,25 @@ const processQueue = (error: unknown = null) => {
     failedQueue = [];
 };
 
+/** What apiError() sends for any 5xx; see claoj/api/v2/helpers.go. */
+export const GENERIC_SERVER_ERROR = 'An error occurred. Please try again.';
+
+/** The server's message for a failed request, or the caller's (translated) fallback. */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+    return (err as { response?: { data?: { error?: string } } })?.response?.data?.error || fallback;
+}
+
 // Interceptor to handle token refresh using httpOnly cookies
 // NOTE: Refresh token is read from httpOnly cookie only - never from localStorage
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
+        // The API hides server faults behind one generic English sentence; drop
+        // it so callers fall back to their own translated message, while the
+        // specific messages ("username already taken") still come through.
+        if (error.response?.data?.error === GENERIC_SERVER_ERROR) {
+            delete error.response.data.error;
+        }
         const originalRequest = error.config as AxiosRequestConfigWithRetry;
 
         // Never refresh-and-retry on behalf of the session endpoints themselves:

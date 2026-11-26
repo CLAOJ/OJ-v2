@@ -281,7 +281,7 @@ func AdminClassCreate(c *gin.Context) {
 
 	created, found := loadClass(strconv.FormatUint(uint64(class.ID), 10))
 	if !found {
-		c.JSON(http.StatusInternalServerError, apiError("class created but could not be reloaded"))
+		c.JSON(http.StatusInternalServerError, apiUserError("class created but could not be reloaded"))
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
@@ -381,7 +381,7 @@ func AdminClassUpdate(c *gin.Context) {
 
 	updated, found := loadClass(id)
 	if !found {
-		c.JSON(http.StatusInternalServerError, apiError("class updated but could not be reloaded"))
+		c.JSON(http.StatusInternalServerError, apiUserError("class updated but could not be reloaded"))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

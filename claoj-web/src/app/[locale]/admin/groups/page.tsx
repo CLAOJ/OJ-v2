@@ -23,6 +23,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 import { Shield, Plus, Edit, Trash2, Users, Key, X, UserPlus, AlertCircle } from 'lucide-react';
+import { apiErrorMessage } from '@/lib/api';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 type PermissionsByAppModel = Record<string, Record<string, PermissionInfo[]>>;
@@ -75,7 +76,7 @@ export default function AdminGroupsPage() {
             invalidateGroups();
             setModalMode(null);
         },
-        onError: () => toast.error(t('saveFailed')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('saveFailed'))),
     });
 
     const updateMutation = useMutation({
@@ -86,7 +87,7 @@ export default function AdminGroupsPage() {
             invalidateDetail(variables.id);
             setModalMode(null);
         },
-        onError: () => toast.error(t('saveFailed')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('saveFailed'))),
     });
 
     const deleteMutation = useMutation({
@@ -97,7 +98,7 @@ export default function AdminGroupsPage() {
             if (selectedGroupId === id) setSelectedGroupId(null);
             setDeleteTarget(null);
         },
-        onError: () => toast.error(t('deleteFailed')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('deleteFailed'))),
     });
 
     const togglePermissionMutation = useMutation({
@@ -107,7 +108,7 @@ export default function AdminGroupsPage() {
             invalidateGroups();
             invalidateDetail(variables.id);
         },
-        onError: () => toast.error(t('saveFailed')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('saveFailed'))),
     });
 
     const handleTogglePermission = (permissionId: number) => {
@@ -489,13 +490,13 @@ function GroupMembersEditor({ groupId, t }: GroupMembersEditorProps) {
             setTerm('');
             invalidate();
         },
-        onError: () => toast.error(t('addMemberFailed')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('addMemberFailed'))),
     });
 
     const removeMutation = useMutation({
         mutationFn: (profileId: number) => adminGroupsApi.removeMember(groupId, profileId),
         onSuccess: invalidate,
-        onError: () => toast.error(t('removeMemberFailed')),
+        onError: (err) => toast.error(apiErrorMessage(err, t('removeMemberFailed'))),
     });
 
     const { data: candidates = [], isFetching: searching } = useQuery({

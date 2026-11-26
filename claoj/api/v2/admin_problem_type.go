@@ -50,7 +50,7 @@ func AdminProblemTypeDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid problem type id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid problem type id"))
 		return
 	}
 
@@ -59,7 +59,7 @@ func AdminProblemTypeDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problemtype.ErrTypeNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem type not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem type not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -107,13 +107,13 @@ func AdminProblemTypeCreate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	var req AdminProblemTypeCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -124,15 +124,15 @@ func AdminProblemTypeCreate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problemtype.ErrTypeNameExists) {
-			c.JSON(http.StatusBadRequest, apiError("problem type name already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("problem type name already exists"))
 			return
 		}
 		if errors.Is(err, problemtype.ErrEmptyTypeName) {
-			c.JSON(http.StatusBadRequest, apiError("problem type name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("problem type name cannot be empty"))
 			return
 		}
 		if errors.Is(err, problemtype.ErrEmptyTypeFullName) {
-			c.JSON(http.StatusBadRequest, apiError("problem type full name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("problem type full name cannot be empty"))
 			return
 		}
 		if errors.Is(err, problemtype.ErrUnknownProblemIDs) {
@@ -164,20 +164,20 @@ func AdminProblemTypeUpdate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid problem type id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid problem type id"))
 		return
 	}
 
 	var req AdminProblemTypeUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -188,7 +188,7 @@ func AdminProblemTypeUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, problemtype.ErrTypeNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem type not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem type not found"))
 			return
 		}
 		if errors.Is(err, problemtype.ErrUnknownProblemIDs) {
@@ -214,14 +214,14 @@ func AdminProblemTypeDelete(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid problem type id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid problem type id"))
 		return
 	}
 
@@ -229,7 +229,7 @@ func AdminProblemTypeDelete(c *gin.Context) {
 		TypeID: id,
 	}); err != nil {
 		if errors.Is(err, problemtype.ErrTypeNotFound) {
-			c.JSON(http.StatusNotFound, apiError("problem type not found"))
+			c.JSON(http.StatusNotFound, apiUserError("problem type not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

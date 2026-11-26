@@ -90,13 +90,13 @@ func AdminSolutionDetail(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid solution ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid solution ID"))
 		return
 	}
 
 	var solution models.Solution
 	if err := db.DB.Preload("Problem").Preload("Authors").First(&solution, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("solution not found"))
+		c.JSON(http.StatusNotFound, apiUserError("solution not found"))
 		return
 	}
 
@@ -144,25 +144,25 @@ func AdminSolutionCreate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Django parity: managing a problem's editorial requires edit authority over the problem.
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, input.ProblemID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, apiError("problem not found"))
+		c.JSON(http.StatusBadRequest, apiUserError("problem not found"))
 		return
 	}
 	if !auth.CanEditProblem(c, &problem) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to edit this problem's editorial"))
 		return
 	}
 
 	// Check if solution already exists for this problem
 	var existing models.Solution
 	if err := db.DB.Where("problem_id = ?", input.ProblemID).First(&existing).Error; err == nil {
-		c.JSON(http.StatusBadRequest, apiError("solution already exists for this problem, use update instead"))
+		c.JSON(http.StatusBadRequest, apiUserError("solution already exists for this problem, use update instead"))
 		return
 	}
 
@@ -171,7 +171,7 @@ func AdminSolutionCreate(c *gin.Context) {
 	if input.PublishOn != nil {
 		t, err := time.Parse(time.RFC3339, *input.PublishOn)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, apiError("invalid publish_on format, use RFC3339"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid publish_on format, use RFC3339"))
 			return
 		}
 		publishOn = &t
@@ -182,7 +182,7 @@ func AdminSolutionCreate(c *gin.Context) {
 	if input.ValidUntil != nil {
 		t, err := time.Parse(time.RFC3339, *input.ValidUntil)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, apiError("invalid valid_until format, use RFC3339"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid valid_until format, use RFC3339"))
 			return
 		}
 		validUntil = &t
@@ -224,24 +224,24 @@ func AdminSolutionUpdate(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid solution ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid solution ID"))
 		return
 	}
 
 	var solution models.Solution
 	if err := db.DB.First(&solution, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("solution not found"))
+		c.JSON(http.StatusNotFound, apiUserError("solution not found"))
 		return
 	}
 
 	// Django parity: editing an editorial requires edit authority over its problem.
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, solution.ProblemID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	if !auth.CanEditProblem(c, &problem) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to edit this problem's editorial"))
 		return
 	}
 
@@ -257,7 +257,7 @@ func AdminSolutionUpdate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -286,7 +286,7 @@ func AdminSolutionUpdate(c *gin.Context) {
 		} else {
 			t, err := time.Parse(time.RFC3339, *input.PublishOn)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, apiError("invalid publish_on format, use RFC3339"))
+				c.JSON(http.StatusBadRequest, apiUserError("invalid publish_on format, use RFC3339"))
 				return
 			}
 			updates["publish_on"] = t
@@ -300,7 +300,7 @@ func AdminSolutionUpdate(c *gin.Context) {
 		} else {
 			t, err := time.Parse(time.RFC3339, *input.ValidUntil)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, apiError("invalid valid_until format, use RFC3339"))
+				c.JSON(http.StatusBadRequest, apiUserError("invalid valid_until format, use RFC3339"))
 				return
 			}
 			updates["valid_until"] = t
@@ -328,24 +328,24 @@ func AdminSolutionDelete(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid solution ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid solution ID"))
 		return
 	}
 
 	var solution models.Solution
 	if err := db.DB.First(&solution, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("solution not found"))
+		c.JSON(http.StatusNotFound, apiUserError("solution not found"))
 		return
 	}
 
 	// Django parity: deleting an editorial requires edit authority over its problem.
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").First(&problem, solution.ProblemID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	if !auth.CanEditProblem(c, &problem) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to edit this problem's editorial"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to edit this problem's editorial"))
 		return
 	}
 
@@ -367,39 +367,39 @@ func ProblemSolution(c *gin.Context) {
 	// Get problem (Authors/Curators/Testers preloaded for the access helper)
 	var problem models.Problem
 	if err := db.DB.Preload("Authors").Preload("Curators").Preload("Testers").Where("code = ?", code).First(&problem).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 	// Must be able to view the problem to view its editorial (blocks
 	// organization-private problems for non-members).
 	if !auth.CanViewProblem(c, &problem) {
-		c.JSON(http.StatusNotFound, apiError("problem not found"))
+		c.JSON(http.StatusNotFound, apiUserError("problem not found"))
 		return
 	}
 
 	// Get solution
 	var solution models.Solution
 	if err := db.DB.Preload("Authors").Where("problem_id = ?", problem.ID).First(&solution).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("solution not found"))
+		c.JSON(http.StatusNotFound, apiUserError("solution not found"))
 		return
 	}
 
 	// Check if the current user may view this solution (Django parity:
 	// Solution.is_accessible_by).
 	if !auth.CanViewSolution(c, &solution, &problem) {
-		c.JSON(http.StatusForbidden, apiError("solution is not public"))
+		c.JSON(http.StatusForbidden, apiUserError("solution is not public"))
 		return
 	}
 
 	// Check publish_on date
 	if solution.PublishOn != nil && solution.PublishOn.After(time.Now()) {
-		c.JSON(http.StatusNotFound, apiError("solution not yet published"))
+		c.JSON(http.StatusNotFound, apiUserError("solution not yet published"))
 		return
 	}
 
 	// Check valid_until date
 	if solution.ValidUntil != nil && solution.ValidUntil.Before(time.Now()) {
-		c.JSON(http.StatusNotFound, apiError("solution has expired"))
+		c.JSON(http.StatusNotFound, apiUserError("solution has expired"))
 		return
 	}
 

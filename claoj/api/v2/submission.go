@@ -65,7 +65,7 @@ func SubmissionList(c *gin.Context) {
 	if orgFilter != "" {
 		orgID, err := strconv.ParseUint(orgFilter, 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, apiError("invalid organization id"))
+			c.JSON(http.StatusBadRequest, apiUserError("invalid organization id"))
 			return
 		}
 		// Organization membership only; the problem visibility filter above
@@ -77,14 +77,14 @@ func SubmissionList(c *gin.Context) {
 	if contestFilter != "" {
 		var ct models.Contest
 		if err := db.DB.Where("`key` = ?", contestFilter).First(&ct).Error; err != nil {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		// v1 ForceContestMixin.access_check: hidden contests 404, and a contest
 		// that has not started is not readable without see_private_contest.
 		if !auth.CanViewContest(c, &ct) ||
 			(time.Now().Before(ct.StartTime) && !auth.HasPerm(c, "judge.see_private_contest")) {
-			c.JSON(http.StatusNotFound, apiError("contest not found"))
+			c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 			return
 		}
 		q = q.
@@ -219,7 +219,7 @@ func writeSubmissionList(c *gin.Context, q *gorm.DB, page, pageSize int, best, c
 func SubmissionDetail(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid submission id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission id"))
 		return
 	}
 
@@ -232,20 +232,20 @@ func SubmissionDetail(c *gin.Context) {
 		Preload("Source").
 		Preload("TestCases", "1=1 ORDER BY `case` ASC").
 		Where("id = ?", id).First(&sub).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 
 	// Check problem is public
 	if !sub.Problem.IsPublic {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 
 	// v1 (SubmissionDetailBase) shows nothing of a submission (source, test
 	// cases) to someone who fails Submission.can_see_detail.
 	if !auth.CanSeeSubmissionDetail(c, &sub) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to view this submission"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to view this submission"))
 		return
 	}
 
@@ -384,15 +384,15 @@ func SubmissionResubmitSource(c *gin.Context) {
 
 	var sub models.Submission
 	if err := db.DB.Preload("Source").Preload("Language").First(&sub, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 	if sub.Language.FileOnly {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 	if sub.UserID != profile.ID && !auth.HasPerm(c, "judge.resubmit_other") {
-		c.JSON(http.StatusForbidden, apiError("not allowed to resubmit this submission"))
+		c.JSON(http.StatusForbidden, apiUserError("not allowed to resubmit this submission"))
 		return
 	}
 	source := ""
@@ -420,25 +420,25 @@ func SubmissionAbort(c *gin.Context) {
 
 	var sub models.Submission
 	if err := db.DB.Select("id", "user_id", "rejudged_date").First(&sub, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		return
 	}
 
 	canAbortAny := auth.HasPerm(c, "judge.abort_any_submission")
 	profileID, _ := auth.CurrentProfileID(c)
 	if !canAbortAny && (profileID == 0 || profileID != sub.UserID || sub.RejudgedDate != nil) {
-		c.JSON(http.StatusForbidden, apiError("you do not have permission to abort this submission"))
+		c.JSON(http.StatusForbidden, apiUserError("you do not have permission to abort this submission"))
 		return
 	}
 
 	if err := getSubmissionService().Abort(submission.AbortRequest{SubmissionID: uint(id)}); err != nil {
 		switch {
 		case errors.Is(err, submission.ErrSubmissionNotFound):
-			c.JSON(http.StatusNotFound, apiError("submission not found"))
+			c.JSON(http.StatusNotFound, apiUserError("submission not found"))
 		case errors.Is(err, submission.ErrSubmissionNotProcessing):
 			c.JSON(http.StatusBadRequest, apiUserError("submission is not being processed"))
 		case errors.Is(err, submission.ErrBridgeServerNotAvailable):
-			c.JSON(http.StatusInternalServerError, apiError("bridge server not available"))
+			c.JSON(http.StatusInternalServerError, apiUserError("bridge server not available"))
 		default:
 			c.JSON(http.StatusInternalServerError, apiError(err.Error()))
 		}
@@ -453,23 +453,23 @@ func SubmissionAbort(c *gin.Context) {
 func SubmissionDiff(c *gin.Context) {
 	id1, err := strconv.ParseUint(c.Param("id1"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid submission id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission id"))
 		return
 	}
 	id2, err := strconv.ParseUint(c.Param("id2"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid submission id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid submission id"))
 		return
 	}
 
 	// Get both submissions
 	var sub1, sub2 models.Submission
 	if err := db.DB.Preload("Source").Where("id = ?", id1).First(&sub1).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission 1 not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission 1 not found"))
 		return
 	}
 	if err := db.DB.Preload("Source").Where("id = ?", id2).First(&sub2).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("submission 2 not found"))
+		c.JSON(http.StatusNotFound, apiUserError("submission 2 not found"))
 		return
 	}
 
@@ -487,12 +487,12 @@ func SubmissionDiff(c *gin.Context) {
 
 	// Check access to submission 1
 	if !sub1.Problem.IsPublic && sub1.UserID != profileID && !isAdmin {
-		c.JSON(http.StatusForbidden, apiError("access denied to submission 1"))
+		c.JSON(http.StatusForbidden, apiUserError("access denied to submission 1"))
 		return
 	}
 	// Check access to submission 2
 	if !sub2.Problem.IsPublic && sub2.UserID != profileID && !isAdmin {
-		c.JSON(http.StatusForbidden, apiError("access denied to submission 2"))
+		c.JSON(http.StatusForbidden, apiUserError("access denied to submission 2"))
 		return
 	}
 
@@ -517,7 +517,7 @@ func SubmissionDiff(c *gin.Context) {
 		Context:  3,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate diff"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate diff"))
 		return
 	}
 

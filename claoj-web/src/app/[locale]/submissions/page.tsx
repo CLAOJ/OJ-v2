@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import api from '@/lib/api';
+import api, { apiErrorMessage } from '@/lib/api';
 import { APIResponse, Submission, PaginatedList, ContestDetail } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -86,8 +86,8 @@ export default function SubmissionListPage() {
         try {
             await api.post(`/admin/submission/${id}/rejudge`);
             queryClient.invalidateQueries({ queryKey: ['submissions'] });
-        } catch {
-            toast.error(t('rejudgeError'));
+        } catch (err) {
+            toast.error(apiErrorMessage(err, t('rejudgeError')));
         } finally {
             setRejudging(null);
         }

@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/Label';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Settings } from 'lucide-react';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 interface FormData {
     key: string;
@@ -50,7 +51,7 @@ export default function MiscConfigsAdminPage() {
             setMiscConfigs(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('miscConfigs.loadFailed'));
+            toast.error(apiErrorMessage(error, t('miscConfigs.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -78,7 +79,7 @@ export default function MiscConfigsAdminPage() {
             setEditingConfig(config);
             setIsCreateDialogOpen(true);
         } catch (error) {
-            toast.error(t('miscConfigs.loadDetailFailed'));
+            toast.error(apiErrorMessage(error, t('miscConfigs.loadDetailFailed')));
         }
     };
 

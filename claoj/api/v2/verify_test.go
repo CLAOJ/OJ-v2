@@ -68,7 +68,7 @@ func TestResendVerification_Unauthenticated(t *testing.T) {
 			name:       "missing email",
 			body:       map[string]interface{}{},
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "An error occurred. Please try again.",
+			wantMsg:    "email is required",
 			wantField:  "error",
 		},
 		{
@@ -321,14 +321,14 @@ func TestVerifyEmail(t *testing.T) {
 			name:       "invalid token",
 			body:       map[string]interface{}{"token": "invalid-token"},
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "An error occurred. Please try again.",
+			wantMsg:    "invalid or expired verification token",
 			wantField:  "error",
 		},
 		{
 			name:       "missing token",
 			body:       map[string]interface{}{},
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "An error occurred. Please try again.",
+			wantMsg:    "token is required",
 			wantField:  "error",
 		},
 	}
@@ -408,7 +408,7 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 
 	var response map[string]string
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "An error occurred. Please try again.", response["error"])
+	assert.Equal(t, "invalid or expired verification token", response["error"])
 
 	// User should still be inactive
 	var updatedUser models.AuthUser
@@ -439,7 +439,7 @@ func TestResendVerification_UserNotFound_Authenticated(t *testing.T) {
 
 	var response map[string]string
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "An error occurred. Please try again.", response["error"])
+	assert.Equal(t, "user not found", response["error"])
 }
 
 // Helper to check if error is a GORM "record not found" error

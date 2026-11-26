@@ -78,7 +78,7 @@ func OrganizationDetail(c *gin.Context) {
 	}
 	var org models.Organization
 	if err := db.DB.First(&org, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 		return
 	}
 
@@ -346,12 +346,12 @@ func UpdateOrganization(c *gin.Context) {
 
 	var org models.Organization
 	if err := db.DB.First(&org, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 		return
 	}
 
 	if !isOrgAdmin(db.DB, org.ID, profile.ID) {
-		c.JSON(http.StatusForbidden, apiError("access denied: not an organization administrator"))
+		c.JSON(http.StatusForbidden, apiUserError("access denied: not an organization administrator"))
 		return
 	}
 
@@ -364,7 +364,7 @@ func UpdateOrganization(c *gin.Context) {
 		Slots      *int    `json:"slots"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -443,7 +443,7 @@ func JoinOrganization(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -486,7 +486,7 @@ func LeaveOrganization(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -508,7 +508,7 @@ func RequestJoinOrganization(c *gin.Context) {
 		Reason string `json:"reason" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -551,7 +551,7 @@ func RequestJoinOrganization(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -575,7 +575,7 @@ func OrganizationRequestList(c *gin.Context) {
 	}
 
 	if !isOrgAdmin(db.DB, uint(parseInt(id)), profile.ID) {
-		c.JSON(http.StatusForbidden, apiError("access denied: not an organization administrator"))
+		c.JSON(http.StatusForbidden, apiUserError("access denied: not an organization administrator"))
 		return
 	}
 
@@ -628,7 +628,7 @@ func HandleOrganizationRequest(c *gin.Context) {
 		Action string `json:"action" binding:"required"` // "approve" or "reject"
 	}
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -672,7 +672,7 @@ func HandleOrganizationRequest(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -694,7 +694,7 @@ func KickUser(c *gin.Context) {
 		Username string `json:"username" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -732,7 +732,7 @@ func KickUser(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -756,7 +756,7 @@ func loadOrganization(c *gin.Context) (models.Organization, bool) {
 	}
 	var org models.Organization
 	if err := db.DB.First(&org, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 		return models.Organization{}, false
 	}
 	return org, true

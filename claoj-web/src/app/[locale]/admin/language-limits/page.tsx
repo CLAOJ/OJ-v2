@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search, Settings2 } from 'lucide-react';
 import { formatLimitSeconds, formatLimitMemory } from '@/lib/utils';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 interface ProblemOption {
     id: number;
@@ -70,7 +71,7 @@ export default function LanguageLimitsAdminPage() {
             const response = await adminProblemApi.list(1, 1000);
             setProblems(response.data.data);
         } catch (error) {
-            toast.error(t('languageLimits.loadProblemsFailed'));
+            toast.error(apiErrorMessage(error, t('languageLimits.loadProblemsFailed')));
         }
     };
 
@@ -79,7 +80,7 @@ export default function LanguageLimitsAdminPage() {
             const response = await adminLanguageApi.list(1, 100);
             setLanguages(response.data.data);
         } catch (error) {
-            toast.error(t('languageLimits.loadLanguagesFailed'));
+            toast.error(apiErrorMessage(error, t('languageLimits.loadLanguagesFailed')));
         }
     };
 
@@ -91,7 +92,7 @@ export default function LanguageLimitsAdminPage() {
             setLimits(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('languageLimits.loadFailed'));
+            toast.error(apiErrorMessage(error, t('languageLimits.loadFailed')));
         } finally {
             setLoading(false);
         }

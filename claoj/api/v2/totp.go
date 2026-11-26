@@ -149,14 +149,14 @@ func TotpSetup(c *gin.Context) {
 
 	var req TotpSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Verify password
 	var user models.AuthUser
 	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -183,14 +183,14 @@ func TotpSetup(c *gin.Context) {
 		AccountName: username,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate TOTP secret"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate TOTP secret"))
 		return
 	}
 
 	// Encrypt secret for storage
 	encryptedSecret, err := encryptSecret(secret.Secret())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to encrypt secret"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to encrypt secret"))
 		return
 	}
 
@@ -202,7 +202,7 @@ func TotpSetup(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 	if err := db.DB.Create(&device).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to store TOTP device"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to store TOTP device"))
 		return
 	}
 
@@ -228,7 +228,7 @@ func TotpConfirm(c *gin.Context) {
 
 	var req TotpConfirmRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -242,7 +242,7 @@ func TotpConfirm(c *gin.Context) {
 	// Decrypt secret
 	secret, err := decryptSecret(device.Secret)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to decrypt secret"))
 		return
 	}
 
@@ -256,14 +256,14 @@ func TotpConfirm(c *gin.Context) {
 	// Confirm device
 	device.Confirmed = true
 	if err := db.DB.Save(&device).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to confirm TOTP"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to confirm TOTP"))
 		return
 	}
 
 	// Generate backup codes
 	backupCodes, err := generateBackupCodes(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate backup codes"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate backup codes"))
 		return
 	}
 
@@ -285,14 +285,14 @@ func TotpDisable(c *gin.Context) {
 
 	var req TotpDisableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Verify password
 	var user models.AuthUser
 	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -312,7 +312,7 @@ func TotpDisable(c *gin.Context) {
 	// Decrypt secret and verify code
 	secret, err := decryptSecret(device.Secret)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to decrypt secret"))
 		return
 	}
 
@@ -334,7 +334,7 @@ func TotpDisable(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to disable TOTP"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to disable TOTP"))
 		return
 	}
 
@@ -352,7 +352,7 @@ type TotpVerifyRequest struct {
 func TotpVerify(c *gin.Context) {
 	var req TotpVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -373,12 +373,12 @@ func TotpVerify(c *gin.Context) {
 	var device models.TotpDevice
 	if err := db.DB.Where("user_id = ? AND confirmed = ?", user.ID, true).First(&device).Error; err == nil {
 		if secret, err = decryptSecret(device.Secret); err != nil {
-			c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
+			c.JSON(http.StatusInternalServerError, apiUserError("failed to decrypt secret"))
 			return
 		}
 	} else if s, err := auth.V1TOTPSecret(user.ID); err != nil {
 		log.Printf("totp: v1 key for user %d: %v", user.ID, err)
-		c.JSON(http.StatusInternalServerError, apiError("failed to decrypt secret"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to decrypt secret"))
 		return
 	} else if secret = s; secret == "" {
 		c.JSON(http.StatusBadRequest, apiUserError("TOTP not enabled for this account"))
@@ -396,7 +396,7 @@ func TotpVerify(c *gin.Context) {
 	// plant the httpOnly auth cookies the frontend authenticates with.
 	accessToken, refreshToken, err := issueAuthSession(c, user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate tokens"))
 		return
 	}
 
@@ -439,14 +439,14 @@ func TotpBackupCodesGenerate(c *gin.Context) {
 
 	var req TotpBackupCodesGenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Verify password
 	var user models.AuthUser
 	if err := db.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("user not found"))
+		c.JSON(http.StatusNotFound, apiUserError("user not found"))
 		return
 	}
 
@@ -466,7 +466,7 @@ func TotpBackupCodesGenerate(c *gin.Context) {
 	// Generate new backup codes
 	backupCodes, err := generateBackupCodes(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate backup codes"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate backup codes"))
 		return
 	}
 
@@ -487,7 +487,7 @@ type TotpBackupVerifyRequest struct {
 func TotpBackupVerify(c *gin.Context) {
 	var req TotpBackupVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -516,7 +516,7 @@ func TotpBackupVerify(c *gin.Context) {
 	// Mark code as used
 	backupCode.Used = true
 	if err := db.DB.Save(&backupCode).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to use backup code"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to use backup code"))
 		return
 	}
 
@@ -524,7 +524,7 @@ func TotpBackupVerify(c *gin.Context) {
 	// plant the httpOnly auth cookies the frontend authenticates with.
 	accessToken, refreshToken, err := issueAuthSession(c, user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apiError("failed to generate tokens"))
+		c.JSON(http.StatusInternalServerError, apiUserError("failed to generate tokens"))
 		return
 	}
 

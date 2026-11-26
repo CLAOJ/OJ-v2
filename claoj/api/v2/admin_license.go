@@ -58,7 +58,7 @@ func AdminLicenseDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid license id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid license id"))
 		return
 	}
 
@@ -67,7 +67,7 @@ func AdminLicenseDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, license.ErrLicenseNotFound) {
-			c.JSON(http.StatusNotFound, apiError("license not found"))
+			c.JSON(http.StatusNotFound, apiUserError("license not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -104,13 +104,13 @@ func AdminLicenseCreate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	var req AdminLicenseCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -124,19 +124,19 @@ func AdminLicenseCreate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, license.ErrKeyExists) {
-			c.JSON(http.StatusBadRequest, apiError("license key already exists"))
+			c.JSON(http.StatusBadRequest, apiUserError("license key already exists"))
 			return
 		}
 		if errors.Is(err, license.ErrEmptyKey) {
-			c.JSON(http.StatusBadRequest, apiError("license key cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("license key cannot be empty"))
 			return
 		}
 		if errors.Is(err, license.ErrEmptyName) {
-			c.JSON(http.StatusBadRequest, apiError("license name cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("license name cannot be empty"))
 			return
 		}
 		if errors.Is(err, license.ErrEmptyLink) {
-			c.JSON(http.StatusBadRequest, apiError("license link cannot be empty"))
+			c.JSON(http.StatusBadRequest, apiUserError("license link cannot be empty"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -167,20 +167,20 @@ func AdminLicenseUpdate(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid license id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid license id"))
 		return
 	}
 
 	var req AdminLicenseUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -194,7 +194,7 @@ func AdminLicenseUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, license.ErrLicenseNotFound) {
-			c.JSON(http.StatusNotFound, apiError("license not found"))
+			c.JSON(http.StatusNotFound, apiUserError("license not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -216,14 +216,14 @@ func AdminLicenseDelete(c *gin.Context) {
 	}
 
 	if !user.IsSuperuser {
-		c.JSON(http.StatusForbidden, apiError("admin access required"))
+		c.JSON(http.StatusForbidden, apiUserError("admin access required"))
 		return
 	}
 
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid license id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid license id"))
 		return
 	}
 
@@ -231,7 +231,7 @@ func AdminLicenseDelete(c *gin.Context) {
 	var problemCount int64
 	db.DB.Model(&models.Problem{}).Where("license_id = ?", id).Count(&problemCount)
 	if problemCount > 0 {
-		c.JSON(http.StatusBadRequest, apiError("cannot delete license used by problems"))
+		c.JSON(http.StatusBadRequest, apiUserError("cannot delete license used by problems"))
 		return
 	}
 
@@ -239,7 +239,7 @@ func AdminLicenseDelete(c *gin.Context) {
 		LicenseID: id,
 	}); err != nil {
 		if errors.Is(err, license.ErrLicenseNotFound) {
-			c.JSON(http.StatusNotFound, apiError("license not found"))
+			c.JSON(http.StatusNotFound, apiUserError("license not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))

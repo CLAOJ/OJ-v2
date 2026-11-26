@@ -32,6 +32,7 @@ import { hasPerm } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import type { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function LanguageAdminPage() {
     const t = useTranslations('Admin');
@@ -77,7 +78,7 @@ export default function LanguageAdminPage() {
             setLanguages(response.data.data);
             setTotal(response.data.total);
         } catch (error) {
-            toast.error(t('languages.loadFailed'));
+            toast.error(apiErrorMessage(error, t('languages.loadFailed')));
         } finally {
             setLoading(false);
         }
@@ -127,7 +128,7 @@ export default function LanguageAdminPage() {
             setEditingLanguage(lang);
             setIsEditDialogOpen(true);
         } catch (error) {
-            toast.error(t('languages.loadDetailFailed'));
+            toast.error(apiErrorMessage(error, t('languages.loadDetailFailed')));
         }
     };
 
@@ -474,7 +475,7 @@ export default function LanguageAdminPage() {
 
             {/* Create Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{t('languages.createDialogTitle')}</DialogTitle>
                         <DialogDescription>
@@ -495,7 +496,7 @@ export default function LanguageAdminPage() {
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{t('languages.editDialogTitle')}</DialogTitle>
                         <DialogDescription>

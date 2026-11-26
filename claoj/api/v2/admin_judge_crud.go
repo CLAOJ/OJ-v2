@@ -46,7 +46,7 @@ func AdminJudgeCreate(c *gin.Context) {
 		Description string `json:"description"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -112,7 +112,7 @@ func AdminJudgeDelete(c *gin.Context) {
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 	// Deleting a connected judge would strand whatever it is grading: its

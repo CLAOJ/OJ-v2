@@ -11,6 +11,7 @@ import ProblemForm from '@/components/admin/ProblemForm';
 import { CloneProblemButton } from '@/components/admin/CloneProblemModal';
 import { Code2, ArrowLeft, Database, MessageSquare, BookOpen, SlidersHorizontal, Languages } from 'lucide-react';
 import { Link } from '@/navigation';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function EditProblemPage() {
     const t = useTranslations('Admin');
@@ -49,7 +50,7 @@ export default function EditProblemPage() {
         },
         onError: (err: unknown) => {
             const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? String(err);
-            toast.error(t('problems.saveFailed', { error: msg }));
+            toast.error(apiErrorMessage(err, t('problems.saveFailed', { error: msg })));
         },
     });
 

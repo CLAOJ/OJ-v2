@@ -99,14 +99,14 @@ func AdminContestTagDetail(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid tag id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid tag id"))
 		return
 	}
 
 	var tag models.ContestTag
 	if err := db.DB.First(&tag, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("tag not found"))
+			c.JSON(http.StatusNotFound, apiUserError("tag not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -147,26 +147,26 @@ type ContestTagCreateRequest struct {
 func AdminContestTagCreate(c *gin.Context) {
 	var req ContestTagCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	// Validate name format (alphanumeric, underscore, hyphen, max 20 chars)
 	validName := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !validName.MatchString(req.Name) {
-		c.JSON(http.StatusBadRequest, apiError("tag name can only contain letters, numbers, underscore, and hyphen"))
+		c.JSON(http.StatusBadRequest, apiUserError("tag name can only contain letters, numbers, underscore, and hyphen"))
 		return
 	}
 
 	if len(req.Name) > 20 {
-		c.JSON(http.StatusBadRequest, apiError("tag name must be 20 characters or less"))
+		c.JSON(http.StatusBadRequest, apiUserError("tag name must be 20 characters or less"))
 		return
 	}
 
 	// Validate color format (hex color code)
 	validColor := regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 	if !validColor.MatchString(req.Color) {
-		c.JSON(http.StatusBadRequest, apiError("color must be a valid hex color code (e.g., #FF5733)"))
+		c.JSON(http.StatusBadRequest, apiUserError("color must be a valid hex color code (e.g., #FF5733)"))
 		return
 	}
 
@@ -222,14 +222,14 @@ func AdminContestTagUpdate(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid tag id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid tag id"))
 		return
 	}
 
 	var tag models.ContestTag
 	if err := db.DB.First(&tag, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, apiError("tag not found"))
+			c.JSON(http.StatusNotFound, apiUserError("tag not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -238,7 +238,7 @@ func AdminContestTagUpdate(c *gin.Context) {
 
 	var req ContestTagUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -247,11 +247,11 @@ func AdminContestTagUpdate(c *gin.Context) {
 	if req.Name != "" {
 		validName := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 		if !validName.MatchString(req.Name) {
-			c.JSON(http.StatusBadRequest, apiError("tag name can only contain letters, numbers, underscore, and hyphen"))
+			c.JSON(http.StatusBadRequest, apiUserError("tag name can only contain letters, numbers, underscore, and hyphen"))
 			return
 		}
 		if len(req.Name) > 20 {
-			c.JSON(http.StatusBadRequest, apiError("tag name must be 20 characters or less"))
+			c.JSON(http.StatusBadRequest, apiUserError("tag name must be 20 characters or less"))
 			return
 		}
 		updates["name"] = req.Name
@@ -260,7 +260,7 @@ func AdminContestTagUpdate(c *gin.Context) {
 	if req.Color != "" {
 		validColor := regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 		if !validColor.MatchString(req.Color) {
-			c.JSON(http.StatusBadRequest, apiError("color must be a valid hex color code (e.g., #FF5733)"))
+			c.JSON(http.StatusBadRequest, apiUserError("color must be a valid hex color code (e.g., #FF5733)"))
 			return
 		}
 		updates["color"] = req.Color
@@ -310,7 +310,7 @@ func AdminContestTagDelete(c *gin.Context) {
 	idStr := c.Param("id")
 	var id uint
 	if err := parseUint(idStr, &id); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid tag id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid tag id"))
 		return
 	}
 
@@ -339,19 +339,19 @@ func AdminContestAddTag(c *gin.Context) {
 
 	var contest models.Contest
 	if err := db.DB.Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		return
 	}
 
 	var tagId uint
 	if err := parseUint(tagIdStr, &tagId); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid tag id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid tag id"))
 		return
 	}
 
 	var tag models.ContestTag
 	if err := db.DB.First(&tag, tagId).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("tag not found"))
+		c.JSON(http.StatusNotFound, apiUserError("tag not found"))
 		return
 	}
 
@@ -373,19 +373,19 @@ func AdminContestRemoveTag(c *gin.Context) {
 
 	var contest models.Contest
 	if err := db.DB.Where("`key` = ?", contestKey).First(&contest).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("contest not found"))
+		c.JSON(http.StatusNotFound, apiUserError("contest not found"))
 		return
 	}
 
 	var tagId uint
 	if err := parseUint(tagIdStr, &tagId); err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid tag id"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid tag id"))
 		return
 	}
 
 	var tag models.ContestTag
 	if err := db.DB.First(&tag, tagId).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("tag not found"))
+		c.JSON(http.StatusNotFound, apiUserError("tag not found"))
 		return
 	}
 

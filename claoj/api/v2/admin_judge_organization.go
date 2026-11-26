@@ -84,7 +84,7 @@ func AdminJudgeBlock(c *gin.Context) {
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 
@@ -105,7 +105,7 @@ func AdminJudgeUnblock(c *gin.Context) {
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 
@@ -122,13 +122,13 @@ func AdminJudgeDetail(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid judge ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid judge ID"))
 		return
 	}
 
 	var judge models.Judge
 	if err := db.DB.Preload("Problems").Preload("Runtimes").First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 
@@ -224,7 +224,7 @@ func AdminJudgeEnable(c *gin.Context) {
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 
@@ -245,7 +245,7 @@ func AdminJudgeDisable(c *gin.Context) {
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 
@@ -262,13 +262,13 @@ func AdminJudgeUpdate(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid judge ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid judge ID"))
 		return
 	}
 
 	var judge models.Judge
 	if err := db.DB.First(&judge, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("judge not found"))
+		c.JSON(http.StatusNotFound, apiUserError("judge not found"))
 		return
 	}
 
@@ -282,7 +282,7 @@ func AdminJudgeUpdate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -420,7 +420,7 @@ func AdminOrganizationDetail(c *gin.Context) {
 	idParam := c.Param("id")
 	organizationID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid organization ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid organization ID"))
 		return
 	}
 
@@ -429,7 +429,7 @@ func AdminOrganizationDetail(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, organization.ErrOrganizationNotFound) {
-			c.JSON(http.StatusNotFound, apiError("organization not found"))
+			c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, apiError(err.Error()))
@@ -476,7 +476,7 @@ func AdminOrganizationCreate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
@@ -521,7 +521,7 @@ func AdminOrganizationUpdate(c *gin.Context) {
 	idParam := c.Param("id")
 	organizationID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid organization ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid organization ID"))
 		return
 	}
 
@@ -540,13 +540,13 @@ func AdminOrganizationUpdate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiBindError(err))
 		return
 	}
 
 	var org models.Organization
 	if err := db.DB.Preload("Admins").First(&org, organizationID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 		return
 	}
 
@@ -588,10 +588,10 @@ func AdminOrganizationUpdate(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, organization.ErrOrganizationNotFound) {
-			c.JSON(http.StatusNotFound, apiError("organization not found"))
+			c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
@@ -603,13 +603,13 @@ func AdminOrganizationRecalculate(c *gin.Context) {
 	idParam := c.Param("id")
 	organizationID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid organization ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid organization ID"))
 		return
 	}
 
 	var org models.Organization
 	if err := db.DB.First(&org, organizationID).Error; err != nil {
-		c.JSON(http.StatusNotFound, apiError("organization not found"))
+		c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 		return
 	}
 
@@ -681,7 +681,7 @@ func AdminOrganizationDelete(c *gin.Context) {
 	idParam := c.Param("id")
 	organizationID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiError("invalid organization ID"))
+		c.JSON(http.StatusBadRequest, apiUserError("invalid organization ID"))
 		return
 	}
 
@@ -689,10 +689,10 @@ func AdminOrganizationDelete(c *gin.Context) {
 		OrganizationID: uint(organizationID),
 	}); err != nil {
 		if errors.Is(err, organization.ErrOrganizationNotFound) {
-			c.JSON(http.StatusNotFound, apiError("organization not found"))
+			c.JSON(http.StatusNotFound, apiUserError("organization not found"))
 			return
 		}
-		c.JSON(http.StatusBadRequest, apiError(err.Error()))
+		c.JSON(http.StatusBadRequest, apiClientError(err))
 		return
 	}
 
