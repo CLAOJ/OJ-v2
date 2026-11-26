@@ -31,6 +31,15 @@ func TestPlantSetsOneCookieOnGET(t *testing.T) {
 		t.Fatalf("PUT with planted token: %d", w.Code)
 	}
 
+	// An existing cookie is re-sent with the same value.
+	req = httptest.NewRequest("GET", "/x", nil)
+	req.AddCookie(cookies[0])
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if again := w.Result().Cookies(); len(again) != 1 || again[0].Value != cookies[0].Value {
+		t.Fatalf("want the same cookie re-sent, got %v", again)
+	}
+
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("PUT", "/x", nil))
 	if w.Code != http.StatusForbidden {

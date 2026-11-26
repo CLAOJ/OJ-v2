@@ -72,11 +72,14 @@ func plant(c *gin.Context, config Config) {
 		return
 	}
 	token, err := c.Cookie(CSRFTokenCookie)
-	if err != nil {
-		if token, err = generateToken(); err == nil {
-			setCSRFCookie(c, token, config)
+	if err != nil || token == "" {
+		if token, err = generateToken(); err != nil {
+			return
 		}
 	}
+	// Re-sent every time, same value: renews the expiry and replaces a copy a
+	// proxy stored with other flags (an HttpOnly copy the client cannot echo).
+	setCSRFCookie(c, token, config)
 	c.Set("csrf_token", token)
 }
 
