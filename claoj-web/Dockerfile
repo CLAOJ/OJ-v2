@@ -4,7 +4,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 
@@ -12,7 +12,7 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 # Production stage
 FROM node:20-alpine
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm install --production
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
 # Copy built application
 COPY --from=builder /app/.next ./.next
