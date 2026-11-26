@@ -25,7 +25,7 @@ func Sync[T any](tx *gorm.DB, owner any, name string, full *[]uint, add, remove 
 	if full != nil {
 		ids := unique(*full)
 		if len(ids) == 0 {
-			return tx.Model(owner).Association(name).Clear()
+			return linkOnly(tx, owner, name).Clear()
 		}
 		rows, err := find[T](tx, ids)
 		if err != nil {
@@ -34,14 +34,14 @@ func Sync[T any](tx *gorm.DB, owner any, name string, full *[]uint, add, remove 
 		if len(rows) != len(ids) {
 			return fmt.Errorf("%w in %s", ErrUnknownID, name)
 		}
-		return tx.Model(owner).Association(name).Replace(&rows)
+		return linkOnly(tx, owner, name).Replace(&rows)
 	}
 	if len(add) > 0 {
 		rows, err := find[T](tx, unique(add))
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(owner).Association(name).Append(&rows); err != nil {
+		if err := linkOnly(tx, owner, name).Append(&rows); err != nil {
 			return err
 		}
 	}
@@ -50,11 +50,19 @@ func Sync[T any](tx *gorm.DB, owner any, name string, full *[]uint, add, remove 
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(owner).Association(name).Delete(&rows); err != nil {
+		if err := linkOnly(tx, owner, name).Delete(&rows); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// linkOnly edits only the join table. Without Omit(name+".*") GORM also
+// upserts the related rows themselves, and judge_profile has v1 columns
+// (is_banned_from_problem_voting, ...) that the model leaves out, so MariaDB
+// rejects the insert: "Field ... doesn't have a default value".
+func linkOnly(tx *gorm.DB, owner any, name string) *gorm.Association {
+	return tx.Model(owner).Omit(name + ".*").Association(name)
 }
 
 func find[T any](tx *gorm.DB, ids []uint) ([]T, error) {

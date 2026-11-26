@@ -94,3 +94,23 @@ func TestUserRefs(t *testing.T) {
 	require.Equal(t, []UserRef{{ID: 4, Username: "haruxne"}, {ID: 9, Username: "NK"}}, refs)
 	require.NotNil(t, UserRefs(nil)) // marshals as [] not null
 }
+
+// Linking must only touch the join table: GORM's default upsert of the
+// related rows fails on judge_profile in production (v1 NOT NULL columns
+// without defaults), which broke saving blog/problem authors.
+func TestSyncWritesOnlyTheJoinTable(t *testing.T) {
+	database, p, types := setupDB(t)
+	var stmts []string
+	require.NoError(t, database.Callback().Create().After("gorm:create").Register("test:record", func(tx *gorm.DB) {
+		stmts = append(stmts, tx.Statement.Table)
+	}))
+
+	ids := []uint{types[0].ID, types[1].ID}
+	require.NoError(t, Sync[models.ProblemType](database, &p, "Types", &ids, nil, nil))
+	require.NoError(t, Sync[models.ProblemType](database, &p, "Types", nil, []uint{types[2].ID}, nil))
+	require.ElementsMatch(t, []uint{types[0].ID, types[1].ID, types[2].ID}, typeIDs(t, database, p))
+
+	for _, table := range stmts {
+		require.NotEqual(t, (&models.ProblemType{}).TableName(), table, "related rows were upserted")
+	}
+}
