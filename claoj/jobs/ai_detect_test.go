@@ -91,10 +91,10 @@ func TestAIDetect_MatchFlagsRow(t *testing.T) {
 	require.False(t, r.Problems[0].Trivial)
 	require.Equal(t, 1, r.Problems[0].Admin)
 	_, archive := aiCall(chk)
-	_ = ref
 	require.NotEmpty(t, archive)
 	require.True(t, filepath.IsAbs(archive))
 	require.Equal(t, "refs", filepath.Base(archive))
+	require.Contains(t, chk.archiveFolders[len(chk.archiveFolders)-1], fmt.Sprintf("ref_%d", ref.ID))
 }
 
 func TestAIDetect_TrivialProblemNeedsRewrites(t *testing.T) {
@@ -227,4 +227,23 @@ func TestAIDetect_FailedRunKeepsOldAIJSON(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(ContestReportDir(f.contest.ID), "ai.json"))
 	require.NoError(t, err)
 	require.Equal(t, `{"old":true}`, string(b))
+}
+
+func TestAIDetect_RewritesSumAcrossLanguages(t *testing.T) {
+	database, f, cpp, _ := aiFixture(t)
+	py := addLanguage(t, database, "PY3", "Python 3", "Python")
+	at := f.contest.StartTime.Add(time.Minute)
+	addAttempt(t, database, f, cpp, "alice", at, "WA", 0, lines("a"))
+	addAttempt(t, database, f, cpp, "alice", at.Add(time.Minute), "WA", 0, lines("b"))
+	addAttempt(t, database, f, py, "alice", at.Add(2*time.Minute), "WA", 0, lines("c"))
+	addAttempt(t, database, f, py, "alice", at.Add(3*time.Minute), "WA", 0, lines("d"))
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, &fakeChecker{}, nil)
+	require.NoError(t, err)
+	r := readAI(t, f.contest.ID)
+	require.NotEmpty(t, r.Rows)
+	for _, row := range r.Rows {
+		require.Equal(t, "alice", row.Username)
+		require.Equal(t, 2, row.Rewrites)
+		require.Len(t, row.RewriteSubs, 2)
+	}
 }

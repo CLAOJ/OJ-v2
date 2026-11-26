@@ -22,15 +22,25 @@ import (
 // fakeChecker records, per Check call, every "folder/file" under subsDir with
 // its content, then writes outDir/index.html (or returns err).
 type fakeChecker struct {
-	calls    []map[string]string
-	archives []string          // archiveDir per Check call ("" for the code-copy run)
-	results  map[string]string // last three outDir elements joined with "/" -> results.json body
-	err      error
-	noReport bool // like compare50 with no similar pairs: exit 0, no -o dir
+	calls          []map[string]string
+	archiveFolders [][]string        // folder names inside archiveDir per Check call
+	archives       []string          // archiveDir per Check call ("" for the code-copy run)
+	results        map[string]string // last three outDir elements joined with "/" -> results.json body
+	err            error
+	noReport       bool // like compare50 with no similar pairs: exit 0, no -o dir
 }
 
 func (f *fakeChecker) Check(_ context.Context, subsDir, archiveDir, outDir string) error {
 	f.archives = append(f.archives, archiveDir)
+	var names []string
+	if archiveDir != "" {
+		if es, err := os.ReadDir(archiveDir); err == nil {
+			for _, e := range es {
+				names = append(names, e.Name())
+			}
+		}
+	}
+	f.archiveFolders = append(f.archiveFolders, names)
 	got := map[string]string{}
 	folders, err := os.ReadDir(subsDir)
 	if err != nil {

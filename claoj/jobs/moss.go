@@ -124,6 +124,26 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		}
 		sort.Strings(langs)
 
+		// S3: rewrites are summed over all of a user's language chains for this problem.
+		rewrites := map[string]int{}
+		rewriteSubs := map[string][]uint{}
+		for _, langChains := range attempts {
+			for user, chain := range langChains {
+				sort.SliceStable(chain, func(i, j int) bool {
+					if !chain[i].Date.Equal(chain[j].Date) {
+						return chain[i].Date.Before(chain[j].Date)
+					}
+					return chain[i].ID < chain[j].ID
+				})
+				n, ids := aiRewrites(chain)
+				rewrites[user] += n
+				rewriteSubs[user] = append(rewriteSubs[user], ids...)
+			}
+		}
+		for _, ids := range rewriteSubs {
+			sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+		}
+
 		for _, lang := range langs {
 			ents := byLang[lang]
 			slug := LanguageSlug(lang)
@@ -150,15 +170,8 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			}
 			rows = append(rows, row)
 
-			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang]}
+			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang], Rewrites: rewrites, RewriteSubs: rewriteSubs}
 			for _, e := range ents {
-				chain := l.Attempts[e.user]
-				sort.SliceStable(chain, func(i, j int) bool {
-					if !chain[i].Date.Equal(chain[j].Date) {
-						return chain[i].Date.Before(chain[j].Date)
-					}
-					return chain[i].ID < chain[j].ID
-				})
 				l.Best = append(l.Best, aiAttempt{ID: e.id, Username: e.user, Source: e.source})
 			}
 			prob, cands, err := aiCheck(ctx, tx, chk, gen, tmp, reportRoot, l)

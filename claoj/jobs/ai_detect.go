@@ -3,7 +3,9 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -75,11 +77,13 @@ type aiAttempt struct {
 
 // aiLang is one problem x language handed to the AI check.
 type aiLang struct {
-	Problem  models.Problem
-	Lang     string
-	Slug     string
-	Best     []aiAttempt            // one per user: the best-scored attempt
-	Attempts map[string][]aiAttempt // username -> all attempts in (date, id) order
+	Problem     models.Problem
+	Lang        string
+	Slug        string
+	Best        []aiAttempt            // one per user: the best-scored attempt
+	Attempts    map[string][]aiAttempt // username -> all attempts in (date, id) order
+	Rewrites    map[string]int         // username -> rewrites summed over all language chains
+	RewriteSubs map[string][]uint      // username -> later attempt of each rewrite, all languages
 }
 
 // aiUser holds, per participant, what S4 needs: the participation start and
@@ -129,7 +133,7 @@ func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, gen Generator, tmp, 
 	for _, b := range l.Best {
 		chain := l.Attempts[b.Username]
 		row := &AIRow{Username: b.Username, ProblemCode: l.Problem.Code, Language: l.Lang, BestSubmission: b.ID, FirstSubmission: chain[0].ID}
-		row.Rewrites, row.RewriteSubs = aiRewrites(chain)
+		row.Rewrites, row.RewriteSubs = l.Rewrites[b.Username], l.RewriteSubs[b.Username]
 		rows = append(rows, row)
 		byUser[b.Username] = row
 	}
@@ -172,7 +176,11 @@ func aiCheck(ctx context.Context, tx *gorm.DB, chk Checker, gen Generator, tmp, 
 			return prob, nil, fmt.Errorf("ai check %s/%s: %w", l.Problem.Code, l.Lang, err)
 		}
 		// compare50 exits 0 without creating outDir when there are no pairs.
-		if b, err := os.ReadFile(filepath.Join(outDir, "results.json")); err == nil {
+		b, err := os.ReadFile(filepath.Join(outDir, "results.json"))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return prob, nil, fmt.Errorf("ai check %s/%s: %w", l.Problem.Code, l.Lang, err)
+		}
+		if err == nil {
 			var res struct {
 				Pairs []struct {
 					Match    int    `json:"match"`
