@@ -75,10 +75,48 @@ func TestEnsureReferences_TopsUpToFive(t *testing.T) {
 	var stored []models.PlagiarismAIReference
 	require.NoError(t, database.Where("origin = ? AND source LIKE ?", "generated", "code %").Find(&stored).Error)
 	require.Len(t, stored, 3)
+	var got []string
 	for _, r := range stored {
 		require.NotNil(t, r.Model)
-		require.Equal(t, "fake-model", *r.Model)
+		got = append(got, *r.Model)
 	}
+	// Two untagged refs fill two slots; the rest go to the fastest levels.
+	require.ElementsMatch(t, []string{"fake-model/off", "fake-model/minimal", "fake-model/low"}, got)
+}
+
+// Levels run one after another across all targets, so later thinking levels
+// find the prompt already cached by an earlier, finished call.
+func TestEnsureAllReferences_RunsLevelByLevel(t *testing.T) {
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	f.problem.Description = longStatement()
+	gen := &fakeGen{}
+	_, err := EnsureAllReferences(context.Background(), database, gen,
+		[]aiGenTarget{{f.problem, "C++"}, {f.problem, "Python"}}, time.Minute)
+	require.NoError(t, err)
+	require.Len(t, gen.inputs, 10)
+	for i, in := range gen.inputs {
+		require.Equal(t, aiGenEfforts[i/2], in.Effort, "call %d", i)
+	}
+}
+
+func TestEnsureReferences_FillsMissingEffortLevels(t *testing.T) {
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	f.problem.Description = longStatement()
+	for _, m := range []string{"old/off", "old/high"} {
+		m := m
+		require.NoError(t, database.Create(&models.PlagiarismAIReference{ProblemID: f.problem.ID, Language: "C++",
+			Source: "x", Origin: "generated", Model: &m, CreatedAt: time.Now()}).Error)
+	}
+	gen := &fakeGen{}
+	_, err := EnsureReferences(context.Background(), database, gen, f.problem, "C++")
+	require.NoError(t, err)
+	var efforts []string
+	for _, in := range gen.inputs {
+		efforts = append(efforts, in.Effort)
+	}
+	require.ElementsMatch(t, []string{"minimal", "low", "max"}, efforts)
 }
 
 func TestEnsureReferences_NoStatement(t *testing.T) {

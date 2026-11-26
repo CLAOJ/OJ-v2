@@ -3,12 +3,15 @@ package jobs
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,9 +25,15 @@ import (
 const (
 	aiGenSystemPrompt = "You solve competitive programming problems. Reply with one complete program that reads standard input and writes standard output. Reply with code only, no explanation."
 	aiGenWorkers      = 4
-	aiGenTimeout      = 90 * time.Second
-	aiGenMaxBody      = 1 << 20
+	aiGenTimeout      = 10 * time.Minute // "max" thinking took 386 s on prod
+	aiGenMaxBody      = 4 << 20          // thinking replies carry ~250 KB of reasoning
 )
+
+// aiGenEfforts is the thinking level of each generated reference, fastest
+// first: "off" disables thinking, the rest are DeepSeek reasoning_effort
+// values (prod, entertain: off 32 s, low 160 s, high 227 s, max 386 s; medium
+// came out like high). One reference per level, so aiRefsPerLang matches its length.
+var aiGenEfforts = []string{"off", "minimal", "low", "high", "max"}
 
 // aiGenDefaultWaits mirrors compare50's _llm.py RETRY_WAITS default.
 var aiGenDefaultWaits = []time.Duration{5 * time.Second, 15 * time.Second, 30 * time.Second}
@@ -34,6 +43,7 @@ type GenerateInput struct {
 	Language      string  // judge_language.common_name
 	TimeLimit     float64 // seconds
 	MemoryLimitKB int
+	Effort        string // one of aiGenEfforts; "" or "off" = no thinking
 }
 
 type Generator interface {
@@ -81,19 +91,26 @@ type llmGenerator struct {
 func (g *llmGenerator) Model() string { return g.model }
 
 func (g *llmGenerator) Generate(ctx context.Context, in GenerateInput) (string, error) {
-	body, err := json.Marshal(map[string]any{
+	req := map[string]any{
 		"model":       g.model,
 		"temperature": 0.8,
-		// DeepSeek V4 thinks by default: ~36k reasoning tokens and 200+ s per
-		// solution on prod, past aiGenTimeout. Off: ~4 s.
-		// ponytail: DeepSeek-only field; gate it on the URL if another provider rejects it.
-		"thinking": map[string]string{"type": "disabled"},
 		"messages": []map[string]string{
 			{"role": "system", "content": aiGenSystemPrompt},
-			{"role": "user", "content": fmt.Sprintf("Language: %s\nTime limit: %g seconds\nMemory limit: %d KB\n\n%s",
-				in.Language, in.TimeLimit, in.MemoryLimitKB, in.Statement)},
+			// Statement first, language last: another language of the same
+			// problem then reuses the cached prefix.
+			{"role": "user", "content": fmt.Sprintf("%s\n\nTime limit: %g seconds\nMemory limit: %d KB\nLanguage: %s",
+				in.Statement, in.TimeLimit, in.MemoryLimitKB, in.Language)},
 		},
-	})
+	}
+	// DeepSeek V4 thinks by default, so "off" has to say so.
+	// ponytail: DeepSeek-only fields; gate them on the URL if another provider rejects them.
+	if in.Effort == "" || in.Effort == "off" {
+		req["thinking"] = map[string]string{"type": "disabled"}
+	} else {
+		req["thinking"] = map[string]string{"type": "enabled"}
+		req["reasoning_effort"] = in.Effort
+	}
+	body, err := json.Marshal(req)
 	if err != nil {
 		return "", err
 	}
@@ -166,7 +183,7 @@ func aiGenExtractCode(reply string) string {
 
 // aiGenerateBudget is the total time all of a run's generation calls may take
 // (a var so tests can shrink it). The job's asynq timeout is 30 minutes.
-var aiGenerateBudget = 10 * time.Minute
+var aiGenerateBudget = 20 * time.Minute
 
 var errAIBudget = errors.New("time budget")
 
@@ -204,17 +221,36 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 			notes[key] = "no_statement"
 			continue
 		}
-		var have int64
+		var have []sql.NullString
 		if err := tx.Model(&models.PlagiarismAIReference{}).
 			Where("problem_id = ? AND language = ? AND origin = ?", p.ID, t.Lang, "generated").
-			Count(&have).Error; err != nil {
+			Pluck("model", &have).Error; err != nil {
 			return nil, err
 		}
-		in := GenerateInput{Statement: p.Description, Language: t.Lang, TimeLimit: p.TimeLimit, MemoryLimitKB: int(p.MemoryLimit)}
-		for range int(aiRefsPerLang - have) {
-			jobs = append(jobs, job{i, in})
+		done := map[string]bool{}
+		for _, m := range have {
+			if k := strings.LastIndexByte(m.String, '/'); k >= 0 {
+				done[m.String[k+1:]] = true
+			}
+		}
+		slots := int(aiRefsPerLang) - len(have) // untagged older refs still count
+		for _, e := range aiGenEfforts {
+			if slots <= 0 {
+				break
+			}
+			if done[e] {
+				continue
+			}
+			slots--
+			jobs = append(jobs, job{i, GenerateInput{Statement: p.Description, Language: t.Lang,
+				TimeLimit: p.TimeLimit, MemoryLimitKB: int(p.MemoryLimit), Effort: e}})
 		}
 	}
+	// Fastest levels first across all targets, so a tight budget still leaves
+	// every problem its cheap references.
+	sort.SliceStable(jobs, func(a, b int) bool {
+		return slices.Index(aiGenEfforts, jobs[a].in.Effort) < slices.Index(aiGenEfforts, jobs[b].in.Effort)
+	})
 	if len(jobs) == 0 {
 		return notes, nil
 	}
@@ -223,40 +259,24 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 	defer cancel()
 	sources := make([]string, len(jobs))
 	errs := make([]error, len(jobs))
-	next := make(chan int)
-	var wg sync.WaitGroup
-	for range aiGenWorkers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := range next {
-				if bctx.Err() != nil {
-					errs[i] = errAIBudget
-					continue
-				}
-				type res struct {
-					src string
-					err error
-				}
-				done := make(chan res, 1)
-				go func() { src, err := gen.Generate(bctx, jobs[i].in); done <- res{src, err} }()
-				select {
-				case r := <-done:
-					sources[i], errs[i] = r.src, r.err
-					if r.err != nil && bctx.Err() != nil {
-						errs[i] = errAIBudget
-					}
-				case <-bctx.Done():
-					errs[i] = errAIBudget // abandoned; the goroutine ends when Generate sees ctx
-				}
-			}
-		}()
+	// One level at a time (jobs are sorted by level): DeepSeek reuses the
+	// prompt cache only after a request with the same prefix has finished, and
+	// all thinking levels share one cache (off does not). So per problem only
+	// "off" and the first thinking level pay for the prompt; later levels hit
+	// (prod: 1152 of 1299 prompt tokens). Problems never share a prefix, so
+	// they still run in parallel within a level.
+	for start := 0; start < len(jobs); {
+		end := start
+		for end < len(jobs) && jobs[end].in.Effort == jobs[start].in.Effort {
+			end++
+		}
+		ins := make([]GenerateInput, end-start)
+		for k := range ins {
+			ins[k] = jobs[start+k].in
+		}
+		runAIGenLevel(bctx, gen, ins, sources[start:end], errs[start:end])
+		start = end
 	}
-	for i := range jobs {
-		next <- i
-	}
-	close(next)
-	wg.Wait()
 
 	model := gen.Model()
 	now := time.Now()
@@ -273,8 +293,9 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 			continue
 		}
 		p := targets[j.t].Problem
+		tagged := model + "/" + j.in.Effort // the level is read back above
 		ref := models.PlagiarismAIReference{ProblemID: p.ID, Language: targets[j.t].Lang, Source: src, Origin: "generated",
-			Model: &model, CreatedAt: now}
+			Model: &tagged, CreatedAt: now}
 		if err := tx.Create(&ref).Error; err != nil {
 			return nil, err
 		}
@@ -300,4 +321,43 @@ func aiGenClip(s string, n int) string {
 		return string(r[:n])
 	}
 	return s
+}
+
+// runAIGenLevel runs ins through aiGenWorkers and waits for all of them (or
+// the budget). Calls cut off by the budget get errAIBudget.
+func runAIGenLevel(bctx context.Context, gen Generator, ins []GenerateInput, sources []string, errs []error) {
+	next := make(chan int)
+	var wg sync.WaitGroup
+	for range aiGenWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range next {
+				if bctx.Err() != nil {
+					errs[i] = errAIBudget
+					continue
+				}
+				type res struct {
+					src string
+					err error
+				}
+				done := make(chan res, 1)
+				go func() { src, err := gen.Generate(bctx, ins[i]); done <- res{src, err} }()
+				select {
+				case r := <-done:
+					sources[i], errs[i] = r.src, r.err
+					if r.err != nil && bctx.Err() != nil {
+						errs[i] = errAIBudget
+					}
+				case <-bctx.Done():
+					errs[i] = errAIBudget // abandoned; the goroutine ends when Generate sees ctx
+				}
+			}
+		}()
+	}
+	for i := range ins {
+		next <- i
+	}
+	close(next)
+	wg.Wait()
 }
