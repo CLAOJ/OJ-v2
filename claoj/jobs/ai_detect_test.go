@@ -234,9 +234,9 @@ func TestAIDetect_RewritesSumAcrossLanguages(t *testing.T) {
 	py := addLanguage(t, database, "PY3", "Python 3", "Python")
 	at := f.contest.StartTime.Add(time.Minute)
 	addAttempt(t, database, f, cpp, "alice", at, "WA", 0, lines("a"))
-	addAttempt(t, database, f, cpp, "alice", at.Add(time.Minute), "WA", 0, lines("b"))
+	addAttempt(t, database, f, cpp, "alice", at.Add(time.Minute), "AC", 100, lines("b"))
 	addAttempt(t, database, f, py, "alice", at.Add(2*time.Minute), "WA", 0, lines("c"))
-	addAttempt(t, database, f, py, "alice", at.Add(3*time.Minute), "WA", 0, lines("d"))
+	addAttempt(t, database, f, py, "alice", at.Add(3*time.Minute), "AC", 100, lines("d"))
 	_, err := RunContestMoss(context.Background(), database, f.contest.ID, &fakeChecker{}, nil)
 	require.NoError(t, err)
 	r := readAI(t, f.contest.ID)
@@ -250,6 +250,35 @@ func TestAIDetect_RewritesSumAcrossLanguages(t *testing.T) {
 		}
 	}
 	require.Equal(t, 1, carriers, "the rewrite total is carried by exactly one language row")
+}
+
+// Only contestants whose best submission in the language is AC are checked;
+// a problem x language without one makes no LLM calls. Code copy still covers everyone.
+func TestAIDetect_OnlyACContestants(t *testing.T) {
+	database, f, cpp, _ := aiFixture(t)
+	py := addLanguage(t, database, "PY3", "Python 3", "Python")
+	f.problem.Description = longStatement()
+	require.NoError(t, database.Save(&f.problem).Error)
+	at := f.contest.StartTime.Add(time.Minute)
+	addAttempt(t, database, f, cpp, "alice", at, "AC", 100, lines("a"))
+	addAttempt(t, database, f, cpp, "bob", at, "WA", 0, lines("b"))
+	addAttempt(t, database, f, cpp, "bob", at.Add(time.Minute), "WA", 0, lines("c"))
+	addAttempt(t, database, f, py, "carol", at, "WA", 0, lines("d"))
+	addAttempt(t, database, f, py, "dave", at, "TLE", 50, lines("e"))
+	gen := &fakeGen{}
+	_, err := RunContestMoss(context.Background(), database, f.contest.ID, &fakeChecker{}, gen)
+	require.NoError(t, err)
+	r := readAI(t, f.contest.ID)
+	for _, row := range r.Rows {
+		require.Equal(t, "alice", row.Username)
+	}
+	require.Len(t, r.Problems, 1)
+	require.Equal(t, "C++", r.Problems[0].Language)
+	require.Equal(t, 1, r.Problems[0].Contestants)
+	for _, in := range gen.inputs {
+		require.Equal(t, "C++", in.Language, "no generation for a language nobody solved")
+	}
+	require.FileExists(t, filepath.Join(ContestReportDir(f.contest.ID), "knap", LanguageSlug("Python"), "index.html"), "code copy still compares non-AC contestants")
 }
 
 func TestAIDetect_MissingReferenceTableDegrades(t *testing.T) {

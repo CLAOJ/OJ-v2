@@ -91,6 +91,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 		type entry struct {
 			user, source string
 			id           uint
+			ac           bool // the best submission in this language is AC
 		}
 		byLang := map[string][]entry{}
 		attempts := map[string]map[string][]aiAttempt{} // language -> user -> attempts
@@ -125,7 +126,7 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			if _, ok := byLang[s.Language]; !ok {
 				langs = append(langs, s.Language)
 			}
-			byLang[s.Language] = append(byLang[s.Language], entry{s.Username, s.Source, s.ID})
+			byLang[s.Language] = append(byLang[s.Language], entry{s.Username, s.Source, s.ID, s.Result != nil && *s.Result == "AC"})
 		}
 		sort.Strings(langs)
 
@@ -183,11 +184,18 @@ func RunContestMoss(ctx context.Context, tx *gorm.DB, contestID uint, chk Checke
 			}
 			rows = append(rows, row)
 
+			// The AI check covers only contestants who ended with AC in this
+			// language: a cheater who pasted AI code got it accepted, and a
+			// problem x language nobody solved costs no LLM calls.
 			l := aiLang{Problem: p, Lang: lang, Slug: slug, Attempts: attempts[lang], Rewrites: rewrites, RewriteSubs: rewriteSubs, RewriteLang: rewriteLang}
 			for _, e := range ents {
-				l.Best = append(l.Best, aiAttempt{ID: e.id, Username: e.user, Source: e.source})
+				if e.ac {
+					l.Best = append(l.Best, aiAttempt{ID: e.id, Username: e.user, Source: e.source})
+				}
 			}
-			aiLangs = append(aiLangs, l)
+			if len(l.Best) > 0 {
+				aiLangs = append(aiLangs, l)
+			}
 		}
 	}
 
@@ -330,6 +338,9 @@ func IsContestMossRunning(contestID uint) bool {
 
 // EnqueueContestMoss queues one run per contest; a second request while one
 // is pending returns ErrMossAlreadyRunning.
+// mossJobTimeout leaves aiGenerateBudget room for the compare50 runs.
+const mossJobTimeout = 90 * time.Minute
+
 func EnqueueContestMoss(contestID uint) error {
 	payload, err := json.Marshal(contestMossPayload{ContestID: contestID})
 	if err != nil {
@@ -338,7 +349,7 @@ func EnqueueContestMoss(contestID uint) error {
 	taskID := fmt.Sprintf("contest_moss:%d", contestID)
 	task := asynq.NewTask(TypeContestMoss, payload,
 		asynq.MaxRetry(0),
-		asynq.Timeout(30*time.Minute),
+		asynq.Timeout(mossJobTimeout),
 		asynq.TaskID(taskID),
 	)
 	// A run that failed stays archived/completed under the fixed TaskID, which

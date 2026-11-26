@@ -182,10 +182,18 @@ func aiGenExtractCode(reply string) string {
 }
 
 // aiGenerateBudget is the total time all of a run's generation calls may take
-// (a var so tests can shrink it). The job's asynq timeout is 30 minutes.
-var aiGenerateBudget = 20 * time.Minute
+// (a var so tests can shrink it). It stays under the job's asynq timeout
+// (mossJobTimeout) with room for the compare50 runs. A full set of 5 levels
+// for 5 problems x 2 languages took over 20 min on prod.
+var aiGenerateBudget = 75 * time.Minute
 
 var errAIBudget = errors.New("time budget")
+
+// aiGenJob is one generation call: target index and its input.
+type aiGenJob struct {
+	t  int
+	in GenerateInput
+}
 
 type aiGenTarget struct {
 	Problem models.Problem
@@ -205,11 +213,7 @@ func EnsureReferences(ctx context.Context, tx *gorm.DB, gen Generator, p models.
 // return an error.
 func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, targets []aiGenTarget, budget time.Duration) (map[[2]string]string, error) {
 	notes := map[[2]string]string{}
-	type job struct {
-		t  int
-		in GenerateInput
-	}
-	var jobs []job
+	var jobs []aiGenJob
 	for i, t := range targets {
 		key := [2]string{t.Problem.Code, t.Lang}
 		if gen == nil {
@@ -242,7 +246,7 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 				continue
 			}
 			slots--
-			jobs = append(jobs, job{i, GenerateInput{Statement: p.Description, Language: t.Lang,
+			jobs = append(jobs, aiGenJob{i, GenerateInput{Statement: p.Description, Language: t.Lang,
 				TimeLimit: p.TimeLimit, MemoryLimitKB: int(p.MemoryLimit), Effort: e}})
 		}
 	}
@@ -259,6 +263,7 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 	defer cancel()
 	sources := make([]string, len(jobs))
 	errs := make([]error, len(jobs))
+	firstErr := map[int]error{}
 	// One level at a time (jobs are sorted by level): DeepSeek reuses the
 	// prompt cache only after a request with the same prefix has finished, and
 	// all thinking levels share one cache (off does not). So per problem only
@@ -275,12 +280,21 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 			ins[k] = jobs[start+k].in
 		}
 		runAIGenLevel(bctx, gen, ins, sources[start:end], errs[start:end])
+		// Store each level as it finishes, so a run cut short (redeploy, job
+		// timeout) keeps what it paid for.
+		if err := storeAIGenLevel(tx, gen.Model(), targets, jobs[start:end], sources[start:end], errs[start:end], firstErr); err != nil {
+			return nil, err
+		}
 		start = end
 	}
+	for t, err := range firstErr {
+		notes[[2]string{targets[t].Problem.Code, targets[t].Lang}] = "generation_failed: " + aiGenClip(err.Error(), 200)
+	}
+	return notes, nil
+}
 
-	model := gen.Model()
+func storeAIGenLevel(tx *gorm.DB, model string, targets []aiGenTarget, jobs []aiGenJob, sources []string, errs []error, firstErr map[int]error) error {
 	now := time.Now()
-	firstErr := map[int]error{}
 	for i, j := range jobs {
 		src, err := sources[i], errs[i]
 		if err == nil && strings.TrimSpace(src) == "" {
@@ -297,13 +311,10 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 		ref := models.PlagiarismAIReference{ProblemID: p.ID, Language: targets[j.t].Lang, Source: src, Origin: "generated",
 			Model: &tagged, CreatedAt: now}
 		if err := tx.Create(&ref).Error; err != nil {
-			return nil, err
+			return err
 		}
 	}
-	for t, err := range firstErr {
-		notes[[2]string{targets[t].Problem.Code, targets[t].Lang}] = "generation_failed: " + aiGenClip(err.Error(), 200)
-	}
-	return notes, nil
+	return nil
 }
 
 // aiGenRetryable lists the statuses compare50 retries: rate limits and overload.
