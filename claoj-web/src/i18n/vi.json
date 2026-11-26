@@ -2986,7 +2986,8 @@
           "no_statement": "Bài tập không có đề bài để sinh lời giải.",
           "no_references": "Chưa có lời giải tham chiếu nào.",
           "no_references_table": "Thiếu bảng lời giải tham chiếu; hãy chạy scripts/v2_runtime_tables.sql.",
-          "generation_failed": "Sinh lời giải thất bại"
+          "generation_failed": "Sinh lời giải thất bại",
+          "generation_incomplete": "Chưa sinh xong trong thời gian cho phép; lần chạy sau sẽ sinh tiếp các mức còn thiếu"
         },
         "add": "Thêm lời giải",
         "addTitle": "Thêm lời giải tham chiếu",
@@ -2997,6 +2998,8 @@
         "regenerate": "Sinh lại",
         "regenerateConfirm": "Xóa các lời giải do AI sinh của bài này? Chúng sẽ được tạo lại ở lần chạy tiếp theo.",
         "deleteRef": "Xóa lời giải",
+        "viewRef": "Xem code",
+        "close": "Đóng",
         "deleteConfirm": "Xóa lời giải tham chiếu này?",
         "appliesNext": "Có hiệu lực ở lần chạy tiếp theo.",
         "noRefs": "Chưa có lời giải tham chiếu."

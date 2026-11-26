@@ -264,6 +264,7 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 	sources := make([]string, len(jobs))
 	errs := make([]error, len(jobs))
 	firstErr := map[int]error{}
+	missed := map[int][]string{} // target -> levels cut off by the budget
 	// One level at a time (jobs are sorted by level): DeepSeek reuses the
 	// prompt cache only after a request with the same prefix has finished, and
 	// all thinking levels share one cache (off does not). So per problem only
@@ -282,10 +283,15 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 		runAIGenLevel(bctx, gen, ins, sources[start:end], errs[start:end])
 		// Store each level as it finishes, so a run cut short (redeploy, job
 		// timeout) keeps what it paid for.
-		if err := storeAIGenLevel(tx, gen.Model(), targets, jobs[start:end], sources[start:end], errs[start:end], firstErr); err != nil {
+		if err := storeAIGenLevel(tx, gen.Model(), targets, jobs[start:end], sources[start:end], errs[start:end], firstErr, missed); err != nil {
 			return nil, err
 		}
 		start = end
+	}
+	// Running out of time is not a failure: the next run generates the
+	// missing levels. A real error wins over it.
+	for t, levels := range missed {
+		notes[[2]string{targets[t].Problem.Code, targets[t].Lang}] = "generation_incomplete: " + strings.Join(levels, ", ")
 	}
 	for t, err := range firstErr {
 		notes[[2]string{targets[t].Problem.Code, targets[t].Lang}] = "generation_failed: " + aiGenClip(err.Error(), 200)
@@ -293,12 +299,16 @@ func EnsureAllReferences(ctx context.Context, tx *gorm.DB, gen Generator, target
 	return notes, nil
 }
 
-func storeAIGenLevel(tx *gorm.DB, model string, targets []aiGenTarget, jobs []aiGenJob, sources []string, errs []error, firstErr map[int]error) error {
+func storeAIGenLevel(tx *gorm.DB, model string, targets []aiGenTarget, jobs []aiGenJob, sources []string, errs []error, firstErr map[int]error, missed map[int][]string) error {
 	now := time.Now()
 	for i, j := range jobs {
 		src, err := sources[i], errs[i]
 		if err == nil && strings.TrimSpace(src) == "" {
 			err = errors.New("empty reply")
+		}
+		if errors.Is(err, errAIBudget) {
+			missed[j.t] = append(missed[j.t], j.in.Effort)
+			continue
 		}
 		if err != nil {
 			if firstErr[j.t] == nil {

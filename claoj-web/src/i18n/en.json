@@ -2986,7 +2986,8 @@
           "no_statement": "The problem has no statement to generate from.",
           "no_references": "No reference solutions are available.",
           "no_references_table": "The reference table is missing; apply scripts/v2_runtime_tables.sql.",
-          "generation_failed": "Generation failed"
+          "generation_failed": "Generation failed",
+          "generation_incomplete": "Not finished in time; the next run generates the missing levels"
         },
         "add": "Add reference",
         "addTitle": "Add a reference solution",
@@ -2997,6 +2998,8 @@
         "regenerate": "Regenerate",
         "regenerateConfirm": "Delete the generated references for this problem? They are created again on the next run.",
         "deleteRef": "Delete reference",
+        "viewRef": "View code",
+        "close": "Close",
         "deleteConfirm": "Delete this reference solution?",
         "appliesNext": "Applies on the next run.",
         "noRefs": "No reference solutions yet."

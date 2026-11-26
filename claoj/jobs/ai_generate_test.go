@@ -253,7 +253,8 @@ func TestEnsureAllReferences_BudgetAbandonsSlowCalls(t *testing.T) {
 		[]aiGenTarget{{f.problem, "C++"}}, 200*time.Millisecond)
 	require.NoError(t, err)
 	require.Less(t, time.Since(start), 5*time.Second)
-	require.Equal(t, "generation_failed: time budget", notes[[2]string{f.problem.Code, "C++"}])
+	// Levels run in order, so the first three finish and high, max run out of time.
+	require.Equal(t, "generation_incomplete: high, max", notes[[2]string{f.problem.Code, "C++"}])
 	require.Equal(t, int64(3), countRefs(t, database, f.problem.ID, "C++", "generated"), "finished refs are kept")
 }
 

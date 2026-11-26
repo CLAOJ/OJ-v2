@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { adminContestApi, adminMossApi, adminErrorMessage, type AIProblem } from '@/lib/adminApi';
+import { Eye, ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { adminContestApi, adminMossApi, adminErrorMessage, type AIProblem, type AIReference } from '@/lib/adminApi';
 import { useConfirm } from '@/components/providers/ConfirmProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Textarea } from '@/components/ui/Textarea';
@@ -24,6 +24,7 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
     const [problem, setProblem] = useState('');
     const [lang, setLang] = useState('');
     const [source, setSource] = useState('');
+    const [viewing, setViewing] = useState<AIReference | null>(null);
 
     const report = useQuery({
         queryKey: ['admin-contest-moss-ai', contestKey],
@@ -203,7 +204,14 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
                                             {mine.map(r => (
                                                 <li key={r.id} className="flex items-center gap-2 text-xs">
                                                     <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{r.origin}</span>
-                                                    <span className="font-mono text-muted-foreground">{r.model || '—'}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setViewing(r)}
+                                                        className="inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-foreground hover:underline"
+                                                    >
+                                                        <Eye size={12} aria-hidden /> {r.model || '—'}
+                                                        <span className="sr-only">{t('moss.ai.viewRef')}</span>
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         aria-label={t('moss.ai.deleteRef')}
@@ -263,6 +271,20 @@ export default function AiTab({ contestKey, languages, problems }: { contestKey:
                         >
                             {t('moss.ai.save')}
                         </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={viewing !== null} onOpenChange={o => { if (!o) setViewing(null); }}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {viewing && `${viewing.problem_code} · ${viewing.language} · ${viewing.origin}${viewing.model ? ` · ${viewing.model}` : ''}`}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <pre className="max-h-[65vh] overflow-auto rounded-md border bg-muted/40 p-3 text-xs font-mono whitespace-pre">{viewing?.source}</pre>
+                    <DialogFooter>
+                        <button type="button" onClick={() => setViewing(null)} className="h-8 px-3 rounded-md border text-sm hover:bg-muted">{t('moss.ai.close')}</button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
