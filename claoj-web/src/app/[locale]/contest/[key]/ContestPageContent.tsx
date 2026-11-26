@@ -441,12 +441,12 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
                                     <div className="relative">
                                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-500" />
                                         <p className="text-xs font-medium text-zinc-500 ">{t('startTime')}</p>
-                                        <p className="text-sm font-medium">{dayjs(contest.start_time).format('HH:mm, DD MMM YYYY')}</p>
+                                        <p className="text-sm font-medium">{dayjs(contest.start_time).format('ll HH:mm')}</p>
                                     </div>
                                     <div className="relative">
                                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-rose-500" />
                                         <p className="text-xs font-medium text-zinc-500 ">{t('endTime')}</p>
-                                        <p className="text-sm font-medium">{dayjs(contest.end_time).format('HH:mm, DD MMM YYYY')}</p>
+                                        <p className="text-sm font-medium">{dayjs(contest.end_time).format('ll HH:mm')}</p>
                                     </div>
                                 </div>
                             </section>

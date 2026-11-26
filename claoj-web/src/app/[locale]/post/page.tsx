@@ -112,7 +112,7 @@ export default function BlogListPage() {
                                     <div className="flex items-center gap-6 text-xs font-medium text-muted-foreground ">
                                         <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded border">
                                             <Calendar size={14} className="text-primary" />
-                                            {dayjs(post.publish_on).format('DD MMM YYYY')}
+                                            {dayjs(post.publish_on).format('ll')}
                                         </span>
                                         <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded border">
                                             <TrendingUp size={14} className="text-emerald-500" />

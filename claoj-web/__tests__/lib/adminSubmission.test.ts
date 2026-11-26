@@ -36,10 +36,17 @@ const detail: AdminSubmissionDetail = {
 };
 
 describe('adminSubmission helpers', () => {
-    it('formats timestamps as datetime-local in UTC', () => {
-        expect(toAdminDateTime('2026-11-20T10:01:00Z')).toBe('2026-11-20T10:01');
+    it('formats timestamps as datetime-local in the browser time zone', () => {
+        expect(toAdminDateTime(new Date(2026, 10, 20, 10, 1).toISOString())).toBe('2026-11-20T10:01');
         expect(toAdminDateTime(null)).toBe('');
         expect(toAdminDateTime('nope')).toBe('');
+    });
+
+    it('sends an edited local time as an RFC 3339 instant', () => {
+        const values = { ...toSubmissionEditValues(detail), judged_date: '2026-11-20T12:00' };
+        expect(buildSubmissionUpdatePayload(detail, values)).toEqual({
+            judged_date: new Date(2026, 10, 20, 12, 0).toISOString(),
+        });
     });
 
     it('sends nothing when nothing changed', () => {

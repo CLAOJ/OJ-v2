@@ -85,7 +85,7 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
                     <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
                         <span className="flex items-center gap-2">
                             <Calendar size={14} className="text-primary" />
-                            {dayjs(post.publish_on).format('DD MMMM YYYY')}
+                            {dayjs(post.publish_on).format('LL')}
                         </span>
                         <span className="flex items-center gap-2">
                             <div className="flex items-center gap-1">

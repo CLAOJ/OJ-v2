@@ -711,7 +711,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                                         </Link>
                                                     </td>
                                                     <td className="px-6 py-4 text-center text-sm text-muted-foreground">
-                                                        {dayjs(c.start_time).format('YYYY-MM-DD HH:mm')}
+                                                        {dayjs(c.start_time).format('L HH:mm')}
                                                     </td>
                                                     <td className="px-6 py-4 text-center text-sm text-muted-foreground">
                                                         {dayjs(c.end_time).diff(dayjs(c.start_time), 'minute')}m

@@ -12,6 +12,7 @@ import type { AdminProblemDetail, SolutionCreateRequest, SolutionUpdateRequest }
 import Link from 'next/link';
 import CodeEditor from '@/components/ui/CodeEditor';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { toLocalInput } from '@/lib/adminForms';
 
 export default function AdminSolutionEditorPage() {
     const params = useParams();
@@ -56,8 +57,8 @@ export default function AdminSolutionEditorPage() {
             setSummary(solution.data.summary);
             setIsPublic(solution.data.is_public);
             setIsOfficial(solution.data.is_official);
-            setPublishOn(solution.data.publish_on ? new Date(solution.data.publish_on).toISOString().slice(0, 16) : '');
-            setValidUntil(solution.data.valid_until ? new Date(solution.data.valid_until).toISOString().slice(0, 16) : '');
+            setPublishOn(solution.data.publish_on ? toLocalInput(solution.data.publish_on) : '');
+            setValidUntil(solution.data.valid_until ? toLocalInput(solution.data.valid_until) : '');
             setLanguage(solution.data.language);
         }
     }

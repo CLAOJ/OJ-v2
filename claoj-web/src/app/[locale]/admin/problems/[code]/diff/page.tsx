@@ -161,7 +161,7 @@ export default function ProblemDiffMatrixPage() {
                                         </td>
                                         <td className="px-3 py-2 text-muted-foreground">{row.language}</td>
                                         <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                                            {dayjs(row.date).format('YYYY-MM-DD HH:mm')}
+                                            {dayjs(row.date).format('L HH:mm')}
                                         </td>
                                         {matrix.caseNumbers.map(c => {
                                             const cell = row.cells.get(c);

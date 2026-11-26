@@ -150,7 +150,7 @@ export default function ContestProblemRankPage() {
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-right text-xs text-muted-foreground">
-                                        {dayjs(row.date).format('YYYY-MM-DD HH:mm')}
+                                        {dayjs(row.date).format('L HH:mm')}
                                     </td>
                                 </tr>
                             ))}

@@ -17,13 +17,13 @@ export interface SubmissionEditValues {
     source: string;
 }
 
-/** ISO timestamp -> value for <input type="datetime-local">, interpreted in UTC. */
+/** ISO timestamp -> value for <input type="datetime-local">, in the browser's time zone (sent back as RFC 3339). */
 export function toAdminDateTime(iso: string | null | undefined): string {
     if (!iso) return '';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /**
@@ -51,7 +51,7 @@ export function buildSubmissionUpdatePayload(
         payload.judged_on_id = values.judged_on_id ? Number(values.judged_on_id) : null;
     }
     if (values.judged_date !== toAdminDateTime(original.judged_date)) {
-        payload.judged_date = values.judged_date || null;
+        payload.judged_date = values.judged_date ? new Date(values.judged_date).toISOString() : null;
     }
 
     if (values.error !== (original.error ?? '')) payload.error = values.error;
@@ -62,7 +62,7 @@ export function buildSubmissionUpdatePayload(
     }
 
     if (values.locked_after !== toAdminDateTime(original.locked_after)) {
-        payload.locked_after = values.locked_after || null;
+        payload.locked_after = values.locked_after ? new Date(values.locked_after).toISOString() : null;
     }
     if (values.is_archived !== original.is_archived) payload.is_archived = values.is_archived;
     if (values.source !== original.source) payload.source = values.source;

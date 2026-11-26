@@ -11,7 +11,7 @@ export type DateFormat = 'relative' | 'short' | 'long' | 'datetime' | 'time';
 /**
  * Format a date string or Date object using dayjs
  * @param date - The date to format (string or Date object)
- * @param format - The format style: 'relative' (from now), 'short' (MMM D, YYYY), 'long' (full date with time), 'datetime' (YYYY-MM-DD HH:mm:ss), 'time' (HH:mm:ss)
+ * @param format - The format style: 'relative' (from now), 'short' (MMM D, YYYY), 'long' (full date, 24h time), 'datetime' (locale date + HH:mm:ss), 'time' (HH:mm:ss)
  * @param locale - Optional locale; omitted, the app-wide locale set by DayjsLocale applies
  * @returns Formatted date string
  */
@@ -26,9 +26,9 @@ export function formatDate(date: string | Date | null | undefined, format: DateF
         case 'short':
             return d.format('ll');
         case 'long':
-            return d.format('LLL');
+            return d.format('LL HH:mm');
         case 'datetime':
-            return d.format('YYYY-MM-DD HH:mm:ss');
+            return d.format('L HH:mm:ss');
         case 'time':
             return d.format('HH:mm:ss');
         default:

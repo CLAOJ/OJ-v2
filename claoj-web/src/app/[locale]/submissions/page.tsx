@@ -407,7 +407,7 @@ export default function SubmissionListPage() {
                                             </td>
                                             <td className="hidden sm:table-cell px-3 text-right text-xs text-muted-foreground whitespace-nowrap">{submissionTime(s)}</td>
                                             <td className="hidden md:table-cell px-3 text-right text-xs text-muted-foreground whitespace-nowrap">{submissionMemory(s)}</td>
-                                            <td className="px-3 text-right text-xs text-muted-foreground whitespace-nowrap" title={dayjs(s.date).format('YYYY-MM-DD HH:mm:ss')}>
+                                            <td className="px-3 text-right text-xs text-muted-foreground whitespace-nowrap" title={dayjs(s.date).format('L HH:mm:ss')}>
                                                 {dayjs(s.date).fromNow()}
                                             </td>
                                             {isAdmin && (

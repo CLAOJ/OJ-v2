@@ -29,6 +29,7 @@ import { Switch } from '@/components/ui/Switch';
 import { Select } from '@/components/ui/Select';
 import { EntityPicker, EntityOption } from '@/components/admin/EntityPicker';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { toLocalInput, fromLocalInput } from '@/lib/adminForms';
 import { MarkdownImageButton } from '@/components/admin/MarkdownImageButton';
 import { searchUsers } from '@/lib/adminSearch';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -515,8 +516,8 @@ export default function BlogPostAdminPage() {
                                 <Input
                                     id="publish_on"
                                     type="datetime-local"
-                                    value={formData.publish_on ? new Date(formData.publish_on).toISOString().slice(0, 16) : ''}
-                                    onChange={(e) => setFormData({ ...formData, publish_on: new Date(e.target.value).toISOString() })}
+                                    value={formData.publish_on ? toLocalInput(formData.publish_on) : ''}
+                                    onChange={(e) => e.target.value && setFormData({ ...formData, publish_on: fromLocalInput(e.target.value) })}
                                 />
                             </div>
                             <div className="grid gap-2">
