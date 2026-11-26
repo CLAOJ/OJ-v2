@@ -20,7 +20,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 DUMPS="$HERE/dumps"
 mkdir -p "$DUMPS"
 
-CORE_TABLES="judge_language judge_problem judge_contest judge_contestproblem judge_contestparticipation judge_contestsubmission"
+CORE_TABLES="judge_language judge_problem judge_contest judge_contestproblem judge_contestparticipation judge_contestsubmission judge_rating"
 
 # Single quotes keep $MYSQL_* literal here; the container's sh expands them.
 MYSQL_CREDS='-u"$MYSQL_USER" -p"$MYSQL_PASSWORD"'
@@ -44,7 +44,9 @@ prod "mariadb-dump $MYSQL_CREDS --no-tablespaces --single-transaction --skip-loc
 
 echo "export reduced user tables as TSV"
 prod "mariadb $MYSQL_CREDS --default-character-set=utf8mb4 -N -B $MYSQL_DB -e $(printf '%q' 'SELECT id, username FROM auth_user')" > "$DUMPS/auth_user.tsv"
-prod "mariadb $MYSQL_CREDS --default-character-set=utf8mb4 -N -B $MYSQL_DB -e $(printf '%q' 'SELECT id, user_id FROM judge_profile')" > "$DUMPS/judge_profile.tsv"
+prod "mariadb $MYSQL_CREDS --default-character-set=utf8mb4 -N -B $MYSQL_DB -e $(printf '%q' 'SELECT id, user_id, rating FROM judge_profile')" > "$DUMPS/judge_profile.tsv"
+echo "export non-contest submissions (history signals) as TSV"
+prod "mariadb $MYSQL_CREDS --default-character-set=utf8mb4 -N -B $MYSQL_DB -e $(printf '%q' 'SELECT id, user_id, problem_id, language_id, date, result, points, status FROM judge_submission WHERE contest_object_id IS NULL')" > "$DUMPS/submissions_noncontest.tsv"
 
 echo "start local MariaDB on 127.0.0.1:$LOCAL_PORT"
 docker volume inspect "$LOCAL_VOLUME" >/dev/null 2>&1 || docker volume create "$LOCAL_VOLUME" >/dev/null
@@ -79,7 +81,7 @@ local_sql "$LOCAL_DB" < "$DUMPS/submissions.sql"
 local_sql "$LOCAL_DB" < "$DUMPS/sources.sql"
 local_sql "$LOCAL_DB" -e "
   CREATE TABLE auth_user (id INT PRIMARY KEY, username VARCHAR(150) NOT NULL) CHARACTER SET utf8mb4;
-  CREATE TABLE judge_profile (id INT PRIMARY KEY, user_id INT NOT NULL) CHARACTER SET utf8mb4;"
+  CREATE TABLE judge_profile (id INT PRIMARY KEY, user_id INT NOT NULL, rating INT NULL) CHARACTER SET utf8mb4;"
 
 # Load the reduced TSVs through a file inside the container (server-side LOAD DATA).
 load_tsv() { # $1 table, $2 tsv file name, $3 column list
@@ -88,7 +90,18 @@ load_tsv() { # $1 table, $2 tsv file name, $3 column list
   docker exec "$LOCAL_CONTAINER" rm -f "/tmp/$2"
 }
 load_tsv auth_user auth_user.tsv "id, username"
-load_tsv judge_profile judge_profile.tsv "id, user_id"
+load_tsv judge_profile judge_profile.tsv "id, user_id, rating"
+
+# Non-contest submissions: only the history columns. sql_mode='' lets the other
+# NOT NULL columns take their implicit defaults; INSERT IGNORE skips existing ids.
+docker exec -i "$LOCAL_CONTAINER" sh -c "cat > /tmp/sub_nc.tsv" < "$DUMPS/submissions_noncontest.tsv"
+local_sql "$LOCAL_DB" -e "SET SESSION sql_mode=''; CREATE TEMPORARY TABLE sub_nc (id INT, user_id INT, problem_id INT, language_id INT, date DATETIME(6), result VARCHAR(3), points DOUBLE, status VARCHAR(2));
+  LOAD DATA INFILE '/tmp/sub_nc.tsv' INTO TABLE sub_nc CHARACTER SET utf8mb4 FIELDS TERMINATED BY '\t';
+  INSERT IGNORE INTO judge_submission (id, user_id, problem_id, language_id, date, result, points, status) SELECT id, user_id, problem_id, language_id, date, result, points, status FROM sub_nc;"
+docker exec "$LOCAL_CONTAINER" rm -f /tmp/sub_nc.tsv
+
+echo "apply v2 runtime tables"
+local_sql "$LOCAL_DB" < "$HERE/../v2_runtime_tables.sql"
 
 echo "done. Local DB: mysql://root@127.0.0.1:$LOCAL_PORT/$LOCAL_DB"
 echo "dumps kept in $DUMPS (gitignored; they contain contestants' code)"
