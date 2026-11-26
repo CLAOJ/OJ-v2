@@ -27,7 +27,7 @@ func setupContestMossDB(t *testing.T) (root, staff models.AuthUser, contest mode
 	require.NoError(t, database.AutoMigrate(
 		&models.AuthUser{}, &models.AuthGroup{}, &models.DjangoContentType{}, &models.AuthPermission{},
 		&models.AuthUserGroup{}, &models.AuthGroupPermission{}, &models.AuthUserPermission{},
-		&models.Profile{}, &models.Problem{}, &models.Contest{}, &models.PlagiarismResult{}, &models.MiscConfig{},
+		&models.Profile{}, &models.Problem{}, &models.Contest{}, &models.PlagiarismResult{}, &models.PlagiarismAIReference{}, &models.MiscConfig{},
 	))
 	// The list handler LEFT JOINs judge_contestproblem for ordering.
 	require.NoError(t, database.Migrator().DropTable("judge_contestproblem"))
