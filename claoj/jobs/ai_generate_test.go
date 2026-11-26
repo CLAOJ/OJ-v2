@@ -117,6 +117,25 @@ func TestEnsureReferences_PartialFailure(t *testing.T) {
 	require.Equal(t, int64(aiRefsPerLang-1), countRefs(t, database, f.problem.ID, "C++", "generated"))
 }
 
+type emptyGen struct{ fakeGen }
+
+func (e *emptyGen) Generate(ctx context.Context, in GenerateInput) (string, error) {
+	if n := e.calls.Add(1); n <= 2 {
+		return "  ", nil
+	}
+	return "real code", nil
+}
+
+func TestEnsureReferences_EmptyReplyIsFailure(t *testing.T) {
+	database := setupMossDB(t)
+	f := newContest(t, database)
+	f.problem.Description = longStatement()
+	note, err := EnsureReferences(context.Background(), database, &emptyGen{}, f.problem, "C++")
+	require.NoError(t, err)
+	require.Contains(t, note, "generation_failed: empty reply")
+	require.Equal(t, int64(aiRefsPerLang-2), countRefs(t, database, f.problem.ID, "C++", "generated"))
+}
+
 func TestLLMGenerator_ExtractsFencedCode(t *testing.T) {
 	var gotAuth, gotPath string
 	var gotBody map[string]any

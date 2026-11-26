@@ -201,6 +201,9 @@ func EnsureReferences(ctx context.Context, tx *gorm.DB, gen Generator, p models.
 	now := time.Now()
 	var firstErr error
 	for i, src := range sources {
+		if errs[i] == nil && strings.TrimSpace(src) == "" {
+			errs[i] = errors.New("empty reply")
+		}
 		if errs[i] != nil {
 			if firstErr == nil {
 				firstErr = errs[i]
