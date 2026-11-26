@@ -36,7 +36,7 @@ func HandleEvent(judge *models.Judge, pkt Packet, clientIP string) error {
 
 	// judge-status also carries no submission-id: it reports the latency the
 	// agent measured posting to this backend — v2's replacement for v1's
-	// websocket ping (load is kept separately by jobs.SyncJudgeStatus).
+	// websocket ping, plus the machine load (online is jobs.MarkJudgeAlive's).
 	if pkt.Name() == "judge-status" {
 		return onJudgeStatus(judge, pkt, clientIP)
 	}

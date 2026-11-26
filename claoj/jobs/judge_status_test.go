@@ -4,78 +4,59 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
-	"github.com/hibiken/asynq"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func setupJudgeRow(t *testing.T) {
-	t.Helper()
+func TestJudgeStatus_PerJudgeBeat(t *testing.T) {
 	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
 	require.NoError(t, err)
 	require.NoError(t, database.AutoMigrate(&models.Judge{}))
 	db.DB = database
-	require.NoError(t, db.DB.Create(&models.Judge{Name: "Vịt Toàn Năng", AuthKey: "k", Created: time.Now()}).Error)
-}
+	mr := miniredis.RunT(t)
+	old := cache.Client
+	cache.Client = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { cache.Client = old })
 
-func useServers(t *testing.T, servers []*asynq.ServerInfo) {
-	t.Helper()
-	old := listServers
-	t.Cleanup(func() { listServers = old })
-	listServers = func() ([]*asynq.ServerInfo, error) { return servers, nil }
-}
+	a := models.Judge{Name: "a", AuthKey: "k", Created: time.Now()}
+	b := models.Judge{Name: "b", AuthKey: "k", Created: time.Now()}
+	v1 := models.Judge{Name: "v1", AuthKey: "k", Created: time.Now(), Online: true}
+	require.NoError(t, db.DB.Create(&a).Error)
+	require.NoError(t, db.DB.Create(&b).Error)
+	require.NoError(t, db.DB.Create(&v1).Error)
+	get := func(id uint) models.Judge {
+		var j models.Judge
+		require.NoError(t, db.DB.First(&j, id).Error)
+		return j
+	}
 
-func loadJudge(t *testing.T) models.Judge {
-	t.Helper()
-	var j models.Judge
-	require.NoError(t, db.DB.Where("name = ?", "Vịt Toàn Năng").First(&j).Error)
-	return j
-}
+	require.NoError(t, MarkJudgeAlive(a.ID))
+	require.NoError(t, MarkJudgeAlive(b.ID))
+	ja := get(a.ID)
+	assert.True(t, ja.Online)
+	require.NotNil(t, ja.StartTime)
+	started := *ja.StartTime
 
-func TestSyncJudgeStatus_OnlineWhenAJudgeWorkerIsUp(t *testing.T) {
-	setupJudgeRow(t)
-	started := time.Date(2026, 10, 9, 8, 0, 0, 0, time.UTC)
-	useServers(t, []*asynq.ServerInfo{
-		{Queues: map[string]int{"default": 3}, Concurrency: 10, Started: started.Add(-time.Hour)}, // a backend
-		{Queues: map[string]int{"judge": 1}, Concurrency: 1, Started: started, ActiveWorkers: []*asynq.WorkerInfo{{}}},
-		{Queues: map[string]int{"judge": 1}, Concurrency: 1, Started: started.Add(time.Minute)},
-	})
+	// A later beat keeps start_time.
+	require.NoError(t, MarkJudgeAlive(a.ID))
+	assert.True(t, get(a.ID).StartTime.Equal(started))
 
-	require.NoError(t, SyncJudgeStatus("Vịt Toàn Năng"))
-	j := loadJudge(t)
-	assert.True(t, j.Online)
-	require.NotNil(t, j.StartTime)
-	assert.True(t, j.StartTime.Equal(started))
-}
+	// b stops beating: only b goes offline; v1's row (not listed) is untouched.
+	mr.Del(judgeBeatKey(b.ID))
+	require.NoError(t, SyncJudgeStatus([]string{"a", "b"}))
+	assert.True(t, get(a.ID).Online)
+	assert.False(t, get(b.ID).Online)
+	assert.True(t, get(v1.ID).Online)
 
-func TestSyncJudgeStatus_OfflineWhenNoJudgeWorker(t *testing.T) {
-	setupJudgeRow(t)
-	require.NoError(t, db.DB.Model(&models.Judge{}).Where("name = ?", "Vịt Toàn Năng").Update("online", true).Error)
-	useServers(t, []*asynq.ServerInfo{{Queues: map[string]int{"default": 3}, Concurrency: 10}})
-
-	require.NoError(t, SyncJudgeStatus("Vịt Toàn Năng"))
-	assert.False(t, loadJudge(t).Online)
-}
-
-// SyncJudgeStatus owns online/start_time only; load is the agent's (v1
-// parity), so an offline sync must not touch load or start_time.
-func TestSyncJudgeStatus_OfflineLeavesLoadAndStartTime(t *testing.T) {
-	setupJudgeRow(t)
-	started := time.Date(2026, 10, 9, 8, 0, 0, 0, time.UTC)
-	require.NoError(t, db.DB.Model(&models.Judge{}).Where("name = ?", "Vịt Toàn Năng").
-		Updates(map[string]interface{}{"online": true, "load": 0.03, "start_time": started}).Error)
-	useServers(t, []*asynq.ServerInfo{{Queues: map[string]int{"default": 3}, Concurrency: 10}})
-
-	require.NoError(t, SyncJudgeStatus("Vịt Toàn Năng"))
-
-	j := loadJudge(t)
-	assert.False(t, j.Online)
-	require.NotNil(t, j.Load)
-	assert.InDelta(t, 0.03, *j.Load, 1e-9)
-	require.NotNil(t, j.StartTime)
-	assert.True(t, j.StartTime.Equal(started))
+	// TTL expiry does the same as a missing beat.
+	mr.FastForward(judgeBeatTTL + time.Second)
+	require.NoError(t, SyncJudgeStatus([]string{"a", "b"}))
+	assert.False(t, get(a.ID).Online)
 }

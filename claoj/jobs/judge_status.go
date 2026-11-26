@@ -2,55 +2,61 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/CLAOJ/claoj/cache"
 	"github.com/CLAOJ/claoj/db"
 	"github.com/CLAOJ/claoj/models"
-	"github.com/hibiken/asynq"
 )
 
-// listServers is a seam overridden in tests.
-var listServers = func() ([]*asynq.ServerInfo, error) { return Inspector.Servers() }
+// judgeBeatTTL is how long a judge stays online after its last packet. Agents
+// send judge-status every 30 s, so three missed beats mark it offline.
+const judgeBeatTTL = 90 * time.Second
 
-// SyncJudgeStatus mirrors asynq's worker heartbeats into the shared v2
-// judge_judge row: online if any server consumes queue "judge", start_time =
-// oldest such server. Every backend replica may run it; the writes are
-// idempotent. load is NOT set here — the judge agent reports the machine's
-// 1-minute load average (v1 parity) via a judge-status event, so overwriting
-// it with queue utilisation would clobber that.
-func SyncJudgeStatus(judgeName string) error {
-	servers, err := listServers()
-	if err != nil {
+func judgeBeatKey(id uint) string { return fmt.Sprintf("judge:beat:%d", id) }
+
+// MarkJudgeAlive records a packet from judge id: a Redis beat (shared by every
+// backend replica) and online=1, with start_time when it was offline. Each
+// agent signs in with its own judge_judge row, so every v2 judge shows up
+// under its own name. load is the agent's (judge-status), never set here.
+func MarkJudgeAlive(id uint) error {
+	if err := cache.Client.Set(cache.Ctx, judgeBeatKey(id), 1, judgeBeatTTL).Err(); err != nil {
 		return err
 	}
+	return db.DB.Model(&models.Judge{}).Where("id = ? AND online = ?", id, false).
+		Updates(map[string]interface{}{"online": true, "start_time": time.Now()}).Error
+}
 
-	var judges int
-	var started time.Time
-	for _, s := range servers {
-		if _, ok := s.Queues[QueueJudge]; !ok {
-			continue
+// SyncJudgeStatus marks offline the v2 judges (names; v1's rows belong to v1's
+// bridge) whose beat expired. Idempotent, so every backend replica may run it.
+func SyncJudgeStatus(names []string) error {
+	var online []models.Judge
+	if err := db.DB.Select("id").Where("name IN ? AND online = ?", names, true).Find(&online).Error; err != nil {
+		return err
+	}
+	for _, j := range online {
+		n, err := cache.Client.Exists(cache.Ctx, judgeBeatKey(j.ID)).Result()
+		if err != nil {
+			return err
 		}
-		judges++
-		if started.IsZero() || s.Started.Before(started) {
-			started = s.Started
+		if n == 0 {
+			if err := db.DB.Model(&models.Judge{}).Where("id = ?", j.ID).Update("online", false).Error; err != nil {
+				return err
+			}
 		}
 	}
-
-	updates := map[string]interface{}{"online": judges > 0}
-	if judges > 0 {
-		updates["start_time"] = started
-	}
-	return db.DB.Model(&models.Judge{}).Where("name = ?", judgeName).Updates(updates).Error
+	return nil
 }
 
 // RunJudgeStatusLoop calls SyncJudgeStatus now and then every interval
 // until ctx is done.
-func RunJudgeStatusLoop(ctx context.Context, judgeName string, every time.Duration) {
+func RunJudgeStatusLoop(ctx context.Context, names []string, every time.Duration) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
-		if err := SyncJudgeStatus(judgeName); err != nil {
+		if err := SyncJudgeStatus(names); err != nil {
 			log.Printf("jobs: judge status sync: %v", err)
 		}
 		select {

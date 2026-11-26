@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/CLAOJ/claoj/api"
@@ -39,7 +40,12 @@ func main() {
 	jobs.InitClient()
 	go jobs.StartWorker()
 	if config.C.Judge.Name != "" {
-		go jobs.RunJudgeStatusLoop(context.Background(), config.C.Judge.Name, 30*time.Second)
+		// Comma-separated: one judge_judge row per v2 agent.
+		names := strings.Split(config.C.Judge.Name, ",")
+		for i := range names {
+			names[i] = strings.TrimSpace(names[i])
+		}
+		go jobs.RunJudgeStatusLoop(context.Background(), names, 30*time.Second)
 	} else {
 		log.Printf("warning: JUDGE_NAME unset; judge online status is not synced")
 	}

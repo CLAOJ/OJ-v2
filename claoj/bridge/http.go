@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/CLAOJ/claoj/db"
+	"github.com/CLAOJ/claoj/jobs"
 	"github.com/CLAOJ/claoj/models"
 	"github.com/gin-gonic/gin"
 )
@@ -33,6 +34,12 @@ func EventHandler(c *gin.Context) {
 	if pkt.Name() == "judge-runtimes" {
 		if err := RecordLastIP(judge.ID, c.ClientIP()); err != nil {
 			log.Printf("bridge: %s from %q: record last_ip: %v", pkt.Name(), judge.Name, err)
+		}
+	}
+	// Handshake and the 30 s status beat keep this judge's row online.
+	if pkt.Name() == "judge-runtimes" || pkt.Name() == "judge-status" {
+		if err := jobs.MarkJudgeAlive(judge.ID); err != nil {
+			log.Printf("bridge: %s from %q: mark alive: %v", pkt.Name(), judge.Name, err)
 		}
 	}
 
