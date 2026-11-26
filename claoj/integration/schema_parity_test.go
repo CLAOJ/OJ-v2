@@ -74,6 +74,7 @@ func TestSchemaParity(t *testing.T) {
 		&authv2.OAuthUserLink{},
 		&models.CommentRevision{},
 		&models.ContestClarification{},
+		&models.PlagiarismResult{}, &models.PlagiarismAIReference{},
 	}
 	for _, m := range retainedV2Models {
 		err := database.Limit(1).Find(m).Error
