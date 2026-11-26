@@ -51,12 +51,19 @@ func (c Compare50) Check(ctx context.Context, subsDir, archiveDir, outDir string
 		return err
 	}
 	args := []string{"-m", "compare50"}
+	folders := 0
 	for _, e := range entries {
 		if e.IsDir() {
 			args = append(args, "./"+e.Name())
+			folders++
 		}
 	}
 	if archiveDir != "" {
+		// The fork keeps the n best pairs after the archive-only filter, which
+		// leaves one pair per folder; n = folders so none is dropped.
+		if folders > 0 {
+			maxPairs = folders
+		}
 		archives, err := os.ReadDir(archiveDir)
 		if err != nil {
 			return err
