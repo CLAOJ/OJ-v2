@@ -230,6 +230,7 @@ func SubmissionDetail(c *gin.Context) {
 		Preload("Problem.Testers").
 		Preload("Language").
 		Preload("Source").
+		Preload("JudgedOn").
 		Preload("TestCases", "1=1 ORDER BY `case` ASC").
 		Where("id = ?", id).First(&sub).Error; err != nil {
 		c.JSON(http.StatusNotFound, apiUserError("submission not found"))
@@ -310,6 +311,12 @@ func SubmissionDetail(c *gin.Context) {
 		testCases[i] = item
 	}
 
+	// v1 info-base.html: "on <judge>" only for those who can edit the problem.
+	judgedOn := ""
+	if sub.JudgedOn != nil && auth.CanEditProblem(c, &sub.Problem) {
+		judgedOn = sub.JudgedOn.Name
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":           sub.ID,
 		"problem":      sub.Problem.Code,
@@ -330,6 +337,7 @@ func SubmissionDetail(c *gin.Context) {
 		"case_total":         sub.CaseTotal,
 		"test_cases":         testCases,
 		"can_view_testcases": canViewTest,
+		"judged_on":          judgedOn,
 		// Websocket channel with live grading events; unguessable, so only
 		// viewers of this page learn it.
 		"event_channel": SubmissionEventChannel(sub.ID),

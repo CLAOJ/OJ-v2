@@ -31,7 +31,8 @@ import {
     Loader2,
     ArrowLeft,
     ExternalLink,
-    GitCompare
+    GitCompare,
+    Server
 } from 'lucide-react';
 import { cn, getStatusColor, getStatusVariant } from '@/lib/utils';
 import { statusKey } from '@/lib/submissionStatus';
@@ -65,6 +66,7 @@ interface SubmissionDetail {
     date: string;
     language: string;
     language_name?: string;
+    judged_on?: string;
     status: string;
     result: string | null;
     points: number | null;
@@ -314,6 +316,12 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                                 <Calendar size={16} />
                                 {dayjs(sub.date).format('ll HH:mm:ss')}
                             </span>
+                            {sub.judged_on && (
+                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Server size={16} />
+                                    <span className="font-medium">{sub.judged_on}</span>
+                                </span>
+                            )}
                             <span className="flex items-center gap-1.5 text-muted-foreground">
                                 <FileCode size={16} />
                                 <span className="font-mono uppercase">{sub.language}</span>
