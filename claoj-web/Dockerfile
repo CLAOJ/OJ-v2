@@ -35,6 +35,10 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV PORT=3000
+# Server-rendered dates (dayjs/Date use the process time zone) must match what
+# visitors' browsers compute, or React discards the HTML on hydration (#418).
+# The audience is in Vietnam; elsewhere React re-renders with local times.
+ENV TZ=Asia/Ho_Chi_Minh
 # Next.js workers per container (see cluster.mjs); one process uses ~1.5 cores.
 ENV WEB_CONCURRENCY=4
 
