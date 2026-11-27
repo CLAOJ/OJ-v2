@@ -8,7 +8,7 @@ type Messages = Record<string, unknown>;
  * payload, so shipping them everywhere cost ~18% of a /problems render.
  * Sections that need them ask for them via `messagesFor(locale, [...])`.
  */
-export const SECTION_ONLY_NAMESPACES = ['Admin', 'admin', 'Settings'] as const;
+export const SECTION_ONLY_NAMESPACES = ['Admin', 'admin', 'AdminGroups', 'Settings'] as const;
 
 /** Bits of section-only namespaces that the root layout renders on every page. */
 export const ALWAYS_INCLUDED = ['Admin.impersonation'] as const;

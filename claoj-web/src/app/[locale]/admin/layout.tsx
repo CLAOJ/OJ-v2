@@ -11,7 +11,7 @@ export default async function AdminLayout({
 }) {
     const { locale } = await params;
     return (
-        <ScopedIntl locale={locale} include={['Admin', 'admin']}>
+        <ScopedIntl locale={locale} include={['Admin', 'admin', 'AdminGroups']}>
             <AdminShell>{children}</AdminShell>
         </ScopedIntl>
     );
