@@ -126,9 +126,17 @@ export default function BlogPageContent({ params, initial }: { params: Promise<{
 
                     <div className="flex items-center justify-between py-6 border-y">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
-                                <User size={20} />
-                            </div>
+                            {post.authors[0]?.avatar_url ? (
+                                <img
+                                    src={post.authors[0].avatar_url}
+                                    alt=""
+                                    className="w-10 h-10 rounded-md bg-muted object-cover shrink-0"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+                                    <User size={20} />
+                                </div>
+                            )}
                             <div className="flex flex-col">
                                 <span className="text-xs font-medium text-muted-foreground">{t('authors')}</span>
                                 <span className="text-sm font-medium">

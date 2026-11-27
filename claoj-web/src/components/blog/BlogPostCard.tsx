@@ -49,7 +49,11 @@ export default function BlogPostCard({ post }: { post: BlogPost }) {
 
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <User size={16} className="text-muted-foreground" />
+                    {post.authors[0]?.avatar_url ? (
+                        <img src={post.authors[0].avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                        <User size={16} className="text-muted-foreground" />
+                    )}
                     <span className="text-sm font-medium text-muted-foreground">
                         {post.authors.map(a => a.username).join(', ')}
                     </span>

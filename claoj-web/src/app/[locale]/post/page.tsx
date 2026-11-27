@@ -131,9 +131,17 @@ export default function BlogListPage() {
 
                                     <div className="flex items-center justify-between pt-6 border-t mt-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-medium shadow-sm">
-                                                {post.authors[0]?.username?.[0]?.toUpperCase()}
-                                            </div>
+                                            {post.authors[0]?.avatar_url ? (
+                                                <img
+                                                    src={post.authors[0].avatar_url}
+                                                    alt=""
+                                                    className="w-10 h-10 rounded-md bg-muted object-cover shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-medium shadow-sm">
+                                                    {post.authors[0]?.username?.[0]?.toUpperCase()}
+                                                </div>
+                                            )}
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-medium text-muted-foreground ">{t('authors')}</span>
                                                 <span className="text-sm font-medium">

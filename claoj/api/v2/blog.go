@@ -66,8 +66,9 @@ func BlogList(c *gin.Context) {
 	}
 
 	type Author struct {
-		Username string `json:"username"`
-		Rating   *int   `json:"rating"`
+		Username  string `json:"username"`
+		Rating    *int   `json:"rating"`
+		AvatarURL string `json:"avatar_url"`
 	}
 	type Item struct {
 		ID        uint      `json:"id"`
@@ -102,11 +103,20 @@ func BlogList(c *gin.Context) {
 		commentCount[r.Page] = r.N
 	}
 
+	// One query for every post's author avatars (uploaded avatar or Gravatar).
+	authorIDs := []uint{}
+	for _, p := range posts {
+		for _, a := range p.Authors {
+			authorIDs = append(authorIDs, a.ID)
+		}
+	}
+	avatars := avatarOverrides(authorIDs)
+
 	items := make([]Item, len(posts))
 	for i, p := range posts {
 		authors := make([]Author, len(p.Authors))
 		for j, a := range p.Authors {
-			authors[j] = Author{a.User.Username, a.Rating}
+			authors[j] = Author{a.User.Username, a.Rating, avatarURLFrom(&a, avatars)}
 		}
 		items[i] = Item{
 			ID: p.ID, Title: p.Title, Slug: p.Slug, Authors: authors, PublishOn: p.PublishOn,
@@ -162,12 +172,13 @@ func BlogDetail(c *gin.Context) {
 
 	// Serialize authors as clean DTOs instead of leaking full GORM models
 	type AuthorDTO struct {
-		Username string `json:"username"`
-		Rating   *int   `json:"rating"`
+		Username  string `json:"username"`
+		Rating    *int   `json:"rating"`
+		AvatarURL string `json:"avatar_url"`
 	}
 	authorDTOs := make([]AuthorDTO, len(post.Authors))
 	for i, a := range post.Authors {
-		authorDTOs[i] = AuthorDTO{a.User.Username, a.Rating}
+		authorDTOs[i] = AuthorDTO{a.User.Username, a.Rating, getAvatarURL(&a)}
 	}
 
 	// can_edit drives the "edit post" link on the post page; it is the same

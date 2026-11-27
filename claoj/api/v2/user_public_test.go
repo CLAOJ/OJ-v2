@@ -234,6 +234,10 @@ func TestBlogList_AuthorFilter(t *testing.T) {
 	require.Equal(t, "mine", body["data"].([]any)[0].(map[string]any)["title"])
 	require.InDelta(t, float64(1), body["total"].(float64), 1e-9)
 
+	// The post pages render this as the author avatar (uploaded or Gravatar).
+	author := body["data"].([]any)[0].(map[string]any)["authors"].([]any)[0].(map[string]any)
+	require.NotEmpty(t, author["avatar_url"])
+
 	_, byID := profileGet(t, 0, "/blogs?author="+strconv.Itoa(int(fx.profile.ID)), "/blogs", BlogList)
 	require.Len(t, byID["data"].([]any), 1)
 
