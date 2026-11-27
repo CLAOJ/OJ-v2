@@ -62,7 +62,7 @@ const PdfStatementViewer = dynamic(() => import('@/components/ui/PdfStatementVie
     ),
 });
 
-export default function ProblemPageContent({ params }: { params: Promise<{ code: string }> }) {
+export default function ProblemPageContent({ params, initial }: { params: Promise<{ code: string }>; initial?: ProblemDetail | null }) {
     const { code } = use(params);
     const searchParams = useSearchParams();
     const contestKey = searchParams.get('contest');
@@ -87,6 +87,8 @@ export default function ProblemPageContent({ params }: { params: Promise<{ code:
 
     const { data: problem, isLoading } = useQuery({
         queryKey: ['problem', code, contestKey],
+        initialData: contestKey ? undefined : initial ?? undefined,
+        initialDataUpdatedAt: 0,
         queryFn: async () => {
             const url = contestKey ? `/problem/${code}?contest=${contestKey}` : `/problem/${code}`;
             const res = await api.get<ProblemDetail>(url);

@@ -63,7 +63,7 @@ const RatingTooltip = ({ active, payload }: { active?: boolean; payload?: { payl
     }
     return null;
 };
-export default function UserProfilePageContent({ params }: { params: Promise<{ username: string }> }) {
+export default function UserProfilePageContent({ params, initial }: { params: Promise<{ username: string }>; initial?: UserDetail | null }) {
     const { username } = use(params);
     const t = useTranslations('Users');
     const pt = useTranslations('Problems');
@@ -76,6 +76,8 @@ export default function UserProfilePageContent({ params }: { params: Promise<{ u
 
     const { data: user, isLoading: userLoading } = useQuery({
         queryKey: ['user', username],
+        initialData: initial ?? undefined,
+        initialDataUpdatedAt: 0,
         queryFn: async () => {
             const res = await api.get<UserDetail>(`/user/${username}`);
             return res.data;

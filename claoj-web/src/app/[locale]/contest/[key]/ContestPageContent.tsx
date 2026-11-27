@@ -54,7 +54,7 @@ dayjs.extend(relativeTime);
 
 const PARTICIPATION_PAGE_SIZE = 50;
 
-export default function ContestPageContent({ params }: { params: Promise<{ key: string }> }) {
+export default function ContestPageContent({ params, initial }: { params: Promise<{ key: string }>; initial?: ContestDetail | null }) {
     const { key } = use(params);
     const t = useTranslations('Contest');
     const confirm = useConfirm();
@@ -95,6 +95,8 @@ export default function ContestPageContent({ params }: { params: Promise<{ key: 
 
     const { data: contest, isLoading: isFetching } = useQuery({
         queryKey: ['contest', key],
+        initialData: initial ?? undefined,
+        initialDataUpdatedAt: 0,
         queryFn: async () => {
             const res = await api.get<ContestDetail>(`/contest/${key}`);
             return res.data;

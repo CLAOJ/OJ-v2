@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { messagesFor } from '@/i18n/scope';
@@ -10,14 +11,17 @@ import { contestFormatLabel } from '@/lib/utils';
 const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 
 // Fetch contest data for metadata (server-side)
-async function fetchContest(key: string) {
+// cache(): generateMetadata and the page share one backend call per request.
+// Anonymous on purpose (public data only); the client refetches the
+// visitor's own view on mount.
+const fetchContest = cache(async (key: string) => {
   try {
     const res = await api.get(`/contest/${key}`);
     return res.data;
   } catch (error) {
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,
@@ -77,7 +81,7 @@ export default async function ContestPage({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       {contest && <ContestJsonLd contest={contest} />}
-      <ContestPageContent params={params} />
+      <ContestPageContent params={params} initial={contest} />
     </NextIntlClientProvider>
   );
 }

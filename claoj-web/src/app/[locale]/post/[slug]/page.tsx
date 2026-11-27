@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale } from 'next-intl/server';
 import { messagesFor } from '@/i18n/scope';
@@ -10,14 +11,17 @@ import { parseLeadingId } from '@/utils/route';
 const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 
 // Fetch blog post data for metadata (server-side)
-async function fetchBlogPost(id: string) {
+// cache(): generateMetadata and the page share one backend call per request.
+// Anonymous on purpose (public data only); the client refetches the
+// visitor's own view on mount.
+const fetchBlogPost = cache(async (id: string) => {
   try {
     const res = await api.get(`/blog/${id}`);
     return res.data;
   } catch (error) {
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,
@@ -74,7 +78,7 @@ export default async function BlogPage({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       {post && <ArticleJsonLd article={post} />}
-      <BlogPageContent params={params} />
+      <BlogPageContent params={params} initial={post} />
     </NextIntlClientProvider>
   );
 }

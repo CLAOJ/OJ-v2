@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale } from 'next-intl/server';
 import { messagesFor } from '@/i18n/scope';
@@ -9,14 +10,17 @@ import api from '@/lib/api';
 const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 
 // Fetch problem data for metadata (server-side)
-async function fetchProblem(code: string) {
+// cache(): generateMetadata and the page share one backend call per request.
+// Anonymous on purpose (public data only); the client refetches the
+// visitor's own view on mount.
+const fetchProblem = cache(async (code: string) => {
   try {
     const res = await api.get(`/problem/${code}`);
     return res.data;
   } catch (error) {
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,
@@ -68,7 +72,7 @@ export default async function ProblemPage({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       {problem && <ProblemJsonLd problem={problem} />}
-      <ProblemPageContent params={params} />
+      <ProblemPageContent params={params} initial={problem} />
     </NextIntlClientProvider>
   );
 }

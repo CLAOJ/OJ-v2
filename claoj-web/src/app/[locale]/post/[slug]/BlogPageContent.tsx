@@ -28,7 +28,7 @@ import { blogVoteApi } from '@/lib/api';
 import { parseLeadingId } from '@/utils/route';
 import type { ApiError } from '@/lib/api';
 
-export default function BlogPageContent({ params }: { params: Promise<{ slug: string }> }) {
+export default function BlogPageContent({ params, initial }: { params: Promise<{ slug: string }>; initial?: BlogPostDetail | null }) {
     const { slug } = use(params);
     const id = parseLeadingId(slug);
     const t = useTranslations('Blog');
@@ -37,6 +37,8 @@ export default function BlogPageContent({ params }: { params: Promise<{ slug: st
 
     const { data: post, isLoading } = useQuery({
         queryKey: ['blog', id],
+        initialData: initial ?? undefined,
+        initialDataUpdatedAt: 0,
         queryFn: async () => {
             const res = await api.get<BlogPostDetail>(`/blog/${id}`);
             return res.data;

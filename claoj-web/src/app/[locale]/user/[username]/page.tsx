@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { messagesFor } from '@/i18n/scope';
@@ -9,14 +10,17 @@ import api from '@/lib/api';
 const SITE_URL = process.env.SITE_URL || 'https://beta.claoj.edu.vn';
 
 // Fetch user data for metadata (server-side)
-async function fetchUser(username: string) {
+// cache(): generateMetadata and the page share one backend call per request.
+// Anonymous on purpose (public data only); the client refetches the
+// visitor's own view on mount.
+const fetchUser = cache(async (username: string) => {
   try {
     const res = await api.get(`/user/${username}`);
     return res.data;
   } catch (error) {
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,
@@ -70,7 +74,7 @@ export default async function UserProfilePage({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       {user && <PersonJsonLd user={user} />}
-      <UserProfilePageContent params={params} />
+      <UserProfilePageContent params={params} initial={user} />
     </NextIntlClientProvider>
   );
 }
