@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import UserProfilePageContent from './UserProfilePageContent';
 import { PersonJsonLd } from '@/components/seo';
@@ -60,7 +61,7 @@ export default async function UserProfilePage({
   params: Promise<{ locale: string; username: string }>;
 }) {
   const { locale } = await params;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
   const { username } = await params;
 
   // Fetch user data for JSON-LD

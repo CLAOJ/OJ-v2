@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import EmailChangeConfirmContent from './EmailChangeConfirmContent';
 
@@ -17,7 +17,7 @@ export default async function EmailChangeConfirmPage({
 }) {
   const { locale } = await params;
   const { token } = await searchParams;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

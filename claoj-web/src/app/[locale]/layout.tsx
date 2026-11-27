@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
@@ -126,7 +127,7 @@ export default async function RootLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
   const tCommon = await getTranslations({ locale, namespace: 'Common' });
   const navigation = await getNavigation();
   // Without a session cookie the visitor is certainly logged out, so the navbar

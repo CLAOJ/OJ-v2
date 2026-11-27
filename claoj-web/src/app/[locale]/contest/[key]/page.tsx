@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import ContestPageContent from './ContestPageContent';
 import { ContestJsonLd } from '@/components/seo';
@@ -67,7 +68,7 @@ export default async function ContestPage({
   params: Promise<{ locale: string; key: string }>;
 }) {
   const { locale } = await params;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
   const { key } = await params;
 
   // Fetch contest data for JSON-LD

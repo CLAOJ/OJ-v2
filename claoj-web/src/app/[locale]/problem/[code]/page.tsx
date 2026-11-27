@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import ProblemPageContent from './ProblemPageContent';
 import { ProblemJsonLd } from '@/components/seo';
@@ -58,7 +59,7 @@ export default async function ProblemPage({
   params: Promise<{ locale: string; code: string }>;
 }) {
   const { locale } = await params;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
   const { code } = await params;
 
   // Fetch problem data for JSON-LD

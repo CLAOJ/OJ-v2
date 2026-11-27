@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import api from '@/lib/api';
@@ -62,7 +63,7 @@ export default async function ProblemsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const [messages, initial] = await Promise.all([getMessages({ locale }), fetchInitial()]);
+  const [messages, initial] = await Promise.all([messagesFor(locale), fetchInitial()]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

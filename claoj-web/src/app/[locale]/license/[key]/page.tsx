@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import LicensePageContent from './LicensePageContent';
 
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ key: stri
 
 export default async function LicensePage({ params }: { params: Promise<{ locale: string; key: string }> }) {
   const { locale } = await params;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

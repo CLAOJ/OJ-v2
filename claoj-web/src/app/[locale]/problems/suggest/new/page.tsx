@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import SuggestProblemForm from '@/components/problems/SuggestProblemForm';
 
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function SuggestProblemNewPage() {
   const locale = await getLocale();
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale, ["Admin.problemForm"]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

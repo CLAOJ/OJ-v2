@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
+import { messagesFor } from '@/i18n/scope';
 import type { Metadata } from 'next';
 import ContestsPageContent from '../../ContestsPageContent';
 
@@ -40,7 +41,7 @@ export default async function ContestTagPage({
   params: Promise<{ locale: string; name: string }>;
 }) {
   const { locale, name } = await params;
-  const messages = await getMessages({ locale });
+  const messages = await messagesFor(locale);
   const tag = decodeURIComponent(name);
 
   return (
