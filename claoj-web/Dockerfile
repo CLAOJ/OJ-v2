@@ -29,10 +29,13 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
+COPY cluster.mjs ./
 
 EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV PORT=3000
+# Next.js workers per container (see cluster.mjs); one process uses ~1.5 cores.
+ENV WEB_CONCURRENCY=4
 
-CMD ["npm", "start"]
+CMD ["node", "cluster.mjs"]

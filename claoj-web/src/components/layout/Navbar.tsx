@@ -59,7 +59,7 @@ export default function Navbar() {
                         {/* Logo and Nav Links */}
                         <div className="flex items-center gap-6">
                             {/* Logo */}
-                            <Link href="/" className="flex shrink-0 items-center gap-2 hover:opacity-80 transition-opacity">
+                            <Link prefetch={false} href="/" className="flex shrink-0 items-center gap-2 hover:opacity-80 transition-opacity">
                                 <Logo />
                             </Link>
 
@@ -71,7 +71,7 @@ export default function Navbar() {
                         <div className="flex items-center gap-3">
                             {/* Report Issue Button (ticket icon, as before the nav port) */}
                             {user && (
-                                <Link
+                                <Link prefetch={false}
                                     href="/ticket/create"
                                     className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors text-xs font-bold"
                                     title={t('report')}
@@ -114,7 +114,7 @@ export default function Navbar() {
                                     >
                                         {t('login')}
                                     </button>
-                                    <Link
+                                    <Link prefetch={false}
                                         href="/register"
                                         className="px-4 py-1.5 rounded bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
                                     >

@@ -64,7 +64,7 @@ export default function DesktopNav({ links }: DesktopNavProps) {
                         onMouseLeave={() => setOpenKey((current) => (current === link.key ? null : current))}
                     >
                         <div className="flex items-center">
-                            <Link
+                            <Link prefetch={false}
                                 href={link.href}
                                 aria-current={active ? 'page' : undefined}
                                 className={cn(
@@ -99,7 +99,7 @@ export default function DesktopNav({ links }: DesktopNavProps) {
                                 {link.children!.map((child) => {
                                     const childActive = activeKeys.has(child.key);
                                     return (
-                                        <Link
+                                        <Link prefetch={false}
                                             key={child.href}
                                             href={child.href}
                                             onClick={() => setOpenKey(null)}
@@ -120,7 +120,7 @@ export default function DesktopNav({ links }: DesktopNavProps) {
                     </div>
                 );
             })}
-            <Link
+            <Link prefetch={false}
                 href="/problems/random"
                 className={cn(
                     "px-3 py-2 text-sm font-medium transition-colors rounded flex items-center gap-1",

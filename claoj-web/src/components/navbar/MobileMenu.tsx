@@ -92,7 +92,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                 {/* Nav Links: same hierarchy as the DB/v1 tree, children indented */}
                                 {links.map((link) => (
                                     <div key={link.href} className="flex flex-col gap-3">
-                                        <Link
+                                        <Link prefetch={false}
                                             href={link.href}
                                             onClick={onToggle}
                                             aria-current={activeKeys.has(link.key) ? 'page' : undefined}
@@ -106,7 +106,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                         {link.children?.length ? (
                                             <div className="ml-2 flex flex-col gap-3 border-l border-border pl-4">
                                                 {link.children.map((child) => (
-                                                    <Link
+                                                    <Link prefetch={false}
                                                         key={child.href}
                                                         href={child.href}
                                                         onClick={onToggle}
@@ -125,7 +125,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                         ) : null}
                                     </div>
                                 ))}
-                                <Link
+                                <Link prefetch={false}
                                     href="/problems/random"
                                     onClick={onToggle}
                                     className={cn(
@@ -140,7 +140,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                 {/* Report issue: v2's ticket shortcut (v1 opened the
                                     ticket form from the user area, not the nav row). */}
                                 {user && (
-                                    <Link
+                                    <Link prefetch={false}
                                         href="/ticket/create"
                                         onClick={onToggle}
                                         className="text-xl font-semibold tracking-tight flex items-center gap-2 text-warning"
@@ -161,7 +161,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                         visitor never sees Login flash in the drawer. */}
                                     {loading ? null : !user ? (
                                         <div className="grid grid-cols-2 gap-4 mt-2">
-                                            <Link
+                                            <Link prefetch={false}
                                                 href="/login"
                                                 className="flex items-center justify-center h-12 rounded border border-border font-medium text-muted-foreground hover:bg-muted transition-colors"
                                                 onClick={() => {
@@ -171,7 +171,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                             >
                                                 {t('login')}
                                             </Link>
-                                            <Link
+                                            <Link prefetch={false}
                                                 href="/register"
                                                 className="flex items-center justify-center h-12 rounded bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all"
                                                 onClick={onToggle}
@@ -181,7 +181,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                         </div>
                                     ) : (
                                         <div className="flex flex-col gap-4 mt-2">
-                                            <Link
+                                            <Link prefetch={false}
                                                 href={`/user/${user.username}`}
                                                 className="flex items-center gap-3 p-4 rounded bg-primary/10 text-primary font-medium"
                                                 onClick={onToggle}
@@ -193,7 +193,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                             {/* Admin Section for Mobile */}
                                             {(user.is_staff || user.is_admin) && (
                                                 <div className="space-y-2">
-                                                    <Link
+                                                    <Link prefetch={false}
                                                         href="/admin"
                                                         className="flex items-center gap-3 p-4 rounded bg-warning/15 text-warning font-medium border border-warning/30"
                                                         onClick={onToggle}
@@ -202,28 +202,28 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                                         <span>{t('adminDashboard')}</span>
                                                     </Link>
                                                     <div className="grid grid-cols-2 gap-2 px-1">
-                                                        <Link
+                                                        <Link prefetch={false}
                                                             href="/admin/problems"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('problems')}
                                                         </Link>
-                                                        <Link
+                                                        <Link prefetch={false}
                                                             href="/admin/contests"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('contests')}
                                                         </Link>
-                                                        <Link
+                                                        <Link prefetch={false}
                                                             href="/admin/users"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
                                                         >
                                                             {t('users')}
                                                         </Link>
-                                                        <Link
+                                                        <Link prefetch={false}
                                                             href="/admin/tickets"
                                                             onClick={onToggle}
                                                             className="flex items-center justify-center gap-2 p-3 rounded bg-muted text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -234,7 +234,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                                 </div>
                                             )}
 
-                                            <Link
+                                            <Link prefetch={false}
                                                 href="/settings"
                                                 className="flex items-center gap-3 p-4 rounded bg-muted font-medium"
                                                 onClick={onToggle}
