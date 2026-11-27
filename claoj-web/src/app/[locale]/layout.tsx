@@ -16,6 +16,24 @@ import Footer from "@/components/layout/Footer";
 import { DEFAULT_SEO, SITE_URL, generateWebSiteJsonLd, generateOrganizationJsonLd } from '@/lib/seo';
 import JsonLd from '@/components/seo/JsonLd';
 import { Toaster } from 'sonner';
+import { cookies } from 'next/headers';
+import api from '@/lib/api';
+import type { NavigationItem } from '@/lib/navbar';
+
+// Navbar rows are public, site-wide and rarely edited (the API itself says
+// max-age=60), so each worker refetches at most once a minute. Rendering them on
+// the server stops the header swapping from the static fallback after load.
+let navCache: { at: number; data: NavigationItem[] } | null = null;
+async function getNavigation(): Promise<NavigationItem[] | null> {
+  if (navCache && Date.now() - navCache.at < 60_000) return navCache.data;
+  try {
+    const res = await api.get<{ data: NavigationItem[] }>('/navigation', { timeout: 2000 });
+    navCache = { at: Date.now(), data: res.data?.data ?? [] };
+    return navCache.data;
+  } catch {
+    return navCache?.data ?? null; // stale beats the fallback; null = fallback
+  }
+}
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -110,6 +128,11 @@ export default async function RootLayout({
   const { locale } = await params;
   const messages = await getMessages({ locale });
   const tCommon = await getTranslations({ locale, namespace: 'Common' });
+  const navigation = await getNavigation();
+  // Without a session cookie the visitor is certainly logged out, so the navbar
+  // can show Log in / Sign up in the HTML instead of after the /user/me probe.
+  const cookieStore = await cookies();
+  const hasSession = cookieStore.has('access_token') || cookieStore.has('refresh_token');
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -132,7 +155,7 @@ export default async function RootLayout({
                     {tCommon('skipToContent')}
                   </a>
                   <NameStyles />
-                  <Navbar />
+                  <Navbar initialNavigation={navigation} hasSession={hasSession} />
                   <ImpersonationBanner />
                   <main id="main-content" tabIndex={-1} className="flex-grow container mx-auto px-4 py-8 focus:outline-none">
                     {children}

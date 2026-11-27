@@ -19,14 +19,23 @@ import api from '@/lib/api';
 // The nav row mirrors v1's DB rows only: v2-only pages (Ratings) and the
 // ticket shortcut live outside it, as they did before the navbar port.
 
-export default function Navbar() {
+export default function Navbar({
+    initialNavigation = null,
+    hasSession = true,
+}: {
+    /** Server-fetched rows (layout.tsx); null = fetch them here instead. */
+    initialNavigation?: NavigationItem[] | null;
+    /** False when the request carried no session cookie: certainly logged out. */
+    hasSession?: boolean;
+}) {
     const { user, loading, logout } = useAuth();
     const t = useTranslations('Navbar');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
+    const [navigation, setNavigation] = useState<NavigationItem[] | null>(initialNavigation);
 
     useEffect(() => {
+        if (initialNavigation) return;
         let cancelled = false;
         api.get<{ data: NavigationItem[] }>('/navigation')
             .then((res) => {
@@ -36,7 +45,7 @@ export default function Navbar() {
             // renders the static fallback, so the header never disappears.
             .catch(() => {});
         return () => { cancelled = true; };
-    }, []);
+    }, [initialNavigation]);
 
     // v1 translated DB labels with gettext; the catalog map is the v2
     // equivalent, and labels it lacks render verbatim.
@@ -106,7 +115,7 @@ export default function Navbar() {
                                         onLogout={logout}
                                     />
                                 </>
-                            ) : loading ? null : (
+                            ) : loading && hasSession ? null : (
                                 <div className="hidden xl:flex items-center gap-2">
                                     <button
                                         onClick={handleLoginRedirect}
