@@ -151,6 +151,29 @@ func TestProfileSolved_ReturnsNameDateLanguageAndTests(t *testing.T) {
 	require.InDelta(t, 100.0, rows[1].(map[string]any)["points"].(float64), 1e-9)
 }
 
+// The rating table links each row to its contest, so contest_key must be
+// populated (it used to arrive empty because the scan field did not match the
+// SQL alias, sending the profile link to /contest/).
+func TestProfileRating_ReturnsContestKey(t *testing.T) {
+	fx := setupProfileDB(t)
+	require.NoError(t, db.DB.AutoMigrate(&models.Rating{}))
+
+	contest := models.Contest{Key: "rc1", Name: "Rating Contest", IsVisible: true}
+	require.NoError(t, db.DB.Omit(clause.Associations).Create(&contest).Error)
+	require.NoError(t, db.DB.Create(&models.Rating{
+		UserID: fx.profile.ID, ContestID: contest.ID, ParticipationID: 1,
+		Rank: 1, RatingVal: 1600, LastRated: time.Now(),
+	}).Error)
+
+	w, body := profileGet(t, 0, "/user/solver/rating", "/user/:user/rating", UserRatingHistory)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	rows := body["data"].([]any)
+	require.Len(t, rows, 1)
+	row := rows[0].(map[string]any)
+	require.Equal(t, "rc1", row["contest_key"])
+	require.Equal(t, "Rating Contest", row["contest"])
+}
+
 func TestProfileAnalytics_YearHeatmap(t *testing.T) {
 	fx := setupProfileDB(t)
 	// The endpoint keys days in UTC, so the fixture does too. Noon keeps the

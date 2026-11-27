@@ -268,10 +268,10 @@ func UserRatingHistory(c *gin.Context) {
 	}
 
 	var history []struct {
-		Date      time.Time `json:"date"`
-		Rating    int       `json:"rating"`
-		Contest   string    `json:"contest"`
-		ContestID string    `json:"contest_key"`
+		Date       time.Time `json:"date"`
+		Rating     int       `json:"rating"`
+		Contest    string    `json:"contest"`
+		ContestKey string    `json:"contest_key"`
 	}
 	// Scope the rating history to contests the viewer may see, so an
 	// organization-private contest's name is not revealed on a participant's
