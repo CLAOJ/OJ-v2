@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { Problem, PaginatedList, ProblemTaxonomy } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { hasPerm } from '@/lib/permissions';
-import { buildProblemListParams, addProblemType, removeProblemType } from '@/lib/problemFilters';
+import { buildProblemListParams, addProblemType, removeProblemType, defaultProblemListParams, DEFAULT_PROBLEM_PAGE_SIZE, TRENDING_LIMIT } from '@/lib/problemFilters';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link, useRouter } from '@/navigation';
 import { useState } from 'react';
@@ -23,15 +23,22 @@ import {
     X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PaginationBar, PAGE_SIZE_OPTIONS } from '@/components/ui/PaginationBar';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 
-const TRENDING_LIMIT = 5;
+/** Server-rendered first view (see page.tsx); any field may be missing if its fetch failed. */
+export interface ProblemsInitialData {
+    problems?: PaginatedList<Problem>;
+    groups?: ProblemTaxonomy[];
+    types?: ProblemTaxonomy[];
+    hot?: Problem[];
+}
+
 // Slider ceiling, and the points value at which the upper bound is not sent at
 // all: problems are authored with at most 100 points, and a hard `points_max`
 // must never hide anything above the slider range.
 const POINTS_MAX = 100;
 
-export default function ProblemsPageContent() {
+export default function ProblemsPageContent({ initial = {} }: { initial?: ProblemsInitialData }) {
     const t = useTranslations('Problems');
     const tCommon = useTranslations('Common');
     const router = useRouter();
@@ -46,27 +53,33 @@ export default function ProblemsPageContent() {
     const [sort, setSort] = useState<string>('date');
     const [order, setOrder] = useState<'asc' | 'desc'>('desc');
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[2]);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PROBLEM_PAGE_SIZE);
+
+    const listParams = buildProblemListParams({
+        search,
+        status: status !== 'all' ? status : '',
+        group,
+        types: problemTypes,
+        hasEditorial,
+        pointsMin,
+        pointsMax: pointsMax >= POINTS_MAX ? null : pointsMax,
+        sort,
+        order,
+        page,
+        pageSize,
+    }).toString();
+    const isDefaultView = listParams === defaultProblemListParams().toString();
 
     const { data: problemData, isLoading } = useQuery({
         queryKey: ['problems', search, status, group, problemTypes, hasEditorial, pointsMin, pointsMax, sort, order, page, pageSize],
         queryFn: async () => {
-            const params = buildProblemListParams({
-                search,
-                status: status !== 'all' ? status : '',
-                group,
-                types: problemTypes,
-                hasEditorial,
-                pointsMin,
-                pointsMax: pointsMax >= POINTS_MAX ? null : pointsMax,
-                sort,
-                order,
-                page,
-                pageSize,
-            });
-            const res = await api.get<PaginatedList<Problem>>(`/problems?${params.toString()}`);
+            const res = await api.get<PaginatedList<Problem>>(`/problems?${listParams}`);
             return res.data;
-        }
+        },
+        // Server copy shows instantly; marked stale so per-user `is_solved`
+        // is re-checked in the background with the browser's own session.
+        initialData: isDefaultView ? initial.problems : undefined,
+        initialDataUpdatedAt: 0,
     });
 
     // Filter vocabulary: v1 derives both selects from the full group/type tables.
@@ -77,14 +90,16 @@ export default function ProblemsPageContent() {
         queryFn: async () => {
             const res = await api.get<PaginatedList<ProblemTaxonomy>>('/problem-groups');
             return res.data.data;
-        }
+        },
+        initialData: initial.groups,
     });
     const { data: types } = useQuery({
         queryKey: ['public-problem-types'],
         queryFn: async () => {
             const res = await api.get<PaginatedList<ProblemTaxonomy>>('/problem-types');
             return res.data.data;
-        }
+        },
+        initialData: initial.types,
     });
 
     const { data: hotProblems } = useQuery({
@@ -94,7 +109,8 @@ export default function ProblemsPageContent() {
                 `/problems?sort=user_count&order=desc&page_size=${TRENDING_LIMIT}`
             );
             return res.data.data.slice(0, TRENDING_LIMIT);
-        }
+        },
+        initialData: initial.hot,
     });
 
     const launchRandomProblem = async () => {
@@ -309,6 +325,7 @@ export default function ProblemsPageContent() {
                             <li key={hp.code}>
                                 <Link
                                     href={`/problem/${hp.code}`}
+                                    prefetch={false}
                                     className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors"
                                     title={`${hp.code} · ${t('acPercent', { rate: Math.round(hp.ac_rate) })}`}
                                 >
@@ -372,7 +389,8 @@ export default function ProblemsPageContent() {
                                             </td>
                                             <td className="px-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{p.code}</td>
                                             <td className="px-3 max-w-0 w-full">
-                                                <Link href={`/problem/${p.code}`} className="block truncate font-medium hover:text-primary hover:underline underline-offset-4">
+                                                {/* No viewport prefetch: 50 rows meant 50 server renders per page view. */}
+                                                <Link href={`/problem/${p.code}`} prefetch={false} className="block truncate font-medium hover:text-primary hover:underline underline-offset-4">
                                                     {p.name}
                                                 </Link>
                                             </td>

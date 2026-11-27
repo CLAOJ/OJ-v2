@@ -38,6 +38,14 @@ export function buildProblemListParams(q: ProblemListQuery): URLSearchParams {
     return params;
 }
 
+/** The problems page's first view; the server renders this list into the HTML. */
+export const DEFAULT_PROBLEM_PAGE_SIZE = 50;
+export const TRENDING_LIMIT = 5;
+
+export function defaultProblemListParams(): URLSearchParams {
+    return buildProblemListParams({ pointsMin: 0, sort: 'date', order: 'desc', page: 1, pageSize: DEFAULT_PROBLEM_PAGE_SIZE });
+}
+
 /** Adds a problem type to the filter list, ignoring duplicates. */
 export function addProblemType(ids: number[], id: number): number[] {
     return ids.includes(id) ? ids : [...ids, id];
