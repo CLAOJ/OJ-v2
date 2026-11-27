@@ -159,31 +159,12 @@ export default function BlogListPage() {
                 {/* Sidebar Widgets */}
                 <aside className="w-full lg:w-80 flex flex-col gap-8 shrink-0">
                     {/* RSS/Atom Feed Links */}
-                    <div className="p-8 rounded-md border bg-card shadow-sm space-y-6">
-                        <h3 className="text-xs font-semibold text-primary flex items-center gap-3">
-                            <Rss size={16} />
-                            {t('subscribeToFeed')}
-                        </h3>
-                        <div className="space-y-3">
-                            <a
-                                href={blogFeedApi.getRssUrl()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 p-4 rounded-md bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:border-orange-300 transition-all group"
-                            >
-                                <Rss size={20} className="text-muted-foreground transition-transform" />
-                                <span className="text-sm font-medium text-orange-700">{t('rssFeed')}</span>
-                            </a>
-                            <a
-                                href={blogFeedApi.getAtomUrl()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 p-4 rounded-md bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all group"
-                            >
-                                <Rss size={20} className="text-muted-foreground transition-transform" />
-                                <span className="text-sm font-medium text-blue-700">{t('atomFeed')}</span>
-                            </a>
-                        </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Rss size={12} className="shrink-0" />
+                        <span>{t('subscribeToFeed')}:</span>
+                        <a href={blogFeedApi.getRssUrl()} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">RSS</a>
+                        <span aria-hidden>·</span>
+                        <a href={blogFeedApi.getAtomUrl()} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">Atom</a>
                     </div>
 
                     {/* Contests Widget */}
@@ -246,7 +227,7 @@ export default function BlogListPage() {
                                             )}>
                                                 {idx + 1}
                                             </div>
-                                            <span className="text-xs font-medium text-foreground truncate group-hover:text-amber-400 transition-colors">
+                                            <span data-name className="text-xs font-medium text-foreground truncate group-hover:text-amber-400 transition-colors">
                                                 {user.username}
                                             </span>
                                         </div>

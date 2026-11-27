@@ -136,7 +136,7 @@ function MemberTable({ members, sort, onSort }: MemberTableProps) {
                                             {(member.display_name || member.username)[0]?.toUpperCase()}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                                            <span data-name className="font-medium text-sm group-hover:text-primary transition-colors">
                                                 {member.display_name || member.username}
                                             </span>
                                             <span className="text-xs font-mono text-muted-foreground opacity-60">@{member.username}</span>

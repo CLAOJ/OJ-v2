@@ -44,7 +44,7 @@ export function SubmissionInfoCard({ title, submission }: SubmissionInfoCardProp
                     className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                 >
                     <User size={16} />
-                    <span className="font-medium">@{submission.user}</span>
+                    <span data-name className="font-medium">@{submission.user}</span>
                 </Link>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar size={16} />

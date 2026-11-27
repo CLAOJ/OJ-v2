@@ -37,6 +37,7 @@ export default function UserBlogPage() {
         <div className="max-w-4xl mx-auto space-y-8 mt-4 pb-20">
             <Link
                 href={`/user/${username}`}
+                data-plain
                 className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
                 <ArrowLeft size={16} />

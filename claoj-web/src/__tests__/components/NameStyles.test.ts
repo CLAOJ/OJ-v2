@@ -17,7 +17,7 @@ describe('nameStylesCss', () => {
         expect(css).not.toContain('bob');
         // A link that marks its name styles only that element.
         expect(css).toContain('a[href$="/user/alice"] [data-name]::before');
-        expect(css).toContain('a[href$="/user/alice"]:not(:has(img,[data-name]))');
+        expect(css).toContain('a[href$="/user/alice"]:not(:has(img,[data-name])):not([role=menuitem],[data-plain])');
     });
 
     it('sets the configured decoration, and none when unset', () => {

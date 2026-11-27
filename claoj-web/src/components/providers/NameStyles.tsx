@@ -24,14 +24,15 @@ const cssString = (s: string) => `"${s.replace(/[\\"]/g, '\\$&').replace(/[\r\n<
 // rules on every link to a styled user's profile, so no page needs to know
 // about display ranks. A link that marks its name with [data-name] (e.g. one
 // that also holds an avatar, @handle and organizations) styles only that
-// element; avatar links (containing an <img>) and menu items (e.g. the user
-// menu's own-profile entry) are left alone.
+// element; avatar links (containing an <img>), menu items (e.g. the user
+// menu's own-profile entry) and [data-plain] links (e.g. "back to profile")
+// are left alone.
 export function nameStylesCss({ styles, users }: NameStylesData): string {
     const byRank: Record<string, string[]> = {};
     for (const [username, rank] of Object.entries(users)) {
         if (!styles[rank]) continue;
         const a = `a[href$=${cssString('/user/' + username)}]`;
-        (byRank[rank] ??= []).push(`${a}:not(:has(img,[data-name])):not([role=menuitem])`, `${a} [data-name]`);
+        (byRank[rank] ??= []).push(`${a}:not(:has(img,[data-name])):not([role=menuitem],[data-plain])`, `${a} [data-name]`);
     }
     const out: string[] = [];
     for (const [rank, sels] of Object.entries(byRank)) {

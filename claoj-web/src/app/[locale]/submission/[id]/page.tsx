@@ -302,7 +302,7 @@ export default function SubmissionPage({ params }: { params: Promise<{ id: strin
                                 className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
                             >
                                 <User size={16} />
-                                <span className="font-medium">@{sub.user}</span>
+                                <span data-name className="font-medium">@{sub.user}</span>
                             </Link>
                             <Link
                                 href={`/problem/${sub.problem}`}

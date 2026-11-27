@@ -187,7 +187,7 @@ export default function MobileMenu({ isOpen, onToggle, links }: MobileMenuProps)
                                                 onClick={onToggle}
                                             >
                                                 <User size={20} />
-                                                <span>{user.username}</span>
+                                                <span data-name>{user.username}</span>
                                             </Link>
 
                                             {/* Admin Section for Mobile */}
