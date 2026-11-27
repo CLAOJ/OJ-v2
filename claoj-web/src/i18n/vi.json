@@ -1,10 +1,10 @@
 {
   "SEO": {
     "siteName": "CLAOJ - Nền tảng Lập trình Thi đấu",
-    "siteDescription": "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh trong và ngoài tỉnh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
+    "siteDescription": "Hệ thống chấm bài tự động CLAOJ, nơi học sinh trên cả nước rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
     "home": {
       "title": "CLAOJ - Nền tảng Lập trình Thi đấu",
-      "description": "CLAOJ, web chấm bài tự động trường THPT chuyên Long An: bài tập, kỳ thi và bảng xếp hạng cho học sinh Tin học."
+      "description": "CLAOJ, hệ thống chấm bài tự động: bài tập, kỳ thi và bảng xếp hạng cho học sinh Tin học."
     },
     "problems": {
       "title": "Bài tập",
@@ -123,7 +123,7 @@
     }
   },
   "Footer": {
-    "description": "Web chấm bài tự động trường THPT chuyên Long An",
+    "description": "Hệ thống chấm bài tự động CLAOJ",
     "platform": "Nền tảng",
     "support": "Hỗ trợ",
     "builtBy": "IT-CLA Productions",
@@ -145,7 +145,7 @@
   },
   "Home": {
     "welcome": "Chào mừng đến với CLAOJ",
-    "subtitle": "Web chấm bài tự động trường THPT chuyên Long An",
+    "subtitle": "Hệ thống chấm bài tự động CLAOJ",
     "blogTab": "Blog",
     "eventsTab": "Sự kiện",
     "latestPosts": "Bài đăng mới nhất",
@@ -766,7 +766,7 @@
     "noOrganizations": "Chưa tham gia tổ chức nào.",
     "aboutUser": "Giới thiệu về {username}",
     "noAboutInfo": "Người dùng này chưa chia sẻ thông tin nào về bản thân.",
-    "subtitle": "Thành viên CLAOJ, học sinh trong và ngoài tỉnh Long An.",
+    "subtitle": "Thành viên CLAOJ, học sinh trên cả nước.",
     "user": "Người dùng",
     "solved": "Đã giải",
     "moreOrganizations": "+{count} nữa",

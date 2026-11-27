@@ -244,4 +244,4 @@ Based on DMOJ - see [LICENSE](LICENSE) file.
 
 - Developed by IT-CLA Productions
 - Powered by [DMOJ](https://github.com/DMOJ/site) and VNOI
-- Long An HSGS Online Judge
+- CLAOJ

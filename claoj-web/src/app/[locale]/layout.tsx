@@ -46,10 +46,10 @@ const siteUrl = process.env.SITE_URL || "https://beta.claoj.edu.vn";
 
 export const metadata: Metadata = {
   title: {
-    default: "CLAOJ: Long An HSGS Online Judge",
+    default: "Hệ thống chấm bài tự động CLAOJ",
     template: "%s | CLAOJ",
   },
-  description: "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
+  description: "Hệ thống chấm bài tự động CLAOJ, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
   metadataBase: new URL(siteUrl),
   // NOTE: no blanket `alternates.canonical` here — a site-wide root canonical
   // makes every page look like a duplicate of the homepage. Each page sets its
@@ -57,8 +57,8 @@ export const metadata: Metadata = {
 
   // Open Graph
   openGraph: {
-    title: "CLAOJ: Long An HSGS Online Judge",
-    description: "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
+    title: "Hệ thống chấm bài tự động CLAOJ",
+    description: "Hệ thống chấm bài tự động CLAOJ, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
     siteName: "CLAOJ",
     images: [
       {
@@ -75,8 +75,8 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "CLAOJ: Long An HSGS Online Judge",
-    description: "Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
+    title: "Hệ thống chấm bài tự động CLAOJ",
+    description: "Hệ thống chấm bài tự động CLAOJ, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.",
     images: ["/static/icons/og_img.png"],
   },
 

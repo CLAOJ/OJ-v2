@@ -20,16 +20,16 @@ func TestListOrganizations_Search(t *testing.T) {
 	db.DB = database
 	for _, o := range []models.Organization{
 		{Name: "CLB ABA", Slug: "clb-aba", ShortName: "ABA"},
-		{Name: "Long An HSGS", Slug: "la-hsgs", ShortName: "HSGS"},
+		{Name: "Test Org", Slug: "test-org", ShortName: "TO"},
 	} {
 		o := o
 		require.NoError(t, database.Omit(clause.Associations).Create(&o).Error)
 	}
 
-	resp, err := NewOrganizationService().ListOrganizations(ListOrganizationsRequest{Page: 1, PageSize: 20, Search: "hsgs"})
+	resp, err := NewOrganizationService().ListOrganizations(ListOrganizationsRequest{Page: 1, PageSize: 20, Search: "test"})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), resp.Total)
-	require.Equal(t, "Long An HSGS", resp.Organizations[0].Name)
+	require.Equal(t, "Test Org", resp.Organizations[0].Name)
 
 	resp, _ = NewOrganizationService().ListOrganizations(ListOrganizationsRequest{Page: 1, PageSize: 20})
 	require.Equal(t, int64(2), resp.Total)

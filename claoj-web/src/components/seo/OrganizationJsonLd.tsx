@@ -20,7 +20,7 @@ export default function OrganizationJsonLd() {
     sameAs: [
       'https://github.com/claoj',
     ],
-    description: 'Web chấm bài tự động trường THPT chuyên Long An, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.',
+    description: 'Hệ thống chấm bài tự động CLAOJ, nơi học sinh rèn luyện Tin học cho các kỳ thi HSG, Tin học trẻ, Olympic 30/4.',
   };
 
   return <JsonLd data={organizationData} />;

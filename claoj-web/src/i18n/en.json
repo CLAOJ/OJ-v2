@@ -1,10 +1,10 @@
 {
   "SEO": {
     "siteName": "CLAOJ - Online Judge",
-    "siteDescription": "Long An HSGS Online Judge: where students from Long An and beyond practise informatics for HSG, Tin học trẻ and Olympic 30/4.",
+    "siteDescription": "CLAOJ: where students across the country practise informatics for HSG, Tin học trẻ and Olympic 30/4.",
     "home": {
       "title": "CLAOJ - Online Judge",
-      "description": "CLAOJ, the online judge of THPT chuyên Long An: problems, contests and rankings for informatics students."
+      "description": "CLAOJ, the online judge: problems, contests and rankings for informatics students."
     },
     "problems": {
       "title": "Problems",
@@ -123,7 +123,7 @@
     }
   },
   "Footer": {
-    "description": "Long An HSGS Online Judge",
+    "description": "CLAOJ",
     "platform": "Platform",
     "support": "Support",
     "builtBy": "IT-CLA Productions",
@@ -145,7 +145,7 @@
   },
   "Home": {
     "welcome": "Welcome to CLAOJ",
-    "subtitle": "Online judge of THPT chuyên Long An",
+    "subtitle": "Automatic judging system CLAOJ",
     "blogTab": "Blog",
     "eventsTab": "Events",
     "latestPosts": "Latest Blog Posts",
@@ -766,7 +766,7 @@
     "noOrganizations": "No organizations joined yet.",
     "aboutUser": "About {username}",
     "noAboutInfo": "This user hasn't shared anything about themselves yet.",
-    "subtitle": "CLAOJ members: students from Long An and beyond.",
+    "subtitle": "CLAOJ members: students across the country.",
     "user": "User",
     "solved": "Solved",
     "moreOrganizations": "+{count} more",
