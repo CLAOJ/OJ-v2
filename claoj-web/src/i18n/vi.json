@@ -648,7 +648,7 @@
     "placeholder": "Thảo luận về lời giải này...",
     "noComments": "Chưa có bình luận. Hãy là người đầu tiên thảo luận về lời giải này!",
     "guidelines": "Giữ thảo luận tập trung vào hướng giải của bài.",
-    "commentingOn": "Đang bình luận về lời giải",
+    "commentingOn": "Thảo luận về lời giải",
     "problemName": "Bài: {problemName}",
     "icon": "Book"
   },
@@ -657,7 +657,7 @@
     "placeholder": "Đặt câu hỏi hoặc thảo luận về bài tập này...",
     "noComments": "Chưa có bình luận. Hãy là người đầu tiên bình luận!",
     "guidelines": "Vui lòng thảo luận lịch sự và đúng chủ đề.",
-    "commentingOn": "Đang bình luận về bài tập",
+    "commentingOn": "Thảo luận về bài tập",
     "problemName": "{problemName}",
     "icon": "FileText"
   },
@@ -2924,8 +2924,8 @@
       "markdownHint": "Markdown. Công thức: ~x^2~ hoặc $x^2$ trong dòng, $$...$$ cho cả khối. Code: dùng khối ```."
     },
     "moss": {
-      "title": "Kiểm tra sao chép code",
-      "subtitle": "Báo cáo sao chép code theo từng bài tập và ngôn ngữ của kỳ thi.",
+      "title": "Kiểm tra gian lận",
+      "subtitle": "Báo cáo gian lận theo từng bài tập và ngôn ngữ của kỳ thi.",
       "contestLabel": "Kỳ thi",
       "contestPlaceholder": "Tìm kỳ thi theo mã hoặc tên",
       "contestList": "Danh sách kỳ thi",
@@ -2935,12 +2935,12 @@
         "ongoing": "Đang diễn ra",
         "past": "Đã kết thúc"
       },
-      "pickContest": "Chọn một kỳ thi để xem hoặc chạy kiểm tra sao chép code.",
-      "run": "Chạy kiểm tra sao chép code",
+      "pickContest": "Chọn một kỳ thi để xem hoặc chạy kiểm tra gian lận.",
+      "run": "Chạy kiểm tra gian lận",
       "running": "Đang chạy… kết quả tự cập nhật",
-      "queued": "Đã đưa kiểm tra sao chép code vào hàng đợi",
+      "queued": "Đã đưa kiểm tra gian lận vào hàng đợi",
       "clear": "Xóa kết quả",
-      "clearConfirm": "Xóa toàn bộ kết quả kiểm tra sao chép code của kỳ thi này?",
+      "clearConfirm": "Xóa toàn bộ kết quả kiểm tra gian lận của kỳ thi này?",
       "noResults": "Chưa có kết quả kiểm tra sao chép code. Hãy chạy kiểm tra để tạo.",
       "colProblem": "Bài tập",
       "colLanguage": "Ngôn ngữ",
