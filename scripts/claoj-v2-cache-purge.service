@@ -1,0 +1,13 @@
+[Unit]
+Description=Empty the v2 nginx page cache whenever claoj_v2_web (re)starts
+# Cached HTML names the previous build JS chunks; after a deploy those 404.
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/bin/sh -c "docker events --filter container=claoj_v2_web --filter event=start --format x | while read _; do sleep 5; docker exec claoj_v2_nginx find /var/cache/nginx/v2 -type f -delete && echo purged; done"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

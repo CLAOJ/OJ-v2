@@ -561,6 +561,47 @@ build leaves the running judge untouched; a busy queue defers the recreate to th
 next idle window. Install: `scripts/claoj-judge-updater.{service,timer}` plus a
 copy of the script at `/root/claoj-v2/judge-updater.sh`.
 
+### 10.1 v2 nginx and the shared page cache
+
+`claoj_v2_nginx` runs [`scripts/v2-nginx/v2.conf`](../scripts/v2-nginx/v2.conf),
+mounted from `/root/claoj-v2/nginx-conf.d/v2.conf` on the claoj host. The repo
+copy is the reference: edit it here, copy it to the host, then
+`docker exec claoj_v2_nginx nginx -t && docker exec claoj_v2_nginx nginx -s reload`.
+
+It keeps upstream connections alive (`upstream … resolve` + `keepalive`, so
+nginx follows Watchtower's container recreates) and microcaches page HTML for
+15 s:
+
+- **Logged-out views** of any page are cached.
+- **Logged-in views** are cached only for the pages in `map $uri $v2_public_page`:
+  `/`, `/problems`, `/contests`, `/ratings`, `/users`, `/organizations` and
+  `/problem|contest|user|post/<id>`. Everything else (submissions, admin,
+  settings, sub-pages such as `/problem/<code>/print`) bypasses the cache.
+- `$v2_logged_in` is part of the key, so logged-in and logged-out visitors get
+  separate copies (the navbar differs).
+
+**Rule for that list:** a page may be on it only if its server render reads no
+per-user data — no `cookies()` / `headers()` and no cookie forwarding to the
+API. Those pages fetch their data anonymously on the server and the client
+query refetches the visitor's own view on mount (`initialData` with
+`initialDataUpdatedAt: 0`), which is also how new problems, contests and
+rating changes show up without waiting for the cache. Before adding a page,
+check it with `grep -rn "next/headers" claoj-web/src`; a page that reads
+cookies on the server would serve one visitor's data to others.
+
+Server-rendered dates use the container's time zone (`TZ=Asia/Ho_Chi_Minh` in
+`claoj-web/Dockerfile`); it must match visitors' browsers or React throws
+hydration error #418 and discards the server HTML.
+
+**After a deploy** the cache is emptied by
+[`scripts/claoj-v2-cache-purge.service`](../scripts/claoj-v2-cache-purge.service),
+which watches for `claoj_v2_web` starting; otherwise cached HTML would point at
+the previous build's JS chunks for up to 15 s. Install it at
+`/etc/systemd/system/` and run
+`systemctl daemon-reload && systemctl enable --now claoj-v2-cache-purge`.
+Empty the cache by hand with
+`docker exec claoj_v2_nginx find /var/cache/nginx/v2 -type f -delete`.
+
 ## Judges and horizontal scaling (k3s / Docker Swarm)
 
 Submissions are queued in Redis (asynq queue `judge`); `claoj-judge`
