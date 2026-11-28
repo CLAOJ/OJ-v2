@@ -59,7 +59,7 @@ the host instead, for fast iteration (§4.1/§5).
 ## 2. Prerequisites
 
 - Docker + Docker Compose
-- Go 1.23+
+- Go 1.25+
 - Node 20+ / npm
 - Clone with `git clone --recurse-submodules`, or run `git submodule update --init` in an existing checkout (the compare50 plagiarism fork lives in `claoj/plagiarism`).
 - A copy of the v1 production runtime bundle (the `CLAOJ/` folder): the five

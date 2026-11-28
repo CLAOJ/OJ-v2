@@ -1,13 +1,12 @@
 # Follow-ups
 
 Open items parked during implementation, one line each, naming the file each lives in.
-Nothing here blocks the branch; each was triaged at a review gate and parked with a reason.
+Nothing here blocks a deploy; each was triaged at a review gate and parked with a reason.
+The plans/specs these came from were removed once their phases shipped — see git history.
 
 ## 2026-10-09 → 2026-10-10 — `feat/judge-pull-queue` (judge pull-queue)
 
-Carried from the batch reviews and the whole-branch review (plan
-`docs/superpowers/plans/2026-10-09-judge-pull-queue.md`, spec
-`docs/superpowers/specs/2026-10-09-judge-pull-queue-design.md`):
+Carried from the batch reviews and the whole-branch review:
 
 - `claoj/jobs/judge_test.go`, `claoj/jobs/judge_status_test.go` — test-log noise: gorm
   `record not found`/SELECT dumps and `jobs: queued judge task` prints interleave with PASS.
@@ -23,7 +22,6 @@ Carried from the batch reviews and the whole-branch review (plan
 - `claoj-judge/*_test.go` — test output not pristine (package `log.Printf` lines interleave).
 - `claoj-judge/grade_test.go` — `require`/`FailNow` called from spawned goroutines.
 - `claoj-judge/forward.go:36,52` — `Backoff: 0` in the zero value hot-spins a retry loop.
-- `claoj-judge/README.md` — no `TIERVNOJ_ENTRY` row in the env table.
 - `claoj-judge/grade.go` — after a post-failure mid-grade abandon no `terminate-submission` is
   sent (needs a >5 min outage to bite); asynq's task-timeout race is inherent to the design.
 - `claoj-judge/grade.go`, `claoj-judge/forward.go` — untested arms: 403 branch, network-error
@@ -52,8 +50,7 @@ Carried from the batch reviews and the whole-branch review (plan
 
 ## 2026-10-11 — `feat/judge-pull-queue` review fix (abort a queued submission)
 
-Parked by the task reviews and the final review of
-`docs/superpowers/plans/2026-10-11-judge-queued-abort-fix.md`; none blocks the merge:
+Parked by the task reviews and the final review; none blocks the merge:
 
 - `claoj/jobs/judge.go` (`AbortJudgeSubmission`) — the fallback to `cancelProcessing` fires on
   any `deleteTask` error; a non-"active" delete failure followed by a nil cancel returns nil,
@@ -70,8 +67,7 @@ Parked by the task reviews and the final review of
 
 ## 2026-10-11 — `feat/admin-crud-gaps` (admin CRUD gaps)
 
-Parked by the task reviews and the final review of
-`docs/superpowers/plans/2026-10-11-admin-crud-gaps.md`; none blocks the merge:
+Parked by the task reviews and the final review; none blocks the merge:
 
 - Not built, needs its own design: a real (hard) delete for problem, contest, organization and
   user. Their `DELETE` endpoints still only hide the row. Django owns the shared database and

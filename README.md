@@ -1,247 +1,161 @@
-# CLAOJ v2 - Modern Online Judge Platform
+# CLAOJ v2
 
-A modern online competitive programming platform built with Go and Next.js.
+The Go + Next.js rewrite of the CLAOJ online judge (<https://claoj.edu.vn>).
+It runs alongside the legacy Django site (v1) against the **same MariaDB
+database and Redis**, and owns no schema of its own: Django's models are the
+source of truth and v2 only reads and writes rows.
 
-**Live Site:** [https://claoj.edu.vn](https://claoj.edu.vn)
+## Services
 
-## Tech Stack
+| Directory | Service | Stack |
+|---|---|---|
+| `claoj/` | HTTP API (`:8081`) | Go 1.25, Gin, GORM, asynq |
+| `claoj-web/` | Web app (`:3000`) | Next.js 16 App Router, React 19, Tailwind 4, next-intl |
+| `claoj-judge/` | Judge agent | Go agent driving a private **tiervnoj** (DMOJ/VNOJ) child process |
+| `CLAOJ/claoj-docker/` (separate repo) | v1 site + compose stack | Django, MariaDB, Redis, nginx |
 
-### Frontend (claoj-web)
-- **Next.js 16** - React framework with App Router
-- **TypeScript** - Type safety
-- **Tailwind CSS 4** - Utility-first styling
-- **React Query (TanStack Query)** - Data fetching and caching
-- **Framer Motion** - Animations
-- **next-intl** - Internationalization (English/Vietnamese)
-- **React Hook Form + Zod** - Form handling and validation
-- **Monaco Editor** - Code editing in browser
-- **KaTeX** - Math rendering
-
-### Backend (claoj-go)
-- **Go 1.24** - High-performance backend
-- **Gin** - HTTP web framework
-- **GORM** - ORM for MySQL/MariaDB
-- **Redis** - Caching, sessions, and pub/sub
-- **JWT** - Authentication
-- **WebSockets** - Real-time updates
-
-## Project Structure
+## Architecture
 
 ```
-repo-v2/
-├── claoj-web/          # Next.js frontend
-│   ├── src/
-│   │   ├── app/        # App router pages (i18n with [locale])
-│   │   ├── components/ # React components
-│   │   ├── lib/        # Utilities and API clients
-│   │   ├── types/      # TypeScript types
-│   │   ├── i18n/       # Translation files (en.json, vi.json)
-│   │   └── utils/      # Helper functions
-│   ├── public/         # Static assets
-│   ├── __tests__/      # Jest unit tests
-│   └── package.json
-│
-└── claoj-go/           # Go backend
-    ├── api/            # HTTP API handlers
-    │   └── v2/         # API v2 endpoints
-    ├── auth/           # JWT and password utilities
-    ├── bridge/         # Judge bridge protocol
-    ├── cache/          # Redis caching layer
-    ├── config/         # Configuration loading
-    ├── db/             # Database connection
-    ├── email/          # Email sending
-    ├── events/         # WebSocket event system
-    ├── jobs/           # Background job processing
-    ├── models/         # GORM models
-    ├── moss/           # MOSS plagiarism detection
-    ├── oauth/          # OAuth2 handlers
-    ├── ratelimit/      # Rate limiting middleware
-    ├── scoring/        # Rating and scoring algorithms
-    └── main.go
+Browser ──▶ v2_nginx :8090 ─┬─ /     ──▶ claoj-web :3000
+                            └─ /api  ──▶ claoj :8081 ──┬─▶ MariaDB :3306   ◀─ shared with v1
+                                                       ├─▶ Redis :6379     ◀─ shared with v1
+                                                       └─▶ /internal/judge/event ◀── claoj-judge
+Browser ──▶ v1 nginx :8080 ──▶ Django site ──▶ same MariaDB / Redis
+                                  └─ v1 bridge :9999 ──▶ v1 judges
 ```
 
-## Getting Started
+Invariants worth knowing before changing anything:
 
-### Prerequisites
-- Node.js 20+
-- Go 1.24+
-- MySQL 8.0+ or MariaDB 10.6+
-- Redis 7+
+- **No DDL from v2.** `db.Connect()` panics on `CREATE/ALTER/DROP`. Additive
+  v2-only tables/columns are provisioned once from
+  `scripts/v2_runtime_tables.sql`; the decision record is
+  [`docs/schema-audit.md`](docs/schema-audit.md).
+- **Two user id spaces.** `auth_user.id` (Django auth) and `judge_profile.id`
+  (DMOJ profile) differ for most users. `judge_*` tables key by profile id —
+  resolve with `auth.CurrentProfileID(c)`. v2-only tables key by auth id.
+- **Judges pull, nothing dials them.** Submissions go to the asynq `judge`
+  queue in Redis; agents grade and POST packets to `/internal/judge/event`.
+  There is no bridge/listen port on the v2 backend.
+- **Same-origin API.** Browsers call `/api` on the web origin; nginx proxies
+  it to the Go API. The base is `/api` (not `/api/v2`).
+- **Auth is cookie + CSRF.** httpOnly `access_token`/`refresh_token` cookies,
+  plus a non-httpOnly `csrf_token` echoed as `X-CSRF-Token` on mutations.
+- **Redis is split by DB index.** In the compose stack v2 uses DB 2 (tokens,
+  permission cache, audit log, asynq); v1 keeps DB 0 (cache) and DB 1 (Celery).
+- **Permissions are Django's.** `auth_group` / `auth_permission` codenames are
+  enforced by v2, cached in Redis for 60 s.
 
-### Quick Start
+## Repository layout
 
-Use the quickstart script:
+```
+claoj/                Go API (module github.com/CLAOJ/claoj)
+  api/                HTTP router and handlers (api/v2/*)
+  auth/               JWT, password, profile-id helpers
+  bridge/             v1 graded-submission watcher (shared DB)
+  jobs/               asynq client/worker, judge status, MOSS/plagiarism
+  models/             GORM models over the Django schema
+  service/            domain services (user, contest, problem, submission, ...)
+  integration/        live-schema parity test (needs a database)
+claoj-web/            Next.js web app (locale-prefixed /vi, /en)
+claoj-judge/          pull-based judge agent wrapping tiervnoj
+scripts/              v2_runtime_tables.sql, v2 nginx conf, ops scripts
+docs/                 development, deployment, schema, follow-ups
+.github/workflows/    CI: vet/test per component, GHCR images on main
+```
+
+## Getting started
+
+Full local stack (v1 + v2 + both judges, one database) — see
+[`docs/development.md`](docs/development.md). It needs the v1 runtime bundle
+and is the only way to grade submissions locally.
+
+### API only
+
+Prerequisites: Go 1.25+, MariaDB 10.6+/MySQL 8+, Redis 7+.
+
 ```bash
-./quickstart.sh
-```
-
-### Manual Setup
-
-#### Backend
-
-1. Navigate to the backend directory:
-```bash
-cd claoj-go
-```
-
-2. Copy the root `.env.example` to `.env` and configure:
-```bash
-cp ../../.env.example .env
-# Edit .env with your database credentials
-```
-
-3. Install dependencies:
-```bash
+cd claoj
 go mod download
+# create .env (gitignored) — see the env table below
+go run .
+# claoj-go HTTP API starting on :8081
 ```
 
-4. Run the server:
-```bash
-go run main.go
-```
+### Web only
 
-The API will be available at `http://localhost:8080`
-
-#### Frontend
-
-1. Navigate to the frontend directory:
 ```bash
 cd claoj-web
-```
-
-2. Copy the example environment file:
-```bash
-cp .env.example .env
-```
-
-3. Install dependencies:
-```bash
 npm install
+npm run dev          # http://localhost:3000/vi
 ```
 
-4. Run the development server:
-```bash
-npm run dev
-```
+Server-side fetches reach the API through `API_URL_INTERNAL`
+(default `http://localhost:8081/api`); the browser uses the page origin.
 
-The frontend will be available at `http://localhost:3000`
+### Backend environment
 
-## Configuration
+| Variable | Default | Notes |
+|---|---|---|
+| `DATABASE_DSN` | — | `user:pass@tcp(host:3306)/claoj?charset=utf8mb4&parseTime=True&loc=UTC` |
+| `REDIS_ADDR` / `REDIS_DB` | `127.0.0.1:6379` / `0` | judge agents must use the same DB |
+| `SERVER_PORT` / `SERVER_MODE` | `8081` / `debug` | |
+| `SECRET_KEY` | — | **required**; boot fails on empty/`changeme` |
+| `JWT_SECRET_KEY` | falls back to `SECRET_KEY` | |
+| `SITE_URL` | `http://localhost:8081` | public web origin; drives CORS and cookie flags |
+| `JUDGE_NAME` | — | comma-separated `judge_judge` rows to keep online |
+| `EMAIL_NO_REPLY` | `true` | set `false` + `SMTP_*` to send mail |
 
-### Unified Configuration with `.env`
+`*_FILE` variants exist for Docker secrets; `CLAOJ_*`-prefixed and legacy
+names (`DATABASE_URL`, `REDIS_URL`) are accepted too.
 
-CLAOJ v2 uses a unified `.env` file for configuration that both backend and frontend can share.
-This eliminates duplication and ensures consistency across services.
+### Frontend environment
 
-#### Shared Configuration (.env)
+All optional — the defaults derive from the browser origin:
 
-1. Copy the example file at the repository root:
-```bash
-cp .env.example .env
-```
-
-2. Edit `.env` with your values:
-```env
-# Site Configuration
-SITE_URL=http://localhost:3000
-API_URL=http://localhost:8080/api/v2
-DEFAULT_LANG=en
-
-# Database
-DATABASE_URL=user:password@tcp(127.0.0.1:3306)/claoj?charset=utf8mb4&parseTime=True&loc=UTC
-
-# Redis
-REDIS_ADDR=127.0.0.1:6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Server
-SERVER_PORT=8080
-SERVER_MODE=debug
-
-# Secrets (IMPORTANT: Change in production!)
-SECRET_KEY=<generate with: openssl rand -base64 64>
-
-# OAuth (Optional)
-OAUTH_GOOGLE_ENABLED=false
-OAUTH_GOOGLE_CLIENT_ID=
-OAUTH_GOOGLE_CLIENT_SECRET=
-```
-
-3. For Docker deployment, place `.env` in the `repo-v2/` directory
-
-#### Environment Variable Priority
-
-The backend loads configuration in this order (highest to lowest priority):
-
-1. Direct environment variables (`DATABASE_URL`, `SECRET_KEY`, etc.)
-2. Prefixed environment variables (`CLAOJ_DATABASE_DSN`, `CLAOJ_APP_SECRET_KEY`)
-3. `.env` file (loaded automatically via godotenv)
-4. Default values
-
-#### Frontend Configuration
-
-The frontend uses `window.location.origin` for API and WebSocket URLs by default.
-No environment variables are required for local development.
-
-Optional overrides in `claoj-web/.env` or via Docker Compose environment:
-```env
-# Only if you need to override defaults
-NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2
-NEXT_PUBLIC_SITE_NAME=CLAOJ
-```
-
-For Docker deployment, set `NEXT_PUBLIC_*` variables in the `.env` file or pass them as build args.
-
-## Features
-
-- Problem solving with multiple programming languages
-- Contests with various formats (ICPC, IOI, AtCoder, ECOO)
-- Rating system with Elo-based calculations
-- Blog posts with voting system
-- Real-time notifications via WebSocket
-- Bilingual support (English/Vietnamese)
-- Modern dark theme UI
-- Responsive design
-- JWT authentication with OAuth2 support
-- MOSS plagiarism detection integration
-- Admin dashboard for problem/contest/user management
-- Ticket system for support
+| Variable | Default | |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `<origin>/api` | browser API base |
+| `NEXT_PUBLIC_WS_URL` | `<origin>/api/events` | WebSocket base |
+| `API_URL_INTERNAL` | `http://localhost:8081/api` | SSR fetches |
+| `SITE_URL` | `https://beta.claoj.edu.vn` | canonical URLs, sitemap |
 
 ## Testing
 
-### Backend Tests
 ```bash
-cd claoj-go
-go test ./...
+# Go API (integration/ skips itself when CLAOJ_DJANGO_DB_DSN is unset)
+cd claoj && go vet ./... && go test ./...
+
+# judge agent
+cd claoj-judge && go vet ./... && go test ./...
+
+# web (Jest)
+cd claoj-web && npm test
+
+# web checks
+cd claoj-web && npm run i18n:check && npm run ui:check
 ```
 
-### Frontend Tests
+The live-schema parity test is the guard against drift from the Django
+database:
+
 ```bash
-cd claoj-web
-npm test
+CLAOJ_DJANGO_DB_DSN="user:pass@tcp(host:3306)/claoj?parseTime=true" \
+  go test ./integration/ -run TestSchemaParity -v
 ```
 
-## Docker Deployment
+## Documentation
 
-This repository is designed to work with Docker Compose. See the parent repository
-for the full Docker setup including judge servers.
-
-## Migration from v1
-
-The v2 version is a complete rewrite:
-- Go backend (replacing Django)
-- Next.js frontend (replacing Django templates)
-- Improved performance and scalability
-- Modern UI/UX with Tailwind CSS
-- Better API design with RESTful endpoints
+| Doc | Contents |
+|---|---|
+| [`docs/development.md`](docs/development.md) | full local stack, ports, judge setup, id spaces, CSRF, API response shapes |
+| [`docs/deployment.md`](docs/deployment.md) | production deploy, v2-only schema, compose overlay, cutover |
+| [`docs/schema-audit.md`](docs/schema-audit.md) | model-by-model audit and every retained v2-only DB object |
+| [`docs/follow-ups.md`](docs/follow-ups.md) | parked open issues, none of which block a deploy |
+| [`claoj-web/README.md`](claoj-web/README.md) | web app routes, admin panel, scripts |
+| [`claoj-judge/README.md`](claoj-judge/README.md) | judge env and image |
 
 ## License
 
-Based on DMOJ - see [LICENSE](LICENSE) file.
-
-## Credits
-
-- Developed by IT-CLA Productions
-- Powered by [DMOJ](https://github.com/DMOJ/site) and VNOI
-- CLAOJ
+Based on DMOJ — see [LICENSE](LICENSE). Developed by IT-CLA Productions;
+powered by [DMOJ](https://github.com/DMOJ/site) and VNOI.

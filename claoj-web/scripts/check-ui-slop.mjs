@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-// Decorative patterns banned by docs/superpowers/specs/2026-10-09-v2-ui-deslop-design.md.
+// Decorative patterns banned by the v2 UI style (settled in the 2026-10 UI pass).
 // A line containing `ui-check-allow` is skipped.
 const RULES = [
     ['font-black', /\bfont-black\b/],
